@@ -12,8 +12,7 @@ extMath: true
 DeepSpeed 是由微软开发的一种深度学习优化库，专为高性能训练和推理而设计，尤其适用于大规模深度学习模型（如 GPT 系列、BERT 等）。它通过一系列技术和优化策略，帮助研究者和开发者高效利用硬件资源，实现快速训练、降低内存使用以及提升推理速度。
 正如其官方描述那样：
 
-<div align="center"><img src=https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250111152607535-1429941566.jpg alt=Deepspeed style="zoom:0%"/></div>
-
+![image](https://pica.zhimg.com/v2-0fa74fc643a5f420c57bf12a0c2f5d16_1440w.jpg)
 > Image From: https://github.com/microsoft/DeepSpeed
 
 ---
@@ -22,6 +21,7 @@ DeepSpeed 是由微软开发的一种深度学习优化库，专为高性能训�
 
 **模型状态**显存占用
 主要指的是：*优化器状态，梯度，模型参数*。比如说在训练过程中一般都会选择使用`Adam`作为一种优化器进行使用，而在`Adam`计算过程中就会存储两部分内容：**1、动量（上一轮梯度累计）；2、二阶动量（存储梯度平方的滑动平均值）**。如何去避免这部分结果对显存占用的影响，就提出了 *混合精度训练*（用`FP16`存储和计算梯度及优化器状态）
+
 比如说：用`Adam`作为优化器在混合精度下训练参数量为$\Phi$的模型显存占用：1、一部分用来存储`FP16`的参数以及梯度：$2\Phi, 2\Phi$；2、另外一部分需要存储优化器状态（`FP32`存储：模型参数，动量，二阶动量）：$4\Phi, 4\Phi, 4\Phi$。那么显存占用上就有：$2+ 2+ 4+ 4+ 4=16\Phi$。那么回到上面提到的`1.5B`的`GPT-2`至少需要：$1.5 \times 16=24G$
 
 **剩余状态**显存占用
@@ -34,7 +34,7 @@ DeepSpeed 是由微软开发的一种深度学习优化库，专为高性能训�
 > `ZeRO-DP`原理
 
 主要是通过**切分**（`partitioning`）的方式来减少 **模型状态**显存占用
-<div align="center"><img src=https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250111165122863-1423604415.png alt=ZeRO-DP解释 style="zoom:80%"/></div>
+![image](https://pic1.zhimg.com/v2-7aab2570bac94c8073742244cef969ae_1440w.jpg)
 
 第一种方式为$P_{OS}$：对优化器的状态进行切分，将$N$块GPU上每块只存储$\frac{1}{N}$，那么最后显存占用（按上面的显存分析为例）就为：$4\Phi+ \frac{12\times \Phi}{N}$
 
@@ -53,16 +53,16 @@ DeepSpeed 是由微软开发的一种深度学习优化库，专为高性能训�
 
 因为会将优化器状态切分，那么在3个不同设备上分别存储**3分优化器状态**（o1, o2, o3）,对于这3部分优化器（因为优化器最后还是去“作用”到梯度上），分别对各自的梯度进行优化，但是会有一个问题：每块GPU上存储的是 **一部分优化器状态**，那么对于每份优化器也只能去优化各自的参数，每次更新需要通过 **All-Gather** 操作合并梯度，完成优化器状态更新
 
-<div align="center"><img src=https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250111180835911-1295467906.jpg alt=第一种方式 style="zoom:30%"/></div>
+![image](https://pic4.zhimg.com/v2-c24157111233c20a944dc813d133bc85_1440w.jpg)
 
 **第二种方式$P_{OS+g}$**
-<div align="center"><img src=https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250111180945132-231170935.jpg alt=第二种方式 style="zoom:30%"/></div>
+![image](https://pic4.zhimg.com/v2-c0bc081c383f3588497071c7958a09bf_1440w.jpg)
 
 在进行前向+反向传播之后，**得到完整的梯度**，因为要实现梯度拆分，那么就对梯度进行`reduce-scatter`对于不同的GPU就会存储不同的梯度（g1, g2, g3白色的就会剔除掉）前向和反向传播需要通过 **All-Gather** 和 **All-Reduce** 操作同步梯度和参数
 
 **第三种方式为$P_{OS+g+p}$**
 
-<div align="center"><img src=https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250111181435075-697401832.jpg alt=第二种方式 style="zoom:30%"/></div>
+![image](https://picx.zhimg.com/v2-84f87cf8a0eb38731a4cab58352dc7c3_1440w.jpg)
 
 通过 **All-Gather**和 **Reduce-Scatter** 高效完成参数同步和更新。
 
@@ -83,10 +83,10 @@ DeepSpeed 是由微软开发的一种深度学习优化库，专为高性能训�
 > 比如说4个GPU分别存储不同的值：$GPU_i: i(i=1,2,3,4)$通过 `all-reduce`（假设为`sum`）那么不同GPU值为$GPU_i: 10$
 > `Ring-ALLReduce`操作：
 > **第一阶段**，通过`reduce-sactter`传递参数
-> <div align="center"><img src=https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250111225810355-560580627.png alt=第二种方式 style="zoom:100%"/></div>
+> ![image](https://pic2.zhimg.com/v2-7eded4ef19ababdf94de1014bc24c279_1440w.jpg)
 >
 > 通过3次参数更新之后，这样就会出现不同设备上都会有一个都具有参数$a_i+ b_i+ c_i+ d_i$那么下一阶段就是通过`all-gather`将不同设备上参数广播到不同设备最后实现参数都实现更新。
-> <div align="center"><img src=https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250111230332745-1814167802.png alt=第二种方式 style="zoom:100%"/></div>
+> ![image](https://pica.zhimg.com/v2-cbc5501752ef3340a56d1b3a1f690bec_1440w.jpg)
 > 
 > **补充2**：通信量和传统的数据并行之间有无区别？
 > 这部分描述来自论文（https://arxiv.org/pdf/1910.02054）中的描述：

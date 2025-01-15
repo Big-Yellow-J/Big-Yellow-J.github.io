@@ -22,6 +22,9 @@
   margin: 0;
   width: 100%;
 }
+.page-post .post p {
+  margin: 18px 0; /* Add this rule for consistent paragraph spacing */
+}
 .page-post .post h1,
 .page-post .post h2 {
   font-weight: normal;
@@ -75,7 +78,7 @@
 }
 .page-post img {
   display: block;
-  max-width: 100%;
+  max-width: 80%;
   margin: 0 auto;
   height: auto;
   box-shadow: 0 0 5px #e0e0e0;
