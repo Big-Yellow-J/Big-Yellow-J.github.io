@@ -234,7 +234,7 @@
   background-color: #45a049; /* 鼠标悬停时的背景色 */
 }
 
-#vcomments {
+#gitalk-container {
   margin-top: 40px;
   padding: 20px;
   background-color: #f9f9f9;
