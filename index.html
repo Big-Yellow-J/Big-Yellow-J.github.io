@@ -3,6 +3,19 @@ layout: page
 title: 首页
 ---
 <div class="page page-index">
+  <!-- 侧边栏容器 -->
+  <div class="sidebar">
+    <div class="sidebar-profile">
+      <img src="./MY.jpg" alt="Profile Image" class="profile-img" />
+      <div class="social-media">
+        <a href="https://github.com/shangxiaaabb" target="_blank">GitHub</a>
+        <!-- <a href="https://twitter.com/yourusername" target="_blank">Twitter</a> -->
+        <!-- 添加其他社交媒体链接 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 文章列表 -->
   {% for post in site.posts  -%}
     {%- capture post_year %}{{ post.date | date: "%Y" }}{% endcapture -%}
     {%- capture post_previous_year %}{{ post.previous.date | date: "%Y" }}{% endcapture -%}
@@ -12,6 +25,7 @@ title: 首页
       <h2 id="{{post_year}}">{{post_year}}</h2>
       <ul>
     {%- endif %}
+
         <li>
           <span class="date">{{ post.date | date: "%Y/%m/%d" }}</span>
           <div class="title">
@@ -23,9 +37,12 @@ title: 首页
             {%- endfor %}
           </div>
         </li>
+
     {%- if forloop.last or post_previous_year != post_year %}
+
       </ul>
     </div>
     {%- endif %}
+
   {%- endfor %}
 </div>
