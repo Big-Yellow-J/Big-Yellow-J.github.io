@@ -17,9 +17,12 @@ images: true
 **混合精度训练**（`mixed-precision`）指的是同时使用 FP16/BF16 和 FP32，利用二者的优点。通常，模型权重和梯度使用 FP32，而激活值和中间计算使用 FP16/BF16
 
 <div style="text-align: center;">
-     <img src="https://img2023.cnblogs.com/blog/3395559/202501/example2.png" alt="图片2" style="zoom:90%;">
+  <img src="https://img2023.cnblogs.com/blog/3395559/202501/example2.png" alt="图片2" style="zoom:90%;">
 </div>
 
+![image](https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250101200851713-932245560.png)
+
+![image](https://canada1.discourse-cdn.com/flex030/uploads/jekyllrb/optimized/2X/0/0820acf30b8742a9a5ca8e6279eacf2a1413889d_2_1035x279.jpeg)
 
 <img src="https://img2023.cnblogs.com/blog/3395559/202501/example2.png" alt="图片2" style="zoom:90%;">
 
