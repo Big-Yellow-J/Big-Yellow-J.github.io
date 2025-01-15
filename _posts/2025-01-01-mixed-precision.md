@@ -17,9 +17,15 @@ extMath: true
 
 <div align="center"><img src="https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250101200851713-932245560.png" alt="FP16/BF16/FP32" style="zoom:80%"/></div>
 
+<p align="center">
+  <img src="https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250101200851713-932245560.png" alt="FP16/BF16/FP32" style="zoom:80%;">
+</p>
+
+
 > Image From: https://www.exxactcorp.com/blog/hpc/what-is-fp64-fp32-fp16
 
 不同精度之间对比：
+
 | **指标**      | **单精度（FP32）**     | **半精度（FP16/BF16）**  | **混合精度**           |
 |:--------:|:-----------------:|:---------------:|:------------:|
 | **精度**      | 高                     | 较低（FP16），中（BF16） | 中高                    |
@@ -38,13 +44,19 @@ extMath: true
 > 总的来说就是：如果只用半精度会导致精度损失严重，因此就会提出用混合精度进行训练
 
 解决上面用单精度造成的问题，在混合精度训练中论文提到的解决办法：
+
 * 1、`FP32 MASTER COPY OF WEIGHTS`
+* 
 模型权重会同时维护两个版本：1、FP32权重（Master Copy）：以32位浮点数表示，**用于存储和更新权重的精确值**。2、FP16权重（Working Copy）：以16位浮点数表示，用于**前向传播和反向传播的计算，减少显存占用并加速运算**。
+
 > 这里就会有一个问题，反向传播过程中要计算梯度，如果（梯度用FP16）**梯度很小**，不也还是会出现溢出问题，作者后续提到`LOSS SCALING`可以解决这种问题。如果**梯度很大**也会导致溢出问题，梯度计算使用FP16，但在权重更新之前，梯度会转换为 FP32 精度进行累积和存储，从而避免因溢出导致的权重更新错误。
+> 
 > 另外之所以要用FP32对权重进行保存这是因为，作者研究发现更新 FP16 权重会导致 80% 的相对准确度损失。
+> 
 > we match FP32 training results when updating an
 FP32 master copy of weights after FP16 forward and backward passes, while updating FP16 weights
 results in 80% relative accuracy loss
+
 > 另外一方面，如果拷贝权重，不也等同于把显存的占用拉大了？参考[知乎](https://zhuanlan.zhihu.com/p/103685761)上描述显存占用上主要是中间过程值
 
 <div align="center"><img src=https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250101202947793-373123190.png alt=FP16/BF16/FP32 style="zoom:80%"/></div>
@@ -53,6 +65,7 @@ results in 80% relative accuracy loss
 * 2、`LOSS SCALING`
 
 下图展示了 SSD 模型在训练过程中，激活函数梯度的分布情况，容易发现部分梯度值如果用FP16容易导致最后的梯度值变为0，这样就会导致上面提到的溢出问题，那么论文里面的做法就是：在反向传播前将loss增打$2^k$倍，这样就会保证不发生下溢出（乘一个常数，后面再去除这个常数不影响结果），如何反向传播再去除这个常数即可。
+
 <div align="center"><img src=https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250101210820686-769683541.png alt=FP16/BF16/FP32 style="zoom:80%"/></div>
 
 * 3、`Apex`实现混合精度训练
@@ -83,16 +96,26 @@ scaler.step(optimizer)
 scaler.update()
 ```
 `Apex`中`Amp`参数（https://nvidia.github.io/apex/amp.html）：
+
 1、`opt_level`（**欧1而不是零1**）:
+
 `O0`：纯FP32训练，可以作为accuracy的baseline；
+
 `O1`：混合精度训练（推荐使用），根据黑白名单自动决定使用FP16（GEMM, 卷积）还是FP32（Softmax）进行计算。
+
 `O2`：“几乎FP16”混合精度训练，不存在黑白名单，除了Batch norm，几乎都是用FP16计算。
+
 `O3`：纯FP16训练，很不稳定，但是可以作为speed的baseline；
+
 2、`loss_scale="dynamic"`
+
 损失值处理（`LOSS SCALING`）默认是动态（初始一个较大的值，检查到溢出就减小）
 
+
 **测试效果：**
+
 **准确率变化上**：
+
 
 在公开数据集（`CIFAR10`）上进行测试（模型为`resnet50`）测试使用的设备为`4090`
 
@@ -115,6 +138,7 @@ scaler.update()
 
 
 根据知乎：[Nicolas](https://zhuanlan.zhihu.com/p/79887894)和[Dreaming.O](https://zhuanlan.zhihu.com/p/103685761)实验建议：
+
 * **1、判断你的GPU是否支持FP16：支持的有拥有Tensor Core的GPU（2080Ti、Titan、Tesla等），不支持的（Pascal系列）**
 
 ```python
@@ -137,7 +161,6 @@ else:
 
 因为在`Apex`的`amp`默认使用的是`dynamic`可以改为`1024`或者`2048`
 
-- [ ] apex/amp 参数设置
 
 ## 显存优化
 
