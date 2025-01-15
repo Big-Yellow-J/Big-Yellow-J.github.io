@@ -12,7 +12,7 @@ extMath: true
 DeepSpeed 是由微软开发的一种深度学习优化库，专为高性能训练和推理而设计，尤其适用于大规模深度学习模型（如 GPT 系列、BERT 等）。它通过一系列技术和优化策略，帮助研究者和开发者高效利用硬件资源，实现快速训练、降低内存使用以及提升推理速度。
 正如其官方描述那样：
 
-<div align="center"><img src=https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250111152607535-1429941566.png alt=Deepspeed style="zoom:0%"/></div>
+<div align="center"><img src=https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250111152607535-1429941566.jpg alt=Deepspeed style="zoom:0%"/></div>
 
 > Image From: https://github.com/microsoft/DeepSpeed
 
