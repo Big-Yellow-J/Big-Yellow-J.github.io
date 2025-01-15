@@ -17,6 +17,33 @@
   <div class="post">
     {{ content }}
   </div>
+
+  <!-- 添加分享按钮 -->
+  <div class="share-buttons">
+    <button class="share-button" onclick="shareOnSocial('twitter')">分享到 Twitter</button>
+    <button class="share-button" onclick="shareOnSocial('facebook')">分享到 Facebook</button>
+    <button class="share-button" onclick="shareOnSocial('weibo')">分享到微博</button>
+  </div>
+
+  {% if site.extAdsense -%}
+  <div class="adsense" style="overflow: hidden;">
+    {% include ext-adsense.html -%}
+  </div>
+  {% endif %}
+
+  <!-- 添加 Valine 评论 -->
+  <div id="vcomments"></div>
+  <script src="//cdn.jsdelivr.net/npm/valine/dist/Valine.min.js"></script>
+  <script>
+    new Valine({
+      el: '#vcomments',
+      appId: 'zTnWHiKFvCX4R30VQ4qyOjE0-MdYXbMMI', // LeanCloud 的 App ID
+      appKey: 'Icb1EA8yfNGBNuwOhTqTAagZ', // LeanCloud 的 App Key
+      placeholder: '请输入您的评论...', // 评论框占位符
+      avatar: 'mm', // 头像风格
+    });
+  </script>
+
   {% if site.extAdsense -%}
   <div class="adsense" style="overflow: hidden;">
     {% include ext-adsense.html -%}

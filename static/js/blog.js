@@ -524,3 +524,28 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
+
+function shareOnSocial(platform) {
+  const pageUrl = encodeURIComponent(window.location.href); // 获取当前页面 URL
+  const pageTitle = encodeURIComponent(document.title); // 获取当前页面标题
+
+  let shareUrl = '';
+
+  switch (platform) {
+    case 'twitter':
+      shareUrl = `https://twitter.com/intent/tweet?url=${pageUrl}&text=${pageTitle}`;
+      break;
+    case 'facebook':
+      shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${pageUrl}`;
+      break;
+    case 'weibo':
+      shareUrl = `https://service.weibo.com/share/share.php?url=${pageUrl}&title=${pageTitle}`;
+      break;
+    default:
+      console.error('未知的分享平台');
+      return;
+  }
+
+  // 打开分享窗口
+  window.open(shareUrl, '_blank', 'width=600,height=400');
+}

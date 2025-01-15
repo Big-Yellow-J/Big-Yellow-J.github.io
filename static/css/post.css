@@ -213,3 +213,30 @@
   transform: scale(0.95);
 }
 
+.share-buttons {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.share-button {
+  background-color: #4CAF50; /* 按钮背景色 */
+  color: white; /* 文字颜色 */
+  border: none;
+  padding: 10px 20px;
+  margin: 5px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+}
+
+.share-button:hover {
+  background-color: #45a049; /* 鼠标悬停时的背景色 */
+}
+
+#vcomments {
+  margin-top: 40px;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
