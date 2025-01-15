@@ -1,4 +1,8 @@
-<!DOCTYPE html>
+<!--
+ * @Author: shangxiaaabb huangjie20011001@163.com
+ * @Date: 2025-01-15 10:14:47
+-->
+<!-- <!DOCTYPE html>
 <html lang="zh-CN">
 {% include head.html -%}
 <body>
@@ -25,5 +29,40 @@
 </div>
 {% include footer.html -%}
 {% include script.html -%}
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+{% include head.html %}
+<body>
+{% include header.html %}
+<div class="page page-post">
+  <h1 class="title" id="{{ page.title }}">{{ page.title }}</h1>
+  {% if page.date %}
+  <div class="subtitle">
+    <span>{{ site.author }} 于 {{ page.date | date: "%Y-%m-%d" }} 发布</span>
+    {% if site.extCount %}
+      <span>浏览量</span>
+      <span id="busuanzi_value_page_pv"></span>
+    {% endif %}
+  </div>
+  {% endif %}
+  <div class="post">
+    {% if page.image %}
+    <div style="text-align: center;">
+      <img src="{{ page.image }}" alt="{{ page.title }}" style="zoom:80%;">
+    </div>
+    {% endif %}
+    {{ content }}
+  </div>
+  {% if site.extAdsense %}
+  <div class="adsense" style="overflow: hidden;">
+    {% include ext-adsense.html %}
+  </div>
+  {% endif %}
+</div>
+{% include footer.html %}
+{% include script.html %}
 </body>
 </html>
