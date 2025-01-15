@@ -69,20 +69,28 @@
 }
 .page-post ul > li {
   list-style: disc;
+  margin-left: 20px;
+  line-height: 1.6;
 }
+
 .page-post ol > li {
   list-style: decimal;
+  margin-left: 20px;
+  line-height: 1.6;
 }
+
 .page-post li > *{
   margin: 6px 0;
 }
 .page-post img {
   display: block;
   max-width: 80%;
-  margin: 0 auto;
+  margin: 20px auto;
   height: auto;
-  box-shadow: 0 0 5px #e0e0e0;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
 }
+
 .page-post img[alt='line'] {
   display: inline-block;
   vertical-align: middle;

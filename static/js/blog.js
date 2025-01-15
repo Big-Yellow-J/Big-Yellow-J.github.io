@@ -497,3 +497,30 @@ blog.addLoadEvent(function () {
     });
   });
 });
+
+document.addEventListener('DOMContentLoaded', function() {
+  // 获取社交分享按钮
+  const socialBtns = document.querySelectorAll('.social-btn');
+
+  // 获取当前页面的 URL 和标题
+  const currentUrl = window.location.href;
+  const pageTitle = document.title;
+
+  // 分享链接模板
+  const shareUrls = {
+    // twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(pageTitle)}`,
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`,
+    zhihu: `https://www.zhihu.com/question/${encodeURIComponent(currentUrl)}`,
+    weibo: `https://weibo.com/share?url=${encodeURIComponent(currentUrl)}`
+  };
+
+  // 给每个按钮绑定点击事件
+  socialBtns.forEach(function(btn) {
+    const platform = btn.getAttribute('data-platform');
+    btn.addEventListener('click', function(event) {
+      event.preventDefault();
+      const shareUrl = shareUrls[platform];
+      window.open(shareUrl, '_blank', 'width=600,height=400');
+    });
+  });
+});
