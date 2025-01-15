@@ -18,7 +18,10 @@ images: true
 
 <div style="text-align: center;">
      <img src="https://img2023.cnblogs.com/blog/3395559/202501/example2.png" alt="图片2" style="zoom:90%;">
-   </div>
+</div>
+
+
+<img src="https://img2023.cnblogs.com/blog/3395559/202501/example2.png" alt="图片2" style="zoom:90%;">
 
 <p align="center">
   <img src="https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250101200851713-932245560.png" alt="FP16/BF16/FP32" style="zoom:80%;">
