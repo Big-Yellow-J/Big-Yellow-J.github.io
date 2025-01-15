@@ -17,20 +17,8 @@ images: true
 **混合精度训练**（`mixed-precision`）指的是同时使用 FP16/BF16 和 FP32，利用二者的优点。通常，模型权重和梯度使用 FP32，而激活值和中间计算使用 FP16/BF16
 
 <div style="text-align: center;">
-  <img src="https://pica.zhimg.com/v2-c57cf1f46adbd74e352dec70bd2f31b4_1440w.jpg" alt="图片2" style="zoom:90%;">
+  <img src="https://pica.zhimg.com/v2-c57cf1f46adbd74e352dec70bd2f31b4_1440w.jpg" alt="图片2" style="zoom:80%;">
 </div>
-
-![image](https://pica.zhimg.com/v2-c57cf1f46adbd74e352dec70bd2f31b4_1440w.jpg)
-
-![image](https://canada1.discourse-cdn.com/flex030/uploads/jekyllrb/optimized/2X/0/0820acf30b8742a9a5ca8e6279eacf2a1413889d_2_1035x279.jpeg)
-
-<img src="https://img2023.cnblogs.com/blog/3395559/202501/example2.png" alt="图片2" style="zoom:90%;">
-
-<p align="center">
-  <img src="https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250101200851713-932245560.png" alt="FP16/BF16/FP32" style="zoom:80%;">
-</p>
-
-![image](https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250101200851713-932245560.png)
 
 > Image From: https://www.exxactcorp.com/blog/hpc/what-is-fp64-fp32-fp16
 
@@ -48,7 +36,8 @@ images: true
 > **为什么不只用单精度训练（速度快/显存占用少）**
 > 1、直接使用半精度（FP16）容易引发数值问题，如`溢出（overflow）`和`下溢（underflow）`：这里是因为**单精度有效尾数（约10位尾数）**较单精度要小得多，那么就会有一个问题因此在训练过程中，如果激活函数的梯度非常小，可能会因**精度不足而被舍弃为零，导致梯度下溢**。此外，当数值超过半精度的表示范围时，也会发生溢出问题。这些限制会使训练难以正常进行，导致模型无法收敛或性能下降；
 > 2、**舍入误差（Rounding Error）** 舍入误差指的是当梯度过小，小于当前区间内的最小间隔时，该次梯度更新可能会失败，用一张图清晰地表示：
-> <div align="center"><img src=https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250101203251867-1163440005.jpg alt=FP16/BF16/FP32 style="zoom:50%"/></div>
+> 
+> <div align="center"><img src="https://pic3.zhimg.com/v2-3de6e221173c01449757875150e5f00c_1440w.jpg" alt=FP16/BF16/FP32 style="zoom:50%"/></div>
 >
 > Image: https://zhuanlan.zhihu.com/p/79887894
 > 总的来说就是：如果只用半精度会导致精度损失严重，因此就会提出用混合精度进行训练
@@ -69,14 +58,14 @@ results in 80% relative accuracy loss
 
 > 另外一方面，如果拷贝权重，不也等同于把显存的占用拉大了？参考[知乎](https://zhuanlan.zhihu.com/p/103685761)上描述显存占用上主要是中间过程值
 
-<div align="center"><img src=https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250101202947793-373123190.png alt=FP16/BF16/FP32 style="zoom:80%"/></div>
+<div align="center"><img src="https://pica.zhimg.com/v2-ae6e540d4d28c23ea13334fd4cd4bbec_1440w.jpg" alt=FP16/BF16/FP32 style="zoom:80%"/></div>
 
 
 * 2、`LOSS SCALING`
 
 下图展示了 SSD 模型在训练过程中，激活函数梯度的分布情况，容易发现部分梯度值如果用FP16容易导致最后的梯度值变为0，这样就会导致上面提到的溢出问题，那么论文里面的做法就是：在反向传播前将loss增打$2^k$倍，这样就会保证不发生下溢出（乘一个常数，后面再去除这个常数不影响结果），如何反向传播再去除这个常数即可。
 
-<div align="center"><img src=https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250101210820686-769683541.png alt=FP16/BF16/FP32 style="zoom:80%"/></div>
+<div align="center"><img src="https://picx.zhimg.com/v2-fcf354483cf933c46cc9329ad5d6481d_1440w.jpg" alt=FP16/BF16/FP32 style="zoom:80%"/></div>
 
 * 3、`Apex`实现混合精度训练
 
@@ -87,6 +76,7 @@ python3 setup.py install
 ```
 
 分别用`Apex`和torch原生的`amp`在`MNIST`数据集上进行测试（模型：1层卷积+池化+2层全连接层）
+
 ```python
 # Apex
 from apex import amp
