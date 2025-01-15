@@ -133,6 +133,8 @@
   height: 3px;
   background-color: #eeeeee;
 }
+
+/* 表格设计 */
 .page-post table {
   min-width: 100%;
   border-collapse: collapse;
@@ -148,13 +150,14 @@
 .page-post th,
 .page-post td {
   padding: 5px 10px;
-  text-align: left;
+  text-align: center; /* 文本内容居中 */
+  vertical-align: middle; /* 垂直居中 */
 }
 .page-post table tr:nth-child(even) {
   background-color: #f9f9f9;
 }
 .page-post .table-container {
-  overflow: auto;
+  overflow-x: auto; /* 添加水平滑动条 */
   margin: 14px 0;
   border: 1px solid #dddddd;
 }
