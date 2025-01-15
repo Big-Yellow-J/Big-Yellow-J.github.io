@@ -3,9 +3,9 @@
   line-height: 2;
   word-break: break-all;
 }
-.page-post{
+/* .page-post{
   white-space: pre-line;
-}
+} */
 .page-post .title {
   font-size: 18px;
   font-weight: bold;
