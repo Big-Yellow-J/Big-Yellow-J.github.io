@@ -462,13 +462,20 @@ blog.addLoadEvent(function () {
     return;
   }
 
-  // 遍历所有 <code> 元素
-  document.querySelectorAll('.page-post code').forEach(function (code) {
+  // 遍历所有 <pre><code> 组合
+  document.querySelectorAll('.page-post pre code').forEach(function (code) {
+    // 创建容器包裹 <pre>
+    const pre = code.parentNode;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'code-container';
+    pre.parentNode.insertBefore(wrapper, pre);
+    wrapper.appendChild(pre);
+
     // 创建复制按钮
     const button = document.createElement('button');
     button.className = 'copy-button';
     button.textContent = 'Copy';
-    code.parentNode.insertBefore(button, code); // 将按钮插入到 <code> 前面
+    wrapper.appendChild(button);
 
     // 添加点击事件
     button.addEventListener('click', function () {
@@ -479,7 +486,7 @@ blog.addLoadEvent(function () {
           button.textContent = 'Copied!';
           setTimeout(function () {
             button.textContent = 'Copy';
-          }, 2000); // 2秒后恢复按钮文本
+          }, 5000); // 2秒后恢复按钮文本
         })
         .catch(function () {
           button.textContent = 'Failed';
