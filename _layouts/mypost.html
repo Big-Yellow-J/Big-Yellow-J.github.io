@@ -19,28 +19,23 @@
   </div>
 
   <!-- 添加分享按钮 -->
-  <div class="share-buttons">
-    <!-- 微博分享 -->
-    <button class="share-button" onclick="shareOnSocial('weibo')">
-      <img src="https://img.icons8.com/ios-glyphs/30/000000/weibo.png" alt="微博" title="分享到微博">
-    </button>
-    
-    <!-- QQ 分享 -->
-    <button class="share-button" onclick="shareOnSocial('qq')">
-      <img src="https://img.icons8.com/ios-glyphs/30/000000/qq.png" alt="QQ" title="分享到 QQ">
-    </button>
-    
-    <!-- 微信分享 -->
-    <button class="share-button" onclick="shareOnWeChat()">
-      <img src="https://img.icons8.com/ios-glyphs/30/000000/wechat.png" alt="微信" title="分享到微信">
-    </button>
-  </div>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 
-  {% if site.extAdsense -%}
-  <div class="adsense" style="overflow: hidden;">
-    {% include ext-adsense.html -%}
-  </div>
-  {% endif %}
+  <!-- 微博分享 -->
+  <button class="share-button" onclick="shareOnSocial('weibo')">
+    <i class="fab fa-weibo"></i>
+  </button>
+
+  <!-- QQ 分享 -->
+  <button class="share-button" onclick="shareOnSocial('qq')">
+    <i class="fab fa-qq"></i>
+  </button>
+
+  <!-- 微信分享 -->
+  <button class="share-button" onclick="shareOnWeChat()">
+    <i class="fab fa-weixin"></i>
+  </button>
+
 
   <!-- 添加 Gitalk 评论 -->
   <div id="gitalk-container"></div>
@@ -54,7 +49,7 @@
       clientID: 'Ov23liAg6ZGUK44WreDc', // GitHub OAuth App 的 Client ID
       clientSecret: '48a53ddcc5b26907abe4c3131c59a6fdb566a0ed', // GitHub OAuth App 的 Client Secret
       repo: 'discuss-store', // 用于存储评论的 GitHub 仓库
-      owner: 'shangxiaaabb', // GitHub 用户名
+      owner: 'Big-Yellow-J', // GitHub 用户名
       admin: ['shangxiaaabb'], // 管理员用户名
       // id: '{{ page.id }}', // 当前页面的唯一标识符
       id: md5('{{ page.title }}'), // 对标题进行哈希处理

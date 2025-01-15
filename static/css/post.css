@@ -213,27 +213,42 @@
   transform: scale(0.95);
 }
 
+/* 分享 */
 .share-buttons {
+  display: flex;
+  justify-content: center;
   margin-top: 20px;
-  text-align: center;
 }
 
 .share-button {
   background-color: #4CAF50; /* 按钮背景色 */
   color: white; /* 文字颜色 */
   border: none;
-  padding: 10px 20px;
+  padding: 10px 15px;
   margin: 5px;
-  border-radius: 5px;
+  border-radius: 50%; /* 圆形按钮 */
   cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s ease;
+  font-size: 18px;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* 添加阴影效果 */
+}
+
+.share-button img {
+  width: 24px; /* 图标大小 */
+  height: 24px; /* 图标大小 */
 }
 
 .share-button:hover {
   background-color: #45a049; /* 鼠标悬停时的背景色 */
+  transform: scale(1.1); /* 鼠标悬停时放大按钮 */
 }
 
+.share-button:active {
+  transform: scale(0.95); /* 点击时缩小按钮 */
+}
+
+
+/* 评论 */
 #gitalk-container {
   margin-top: 40px;
   padding: 20px;
