@@ -157,6 +157,19 @@
 .page-post .table-container table tbody tr:last-child {
   border-bottom: 0;
 }
+
+@media screen and (max-width: 560px) {
+  .page-post {
+    font-size: 13px;
+  }
+  .page-post pre code {
+    font-size: 12px;
+  }
+  .page-post .post > * {
+    margin: 15px 0;
+  }
+}
+
 /* Copy Button Styles */
 .page-post .copy-button {
   position: absolute;
@@ -172,17 +185,7 @@
   opacity: 0.7;
   transition: opacity 0.3s ease;
 }
+
 .page-post .copy-button:hover {
   opacity: 1;
-}
-@media screen and (max-width: 560px) {
-  .page-post {
-    font-size: 13px;
-  }
-  .page-post pre code {
-    font-size: 12px;
-  }
-  .page-post .post > * {
-    margin: 15px 0;
-  }
 }

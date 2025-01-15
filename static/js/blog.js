@@ -462,19 +462,19 @@ blog.addLoadEvent(function () {
     return;
   }
 
-  // 遍历所有 <pre> 元素
-  document.querySelectorAll('.page-post pre').forEach(function (pre) {
+  // 遍历所有 <code> 元素
+  document.querySelectorAll('.page-post code').forEach(function (code) {
     // 创建复制按钮
     const button = document.createElement('button');
     button.className = 'copy-button';
     button.textContent = 'Copy';
-    pre.appendChild(button);
+    code.parentNode.insertBefore(button, code); // 将按钮插入到 <code> 前面
 
     // 添加点击事件
     button.addEventListener('click', function () {
-      const code = pre.querySelector('code').innerText;
+      const text = code.innerText; // 获取代码内容
       navigator.clipboard
-        .writeText(code)
+        .writeText(text)
         .then(function () {
           button.textContent = 'Copied!';
           setTimeout(function () {
@@ -490,22 +490,3 @@ blog.addLoadEvent(function () {
     });
   });
 });
-
-// 标题定位
-blog.addLoadEvent(function () {
-  if (!document.querySelector('.page-post')) {
-    return
-  }
-  const list = document.querySelectorAll('.post h1, .post h2')
-  for (var i = 0; i < list.length; i++) {
-    blog.addEvent(list[i], 'click', function (event) {
-      const el = event.target
-      if (el.scrollIntoView) {
-        el.scrollIntoView({ block: 'start' })
-      }
-      if (el.id && history.replaceState) {
-        history.replaceState({}, '', '#' + el.id)
-      }
-    })
-  }
-})
