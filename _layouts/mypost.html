@@ -20,9 +20,20 @@
 
   <!-- 添加分享按钮 -->
   <div class="share-buttons">
-    <button class="share-button" onclick="shareOnSocial('twitter')">分享到 Twitter</button>
-    <button class="share-button" onclick="shareOnSocial('facebook')">分享到 Facebook</button>
-    <button class="share-button" onclick="shareOnSocial('weibo')">分享到微博</button>
+    <!-- 微博分享 -->
+    <button class="share-button" onclick="shareOnSocial('weibo')">
+      <img src="https://img.icons8.com/ios-glyphs/30/000000/weibo.png" alt="微博" title="分享到微博">
+    </button>
+    
+    <!-- QQ 分享 -->
+    <button class="share-button" onclick="shareOnSocial('qq')">
+      <img src="https://img.icons8.com/ios-glyphs/30/000000/qq.png" alt="QQ" title="分享到 QQ">
+    </button>
+    
+    <!-- 微信分享 -->
+    <button class="share-button" onclick="shareOnWeChat()">
+      <img src="https://img.icons8.com/ios-glyphs/30/000000/wechat.png" alt="微信" title="分享到微信">
+    </button>
   </div>
 
   {% if site.extAdsense -%}
@@ -34,6 +45,9 @@
   <!-- 添加 Gitalk 评论 -->
   <div id="gitalk-container"></div>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+  <!-- 引入 md5 库 -->
+  <script src="https://cdn.jsdelivr.net/npm/blueimp-md5@2.10.0/js/md5.min.js"></script>
+  <!-- 引入 Gitalk 脚本 -->
   <script src="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
   <script>
     var gitalk = new Gitalk({

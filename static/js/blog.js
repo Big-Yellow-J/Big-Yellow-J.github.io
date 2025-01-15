@@ -498,39 +498,18 @@ blog.addLoadEvent(function () {
   });
 });
 
-document.addEventListener('DOMContentLoaded', function() {
-  // 获取社交分享按钮
-  const socialBtns = document.querySelectorAll('.social-btn');
 
-  // 获取当前页面的 URL 和标题
-  const currentUrl = window.location.href;
-  const pageTitle = document.title;
-
-  // 分享链接模板
-  const shareUrls = {
-    // twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(pageTitle)}`,
-    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`,
-    zhihu: `https://www.zhihu.com/question/${encodeURIComponent(currentUrl)}`,
-    weibo: `https://weibo.com/share?url=${encodeURIComponent(currentUrl)}`
-  };
-
-  // 给每个按钮绑定点击事件
-  socialBtns.forEach(function(btn) {
-    const platform = btn.getAttribute('data-platform');
-    btn.addEventListener('click', function(event) {
-      event.preventDefault();
-      const shareUrl = shareUrls[platform];
-      window.open(shareUrl, '_blank', 'width=600,height=400');
-    });
-  });
-});
-
+/**
+ * 分享到社交平台
+ * @param {string} platform - 平台名称（twitter、facebook、weibo、qq）
+ */
 function shareOnSocial(platform) {
   const pageUrl = encodeURIComponent(window.location.href); // 获取当前页面 URL
   const pageTitle = encodeURIComponent(document.title); // 获取当前页面标题
 
   let shareUrl = '';
 
+  // 根据平台生成分享链接
   switch (platform) {
     case 'twitter':
       shareUrl = `https://twitter.com/intent/tweet?url=${pageUrl}&text=${pageTitle}`;
@@ -541,6 +520,9 @@ function shareOnSocial(platform) {
     case 'weibo':
       shareUrl = `https://service.weibo.com/share/share.php?url=${pageUrl}&title=${pageTitle}`;
       break;
+    case 'qq':
+      shareUrl = `https://connect.qq.com/widget/shareqq/index.html?url=${pageUrl}&title=${pageTitle}`;
+      break;
     default:
       console.error('未知的分享平台');
       return;
@@ -548,4 +530,23 @@ function shareOnSocial(platform) {
 
   // 打开分享窗口
   window.open(shareUrl, '_blank', 'width=600,height=400');
+}
+
+/**
+ * 分享到微信（生成二维码）
+ */
+function shareOnWeChat() {
+  const pageUrl = encodeURIComponent(window.location.href); // 获取当前页面 URL
+  const qrcodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${pageUrl}`; // 生成二维码的 URL
+
+  // 弹出二维码图片
+  const qrcodeWindow = window.open('', '_blank', 'width=300,height=300');
+  qrcodeWindow.document.write(`
+    <html>
+      <head><title>微信分享二维码</title></head>
+      <body style="margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh;">
+        <img src="${qrcodeUrl}" alt="微信分享二维码" style="width: 100%; height: 100%; max-width: 300px; max-height: 300px;">
+      </body>
+    </html>
+  `);
 }
