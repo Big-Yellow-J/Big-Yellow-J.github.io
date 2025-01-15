@@ -1,7 +1,3 @@
-<!--
- * @Author: shangxiaaabb huangjie20011001@163.com
- * @Date: 2025-01-15 10:14:47
--->
 ---
 layout: mypost
 title: 关于
