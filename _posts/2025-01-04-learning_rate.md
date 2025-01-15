@@ -13,26 +13,27 @@ extMath: true
 > 如何理解呢？
 
 在统计学中，线性方程的优化过程通常包括以下步骤：
-1. **构建方程**：定义一个模型，例如线性方程 \(y = wx + b\)。
+1. **构建方程**：定义一个模型，例如线性方程 $y = wx + b$。
 2. **定义损失函数**：选择一个衡量模型预测值与真实值差异的函数，通常是最小二乘法，即最小化误差平方和。
-3. **参数计算**：通过最小二乘法计算方程中的参数 \(w\) 和 \(b\)，使得损失函数最小。
+3. **参数计算**：通过最小二乘法计算方程中的参数 $w$ 和 $b$，使得损失函数最小。
 
 **深度学习中的优化操作**
 对于深度学习，这个过程是类似的，但更为复杂：
-- 假设我们定义的模型为 \(f(x)\)，其中参数为 \(\theta\)。
-- 计算得到的预测值为 \(\hat{y}\)，真实值为 \(y\)。
-- 我们定义损失函数为 \(Loss = \sum(\hat{y} - y)^2\)（损失函数也可以选择其他的）。
+- 假设我们定义的模型为 $f(x)$，其中参数为 $\theta$。
+- 计算得到的预测值为 $\hat{y}$，真实值为 $y$。
+- 我们定义损失函数为 $Loss = \sum(\hat{y} - y)^2$（损失函数也可以选择其他的）。
 
 **如何优化损失函数**
 那么，如何去优化这个损失函数呢？这里可以考虑以下问题：
 - **回归问题**：以回归为例，预测值和真实值应该是不断接近的，也就是说，损失值是不断减小的。
 
 **步骤详解**
-1. **计算梯度**：首先，我们需要计算损失函数相对于模型参数 \(\theta\) 的梯度。这个**梯度告诉我们在参数空间中哪个方向可以使损失函数减少**。在深度学习中，这通常是通过反向传播算法（Backpropagation）来完成的。
+1. **计算梯度**：首先，我们需要计算损失函数相对于模型参数 $\theta$ 的梯度。这个**梯度告诉我们在参数空间中哪个方向可以使损失函数减少**。在深度学习中，这通常是通过反向传播算法（Backpropagation）来完成的。
+
 > 这里可以考虑类似小球从山上滚下来，我知道了小球滚到底部的方向（*梯度*）但是我要小球快速的滚到山底，那么我就可以给他加一个“速度”也就是**学习率**，这样一来优化过程变成：$\theta_{new}=\theta_{old}- \alpha \times \nabla J(\theta_{old})$
 
-2. **选择优化算法**：有了梯度之后，我们需要一个优化算法来更新模型的参数。常用的优化算法包括梯度下降（Gradient Descent）、随机梯度下降（SGD）、小批量梯度下降（Mini-batch Gradient Descent）、Adam、RMSprop 等。这些算法的主要区别在于它们如何处理梯度和更新参数。
-3. **参数更新**：使用优化算法，我们根据梯度和学习率来更新模型的参数。学习率是一个超参数，它决定了每次更新参数时的步长。
+1. **选择优化算法**：有了梯度之后，我们需要一个优化算法来更新模型的参数。常用的优化算法包括梯度下降（Gradient Descent）、随机梯度下降（SGD）、小批量梯度下降（Mini-batch Gradient Descent）、Adam、RMSprop 等。这些算法的主要区别在于它们如何处理梯度和更新参数。
+2. **参数更新**：使用优化算法，我们根据梯度和学习率来更新模型的参数。学习率是一个超参数，它决定了每次更新参数时的步长。
 
 **学习率与梯度下降**
 学习率在不同类型的梯度下降算法中有不同的应用和解释。最常见的三种梯度下降算法是：
@@ -68,7 +69,7 @@ $$
 \theta_{t+1} = \theta_t - \frac{\eta}{\sqrt{\mathbf{g}_t + \epsilon}} \odot \nabla_{\theta} J(\theta_t) 
 $$ 
 
-其中，\( \eta \) 是全局学习率，\( \epsilon \) 是为了防止除零而添加的一个小常数，\( \odot \) 表示元素级的乘法。
+其中，$\eta$ 是全局学习率，$\epsilon$ 是为了防止除零而添加的一个小常数，$\odot$ 表示元素级的乘法。
 
 - **2. RMSprop**
 
@@ -80,7 +81,7 @@ $$
 \theta_{t+1} = \theta_t - \frac{\eta}{\sqrt{\mathbf{s}_t + \epsilon}} \odot \nabla_{\theta} J(\theta_t) 
 $$ 
 
-其中，\( \rho \) 是梯度平方的衰减率，\( \eta \) 是全局学习率，\( \epsilon \) 是为了防止除零而添加的一个小常数。
+其中，$\rho$ 是梯度平方的衰减率，$\eta$ 是全局学习率，$\epsilon$ 是为了防止除零而添加的一个小常数。
 
 - **3. Adam**
 
@@ -101,15 +102,15 @@ $$
 \theta_{t+1} = \theta_t - \eta \frac{\hat{\mathbf{m}}_t}{\sqrt{\hat{\mathbf{v}}_t + \epsilon}}
 $$ 
 
-其中，\( \beta_1 \) 和 \( \beta_2 \) 分别是一阶和二阶矩估计的衰减率，\( \eta \) 是全局学习率，\( \epsilon \) 是为了防止除零而添加的一个小常数。
+其中，$\beta_1$ 和 $\beta_2$ 分别是一阶和二阶矩估计的衰减率，$\eta$ 是全局学习率，$\epsilon$ 是为了防止除零而添加的一个小常数。
 
 
 > **动量方法**：深度学习参数的优化不只考虑本次的梯度方向还要去考虑上一次的梯度方向[^2]
-> <div align="center"><img src=https://img2023.cnblogs.com/blog/3395559/202412/3395559-20241213141744276-1773996132.png alt=APS style="zoom:70%"/></div>
+> ![image](https://picx.zhimg.com/v2-5517ea55f5bd4bea9e9b87d87691bb8d_1440w.jpg)
 > 
 > 初始化动量为0从$\theta_0$到$\theta_1$因为动量为0，那么就直接走梯度方向，从$\theta_1$到$\theta_2$此时就有动量了，不只是走本次的梯度方向（$g^1$）还要考虑上一次的$m^2$因此对两个叠加得到新的方向：$\theta^2$
 > **动量方法如何起作用**：
-> <div align="center"><img src=https://img2023.cnblogs.com/blog/3395559/202412/3395559-20241213142419336-874150713.png alt=APS style="zoom:70%"/></div>
+> ![image](https://pic3.zhimg.com/v2-7e3951a7dcc966f00f67db23cd34cf3a_1440w.jpg)
 > 
 > 通过考虑前面的梯度避免陷入“鞍点”
 
@@ -215,7 +216,8 @@ cosine_decay = 0.5 * (1.0 + np.cos(np.pi * progress / ((total_epochs - warm_up) 
 rate = cosine_decay
 ```
 2、`Warmup-Stable-Decay`[^3]
-<div align="center"><img src=https://developer.qcloudimg.com/http-save/yehe-6930088/f90015ff36081ce1eb2e528d72efa88b.jpg alt=APS style="zoom:70%"/></div>
+![image](https://picx.zhimg.com/v2-dca91475898cbf88ca229eb48e94c0df_1440w.jpg)
+
 
 ```python
 def decay_lr_stable(base_lr, epoch_i, batch_i, total_epochs, total_batches, warm_up, stable_epochs=0):
