@@ -140,6 +140,7 @@
   border-collapse: collapse;
   border-spacing: 0;
   border: 1px solid #dddddd;
+  width: 100%;
 }
 .page-post tr {
   border-bottom: 1px solid #dddddd;
@@ -160,6 +161,7 @@
   overflow-x: auto; /* 添加水平滑动条 */
   margin: 14px 0;
   border: 1px solid #dddddd;
+  -webkit-overflow-scrolling: touch; /* 适配iOS滚动 */
 }
 .page-post .table-container table {
   margin: 0;
@@ -168,6 +170,7 @@
 .page-post .table-container table tbody tr:last-child {
   border-bottom: 0;
 }
+
 
 @media screen and (max-width: 560px) {
   .page-post {
