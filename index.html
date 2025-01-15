@@ -6,11 +6,45 @@ title: 首页
   <!-- 侧边栏容器 -->
   <div class="sidebar">
     <div class="sidebar-profile">
-      <img src="./MY.jpg" alt="Profile Image" class="profile-img" />
+      <!-- 个人图片居中 -->
+      <div class="profile-img-container">
+        <img src="./MY.jpg" alt="Profile Image" class="profile-img" />
+      </div>
+      
+      <!-- 社交媒体链接，图标和文本一起显示 -->
       <div class="social-media">
-        <a href="https://github.com/shangxiaaabb" target="_blank">GitHub</a>
-        <!-- <a href="https://twitter.com/yourusername" target="_blank">Twitter</a> -->
+        <!-- GitHub -->
+        <a href="https://github.com/shangxiaaabb" target="_blank" class="social-link">
+          <img src="https://img.shields.io/badge/GitHub-181717?style=social&logo=github" alt="GitHub" class="social-icon" />
+          GitHub
+        </a>
+        
+        <!-- Zhihu -->
+        <a href="https://www.zhihu.com/people/zhi-hui-ha-ha-xiao-de-sha-zi" target="_blank" class="social-link">
+          <img src="https://img.shields.io/badge/Zhihu-0084FF?style=social&logo=zhihu" alt="Zhihu" class="social-icon" />
+          Zhihu
+        </a>
+
+        <!-- CnBlog -->
+        <a href="https://www.cnblogs.com/Big-Yellow" target="_blank" class="social-link">
+          <img src="https://img.shields.io/badge/cnblog-cnblog博客-blue" alt="Twitter" class="social-icon" />
+          Twitter
+        </a>
+
         <!-- 添加其他社交媒体链接 -->
+      </div>
+
+      <hr class="divider" />
+      <!-- 标签部分 -->
+      <div class="categories">
+        <h3>标签</h3>
+        <ul>
+          {% for category in site.categories %}
+            <li>
+              <a href="{{ site.baseurl }}/pages/categories.html#{{ category[0] }}" class="hover-underline">{{ category[0] }}</a>
+            </li>
+          {% endfor %}
+        </ul>
       </div>
     </div>
   </div>

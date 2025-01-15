@@ -122,11 +122,12 @@
     font-size: 14px;
   }
 }
-/* 侧边栏容器 */
+
+/* 侧边栏样式 */
 .sidebar {
   position: fixed;
   top: 20px;
-  right: 20px;
+  left: 20px;
   width: 250px;
   background-color: #f4f4f4;
   border-radius: 8px;
@@ -135,37 +136,85 @@
   box-sizing: border-box;
 }
 
+/* 个人图片居中样式 */
+.profile-img-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
 /* 个人图片样式 */
-.sidebar-profile .profile-img {
+.profile-img {
   width: 100px;
   height: 100px;
   border-radius: 50%;
   object-fit: cover;
-  margin-bottom: 20px;
 }
 
-/* 社交媒体链接样式 */
-.sidebar-profile .social-media {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+/* 个人信息简介 */
+.profile-info h3 {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 10px;
 }
 
-.sidebar-profile .social-media a {
-  text-decoration: none;
-  color: #333;
-  margin: 5px 0;
+.profile-info p {
   font-size: 14px;
-  transition: color 0.3s;
+  color: #555;
+  line-height: 1.6;
 }
 
-.sidebar-profile .social-media a:hover {
+/* 分割线样式 */
+.divider {
+  margin: 20px 0;
+  border: 0;
+  border-top: 1px solid #ccc;
+}
+
+/* 标签样式 */
+.categories h3 {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.categories ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.categories li {
+  margin: 5px 0;
+}
+
+.categories a {
+  font-size: 14px;
   color: #0073e6;
+  text-decoration: none;
 }
 
-/* 响应式设计：当屏幕宽度较小（如手机）时，隐藏侧边栏 */
+.categories a:hover {
+  text-decoration: underline;
+}
+
+/* 文章列表容器 */
+.content {
+  margin-left: 270px; /* 让文章内容不被侧边栏遮挡 */
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* 响应式设计 */
 @media screen and (max-width: 768px) {
   .sidebar {
-    display: none;
+    width: 100%;
+    position: relative;
+    top: 0;
+    left: 0;
+  }
+
+  .content {
+    margin-left: 0;
   }
 }
