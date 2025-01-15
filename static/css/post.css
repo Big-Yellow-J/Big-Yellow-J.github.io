@@ -215,36 +215,28 @@
 
 /* 分享 */
 .share-buttons {
-  display: flex;
-  justify-content: center;
-  margin-top: 20px;
+  display: flex; /* 启用 Flexbox 布局 */
+  justify-content: center; /* 水平居中 */
+  align-items: center; /* 垂直居中 */
+  gap: 10px; /* 按钮之间的间距 */
+  margin-top: 20px; /* 顶部外边距 */
 }
 
 .share-button {
-  background-color: #4CAF50; /* 按钮背景色 */
-  color: white; /* 文字颜色 */
+  background: none;
   border: none;
-  padding: 10px 15px;
-  margin: 5px;
-  border-radius: 50%; /* 圆形按钮 */
+  padding: 0;
   cursor: pointer;
-  font-size: 18px;
-  transition: background-color 0.3s ease, transform 0.3s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* 添加阴影效果 */
-}
-
-.share-button img {
-  width: 24px; /* 图标大小 */
-  height: 24px; /* 图标大小 */
+  transition: transform 0.2s ease;
 }
 
 .share-button:hover {
-  background-color: #45a049; /* 鼠标悬停时的背景色 */
   transform: scale(1.1); /* 鼠标悬停时放大按钮 */
 }
 
-.share-button:active {
-  transform: scale(0.95); /* 点击时缩小按钮 */
+.share-button i {
+  font-size: 24px; /* 图标大小 */
+  color: #333; /* 图标颜色 */
 }
 
 

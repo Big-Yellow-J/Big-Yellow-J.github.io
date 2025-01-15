@@ -20,21 +20,22 @@
 
   <!-- 添加分享按钮 -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-
-  <!-- 微博分享 -->
-  <button class="share-button" onclick="shareOnSocial('weibo')">
-    <i class="fab fa-weibo"></i>
-  </button>
-
-  <!-- QQ 分享 -->
-  <button class="share-button" onclick="shareOnSocial('qq')">
-    <i class="fab fa-qq"></i>
-  </button>
-
-  <!-- 微信分享 -->
-  <button class="share-button" onclick="shareOnWeChat()">
-    <i class="fab fa-weixin"></i>
-  </button>
+  <div class="share-buttons">
+    <!-- 微博分享 -->
+    <button class="share-button" onclick="shareOnSocial('weibo')">
+      <i class="fab fa-weibo"></i>
+    </button>
+  
+    <!-- QQ 分享 -->
+    <button class="share-button" onclick="shareOnSocial('qq')">
+      <i class="fab fa-qq"></i>
+    </button>
+  
+    <!-- 微信分享 -->
+    <button class="share-button" onclick="shareOnWeChat()">
+      <i class="fab fa-weixin"></i>
+    </button>
+  </div>
 
 
   <!-- 添加 Gitalk 评论 -->
@@ -52,7 +53,7 @@
       owner: 'Big-Yellow-J', // GitHub 用户名
       admin: ['shangxiaaabb'], // 管理员用户名
       // id: '{{ page.id }}', // 当前页面的唯一标识符
-      id: md5('{{ page.title }}'), // 对标题进行哈希处理
+      id: '{{ page.title }}', // 对标题进行哈希处理
       distractionFreeMode: false // 专注模式
     });
     gitalk.render('gitalk-container');
