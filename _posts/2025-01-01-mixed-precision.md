@@ -3,6 +3,7 @@ layout: mypost
 title: 深度学习基础理论————训练加速（单/半/混合精度训练）/显存优化（gradient-checkpoint）
 categories: 深度学习基础理论
 extMath: true
+images: true
 ---
 
 <!-- # 深度学习基础理论————训练加速（单/半/混合精度训练）/显存优化（gradient-checkpoint） -->
@@ -15,12 +16,15 @@ extMath: true
 **半精度训练**（`half-precision`）指的是用16位浮点数（FP16 或 BF16）表示数据。（FP16 是 IEEE 标准，BF16 是一种更适合 AI 计算的变种）
 **混合精度训练**（`mixed-precision`）指的是同时使用 FP16/BF16 和 FP32，利用二者的优点。通常，模型权重和梯度使用 FP32，而激活值和中间计算使用 FP16/BF16
 
-<div align="center"><img src="https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250101200851713-932245560.png" alt="FP16/BF16/FP32" style="zoom:80%"/></div>
+<div style="text-align: center;">
+     <img src="https://img2023.cnblogs.com/blog/3395559/202501/example2.png" alt="图片2" style="zoom:90%;">
+   </div>
 
 <p align="center">
   <img src="https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250101200851713-932245560.png" alt="FP16/BF16/FP32" style="zoom:80%;">
 </p>
 
+![image](https://img2023.cnblogs.com/blog/3395559/202501/3395559-20250101200851713-932245560.png)
 
 > Image From: https://www.exxactcorp.com/blog/hpc/what-is-fp64-fp32-fp16
 
