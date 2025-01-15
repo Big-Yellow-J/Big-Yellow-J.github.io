@@ -453,6 +453,44 @@ blog.addLoadEvent(function () {
   }
 })
 
+/**
+ * 添加代码复制按钮
+ */
+blog.addLoadEvent(function () {
+  // 只在文章页生效
+  if (document.getElementsByClassName('page-post').length === 0) {
+    return;
+  }
+
+  // 遍历所有 <pre> 元素
+  document.querySelectorAll('.page-post pre').forEach(function (pre) {
+    // 创建复制按钮
+    const button = document.createElement('button');
+    button.className = 'copy-button';
+    button.textContent = 'Copy';
+    pre.appendChild(button);
+
+    // 添加点击事件
+    button.addEventListener('click', function () {
+      const code = pre.querySelector('code').innerText;
+      navigator.clipboard
+        .writeText(code)
+        .then(function () {
+          button.textContent = 'Copied!';
+          setTimeout(function () {
+            button.textContent = 'Copy';
+          }, 2000); // 2秒后恢复按钮文本
+        })
+        .catch(function () {
+          button.textContent = 'Failed';
+          setTimeout(function () {
+            button.textContent = 'Copy';
+          }, 2000);
+        });
+    });
+  });
+});
+
 // 标题定位
 blog.addLoadEvent(function () {
   if (!document.querySelector('.page-post')) {
