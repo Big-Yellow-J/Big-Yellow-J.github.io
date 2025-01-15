@@ -42,6 +42,8 @@ menu:
   #   url: /pages/chat.html
   - title: 关于
     url: /pages/about.html
+  - title: CV
+    url: /pages/cv.html
 
 markdown: kramdown
 kramdown:
