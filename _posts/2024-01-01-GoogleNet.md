@@ -1,9 +1,9 @@
 ---
-layout: redirect
-title: 视觉模型————GoogleNet原理以及代码
+layout: mypost
+title: 视觉模型————GoogleNet
 categories: jupyter
 extMath: true
 images: true
 show: false
-redirect_to: "{{ site.baseurl }}/_jupyter/GoogLeNet.html"
 ---
+{% include_relative _jupyter/GoogLeNet.html %}
