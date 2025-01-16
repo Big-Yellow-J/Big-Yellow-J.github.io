@@ -1,10 +1,8 @@
 ---
 layout: mypost
-title: 视觉模型————GoogleNet
-categories: jupyter
+title: 视觉模型————GoogleNet代码及原理（gradient-checkpoint）
+categories: Jupyter
 extMath: true
 images: true
-show: false
 ---
-<!-- {% include_relative _jupyter/GoogLeNet.html %} -->
 <iframe src="{{ site.baseurl }}/_jupyter/googlenet.html" width="100%" height="600px"></iframe>
