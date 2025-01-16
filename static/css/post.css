@@ -156,8 +156,8 @@ body {
 
 .page-post th {
   font-weight: bold;
-  background-color: #090909; /* 表头背景色 */
-  color: #ffffff; /* 表头文字颜色 */
+  background-color: #bcb8b8; /* 表头背景色 */
+  color: #000000; /* 表头文字颜色 */
   padding: 5px 5px; /* 增加表头内边距 */
   text-align: center; /* 表头内容居中 */
   border-top-left-radius: 8px; /* 上左圆角 */
@@ -273,7 +273,7 @@ body {
 /* 评论 */
 #gitalk-container {
   margin-top: 40px;
-  padding: 20px;
+  padding: 10px;
   background-color: #f9f9f9;
   border-radius: 8px;
 }
