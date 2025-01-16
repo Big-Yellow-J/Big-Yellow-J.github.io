@@ -21,7 +21,7 @@ kramdown:
   input: GFM
   syntax_highlighter: rouge
 include:
-  - jupyter
+  - _jupyter
 exclude: ['CNAME', 'README.md', 'LICENSE', '_site', 'dist', 'Gemfile', 'Gemfile.lock', 'blog.sh']
 
 # 域名配置
