@@ -2,7 +2,17 @@
 layout: page
 title: 首页
 ---
+---
+layout: page
+title: 首页
+---
 <div class="page page-index">
+  <!-- 访问者位置显示 -->
+  <div id="visitor-location" style="margin-bottom: 20px; font-size: 16px; color: #333;">
+    正在获取您的位置...
+  </div>
+  <div id="location-error" style="color: red; font-size: 14px;"></div>
+
   <!-- 文章列表 -->
   {% for post in site.posts -%}
     {%- if post.show != false -%}  <!-- 判断文章是否应该显示 -->
@@ -34,3 +44,40 @@ title: 首页
     {%- endif %}
   {%- endfor %}
 </div>
+
+<script>
+  // 函数：通过经纬度获取地址
+  function fetchAddress(lat, lon) {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        const address = data.display_name || "无法获取您的具体地址。";
+        document.getElementById("visitor-location").textContent = `您的位置：${address}`;
+      })
+      .catch(error => {
+        document.getElementById("location-error").textContent = "获取地址失败：" + error.message;
+      });
+  }
+
+  // 函数：获取用户地理位置
+  function getLocation() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          fetchAddress(lat, lon);
+        },
+        (error) => {
+          document.getElementById("location-error").textContent = `获取位置失败：${error.message}`;
+        }
+      );
+    } else {
+      document.getElementById("location-error").textContent = "您的浏览器不支持地理定位。";
+    }
+  }
+
+  // 页面加载时自动获取位置
+  window.onload = getLocation;
+</script>
