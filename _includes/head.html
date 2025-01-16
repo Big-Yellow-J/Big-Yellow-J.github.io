@@ -1,6 +1,12 @@
+<!--
+ * @Author: shangxiaaabb huangjie20011001@163.com
+ * @Date: 2025-01-15 10:14:47
+-->
 {%- assign buildAt = site.time | date: "%Y%m%d%H%M%S" -%}
 <head>
+  <!-- 标题 -->
   <title>{{ page.title }}-{{ site.title }}</title>
+  <!-- 必备的 meta 标签 -->
   <meta charset="utf-8" />
   <meta http-equiv="content-language" content="zh-CN" />
   <meta name="theme-color" content="#ffffff" />
@@ -10,6 +16,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <meta name="applicable-device" content="pc,mobile" />
   <meta name="author" content="{{ site.author }}" />
+  <!-- 动态的 meta 信息 -->
   {%- if page.categories %}
   <meta name="description" content="{{ page.title }}" />
   <meta name="keywords" content="{{ site.author }}{% for category in page.categories %},{{ category }}{% endfor %}" />
@@ -17,6 +24,11 @@
   <meta name="description" content="{{ site.description }}" />
   <meta name="keywords" content="{{ site.keywords }}" />
   {% endif -%}
+
+  <!-- 谷歌收录 -->
+  <meta name="google-site-verification" content="IDS97Lzd7uweEA7adjgQuo1V__a3xp9oKGq6OuoxZYg" />
+  <meta name="msvalidate.01" content="81407BB95B6B10326AFF04EEC297B4F2" />
+
   <link rel="icon" href="{{site.baseurl}}/static/img/favicon.ico" />
   <link rel="apple-touch-icon" href="{{site.baseurl}}/static/img/logo.png" />
   <link rel="stylesheet" href="{{site.baseurl}}/static/css/common.css?t={{buildAt}}" />
@@ -43,4 +55,18 @@
     }
     blog.initDarkMode(localStorage.darkMode)
   </script>
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "url": "https://big-yellow-j.github.io/",
+      "name": "Big-Yellow-J",
+      "description": "个人Blog",
+      "publisher": {
+        "@type": "Person",
+        "name": "HuangJie"
+      }
+    }
+    </script>
 </head>
