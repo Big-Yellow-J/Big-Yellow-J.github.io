@@ -1,34 +1,33 @@
 <footer class="footer">
   <!-- 页脚文本 -->
   <span>{{ site.footerText }}</span>
-  
-  <!-- 站点地图链接 -->
-  <a href="{{ site.baseurl }}/static/xml/sitemap.xml">站点地图</a>
-  
-  <!-- 总访问量 -->
+
+  <!-- 总访问量，单独一行 -->
   {%- if site.extCount %}
-    <span>总访问量</span>
-    <span id="busuanzi_value_site_pv"></span>
+    <div class="footer-item">
+      <span>总访问量</span>
+      <span id="busuanzi_value_site_pv"></span>
+    </div>
   {% endif %}
 
   <!-- 主题切换按钮 -->
   <div class="footer-btn theme-toggler hide">
     <i class="svg-icon icon-theme-light"></i>
   </div>
-  
+
   <!-- 返回顶部按钮 -->
   <div class="footer-btn to-top">
     <i class="svg-icon icon-arrow-top"></i>
   </div>
 
-  <!-- 社交媒体链接 -->
+  <!-- 社交媒体链接，同一行居中 -->
   {% if site.author_info.github or site.author_info.bitbucket or site.atom_feed.hide != true %}
   <div class="footer-social">
     <ul class="social-icons">
       {% if site.data.ui-text[site.locale].follow_label %}
       <li><strong>{{ site.data.ui-text[site.locale].follow_label }}</strong></li>
       {% endif %}
-      
+
       {% if site.author_info.github %}
       <li>
         <a href="https://github.com/{{ site.author_info.github }}" target="_blank" aria-label="GitHub">
@@ -36,7 +35,7 @@
         </a>
       </li>
       {% endif %}
-      
+
       {% if site.author_info.bitbucket %}
       <li>
         <a href="https://bitbucket.org/{{ site.author_info.bitbucket }}" target="_blank" aria-label="Bitbucket">
@@ -44,7 +43,7 @@
         </a>
       </li>
       {% endif %}
-      
+
       {% if site.atom_feed.hide != true %}
       <li>
         <a href="{% if site.atom_feed.path %}{{ site.atom_feed.path }}{% else %}{{ base_path }}/feed.xml{% endif %}" target="_blank" aria-label="RSS Feed">
@@ -55,8 +54,8 @@
     </ul>
   </div>
   {% endif %}
-  
-  <!-- 版权信息 -->
+
+  <!-- 版权信息，居中显示 -->
   <div class="footer-copyright">
     &copy; {{ site.time | date: '%Y' }} {{ site.name | default: site.title }},
     {{ site.data.ui-text[site.locale].powered_by | default: "Powered by" }} 

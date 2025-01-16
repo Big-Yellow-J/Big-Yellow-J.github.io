@@ -49,7 +49,7 @@
 .page-post blockquote {
   border-left: 3px solid #333333;
   background-color: #f7f7f7;
-  padding: 9px 9px 9px 15px;
+  padding: 1px 1px 5px 15px;
 }
 
 .page-post a {
@@ -138,51 +138,73 @@
 .page-post table {
   min-width: 100%;
   border-collapse: collapse;
-  border-spacing: 0;
-  border: 1px solid #dddddd;
   width: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* 为表格添加阴影 */
+  border-radius: 8px; /* 添加圆角 */
 }
+
 .page-post tr {
-  border-bottom: 1px solid #dddddd;
+  border-bottom: 1px solid #f1f1f1; /* 轻微的分隔线 */
 }
+
 .page-post th {
   font-weight: bold;
+  background-color: #4BB596; /* 表头背景色 */
+  color: #ffffff; /* 表头文字颜色 */
+  padding: 12px 15px; /* 增加表头内边距 */
+  text-align: center; /* 表头内容居中 */
+  border-top-left-radius: 8px; /* 上左圆角 */
+  border-top-right-radius: 8px; /* 上右圆角 */
 }
+
 .page-post th,
 .page-post td {
-  padding: 5px 10px;
+  padding: 12px 20px; /* 增加单元格内边距 */
   text-align: center; /* 文本内容居中 */
   vertical-align: middle; /* 垂直居中 */
 }
-.page-post table tr:nth-child(even) {
-  background-color: #f9f9f9;
+
+.page-post td {
+  background-color: #ffffff; /* 数据单元格背景色 */
+  font-size: 14px; /* 设置表格数据字体大小 */
+  color: #333333; /* 数据字体颜色 */
 }
+
+.page-post table tr:nth-child(even) {
+  background-color: #f9f9f9; /* 偶数行背景色 */
+}
+
+.page-post table tr:hover {
+  background-color: #f1f1f1; /* 鼠标悬停效果 */
+}
+
 .page-post .table-container {
   overflow-x: auto; /* 添加水平滑动条 */
-  margin: 14px 0;
-  border: 1px solid #dddddd;
-  -webkit-overflow-scrolling: touch; /* 适配iOS滚动 */
+  margin: 20px 0;
+  border-radius: 8px; /* 添加圆角 */
+  border: none; /* 移除边框 */
 }
+
 .page-post .table-container table {
   margin: 0;
   border: 0;
 }
+
 .page-post .table-container table tbody tr:last-child {
-  border-bottom: 0;
+  border-bottom: none;
 }
 
-
+/* 响应式设计，适应不同屏幕 */
 @media screen and (max-width: 560px) {
-  .page-post {
-    font-size: 13px;
-  }
-  .page-post pre code {
+  .page-post table {
     font-size: 12px;
   }
-  .page-post .post > * {
-    margin: 15px 0;
+  .page-post th,
+  .page-post td {
+    padding: 8px 12px; /* 调整表格单元格内边距 */
   }
 }
+
 
 /* 代码容器样式 */
 .code-container {

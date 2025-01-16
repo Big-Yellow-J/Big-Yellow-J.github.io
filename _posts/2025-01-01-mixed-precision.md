@@ -64,21 +64,17 @@ results in 80% relative accuracy loss
 
 
 * 2、`LOSS SCALING`
-
 下图展示了 SSD 模型在训练过程中，激活函数梯度的分布情况，容易发现部分梯度值如果用FP16容易导致最后的梯度值变为0，这样就会导致上面提到的溢出问题，那么论文里面的做法就是：在反向传播前将loss增打$2^k$倍，这样就会保证不发生下溢出（乘一个常数，后面再去除这个常数不影响结果），如何反向传播再去除这个常数即可。
 
 ![image](https://picx.zhimg.com/v2-fcf354483cf933c46cc9329ad5d6481d_1440w.jpg)
 
 * 3、`Apex`实现混合精度训练
-
 ```cmd
 git clone https://github.com/NVIDIA/apex
 cd apex
 python3 setup.py install
 ```
-
 分别用`Apex`和torch原生的`amp`在`MNIST`数据集上进行测试（模型：1层卷积+池化+2层全连接层）
-
 ```python
 # Apex
 from apex import amp
