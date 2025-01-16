@@ -49,7 +49,7 @@
 .page-post blockquote {
   border-left: 3px solid #333333;
   background-color: #f7f7f7;
-  padding: 5px 5px 5px 15px;
+  padding: 9px 9px 9px 15px;
 }
 
 .page-post a {
@@ -118,20 +118,16 @@
   margin: 0 4px;
   border-radius: 5px;
   color: #4d4d4c;
-  border: 1px solid #cccccc; /* 添加边框 */
 }
-
 .page-post pre code {
   font-size: 13px;
   background-color: transparent !important;
   word-break: keep-all;
-  padding: 10px; /* 增加内边距 */
+  padding: 0;
   margin: 0;
-  border-radius: 5px; /* 统一圆角 */
+  border-radius: unset;
   color: inherit;
-  border: 1px solid #cccccc; /* 添加边框 */
 }
-
 .page-post hr {
   border: none;
   height: 3px;
@@ -140,9 +136,9 @@
 
 /* 表格设计 */
 .page-post table {
-  min-width: 100%;
+  min-width: 80%;
   border-collapse: collapse;
-  width: 100%;
+  width: 80%;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* 为表格添加阴影 */
   border-radius: 8px; /* 添加圆角 */
 }
@@ -153,8 +149,8 @@
 
 .page-post th {
   font-weight: bold;
-  background-color: #4BB596; /* 表头背景色 */
-  color: #ffffff; /* 表头文字颜色 */
+  background-color: #b6bbba; /* 表头背景色 */
+  color: #000000; /* 表头文字颜色 */
   padding: 12px 15px; /* 增加表头内边距 */
   text-align: center; /* 表头内容居中 */
   border-top-left-radius: 8px; /* 上左圆角 */
@@ -163,7 +159,7 @@
 
 .page-post th,
 .page-post td {
-  padding: 12px 20px; /* 增加单元格内边距 */
+  padding: 5px 5px; /* 增加单元格内边距 */
   text-align: center; /* 文本内容居中 */
   vertical-align: middle; /* 垂直居中 */
 }
