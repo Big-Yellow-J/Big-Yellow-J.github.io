@@ -12,12 +12,22 @@
   {% endif %} -->
 
   <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center;">
-    <div style="display: flex; gap: 10px; justify-content: center;">
-      <a href="https://github.com/{{ site.author_info.github }}">GitHub</a>
-      <a href="{{ site.baseurl }}/static/xml/rss.xml">RSS订阅</a>
+    <div style="display: flex; gap: 20px; justify-content: center;">
+      <!-- GitHub 链接，使用 GitHub 图标 -->
+      <a href="https://github.com/{{ site.author_info.github }}" target="_blank">
+        <i class="fab fa-github"></i>
+      </a>
+      <!-- RSS 订阅链接，使用 RSS 图标 -->
+      <a href="{{ site.baseurl }}/static/xml/rss.xml">
+        <i class="fas fa-rss"></i>
+      </a>
+      <!-- 知乎链接，使用知乎图标 -->
+      <a href="https://www.zhihu.com/people/{{ site.author_info.zhihu }}" target="_blank">
+        <i class="fab fa-zhihu"></i>
+      </a>
     </div>
     <div>
-      <span>Theme By TMaize <a href="https://github.com/TMaize/tmaize-blog">https://github.com/TMaize/tmaize-blog</a></span>
+      <span>Theme By <a href="https://github.com/TMaize/tmaize-blog">TMaize</a></span>
       {%- if site.extCount %}
         <span> | 总访问量：<span id="busuanzi_value_site_pv"></span></span>
       {% endif %}
