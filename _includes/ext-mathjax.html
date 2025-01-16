@@ -1,42 +1,61 @@
-<!-- MathJax数学公式支持 -->
+<!--
+ * @Author: shangxiaaabb huangjie20011001@163.com
+ * @Date: 2025-01-15 10:14:47
+-->
+<!-- MathJax 数学公式支持 -->
 <style>
+  /* 公式容器样式 */
   .has-jax {
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
-    user-select: none;
+    user-select: none; /* 禁止公式被选中 */
     background-color: transparent !important;
     line-height: normal !important;
     word-break: normal !important;
     padding: 0 !important;
     margin: 0 !important;
   }
+
+  /* 公式字体设置 */
+  .has-jax .MathJax {
+    font-family: 'Cambria Math', 'STIX', serif !important; /* 使用 Cambria Math 或 STIX 字体 */
+  }
+
+  /* 公式内部元素样式 */
   .has-jax * {
     outline: 0;
   }
 </style>
+
+<!-- MathJax 配置 -->
 <script type="text/x-mathjax-config">
   MathJax.Hub.Config({
-    showProcessingMessages: false,
-    messageStyle: "none",
+    showProcessingMessages: false, // 隐藏处理消息
+    messageStyle: "none", // 不显示消息
     tex2jax: {
-      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
-      displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
-      skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'a']
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ], // 行内公式分隔符
+      displayMath: [ ['$$','$$'], ["\\[","\\]"] ], // 独立公式分隔符
+      skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'a'] // 跳过指定标签
     },
     "HTML-CSS": {
-      showMathMenu: false
+      showMathMenu: false, // 隐藏右键菜单
+      preferredFont: "STIX", // 优先使用 STIX 字体
+      availableFonts: ["STIX", "TeX"], // 可用字体列表
+      webFont: "STIX-Web" // 使用 STIX 网络字体
     }
   });
-  // 父级元素添加类名，便于css控制
+
+  // 为公式的父级元素添加类名，便于 CSS 控制
   MathJax.Hub.Queue(function() {
     var all = MathJax.Hub.getAllJax();
-    var i = 0;
-    for(i=0; i < all.length; i += 1) {
+    for (var i = 0; i < all.length; i += 1) {
       all[i].SourceElement().parentNode.className += ' has-jax';
     }
   });
 </script>
+
+<!-- 加载 MathJax 库 -->
 <script
   type="text/javascript"
   src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
