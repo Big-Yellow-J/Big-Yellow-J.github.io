@@ -20,6 +20,7 @@ kramdown:
   auto_ids: true
   input: GFM
   syntax_highlighter: rouge
+  parse_block_html: true
 exclude: ['CNAME', 'README.md', 'LICENSE', '_site', 'dist', 'Gemfile', 'Gemfile.lock', 'blog.sh']
 
 # 域名配置
