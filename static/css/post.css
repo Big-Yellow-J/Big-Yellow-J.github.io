@@ -136,9 +136,9 @@
 
 /* 表格设计 */
 .page-post table {
-  min-width: 80%;
+  min-width: 100%;
   border-collapse: collapse;
-  width: 80%;
+  width: 110%;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* 为表格添加阴影 */
   border-radius: 8px; /* 添加圆角 */
 }
@@ -149,9 +149,9 @@
 
 .page-post th {
   font-weight: bold;
-  background-color: #b6bbba; /* 表头背景色 */
-  color: #000000; /* 表头文字颜色 */
-  padding: 12px 15px; /* 增加表头内边距 */
+  background-color: #090909; /* 表头背景色 */
+  color: #ffffff; /* 表头文字颜色 */
+  padding: 5px 5px; /* 增加表头内边距 */
   text-align: center; /* 表头内容居中 */
   border-top-left-radius: 8px; /* 上左圆角 */
   border-top-right-radius: 8px; /* 上右圆角 */
@@ -159,7 +159,7 @@
 
 .page-post th,
 .page-post td {
-  padding: 5px 20px; /* 增加单元格内边距 */
+  padding: 5px 5px; /* 增加单元格内边距 */
   text-align: center; /* 文本内容居中 */
   vertical-align: middle; /* 垂直居中 */
 }
