@@ -124,17 +124,15 @@ body {
 }
 .page-post code {
   font-size: 13px;
-  background-color: #999090;
+  background-color: #eeeeee;
   word-break: break-all;
   padding: 3px 5px;
   margin: 0 4px;
   border-radius: 5px;
-  color: #000000;
+  color: #4d4d4c;
 }
 .page-post pre code {
   font-size: 13px;
-  background-color: #999090;
-  color: #000000;
   background-color: transparent !important;
   word-break: keep-all;
   padding: 0;

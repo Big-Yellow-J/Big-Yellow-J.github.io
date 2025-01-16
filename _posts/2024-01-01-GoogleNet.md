@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 视觉模型————GoogleNet代码及原理（gradient-checkpoint）
+title: 视觉模型————GoogleNet原理以及代码
 categories: Jupyter
 extMath: true
 images: true
