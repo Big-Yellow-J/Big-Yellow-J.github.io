@@ -1,6 +1,7 @@
 <footer class="footer">
   <span>{{ site.footerText }}</span>
   <a href="{{ site.baseurl }}/static/xml/rss.xml">RSS订阅</a>
+  <a href="{{ site.baseurl }}./static/xml/sitemap.xml">站点地图</a>
   {%- comment %} 请保留主题来源，么么哒~ {% endcomment %}
   <span>Theme By</span>
   <a href="https://github.com/TMaize/tmaize-blog">TMaize</a>
@@ -15,4 +16,47 @@
   <div class="footer-btn to-top">
     <i class="svg-icon icon-arrow-top"></i>
   </div>
+
+  <!-- 版权信息 -->
+  <div class="footer-copyright">
+    &copy; {{ site.time | date: '%Y' }} {{ site.name | default: site.title }},
+    {{ site.data.ui-text[site.locale].powered_by | default: "Powered by" }} 
+    <a href="http://jekyllrb.com" rel="nofollow" target="_blank">Jekyll</a> &amp; 
+    <a href="https://github.com/TMaize/tmaize-blogo" target="_blank">TMaize</a>
+    Site last updated {{ "now" | date: '%Y-%m-%d' }}.
+  </div>
+  <!-- 社交媒体链接 -->
+  {% if site.author_info.github or site.author_info.bitbucket or site.atom_feed.hide != true %}
+  <div class="footer-social">
+    <ul class="social-icons">
+      {% if site.data.ui-text[site.locale].follow_label %}
+      <li><strong>{{ site.data.ui-text[site.locale].follow_label }}</strong></li>
+      {% endif %}
+      
+      {% if site.author_info.github %}
+      <li>
+        <a href="https://github.com/{{ site.author_info.github }}" target="_blank">
+          <i class="fab fa-github"></i> GitHub
+        </a>
+      </li>
+      {% endif %}
+      
+      {% if site.author_info.bitbucket %}
+      <li>
+        <a href="https://bitbucket.org/{{ site.author_info.bitbucket }}" target="_blank">
+          <i class="fab fa-bitbucket"></i> Bitbucket
+        </a>
+      </li>
+      {% endif %}
+      
+      {% if site.atom_feed.hide != true %}
+      <li>
+        <a href="{% if site.atom_feed.path %}{{ site.atom_feed.path }}{% else %}{{ base_path }}/feed.xml{% endif %}" target="_blank">
+          <i class="fa fa-rss-square"></i> {{ site.data.ui-text[site.locale].feed_label | default: "Feed" }}
+        </a>
+      </li>
+      {% endif %}
+    </ul>
+  </div>
+  {% endif %}
 </footer>
