@@ -24,7 +24,7 @@ Hi！欢迎来自<span id="visitor-location">某地</span>
 
 - GitHub: [https://github.com/shangxiaaabb](https://github.com/shangxiaaabb)  
 
-修改下面代码：
+
 <script>
   function fetchAddress(lat, lon) {
     const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=en`;
@@ -42,7 +42,6 @@ Hi！欢迎来自<span id="visitor-location">某地</span>
         document.getElementById("visitor-location").textContent = "某地";
       });
   }
-
   function getLocation() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -59,6 +58,5 @@ Hi！欢迎来自<span id="visitor-location">某地</span>
       document.getElementById("visitor-location").textContent = "某地";
     }
   }
-
   window.onload = getLocation;
 </script>
