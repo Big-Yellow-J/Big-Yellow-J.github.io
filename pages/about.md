@@ -3,6 +3,7 @@ layout: mypost
 title: 关于
 ---
 # Who
+
 Hi！欢迎来自<span id="visitor-location">某地</span>
 
 我是黄杰  
