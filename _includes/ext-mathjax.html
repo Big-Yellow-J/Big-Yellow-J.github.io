@@ -12,12 +12,13 @@
     padding: 0 !important;
     margin: 0 !important;
   }
-
-  /* 公式字体设置 */
-  .has-jax .MathJax {
-    font-family: 'Cambria Math', 'STIX', serif !important; /* 使用 Cambria Math 或 STIX 字体 */
+  
+.has-jax .MathJax {
+    font-family: 'MathJax_Main-Regular', 'MathJax_Math-Regular', 'MathJax_Size1-Regular' !important;
+    src: url('https://cdn.bootcdn.net/ajax/libs/mathjax/3.2.2/es5/output/chtml/fonts/woff-v2/MathJax_Main-Regular.woff') format('woff'),
+         url('https://cdn.bootcdn.net/ajax/libs/mathjax/3.2.2/es5/output/chtml/fonts/woff-v2/MathJax_Math-Regular.woff') format('woff'),
+         url('https://cdn.bootcdn.net/ajax/libs/mathjax/3.2.2/es5/output/chtml/fonts/woff-v2/MathJax_Size1-Regular.woff') format('woff');
   }
-
   /* 公式内部元素样式 */
   .has-jax * {
     outline: 0;
@@ -51,8 +52,11 @@
   });
 </script>
 
+
 <!-- 加载 MathJax 库 -->
 <script
   type="text/javascript"
-  src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
+  src="https://cdn.bootcdn.net/ajax/libs/mathjax/3.2.2/es5/latest.js"
 ></script>
+
+
