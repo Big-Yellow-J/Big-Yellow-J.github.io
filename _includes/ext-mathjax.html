@@ -12,13 +12,15 @@
     padding: 0 !important;
     margin: 0 !important;
   }
-  
-.has-jax .MathJax {
+
+  .has-jax .MathJax {
     font-family: 'MathJax_Main-Regular', 'MathJax_Math-Regular', 'MathJax_Size1-Regular' !important;
-    src: url('https://cdn.bootcdn.net/ajax/libs/mathjax/3.2.2/es5/output/chtml/fonts/woff-v2/MathJax_Main-Regular.woff') format('woff'),
-         url('https://cdn.bootcdn.net/ajax/libs/mathjax/3.2.2/es5/output/chtml/fonts/woff-v2/MathJax_Math-Regular.woff') format('woff'),
-         url('https://cdn.bootcdn.net/ajax/libs/mathjax/3.2.2/es5/output/chtml/fonts/woff-v2/MathJax_Size1-Regular.woff') format('woff');
+    /* MathJax 字体资源的 url 配置 */
+    src: url('https://cdn.jsdelivr.net/npm/mathjax@3/es5/output/chtml/fonts/woff-v2/MathJax_Main-Regular.woff') format('woff'),
+         url('https://cdn.jsdelivr.net/npm/mathjax@3/es5/output/chtml/fonts/woff-v2/MathJax_Math-Regular.woff') format('woff'),
+         url('https://cdn.jsdelivr.net/npm/mathjax@3/es5/output/chtml/fonts/woff-v2/MathJax_Size1-Regular.woff') format('woff');
   }
+
   /* 公式内部元素样式 */
   .has-jax * {
     outline: 0;
@@ -27,36 +29,32 @@
 
 <!-- MathJax 配置 -->
 <script type="text/x-mathjax-config">
-  MathJax.Hub.Config({
-    showProcessingMessages: false, // 隐藏处理消息
-    messageStyle: "none", // 不显示消息
-    tex2jax: {
-      inlineMath: [ ['$','$'], ["\\(","\\)"] ], // 行内公式分隔符
-      displayMath: [ ['$$','$$'], ["\\[","\\]"] ], // 独立公式分隔符
-      skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'a'] // 跳过指定标签
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']], // 行内公式分隔符
+      displayMath: [['$$', '$$'], ['\\[', '\\]']], // 独立公式分隔符
     },
-    "HTML-CSS": {
+    options: {
+      skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'a'] // 跳过指定标签
+    },
+    chtml: {
+      font: 'STIX-Web', // 使用 STIX 网络字体
+      showProcessingMessages: false, // 隐藏处理消息
+      messageStyle: 'none', // 不显示消息
       showMathMenu: false, // 隐藏右键菜单
-      preferredFont: "STIX", // 优先使用 STIX 字体
-      availableFonts: ["STIX", "TeX"], // 可用字体列表
-      webFont: "STIX-Web" // 使用 STIX 网络字体
     }
-  });
+  };
+</script>
 
-  // 为公式的父级元素添加类名，便于 CSS 控制
-  MathJax.Hub.Queue(function() {
-    var all = MathJax.Hub.getAllJax();
-    for (var i = 0; i < all.length; i += 1) {
-      all[i].SourceElement().parentNode.className += ' has-jax';
+<!-- 加载 MathJax 库 -->
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/latest.js"></script>
+
+<!-- 在 MathJax 完成渲染后，添加类名以便于 CSS 控制 -->
+<script type="text/javascript">
+  MathJax.startup.promise.then(() => {
+    var all = MathJax.typesetClear();
+    for (var i = 0; i < all.length; i++) {
+      all[i].SourceElement().parentNode.className += 'has-jax';
     }
   });
 </script>
-
-
-<!-- 加载 MathJax 库 -->
-<script
-  type="text/javascript"
-  src="https://cdn.bootcdn.net/ajax/libs/mathjax/3.2.2/es5/latest.js"
-></script>
-
-
