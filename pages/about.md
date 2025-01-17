@@ -12,7 +12,7 @@ Hi！欢迎来自<span id="visitor-location">某地</span>
 <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d439724.63177137234!2d113.97072902668832!3d30.567700731809726!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x342ebb1084f8e049%3A0xa644e7861424aee3!2sZhongnan%20University%20of%20Economics%20and%20Law!5e0!3m2!1sen!2sjp!4v1737037826235!5m2!1sen!2sjp" width="400" height="300" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>  
 
 
-<iframe src="http://api.tianditu.gov.cn/staticimage? center=114.38,30.48&width=400&height=300&zoom=12&layers=vec_c,cva_c &markers=114.38,30.48&tk=ba7537b8ee188b37eaf3665dde2a813e" width="400" height="300" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+<iframe src="http://api.tianditu.gov.cn/staticimage? center=114.38,30.48&width=400&height=300&zoom=12&layers=vec_c,cva_c&tk=ba7537b8ee188b37eaf3665dde2a813e" width="400" height="300" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
 
 读研究生二年级！  
 
