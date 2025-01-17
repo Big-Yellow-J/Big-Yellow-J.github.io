@@ -9,7 +9,7 @@
   <div class="subtitle">
     <span>{{site.author}} 于 
       {{ page.date | date: "%Y-%m-%d" }} 
-      {site.posts.post.adress}发布
+      {{ post.adress }}发布
       天气:<span id="weather-info"> 加载天气...</span>
     </span>
     {%- if site.extCount %}

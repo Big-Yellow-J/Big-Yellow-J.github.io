@@ -79,6 +79,8 @@ extMath: true
 
 `简易Demo如下（单机多卡）`：
 > 更加详细代码：https://pytorch.org/tutorials/intermediate/ddp_tutorial.html
+
+
 ```pythonn
 import os
 import datetime
@@ -88,7 +90,6 @@ import torch.optim as optim
 import torch.distributed as dist
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data import DataLoader
-
 dist.init_process_group(backend='nccl', timeout= datetime.timedelta(minutes= 5)) # 初始化不同进程
 local_rank = int(os.environ['LOCAL_RANK']) # 这里主要是设置GPU数量
 device = torch.device('cuda', local_rank)
@@ -133,7 +134,9 @@ if __name__ == '__main__':
 # 运行代码
 # python -m torch.distributed.launch --nproc_per_node GPU数量 train.py
 ```
+
 ---
+
 * 代码解释
 
 1、`dist.init_process_group(backend='nccl', timeout= datetime.timedelta(minutes= 5))`
@@ -165,6 +168,7 @@ local_rank = int(os.environ['LOCAL_RANK'])
 device = torch.device('cuda', local_rank)
 torch.cuda.set_device(device)
 ```
+
 * `backend`
 
 `nccl`：适用于 GPU 上的分布式训练，基于 NVIDIA NCCL 库，专门优化了 GPU 间的通信。通常在多 GPU 训练时使用。
@@ -567,7 +571,6 @@ if __name__ == "__main__":
 > https://cloud.tencent.com/developer/article/2126838
 
 ---
-
 
 ## 3、张量并行
 张量并行是针对模型中的张量进行拆分，将其放置到不同的GPU上。张量切分方式分为按行进行切分和按列进行切分，分别对应**行并行（Row Parallelism）(权重矩阵按行分割)**与**列并行（Column Parallelism）(权重矩阵按列分割)**。假设计算过程为：$y=Ax$其中$A$为权重

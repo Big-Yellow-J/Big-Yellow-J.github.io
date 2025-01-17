@@ -123,35 +123,6 @@ body {
   line-height: 1.6;
 }
 
-/* .page-post code {
-  font-size: 13px;
-  background-color: #eeeeee;
-  word-break: break-all;
-  padding: 3px 5px;
-  margin: 0 4px;
-  border-radius: 5px;
-  color: #4d4d4c;
-}
-.page-post pre code {
-  font-size: 13px;
-  background-color: transparent !important;
-  word-break: keep-all;
-  padding: 0;
-  margin: 0;
-  border-radius: unset;
-  color: inherit;
-} */
-
-/* 代码块外部边框 */
-.page-post code, .page-post pre code {
-  border: 1px solid #ddd; /* 添加外部边框 */
-  padding: 5px; /* 给边框增加一些内间距 */
-  border-radius: 5px; /* 圆角边框 */
-  background-color: #f5f5f5; /* 背景色 */
-  margin: 10px 0; /* 上下添加一些间距 */
-}
-
-/* 内部代码块样式 */
 .page-post code {
   font-size: 13px;
   background-color: #eeeeee;
@@ -161,8 +132,6 @@ body {
   border-radius: 5px;
   color: #4d4d4c;
 }
-
-/* pre 标签内的代码块 */
 .page-post pre code {
   font-size: 13px;
   background-color: transparent !important;
