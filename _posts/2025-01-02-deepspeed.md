@@ -3,7 +3,7 @@ layout: mypost
 title: 深度学习基础理论————DeepSpeed
 categories: 深度学习基础理论
 extMath: true
-adress: changsha
+address: changsha
 ---
 
 

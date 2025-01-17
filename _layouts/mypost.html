@@ -9,7 +9,7 @@
   <div class="subtitle">
     <span>{{site.author}} 于 
       {{ page.date | date: "%Y-%m-%d" }} 
-      {{ page.adress }}发布
+      {{ page.address }}发布
       天气:<span id="weather-info"> 加载天气...</span>
     </span>
     {%- if site.extCount %}
@@ -42,7 +42,6 @@
     </button>
   </div>
 
-
   <!-- 添加 Gitalk 评论 -->
   <div id="gitalk-container"></div>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
@@ -57,8 +56,7 @@
       repo: 'discuss-store', // 用于存储评论的 GitHub 仓库
       owner: 'Big-Yellow-J', // GitHub 用户名
       admin: ['Big-Yellow-J'], // 管理员用户名
-      // id: '{{ page.id }}', // 当前页面的唯一标识符
-      id: '{{ page.title }}', // 对标题进行哈希处理
+      id: md5('{{ page.title }}'), // 对标题进行哈希处理
       distractionFreeMode: false // 专注模式
     });
     gitalk.render('gitalk-container');
@@ -84,16 +82,16 @@
             const longitude = data[0].lon; 
 
             // 获取指定日期的天气数据
-            const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min&start_date=${publishDate}&end_date=${publishDate}&timezone=Asia%2FShanghai`;
+            const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&start_date=${publishDate}&end_date=${publishDate}&timezone=Asia%2FShanghai`;
 
             fetch(weatherUrl)
               .then(weatherResponse => weatherResponse.json())
               .then(weatherData => {
                 if (weatherData.daily) {
-                  const weatherDescription = weatherData.current_weather.weathercode;
+                  const weatherCode = weatherData.daily.weathercode[0];
                   const maxTemp = weatherData.daily.temperature_2m_max[0];  // 获取当天的最高温度
                   const minTemp = weatherData.daily.temperature_2m_min[0];  // 获取当天的最低温度
-                  const weatherText = `当天天气: ${weatherDescription}`;
+                  const weatherText = `当天天气: ${weatherCode}, 最高温度: ${maxTemp}°C, 最低温度: ${minTemp}°C`;
                   weatherElement.innerText = weatherText;
                 } else {
                   weatherElement.innerText = '无法获取历史天气数据';
@@ -107,11 +105,9 @@
           }
         })
         .catch(error => {
+          console.error('地理编码请求错误:', error);
           weatherElement.innerText = '地理编码失败';
-        })
-      .catch(error => {
-        console.error('地理编码请求错误:', error);
-      weatherElement.innerText = '地理编码失败';
+        });
     });
   </script>
   {% if site.extAdsense -%}
