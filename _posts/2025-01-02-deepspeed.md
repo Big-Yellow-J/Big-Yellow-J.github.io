@@ -3,6 +3,7 @@ layout: mypost
 title: 深度学习基础理论————DeepSpeed
 categories: 深度学习基础理论
 extMath: true
+adress: changsha
 ---
 
 
@@ -50,8 +51,9 @@ DeepSpeed 是由微软开发的一种深度学习优化库，专为高性能训�
 在进行前向+反向传播之后，**得到完整的梯度**，因为要实现梯度拆分，那么就对梯度进行`reduce-scatter`对于不同的GPU就会存储不同的梯度（g1, g2, g3白色的就会剔除掉）前向和反向传播需要通过 **All-Gather** 和 **All-Reduce** 操作同步梯度和参数
 **第三种方式为$P_{OS+g+p}$**
 ![image](https://picx.zhimg.com/v2-84f87cf8a0eb38731a4cab58352dc7c3_1440w.jpg)
-通过 **All-Gather**和 **Reduce-Scatter** 高效完成参数同步和更新。
-总的来说：`ZeRO-DP`是一种 *用完就丢* 的套路，**计算时候是完整内容，但是使用完之后就丢掉**
+
+通过 **All-Gather**和 **Reduce-Scatter** 高效完成参数同步和更新。总的来说：`ZeRO-DP`是一种 *用完就丢* 的套路，**计算时候是完整内容，但是使用完之后就丢掉**
+
 > **补充1**：`All-Gather`, `All-Reduce`, `reduce-scatter`什么意思？
 > `All-Gather`：将每个设备上的数据片段收集起来并广播到所有设备上。最终，每个设备都会拥有所有设备的数据片段
 > 比如说4个GPU分别存储不同的值：$GPU_i: i(i=1,2,3,4)$通过 `all-gather`那么不同GPU值为$GPU_i: [1,2,3,4]$
@@ -81,6 +83,7 @@ DeepSpeed 是由微软开发的一种深度学习优化库，专为高性能训�
 ## `DeepSpeed`代码
 
 `Deepspeed`代码也比较简单，首先安装`deepspeed`:`pip install deepspeed`。使用`deepspeed`之前一般先去初始化，[代码](https://github.com/microsoft/DeepSpeed/blob/fa8db5cf2f9cf724fd2703353d40e3b37a8e7310/deepspeed/__init__.py#L68)如下：
+
 ```python
 def initialize(args=None,
                model: torch.nn.Module = None,
@@ -147,8 +150,8 @@ def initialize(args=None,
 
 ```
 
-`deepspeed`具体案例可以查看其官方示例：https://github.com/microsoft/DeepSpeedExamples
-具体使用也很简单,因为`Deepspeed`将各种功能都封装好了，可以直接使用，一个建议`Demo`如下：
+`deepspeed`具体案例可以查看其官方示例：https://github.com/microsoft/DeepSpeedExamples.具体使用也很简单,因为`Deepspeed`将各种功能都封装好了，可以直接使用，一个建议`Demo`如下：
+
 ```
 # 首先初始化
 model_engine, optimizer, train_loader, _ = deepspeed.initialize(
@@ -166,10 +169,13 @@ def train(model_engine, optimizer, train_loader, ...):
     model_engine.step()
     ...
 ```
+
 值得注意的是：
 * 1、如果需要访问设备，可以直接用：`model_engine.local_ranl()`进行访问即可  
 * 2、如果再`deepspeed`参数（更加多的参数可以参考官方文档：[1](https://www.deepspeed.ai/docs/config-json/#zero-optimizations-for-fp16-training)，[2](https://deepspeed.readthedocs.io/en/latest/zero3.html#deepspeed.runtime.zero.config.DeepSpeedZeroConfig.contiguous_gradients)）中设置了 *半精度* 训练，在数据里面要设定：`images.to(model.local_rank).half()`
+
 ---
+
 ```json
 {
   "train_batch_size": 512,

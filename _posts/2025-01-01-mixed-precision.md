@@ -38,9 +38,7 @@ address: changsha
 > 1、直接使用半精度（FP16）容易引发数值问题，如`溢出（overflow）`和`下溢（underflow）`：这里是因为**单精度有效尾数（约10位尾数）**较单精度要小得多，那么就会有一个问题因此在训练过程中，如果激活函数的梯度非常小，可能会因**精度不足而被舍弃为零，导致梯度下溢**。此外，当数值超过半精度的表示范围时，也会发生溢出问题。这些限制会使训练难以正常进行，导致模型无法收敛或性能下降；
 > 2、**舍入误差（Rounding Error）** 舍入误差指的是当梯度过小，小于当前区间内的最小间隔时，该次梯度更新可能会失败，用一张图清晰地表示：
 >
-> <div style="text-align: center;">
-  <img src="https://pic3.zhimg.com/v2-3de6e221173c01449757875150e5f00c_1440w.jpg" alt="图片2" style="zoom:80%;">
-</div>
+> ![image]("https://pic3.zhimg.com/v2-3de6e221173c01449757875150e5f00c_1440w.jpg")
 >
 > Image: https://zhuanlan.zhihu.com/p/79887894
 > 总的来说就是：如果只用半精度会导致精度损失严重，因此就会提出用混合精度进行训练
@@ -48,13 +46,11 @@ address: changsha
 解决上面用单精度造成的问题，在混合精度训练中论文提到的解决办法：
 
 * 1、`FP32 MASTER COPY OF WEIGHTS`
-* 
+
 模型权重会同时维护两个版本：1、FP32权重（Master Copy）：以32位浮点数表示，**用于存储和更新权重的精确值**。2、FP16权重（Working Copy）：以16位浮点数表示，用于**前向传播和反向传播的计算，减少显存占用并加速运算**。
 
 > 这里就会有一个问题，反向传播过程中要计算梯度，如果（梯度用FP16）**梯度很小**，不也还是会出现溢出问题，作者后续提到`LOSS SCALING`可以解决这种问题。如果**梯度很大**也会导致溢出问题，梯度计算使用FP16，但在权重更新之前，梯度会转换为 FP32 精度进行累积和存储，从而避免因溢出导致的权重更新错误。
-> 
 > 另外之所以要用FP32对权重进行保存这是因为，作者研究发现更新 FP16 权重会导致 80% 的相对准确度损失。
-> 
 > we match FP32 training results when updating an
 FP32 master copy of weights after FP16 forward and backward passes, while updating FP16 weights
 results in 80% relative accuracy loss
@@ -70,12 +66,15 @@ results in 80% relative accuracy loss
 ![image](https://picx.zhimg.com/v2-fcf354483cf933c46cc9329ad5d6481d_1440w.jpg)
 
 * 3、`Apex`实现混合精度训练
+
 ```cmd
 git clone https://github.com/NVIDIA/apex
 cd apex
 python3 setup.py install
 ```
+
 分别用`Apex`和torch原生的`amp`在`MNIST`数据集上进行测试（模型：1层卷积+池化+2层全连接层）
+
 ```python
 # Apex
 from apex import amp
@@ -94,16 +93,14 @@ scaler.scale(loss).backward()
 scaler.step(optimizer)
 scaler.update()
 ```
+
 `Apex`中`Amp`参数（https://nvidia.github.io/apex/amp.html）：
 
 1、`opt_level`（**欧1而不是零1**）:
 
 `O0`：纯FP32训练，可以作为accuracy的baseline；
-
 `O1`：混合精度训练（推荐使用），根据黑白名单自动决定使用FP16（GEMM, 卷积）还是FP32（Softmax）进行计算。
-
 `O2`：“几乎FP16”混合精度训练，不存在黑白名单，除了Batch norm，几乎都是用FP16计算。
-
 `O3`：纯FP16训练，很不稳定，但是可以作为speed的baseline；
 
 2、`loss_scale="dynamic"`
