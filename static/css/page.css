@@ -122,3 +122,17 @@
     font-size: 14px;
   }
 }
+.logo {
+  display: flex;
+  align-items: center; /* 垂直居中对齐 */
+}
+
+.logo img {
+  width: auto; /* 根据需要设置图像的宽度 */
+  height: auto; /* 根据需要设置图像的高度 */
+}
+
+.logo-title {
+  margin-left: 4px; /* 设置标题和图片之间的距离为 4px */
+  font-size: 16px; /* 根据需要设置标题的字体大小 */
+}
