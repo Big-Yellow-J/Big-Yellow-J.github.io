@@ -79,8 +79,9 @@
         .then(response => response.json())
         .then(data => {
           if (data && data[0]) {
+            // 维度 经度
             const latitude = data[0].lat;
-            const longitude = data[0].lon;
+            const longitude = data[0].lon; 
 
             // 获取指定日期的天气数据
             const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min&start_date=${publishDate}&end_date=${publishDate}&timezone=Asia%2FShanghai`;
@@ -107,7 +108,10 @@
         })
         .catch(error => {
           weatherElement.innerText = '地理编码失败';
-        });
+        })
+      .catch(error => {
+        console.error('地理编码请求错误:', error);
+      weatherElement.innerText = '地理编码失败';
     });
   </script>
   {% if site.extAdsense -%}
