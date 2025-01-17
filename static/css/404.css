@@ -104,3 +104,14 @@ body {
 .button-88:active {
   box-shadow: 0 0.3em 1em -0.5em #14a73e98;
 }
+
+/* 响应式设计，适应不同屏幕 */
+@media screen and (max-width: 560px) {
+  .page-post table {
+    font-size: 12px;
+  }
+  .page-post th,
+  .page-post td {
+    padding: 8px 12px; /* 调整表格单元格内边距 */
+  }
+}
