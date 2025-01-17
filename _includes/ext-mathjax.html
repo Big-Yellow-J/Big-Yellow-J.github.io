@@ -52,9 +52,10 @@
 <!-- 在 MathJax 完成渲染后，添加类名以便于 CSS 控制 -->
 <script type="text/javascript">
   MathJax.startup.promise.then(() => {
-    var all = MathJax.typesetClear();
+    var all = document.querySelectorAll('script[type="math/tex"], script[type="math/tex; mode=display"]');
     for (var i = 0; i < all.length; i++) {
-      all[i].SourceElement().parentNode.className += 'has-jax';
+      all[i].parentNode.classList.add('has-jax');
     }
+    MathJax.typeset();  // 强制重新渲染所有公式
   });
 </script>
