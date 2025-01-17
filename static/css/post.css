@@ -131,6 +131,7 @@ body {
   margin: 0 4px;
   border-radius: 5px;
   color: #4d4d4c;
+  font-family: 'JetBrains Mono', monospace;
 }
 .page-post pre code {
   font-size: 13px;

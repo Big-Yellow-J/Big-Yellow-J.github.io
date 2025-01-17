@@ -9,7 +9,7 @@
   <div class="subtitle">
     <span>{{site.author}} 于 
       {{ page.date | date: "%Y-%m-%d" }} 
-      {{ post.adress }}发布
+      {{ page.adress }}发布
       天气:<span id="weather-info"> 加载天气...</span>
     </span>
     {%- if site.extCount %}
@@ -69,7 +69,7 @@
     document.addEventListener('DOMContentLoaded', function() {
       // 获取文章的发布日期（比如 2025-01-17）
       const publishDate = "{{ page.date | date: '%Y-%m-%d' }}";
-      const address = "{{ post.address }}"; // 获取文章中的地址
+      const address = "{{ page.address }}"; // 获取文章中的地址
       const weatherElement = document.getElementById('weather-info');
       
       // 使用 OpenStreetMap Nominatim API 获取地址的经纬度
