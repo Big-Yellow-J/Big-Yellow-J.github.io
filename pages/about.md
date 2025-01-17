@@ -18,6 +18,13 @@ Hi！欢迎来自<span id="visitor-location">某地</span>
 **但是**：  
 发表过若干Blog😄😄😄😄😄😄😄  
 
+# 联系我  
+
+- Email1&nbsp;: [hjie20011001@gmail.com](mailto:hjie20011001@gmail.com)  
+- Email2&nbsp;: [2802311325@qq.com](mailto:2802311325@gmail.com)  
+- GitHub: [https://github.com/shangxiaaabb](https://github.com/shangxiaaabb) 
+
+
 平时喜欢做韭菜（纯被割韭！！！）所以让我们关注一下今天韭菜是涨还是跌！
 
 <div class="stock-container">
@@ -56,13 +63,7 @@ Hi！欢迎来自<span id="visitor-location">某地</span>
   }
 </style>
 
-# 联系我  
-
-- Email1&nbsp;: [hjie20011001@gmail.com](mailto:hjie20011001@gmail.com)  
-- Email2&nbsp;: [2802311325@qq.com](mailto:2802311325@gmail.com)  
-- GitHub: [https://github.com/shangxiaaabb](https://github.com/shangxiaaabb)  
-
-<script>
+ <script>
   // 获取访问者地理位置
   function fetchAddress(lat, lon) {
     const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=en`;
@@ -107,6 +108,9 @@ Hi！欢迎来自<span id="visitor-location">某地</span>
 
   // 新浪财经 API URL（上证指数代码：s_sh000001）
   const sinaUrl = 'https://hq.sinajs.cn/list=s_sh000001';
+
+  // 雪球 API URL（上证指数代码：SH000001）
+  const xueqiuUrl = 'https://stock.xueqiu.com/v5/stock/quote.json?symbol=SH000001&extend=detail';
 
   // 创建 AbortController 用于超时控制
   const controller = new AbortController();
@@ -154,8 +158,8 @@ Hi！欢迎来自<span id="visitor-location">某地</span>
         console.warn('腾讯财经 API 请求被中止，已切换到新浪财经 API'); // 调试日志
       } else {
         console.error('腾讯财经 API 请求失败:', error); // 调试日志
-        fetchStockDataFromSina(); // 切换到新浪财经 API
       }
+      fetchStockDataFromSina(); // 切换到新浪财经 API
     });
 
   // 使用新浪财经 API 获取数据
@@ -187,10 +191,42 @@ Hi！欢迎来自<span id="visitor-location">某地</span>
       })
       .catch(error => {
         console.error('新浪财经 API 请求失败:', error); // 调试日志
+        fetchStockDataFromXueqiu(); // 切换到雪球 API
+      });
+  }
+
+  // 使用雪球 API 获取数据
+  function fetchStockDataFromXueqiu() {
+    fetch(xueqiuUrl)
+      .then(response => response.json())
+      .then(data => {
+        console.log('雪球 API 返回数据:', data); // 调试日志
+        if (data.data && data.data.quote) {
+          const quote = data.data.quote;
+          const indexName = quote.name; // 指数名称
+          const currentPrice = quote.current; // 当前价格
+          const change = quote.chg; // 涨跌额
+          const changePercent = quote.percent; // 涨跌百分比
+
+          // 设置颜色样式
+          const isUp = parseFloat(change) > 0;
+          stockPriceElement.className = isUp ? 'stock-price up' : 'stock-price down';
+          stockChangeElement.className = isUp ? 'stock-change up' : 'stock-change down';
+
+          // 显示数据
+          stockNameElement.innerText = indexName;
+          stockPriceElement.innerText = currentPrice;
+          stockChangeElement.innerText = `${change} (${changePercent}%)`;
+        } else {
+          throw new Error('雪球 API 数据解析失败');
+        }
+      })
+      .catch(error => {
+        console.error('雪球 API 请求失败:', error); // 调试日志
         stockPriceElement.innerText = '数据加载失败';
       });
   }
-  }
+}
 
   // 页面加载时执行
   window.onload = function() {
