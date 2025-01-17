@@ -1,7 +1,3 @@
-<!--
- * @Author: shangxiaaabb huangjie20011001@163.com
- * @Date: 2025-01-15 10:14:47
--->
 ---
 layout: mypost
 title: 关于
@@ -32,7 +28,7 @@ Hi！欢迎来自<span id="visitor-location">某地</span>
 
 <script>
   function fetchAddress(lat, lon) {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=zh-CN`;
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=en`;
     fetch(url)
       .then((response) => response.json())
       .then((data) => {
