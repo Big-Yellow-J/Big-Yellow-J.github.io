@@ -17,9 +17,7 @@ address: changsha
 **半精度训练**（`half-precision`）指的是用16位浮点数（FP16 或 BF16）表示数据。（FP16 是 IEEE 标准，BF16 是一种更适合 AI 计算的变种）
 **混合精度训练**（`mixed-precision`）指的是同时使用 FP16/BF16 和 FP32，利用二者的优点。通常，模型权重和梯度使用 FP32，而激活值和中间计算使用 FP16/BF16
 
-<div style="text-align: center;">
-  <img src="https://pica.zhimg.com/v2-c57cf1f46adbd74e352dec70bd2f31b4_1440w.jpg" alt="图片2" style="zoom:80%;">
-</div>
+![image](https://s2.loli.net/2025/01/17/oRejYEdqOfcaHmp.png)
 
 > Image From: https://www.exxactcorp.com/blog/hpc/what-is-fp64-fp32-fp16
 
@@ -57,13 +55,13 @@ results in 80% relative accuracy loss
 
 > 另外一方面，如果拷贝权重，不也等同于把显存的占用拉大了？参考[知乎](https://zhuanlan.zhihu.com/p/103685761)上描述显存占用上主要是中间过程值
 
-![image](https://pica.zhimg.com/v2-ae6e540d4d28c23ea13334fd4cd4bbec_1440w.jpg)
-
+![image](https://s2.loli.net/2025/01/17/i8Vzf9m3AXTnHdF.png)
 
 * 2、`LOSS SCALING`
+
 下图展示了 SSD 模型在训练过程中，激活函数梯度的分布情况，容易发现部分梯度值如果用FP16容易导致最后的梯度值变为0，这样就会导致上面提到的溢出问题，那么论文里面的做法就是：在反向传播前将loss增打$2^k$倍，这样就会保证不发生下溢出（乘一个常数，后面再去除这个常数不影响结果），如何反向传播再去除这个常数即可。
 
-![image](https://picx.zhimg.com/v2-fcf354483cf933c46cc9329ad5d6481d_1440w.jpg)
+![image](https://s2.loli.net/2025/01/17/yMcOnekmv9I78fu.png)
 
 * 3、`Apex`实现混合精度训练
 
@@ -111,7 +109,6 @@ scaler.update()
 **测试效果：**
 
 **准确率变化上**：
-
 
 在公开数据集（`CIFAR10`）上进行测试（模型为`resnet50`）测试使用的设备为`4090`
 
