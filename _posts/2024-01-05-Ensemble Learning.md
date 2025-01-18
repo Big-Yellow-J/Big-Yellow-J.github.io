@@ -4,6 +4,7 @@ title: 机器学习基础原理————集成学习算法
 categories: 机器学习
 extMath: true
 images: true
+wehat: true
 show: true
 address: changsha
 ---

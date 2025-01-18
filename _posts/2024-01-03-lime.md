@@ -5,6 +5,7 @@ categories: 机器学习
 extMath: true
 images: true
 show: true
+wehat: true
 address: changsha
 ---
 

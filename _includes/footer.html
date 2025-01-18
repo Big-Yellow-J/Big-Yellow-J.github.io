@@ -1,19 +1,7 @@
 <footer class="footer">
-  <!-- <span>{{ site.footerText }}</span>
-  <a href="https://github.com/{{ site.author_info.github }}">GitHub</a>
-  <a href="{{ site.baseurl }}/static/xml/rss.xml">RSS订阅</a>
-  {%- comment %} 请保留主题来源，么么哒~ {% endcomment %}
-
-  <span>Theme By</span>
-  <a href="https://github.com/TMaize/tmaize-blog">TMaize</a>
-  {%- if site.extCount %}
-    <span>总访问量</span>
-    <span id="busuanzi_value_site_pv"></span>
-  {% endif %} -->
-
   <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center;">
-    {% if page.title %}
-    <img src="../static/img/wechat.png" alt="WeChat QR Code" style="width: 100px; height: 100px; border-radius: 50%; margin-bottom: 20px;">
+    {% if page.wechat != false %}
+      <img src="../static/img/wechat.png" alt="WeChat QR Code">
     {% endif %}
     <div style="display: flex; gap: 20px; justify-content: center;">
       <!-- GitHub 链接，使用 GitHub 图标 -->

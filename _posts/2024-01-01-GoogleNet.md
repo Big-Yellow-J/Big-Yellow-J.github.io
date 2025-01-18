@@ -6,6 +6,7 @@ extMath: true
 images: true
 address: changsha
 show: false
+wehat: true
 ---
 <iframe src="{{ site.baseurl }}/_jupyter/googlenet.html" width="100%" height="600px"></iframe>
 <!-- Big-Yellow-J.github.io\_jupyter\googlenet.html -->
