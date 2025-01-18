@@ -34,6 +34,7 @@ address: changsha
 > https://en.wikipedia.org/wiki/Hyperparameter_optimization
 
 本文主要对**Bayesian optimization**进行解释。**贝叶斯优化**通过有限的步骤进行全局优化。定义我们的待优化函数：
+
 $$
 x^{*}=\underset{x\in X}{argmin}f(x)
 $$
@@ -80,14 +81,17 @@ $$
 ---
 
 高斯过程的数学原理[^5]：
+
 $$
 f(x)∼GP(m(x),k(x,x^{'}))
 $$
 
 其中$m(x)$代表**均值**（为了方便令$m(x)=0$），$k$代表**核函数**。常用核函数：
+
 $$
 k(x_i,x_j)=\sum=cov(x_i,x_j)=exp(-\frac{1}{2}||x_i-x_j||^2)
 $$
+
 > 其他核函数
 >
 > <img src="https://pic4.zhimg.com/80/v2-85fb84d30a68bc03e301ed67d868c38b_720w.webp" alt="202306131551131" style="zoom:90%;"/>
@@ -119,6 +123,7 @@ $$
 $$
 P(y|f)=N(\mu(x),\sigma^2(x))
 $$
+
 其中：$\mu(x)=K^{T}_{fy}K_{ff}^{-1}f(x)$，$\sigma^2(x)=K_{yy}-K^{T}_{fy}K_{ff}^{-1}K_{fy}$
 
 从**回归**的角度对**高斯过程**进行理解：假设我们需要拟合函数为：
@@ -126,6 +131,7 @@ $$
 $$
 y=sin(2.5x)+sin(x)+0.05x^2+1
 $$
+
 我们通过设置$x$范围生成输入数据，那么可以得到输出数据$y$那么GP拟合如下：
 
 <img src="https://s2.loli.net/2023/06/13/SeJKV91xCI2g4Qj.png" alt="202306131551131" style="zoom:90%;"/>
@@ -205,6 +211,7 @@ $$
 $$
 GP-UCB=\mu(x)+\sqrt{v\tau_{t}}\phi(x)
 $$
+
 GP-UCB很简单的一种采集策略，以随机变量的置信上界最大化为原则选择下一轮的超参组合
 
 **4.其它**
