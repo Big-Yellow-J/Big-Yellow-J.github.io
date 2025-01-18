@@ -13,6 +13,9 @@ author_info:
   bitbucket: #
   zhihu: zhi-hui-ha-ha-xiao-de-sha-zi
 # footerText: 'Copyright © 2016 皖ICP备16016174号'
+api_info:
+  tianditu: 5ff361b4ae2c6f51000feb3e58023a8e
+  seniverse: SOOcdTxiop033YKPB
 
 # 这些不要动
 permalink: /posts/:year/:month/:day/:title.html
