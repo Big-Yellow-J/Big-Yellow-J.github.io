@@ -116,4 +116,5 @@ $$
 [^14]:https://leovan.me/cn/2018/12/ensemble-learning/#fnref:8
 [^15]:https://www.cnblogs.com/pinard/p/6140514.html
 
-![image](./../posts/wechat.png)
+![1](https://s2.loli.net/2025/01/18/hZzmJaRBQukPLC2.png)
+

@@ -253,4 +253,4 @@ optim.SGD([{'params': model.VisionModel.parameters(), 'lr': 1e-2},{'params': mod
 [^2]:https://youtu.be/zzbr1h9sF54?t=1614
 [^3]:https://arxiv.org/abs/2404.06395
 
-![image](./../posts/wechat.png)
+![1](https://s2.loli.net/2025/01/18/hZzmJaRBQukPLC2.png)

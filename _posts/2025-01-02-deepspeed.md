@@ -297,4 +297,4 @@ https://gitee.com/a-ha-a/deep-learning-note/tree/master/DeepLearning-Summary/Com
 6、https://www.deepspeed.ai/docs/config-json/#batch-size-related-parameters  
 7、https://zhuanlan.zhihu.com/p/630734624
 
-![image](./../posts/wechat.png)
+![1](https://s2.loli.net/2025/01/18/hZzmJaRBQukPLC2.png)

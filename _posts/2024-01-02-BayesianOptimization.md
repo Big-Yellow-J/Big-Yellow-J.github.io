@@ -382,4 +382,4 @@ basye_con_df_cv = basye_find(30)
 [^4]:https://jgoertler.com/visual-exploration-gaussian-processes/
 [^5]:http://arxiv.org/abs/1012.2599
 
-![image](./../posts/wechat.png)
+![1](https://s2.loli.net/2025/01/18/hZzmJaRBQukPLC2.png)

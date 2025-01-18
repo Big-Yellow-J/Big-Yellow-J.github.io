@@ -711,4 +711,4 @@ pca.explained_variance_ratio_ #贡献
 [^6]:https://github.com/jundongl/scikit-feature
 
 
-![image](./../posts/wechat.png)
+![1](https://s2.loli.net/2025/01/18/hZzmJaRBQukPLC2.png)

@@ -166,4 +166,4 @@ else:
 4、https://zhuanlan.zhihu.com/p/84219777
 5、https://nvidia.github.io/apex/amp.html
 
-![image](./../posts/wechat.png)
+![1](https://s2.loli.net/2025/01/18/hZzmJaRBQukPLC2.png)

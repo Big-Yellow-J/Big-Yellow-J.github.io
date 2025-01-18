@@ -706,4 +706,4 @@ class RowParallelLinear(nn.Module):
 6、https://www.cnblogs.com/rossiXYZ/p/15172816.html
 7、https://www.bilibili.com/video/BV1nJ4m1M7Qw/?vd_source=881c4826193cfb648b5cdd0bad9f19f0
 
-![image](./../posts/wechat.png)
+![1](https://s2.loli.net/2025/01/18/hZzmJaRBQukPLC2.png)
