@@ -3,7 +3,6 @@ layout: mypost
 title: 深度学习基础理论————学习率优化方法(AdaGrad/RMSprop/Adam/Warm-UP)
 categories: 深度学习基础理论
 address: changsha
-wehat: true
 extMath: true
 ---
 
@@ -253,3 +252,5 @@ optim.SGD([{'params': model.VisionModel.parameters(), 'lr': 1e-2},{'params': mod
 [^1]:https://cloud.tencent.com/developer/article/2351463
 [^2]:https://youtu.be/zzbr1h9sF54?t=1614
 [^3]:https://arxiv.org/abs/2404.06395
+
+![image](./../posts/wechat.png)

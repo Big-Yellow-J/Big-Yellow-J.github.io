@@ -4,7 +4,6 @@ title: 深度学习基础理论————训练加速（单/半/混合精度�
 categories: 深度学习基础理论
 extMath: true
 images: true
-wehat: true
 address: changsha
 ---
 
@@ -166,3 +165,5 @@ else:
 3、https://zhuanlan.zhihu.com/p/79887894
 4、https://zhuanlan.zhihu.com/p/84219777
 5、https://nvidia.github.io/apex/amp.html
+
+![image](./../posts/wechat.png)

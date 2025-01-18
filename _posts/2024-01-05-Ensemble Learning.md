@@ -4,7 +4,6 @@ title: 机器学习基础原理————集成学习算法
 categories: 机器学习
 extMath: true
 images: true
-wehat: true
 show: true
 address: changsha
 ---
@@ -116,3 +115,5 @@ $$
 [^13]:https://www.cnblogs.com/pinard/p/6133937.html
 [^14]:https://leovan.me/cn/2018/12/ensemble-learning/#fnref:8
 [^15]:https://www.cnblogs.com/pinard/p/6140514.html
+
+![image](./../posts/wechat.png)

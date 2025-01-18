@@ -5,7 +5,6 @@ categories: 机器学习
 extMath: true
 images: true
 show: true
-wehat: true
 address: changsha
 ---
 
@@ -712,3 +711,4 @@ pca.explained_variance_ratio_ #贡献
 [^6]:https://github.com/jundongl/scikit-feature
 
 
+![image](./../posts/wechat.png)
