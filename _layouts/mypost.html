@@ -113,7 +113,7 @@
 
             // 获取指定日期的天气数据
             // const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&start_date=${publishDate}&end_date=${publishDate}&timezone=Asia%2FShanghai`;
-            const weatherUrl = `https://rough-queen-833d.workers.dev/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&start_date=${publishDate}&end_date=${publishDate}&timezone=Asia%2FShanghai`;
+            const weatherUrl = `https://rough-queen-833d.hjie20011001.workers.dev/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&start_date=${publishDate}&end_date=${publishDate}&timezone=Asia%2FShanghai`;
 
             fetch(weatherUrl)
               .then(weatherResponse => weatherResponse.json())
