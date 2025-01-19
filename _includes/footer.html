@@ -13,7 +13,18 @@
       <a href="https://www.zhihu.com/people/{{ site.author_info.zhihu }}" target="_blank">
         <i class="fab fa-zhihu"></i>
       </a>
+      <a href="https://www.google.com/maps/search/{{ site.author_info.location }}" target="_blank">
+        <i class="fas fa-map-marker-alt"></i>
+      </a>
+      <!-- email 链接，使用 email 图标 -->
+      <a href="mailto:{{ site.author_info.email }}">
+          <i class="fas fa-envelope"></i>
+      </a>
+      <a href="https://stackoverflow.com/users/20983339/big-yellow-j" target="_blank">
+        <i class="fab fa-stack-overflow"></i>
+      </a>
     </div>
+
     <div>
       <span>Theme By <a href="https://github.com/TMaize/tmaize-blog">TMaize</a></span>
       {%- if site.extCount %}
