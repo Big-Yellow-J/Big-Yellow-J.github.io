@@ -84,16 +84,74 @@ model.fc = nn.Linear(2048, 10) # 预测10个类别
 
 ### 2.`Unet`系列
 
-`Unet`主要3种：`Unet1`，`Unet2`，`Unet3`
 
-![2](https://s2.loli.net/2025/01/18/1gfAhQxrO4DbIcv.png)
+`Unet`主要介绍3种：`Unet1`，`Unet++`，`Unet3`，主要应用在医学影像分割（当然图像分割领域都适用）
+
+![2](https://s2.loli.net/2025/01/20/8BrmtOAKH6ETc5W.png)
+
+对比上面三种结构，主体结构上并无太大差异，都是首先通过下采样（左边），然后通过上采样（右边）+特征融合。主要差异就在于**如何进行特征融合**。以`Unet`进行理解：
+
+![2](https://s2.loli.net/2025/01/20/2Ip9ZOBF7mCq5uv.png)
+
+**左侧encoder操作**：首先通过两层$3 \times3$卷积进行处理，然后通过一个 **池化**处理
+**右侧decoder操作**：一个上采样的卷积层（去卷积层）+特征拼接concat（上图中白色部分就是要拼接的encoder内容）+两个3x3的卷积层（ReLU）反复构成。
+`Unet`相比更早提出的`FCN`网络，使用拼接来作为特征图的融合方式。`FCN`是通过特征图对应像素值的**相加**来融合特征的；`U-net`通过**通道数的拼接**。
+**`Unet`好处就在于，因为是逐层的去累加卷积操作，随着卷积的“深入”，越往下的卷积就拥有更加大的 *感受野*，但局部细节可能会逐渐丢失。为了解决这个问题，通过 *上采样*操作来恢复这些细节。上采样操作将低分辨率的特征图尺寸恢复到较高分辨率，从而保留更多的局部特征，弥补下采样过程中丢失的细节。最后将两部分内容继续融合（里面的skip-connection操作）相互进行弥补实现较好性能**
+
+> **感受野**：可以简单理解：比如说一个512x512图像，最开始用卷积核（假设为3x3）去“扫”，那么这个卷积核就会把其“扫”的内容“汇总”起来，比如说某一个值是汇聚了他周围其他的值，这样一来**细节的感知就很多**，但是随着网络层数叠加，这些细节内容就会越来越少，但是计算得到的每个值却是“了解”到了更加“全局”的内容，如下图展示一样
+> ![3](https://s2.loli.net/2025/01/20/CwfnKalUu1zNgox.png)
+>
+> **上采样**：可以简单理解为：将图片给“扩大”，既然要扩大，那么就会需要对内容进行填补，因此就会有不同的插值方式：'nearest', 'linear', 'bilinear', 'bicubic'（`pytorch`提供的）
+> ![4](https://s2.loli.net/2025/01/20/UQMEFlPKks8DRLt.webp)
+>
+> 补充一点： **亚像素上采样 (Pixel Shuffle)**：普通的上采样采用的临近像素填充算法，主要考虑空间因素，没有考虑channel因素，上采样的特征图人为修改痕迹明显，图像分割与GAN生成图像中效果不好。为了解决这个问题，ESPCN中提到了亚像素上采样方式。[具体原理](https://www.cnblogs.com/zhaozhibo/p/15024928.html)如下
+> ![](https://s2.loli.net/2025/01/21/5oYgfqvnFswNR7X.png)
+>
+> 根据上图，可以得出将维度为$[B,C,H,W]$的 feature map 通过亚像素上采样的方式恢复到维度$[B,C,sH,sW]$的过程分为两步：
+> 1.首先通过卷积进行特征提取，将$[B,C,H,W]=>[B,s^2C,H,W]$
+> 2.然后通过Pixel Shuffle 的操作，将$[B,s^2C,H,W]=>[B,C,sH,sW]$
+> Pixel Shuffle的主要功能就是将这$s^2$个通道的特征图组合为新的$[B,C,sH,sW]$的上采样结果。具体来说，就是将原来一个低分辨的像素划分为$s^2$个更小的格子，利用$s^2$个特征图对应位置的值按照一定的规则来填充这些小格子。按照同样的规则将每个低分辨像素划分出的小格子填满就完成了重组过程。在这一过程中模型可以调整$s^2$个shuffle通道权重不断优化生成的结果。
+
+```python
+class Net(nn.Module):
+    def __init__(self, upscale_factor):
+        super(Net, self).__init__()
+
+        self.conv1 = nn.Conv2d(1, 64, (5, 5), (1, 1), (2, 2))
+        self.conv2 = nn.Conv2d(64, 32, (3, 3), (1, 1), (1, 1))
+        self.conv3 = nn.Conv2d(32, 1 * (upscale_factor ** 2), (3, 3), (1, 1), (1, 1))	# 最终将输入转换成 [32, 9, H, W]
+        self.pixel_shuffle = nn.PixelShuffle(upscale_factor)	# 通过 Pixel Shuffle 来将 [32, 9, H, W] 重组为 [32, 1, 3H, 3W]
+    def forward(self, x):
+        x = torch.tanh(self.conv1(x))
+        x = torch.tanh(self.conv2(x))
+        x = torch.sigmoid(self.pixel_shuffle(self.conv3(x)))
+        return x
+    
+if __name__ == "__main__":
+    model = Net(upscale_factor=3)
+    input = torch.arange(1, 10, dtype = torch.float32).view(1,1,3,3)
+    output = model(input)
+    print(output.size())
+
+# 输出结果为：
+torch.Size([1, 1, 9, 9])
+
+```
+
+对比三种`UNet`操作，从$1\rightarrow 3$进行特征融合的程度更加多，1：将**同“水平”** 的特征以及“下面”特征进行使用；3：将“左侧”所有的特征以及“下面”特征都进行使用；`Unet++`:不是直接使用简单的`skip-connection`而是回去结合 **邻近水平**和 **邻近水平下**的特征，比如说下面图c通过卷积操作结合$X^{0,0}\text{和}X^{1,0}$的特征。
+
+总结上面三种网络结构改进在于：1、`Skip-connection`方式上区别（也就是**如何进行特征连接过程**）
+
+> `Unet++`网络结构
+> ![](https://s2.loli.net/2025/01/21/lPIWTdUvpyKfco5.png)
+
 
 ### 3.其他
 
 对于传统的`AlexNet`，`LeNet`，`GoogleNet`可以去看之前写的内容：
-1、https://www.big-yellow-j.top/posts/2024/01/01/alexnet.html
-2、https://www.big-yellow-j.top/posts/2024/01/01/LeNet.html
-3、https://www.big-yellow-j.top/posts/2024/01/01/GoogleNet.html
+1、https://www.big-yellow-j.top/code/AlexNet.html
+2、https://www.big-yellow-j.top/code/LeNet.html
+3、https://www.big-yellow-j.top/code/googlenet.html
 
 ## 二、基于Transformer的CV Backbone
 
@@ -109,5 +167,9 @@ model.fc = nn.Linear(2048, 10) # 预测10个类别
 5、https://arxiv.org/pdf/1505.04597
 6、https://arxiv.org/pdf/2311.17791
 7、https://arxiv.org/pdf/2004.08790
+8、https://pytorch.org/docs/stable/generated/torch.nn.Upsample.html
+9、https://www.cnblogs.com/zhaozhibo/p/15024928.html
+10、https://www.cv-foundation.org/openaccess/content_cvpr_2016/papers/Shi_Real-Time_Single_Image_CVPR_2016_paper.pdf
+11、https://arxiv.org/pdf/1807.10165v1
 
 ![1](https://s2.loli.net/2025/01/18/hZzmJaRBQukPLC2.png)
