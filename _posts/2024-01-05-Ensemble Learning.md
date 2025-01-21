@@ -6,6 +6,7 @@ extMath: true
 images: true
 show: true
 address: changsha
+show_footer_image: true
 ---
 
 传统机器学习算法 (例如：决策树，人工神经网络，支持向量机，朴素贝叶斯等) 都是通过**弱学习机**（weak learners）来对目标进行预测（分类）。但是，以决策树算法为例，决策树算法在递归过程中，可能会过度分割样本空间，最终导致过拟合。集成学习 (Ensemble Learning) 算法的基本思想就是将多个弱学习机组合，从而实现一个预测效果更好的集成学习机[^1]。集成学习在**统计（Statistical）**、 **计算（computational）** 以及 **表示（representation）** 上相较之弱学习机有较大改善[^2]。```Bagging```和```Boosting```对比如下：
@@ -115,6 +116,3 @@ $$
 [^13]:https://www.cnblogs.com/pinard/p/6133937.html
 [^14]:https://leovan.me/cn/2018/12/ensemble-learning/#fnref:8
 [^15]:https://www.cnblogs.com/pinard/p/6140514.html
-
-![1](https://s2.loli.net/2025/01/18/hZzmJaRBQukPLC2.png)
-

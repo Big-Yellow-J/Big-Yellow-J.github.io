@@ -5,6 +5,7 @@ categories: 深度学习基础理论
 extMath: true
 images: true
 address: changsha
+show_footer_image: true
 ---
 
 主要介绍在CV中常用的Backbone,参考论文中的表格,对不同的任务所使用的backbone如下:
@@ -171,5 +172,3 @@ torch.Size([1, 1, 9, 9])
 9、https://www.cnblogs.com/zhaozhibo/p/15024928.html
 10、https://www.cv-foundation.org/openaccess/content_cvpr_2016/papers/Shi_Real-Time_Single_Image_CVPR_2016_paper.pdf
 11、https://arxiv.org/pdf/1807.10165v1
-
-![1](https://s2.loli.net/2025/01/18/hZzmJaRBQukPLC2.png)

@@ -4,6 +4,7 @@ title: 深度学习基础理论————分布式训练（模型并行/数据
 categories: 深度学习基础理论
 address: changsha
 extMath: true
+show_footer_image: true
 ---
 
 <!-- # 深度学习基础理论————分布式训练（模型并行/数据并行/流水线并行/张量并行） -->
@@ -705,5 +706,3 @@ class RowParallelLinear(nn.Module):
 5、https://arxiv.org/pdf/1811.06965
 6、https://www.cnblogs.com/rossiXYZ/p/15172816.html
 7、https://www.bilibili.com/video/BV1nJ4m1M7Qw/?vd_source=881c4826193cfb648b5cdd0bad9f19f0
-
-![1](https://s2.loli.net/2025/01/18/hZzmJaRBQukPLC2.png)

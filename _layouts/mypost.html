@@ -23,13 +23,15 @@
     {{ content }}
   </div>
   <!-- 在文章内容下方添加图片 -->
+  {% if page.show_footer_image %}
   <div style="text-align: center; margin-top: 20px;">
     <img 
       src="{{ site.baseurl }}/posts/wechat.png" 
       alt="Footer Image" 
-      style="max-width: 100%; height: auto;"
+      style="max-width: 70%; height: auto;"
     >
   </div>
+  {% end if %}
   <!-- 添加分享按钮 -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
   <div class="share-buttons">

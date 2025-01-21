@@ -6,6 +6,7 @@ extMath: true
 images: true
 show: true
 address: changsha
+show_footer_image: true
 ---
 
 <center>数据和特征决定了机器学习的上限，而模型和算法只是逼近这个上限而已</center>
@@ -709,6 +710,3 @@ pca.explained_variance_ratio_ #贡献
 [^4]:https://members.loria.fr/moberger/Enseignement/AVR/Exposes/TR_Dimensiereductie.pdf
 [^5]:https://proceedings.neurips.cc/paper_files/paper/2005/file/b5b03f06271f8917685d14cea7c6c50a-Paper.pdf
 [^6]:https://github.com/jundongl/scikit-feature
-
-
-![1](https://s2.loli.net/2025/01/18/hZzmJaRBQukPLC2.png)

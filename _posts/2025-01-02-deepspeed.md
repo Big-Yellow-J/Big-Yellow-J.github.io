@@ -3,6 +3,7 @@ layout: mypost
 title: 深度学习基础理论————DeepSpeed
 categories: 深度学习基础理论
 extMath: true
+show_footer_image: true
 address: changsha
 ---
 
@@ -296,5 +297,3 @@ https://gitee.com/a-ha-a/deep-learning-note/tree/master/DeepLearning-Summary/Com
 5、https://deepspeed.readthedocs.io/en/latest/initialize.html#  
 6、https://www.deepspeed.ai/docs/config-json/#batch-size-related-parameters  
 7、https://zhuanlan.zhihu.com/p/630734624
-
-![1](https://s2.loli.net/2025/01/18/hZzmJaRBQukPLC2.png)

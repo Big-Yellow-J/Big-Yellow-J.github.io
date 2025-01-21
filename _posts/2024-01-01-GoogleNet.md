@@ -6,6 +6,7 @@ extMath: true
 images: true
 address: changsha
 show: false
+show_footer_image: true
 ---
 <iframe src="{{ site.baseurl }}/code/googlenet.html" width="100%" height="600px"></iframe>
 

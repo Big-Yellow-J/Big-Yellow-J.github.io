@@ -1,6 +1,7 @@
 ---
 layout: mypost
 title: 关于
+show_footer_image: false
 ---
 # Who
 

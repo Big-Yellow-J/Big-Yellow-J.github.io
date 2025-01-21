@@ -5,6 +5,7 @@ categories: 机器学习
 extMath: true
 images: true
 show: true
+show_footer_image: true
 address: changsha
 ---
 
@@ -381,5 +382,3 @@ basye_con_df_cv = basye_find(30)
 [^3]:https://doi.org/10.13328/j.cnki.jos.005607.
 [^4]:https://jgoertler.com/visual-exploration-gaussian-processes/
 [^5]:http://arxiv.org/abs/1012.2599
-
-![1](https://s2.loli.net/2025/01/18/hZzmJaRBQukPLC2.png)

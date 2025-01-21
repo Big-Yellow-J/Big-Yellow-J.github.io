@@ -5,6 +5,7 @@ categories: 机器学习
 extMath: true
 images: true
 show: true
+show_footer_image: true
 address: changsha
 ---
 
@@ -209,5 +210,3 @@ def shap_plot(path):
 [^2]:https://www.zhihu.com/question/23180647
 
 [^3]:[关于Shapley Value（夏普利值）的公式 - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/483891565#:~:text=Shapley Value公式如下： 记 I%3D { 1%2C2%2C...%2Cn}为n个合作人的集合 varphi_i (upsilon),- upsilon (s backslash  { i })]})
-
-![1](https://s2.loli.net/2025/01/18/hZzmJaRBQukPLC2.png)
