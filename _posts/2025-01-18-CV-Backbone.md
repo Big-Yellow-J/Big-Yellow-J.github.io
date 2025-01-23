@@ -8,10 +8,13 @@ address: changsha
 show_footer_image: true
 ---
 
+# 深度学习基础理论————CV中常用Backbone(Resnet/Unet/Vit系列/多模态系列等)以及代码
+
 主要介绍在CV中常用的Backbone,参考论文中的表格,对不同的任务所使用的backbone如下:
 ![image](https://s2.loli.net/2025/01/15/xKEOXT6hBdL4ziG.png)
 
-针对上面内容分为两块内容：1、基于卷积神经网络的CV Backbone：1.`Resnet`系列;2.`Unet`系列等；2、基于Transformer的 CV Backbone：1.`Vit`系列等;
+针对上面内容分为两块内容：1、基于卷积神经网络的CV Backbone：1.`Resnet`系列;2.`Unet`系列等；2、基于Transformer的 CV Backbone：1.`Vit`系列等；3、在多模态中常用的backbone如：SAM/Clip等
+- [ ] 代码补充
 
 ## 一、基于卷积神经网络的CV Backbone：
 ### 1. `Resnet`系列
@@ -85,7 +88,6 @@ model.fc = nn.Linear(2048, 10) # 预测10个类别
 
 ### 2.`Unet`系列
 
-
 `Unet`主要介绍3种：`Unet1`，`Unet++`，`Unet3`，主要应用在医学影像分割（当然图像分割领域都适用）
 
 ![2](https://s2.loli.net/2025/01/20/8BrmtOAKH6ETc5W.png)
@@ -156,9 +158,82 @@ torch.Size([1, 1, 9, 9])
 
 ## 二、基于Transformer的CV Backbone
 
-主要介绍两种：`Vit`和`MAE`
+主要介绍两种：`Vit`和`MAE`。`Vit`:核心思想是将图像划分为小块（`Patch`），将每个小块视为一个 "单词"（类似 NLP 中的 Token），然后通过标准的 Transformer 架构对这些 Patch 进行处理。
 
 ![2](https://s2.loli.net/2025/01/18/csRmbCPaGz7yA3e.png)
+
+`Vit`主要操作流程：
+- 1、`patch embedding`和`position embeeding`：将图片进行切分为固定大小的patch，比如说输入一张224x224RGB图像，path=16x16。那么的话就会生成：$\frac{224\times224}{16\times16}=196$个patch，那么输入模型的序列数量：**196**，经过拉长处理之后得到的序列长度为：$16\times 16\times 3=768$。通过线性投射层处理之后维度为：$196\times 768$一共为 **196**个token，然后补充一个位置编码，对于位置编码最简单的就是直接对每一个patch都生成一个1维的向量（类似one-hot，但是对于位置编码的方式有很多）然后去拼接起来（同时还需要补充一个`CLS`），最后维度就是：$197\times768$
+> **值得注意的是**：正如上提到的**亚像素上采样 (Pixel Shuffle)**可以通过他的逆操作将token数量减少（其实就是将尺寸改变，比如[b,c,w,h]-->[b,c/r^2,w/2,h/2]）
+
+- 2、`transformer encoder`：就是一个正常的transformer的encoder处理输入多少维度输出多少维度，依旧是$197\times768$
+
+`MAE` 主要操作流程
+
+- 1、`patch embedding` 和 `position embedding`：前面操作和`Vit`操作差异不大，区别在于`MAE`进行 **随机遮盖（Masking）**，例如遮盖 75% 的 Patch，只保留 **25%** 的 Token，用于后续的编码器输入。最终，编码器的输入维度变为：$49 \times 768$（假设保留的 Token 为 49）。与此同时，补充位置编码，最简单的方式是为每个 Patch Token 添加一个唯一的向量（类似于 One-Hot），拼接后维度保持不变。
+- 2、`masked token reconstruction`：将编码器的输出输入到解码器中，同时将被遮盖的 Token 填充为一个固定的嵌入（称为 Mask Token）。解码器的输入维度恢复为：$196 \times 768$解码器通过 Transformer 操作，将未遮盖的 Token 特征与 Mask Token 结合，并尝试重建完整图像。重建的目标是尽可能接近原始图像像素值。
+> **值得注意的是**：MAE 的优势在于编码器仅处理未遮盖的部分 Token，大大减少了计算成本。同时，解码器可以设计得更轻量，仅用于重建任务，最终可以通过重建损失（如 L2 损失）优化模型。
+
+> 在`MAE`中是分与训练和微调的，与训练就是去预测mask内容，微调就是直接根据不同任务进行微调即可（换输出头/微调里面参数）
+```python
+class DetectionHead(nn.Module):
+    def __init__(self, embed_dim, num_classes):
+        super().__init__()
+        self.cls_head = nn.Linear(embed_dim, num_classes)  # 分类头
+        self.reg_head = nn.Linear(embed_dim, 4)           # 边框回归头
+
+    def forward(self, x):
+        cls_preds = self.cls_head(x)  # [B, num_patches, num_classes]
+        reg_preds = self.reg_head(x)  # [B, num_patches, 4]
+        return cls_preds, reg_preds
+```
+然后将检测头补充到最后的decoder输出中
+
+**补充**
+1、在`Vit`和`MAE`的代码中（两部分代码差异不大，以`MAE`为例）一般而言有如下参数：
+`img_size=224, patch_size=16, in_chans=3, embed_dim=768, encoder_layers=12, decoder_embed_dim=512, decoder_layers=4, mask_ratio=0.75`
+**第一步**：对于一个输入图片**首先**通过`PatchEmbedding`（用卷积（`in_channels=3`， `out_channels=embed_dim=768`）去“扫”）然后拉平（`x.flatten(2).transpose(1, 2) `）输出维度为：`[B, num_patches, embed_dim]`然后与位置编码相加维度为：`[B, num_patches, embed_dim]`
+**第二步**：随机mask部分内容：`x_masked, mask, keep = self.random_masking(x)`，`x_masked`为随机mask后内容，`mask`为mask掉的内容，`keep`为mask余下内容（比如1到100，其中`x_maked`，`keep`都为25）主要用来保证顺序，在输入`decoder`之前需要把之前mask内容补充进来
+2、**transformer框架模型一般而言需要较多的数据进行训练，如果数据少还是用卷积效果会好一点**
+
+`Swin Transformer`模型
+
+![](https://s2.loli.net/2025/01/22/fmwug3xclInRQKX.png)
+
+对比之前的`Vit`和`MAE`存在**问题**在计算注意力的时候都是**全局计算**的（每个token之间都是进行注意力计算）因此在`Swin Transformer`中作者认为这种操作不利于：高分辨率图像（像素点多计算量大）以及密集预测任务（全局的话可能对有些细节就会丢失）
+> The global computation leads to quadratic complexity with respect to the number of tokens, making it unsuitable for many vision problems requiring an immense set of tokens for dense prediction or to represent a high-resolution image.
+
+要去避免全局计算，一个最简单的办法就是：我去从不同的patch中挑选出一部分内容组合起来，然后再组合的这一块内容中去计算注意力。
+
+![](https://s2.loli.net/2025/01/23/dkzKpN6qjORZUtS.png)
+
+* 1、`Patch Merging`操作，这部分操作就是进行 **挑选组合**操作，对`patch`之间进行组合，作者论文中表示是：挑选2x2的邻居进行分组（这里操作和`Unet`中下采样很像，每个stage中都进行一次减小尺寸，这样一来就可以看到更加“全局”）
+![](https://s2.loli.net/2025/01/23/NJGwT5cgaQRlo4z.png)
+
+* 2、`Swin Transformer Block`：在将`patch`组合操作之后，输入到Transformer中，在这里作者将传统的注意力计算改为两种：`W-MSA`（Window-Multi-Head Self Attention）和`SW-MSA`（Shift-Window-Multi-Head Self Attention）之所以这样，作者还是在解决上面提到的问题：去避免全局计算。
+`W-MSA`操作：对于传统的计算量大问题（$MSA=4hwC^2+2(hw)^2C$）提出改进（$W\text{-}MSA=4hwC^2+ 2M^2hwC$）这部分操作好理解，对于（H，W，C）划分为MxM的窗口得到：（N，MxM，C），然后就只需要对这部分计算Attention-Score即可
+`SW-MSA`操作：弥补上面（`W-MSA`）存在问题，如果只是计算窗口内部的Attention-Score，就会导致不同窗口之间关系是不知道的，通过下面Shifted-Window来移动窗口位置
+![](https://s2.loli.net/2025/01/23/MI9xOlNzo1C8wPZ.gif)
+
+通过上面移动进而构成下面图像：
+![](https://s2.loli.net/2025/01/23/hUiOq8IrlvtNYnw.png)
+
+这里就会有9块，再`W-MSA`中是4块（都是4x4），无疑加大了计算量，因此只需要将9块重新进行拼接起来（保证最后为4x4即可）就可以，比如下面，
+![](https://s2.loli.net/2025/01/23/VWstRQKJbCjTUFx.png)
+
+> 对于上面的操作，可以直接通过`torch.roll`实现先**左移动3然后上移动3**。`torch.roll(x, shifts=(-self.shift_size, -self.shift_size), dims=(1, 2))`
+
+这样一来就都满足（4x4）还可以实现不同window之间进行交互（5，3为例，将他们视作整体，计算AttentionScore）不过值得注意的是，5和3之间像素都是有差异的，直接计算会引入误差，因此原文在计算注意力时，在执行softmax之前，分别将模块3像素对应的注意力值分别减去100，使得softmax后，权重都是0，从而实现模块[3对模块5的影响](https://www.cnblogs.com/chentiao/p/18379629)。
+![](https://s2.loli.net/2025/01/23/CcVtYFHmUR89bIK.png)
+
+- [ ] 梳理swin-transformer各项参数具体含义
+
+## 三、多模态backbone
+
+这部分内容主要介绍在多模态算法中常用的几类`backbone`，主要为代码（SAM/Clip等）
+> 多模态算法涉及到的`backbone`比较杂，传统卷积/Transformer都有
+
+
 
 # 参考:
 1、https://arxiv.org/pdf/2206.08016
@@ -172,3 +247,5 @@ torch.Size([1, 1, 9, 9])
 9、https://www.cnblogs.com/zhaozhibo/p/15024928.html
 10、https://www.cv-foundation.org/openaccess/content_cvpr_2016/papers/Shi_Real-Time_Single_Image_CVPR_2016_paper.pdf
 11、https://arxiv.org/pdf/1807.10165v1
+12、https://arxiv.org/pdf/2103.14030
+13、https://www.cnblogs.com/chentiao/p/18379629
