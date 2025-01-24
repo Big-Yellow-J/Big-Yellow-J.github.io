@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 深度学习基础理论————CV中常用Backbone(Resnet/Unet/Vit系列等)
+title: 深度学习基础理论————CV中常用Backbone(Resnet/Unet/Vit系列/多模态系列等)以及代码
 categories: 深度学习基础理论
 extMath: true
 images: true
@@ -8,13 +8,11 @@ address: changsha
 show_footer_image: true
 ---
 
-# 深度学习基础理论————CV中常用Backbone(Resnet/Unet/Vit系列/多模态系列等)以及代码
-
-主要介绍在CV中常用的Backbone,参考论文中的表格,对不同的任务所使用的backbone如下:
+主要介绍在CV中常用的Backbone**原理**简易[代码](https://www.big-yellow-j.top/code/cv_backbone.html)（*代码以及原理经常更新*），参考论文中的表格，对不同的任务所使用的backbone如下:
 ![image](https://s2.loli.net/2025/01/15/xKEOXT6hBdL4ziG.png)
 
 针对上面内容分为两块内容：1、基于卷积神经网络的CV Backbone：1.`Resnet`系列;2.`Unet`系列等；2、基于Transformer的 CV Backbone：1.`Vit`系列等；3、在多模态中常用的backbone如：SAM/Clip等
-- [ ] 代码补充
+> FROM:https://www.big-yellow-j.top/posts/2025/01/18/CV-Backbone.html
 
 ## 一、基于卷积神经网络的CV Backbone：
 ### 1. `Resnet`系列
@@ -175,6 +173,7 @@ torch.Size([1, 1, 9, 9])
 > **值得注意的是**：MAE 的优势在于编码器仅处理未遮盖的部分 Token，大大减少了计算成本。同时，解码器可以设计得更轻量，仅用于重建任务，最终可以通过重建损失（如 L2 损失）优化模型。
 
 > 在`MAE`中是分与训练和微调的，与训练就是去预测mask内容，微调就是直接根据不同任务进行微调即可（换输出头/微调里面参数）
+
 ```python
 class DetectionHead(nn.Module):
     def __init__(self, embed_dim, num_classes):
@@ -187,7 +186,8 @@ class DetectionHead(nn.Module):
         reg_preds = self.reg_head(x)  # [B, num_patches, 4]
         return cls_preds, reg_preds
 ```
-然后将检测头补充到最后的decoder输出中
+
+**然后将检测头补充到最后的decoder输出后面即可**
 
 **补充**
 1、在`Vit`和`MAE`的代码中（两部分代码差异不大，以`MAE`为例）一般而言有如下参数：
@@ -226,14 +226,67 @@ class DetectionHead(nn.Module):
 这样一来就都满足（4x4）还可以实现不同window之间进行交互（5，3为例，将他们视作整体，计算AttentionScore）不过值得注意的是，5和3之间像素都是有差异的，直接计算会引入误差，因此原文在计算注意力时，在执行softmax之前，分别将模块3像素对应的注意力值分别减去100，使得softmax后，权重都是0，从而实现模块[3对模块5的影响](https://www.cnblogs.com/chentiao/p/18379629)。
 ![](https://s2.loli.net/2025/01/23/CcVtYFHmUR89bIK.png)
 
-- [ ] 梳理swin-transformer各项参数具体含义
+具体操作：
+
+```python
+...
+attn_mask = attn_mask.masked_fill(attn_mask != 0, float(-100.0)).masked_fill(attn_mask == 0, float(0.0))
+...
+# con atten
+q, k, v = qkv[0], qkv[1], qkv[2]  # make torchscript happy (cannot use tensor as tuple)
+
+q = q * self.scale
+attn = (q @ k.transpose(-2, -1))
+...
+if mask is not None:
+    nW = mask.shape[0]
+    attn = attn.view(B_ // nW, nW, self.num_heads, N, N) + mask.unsqueeze(1).unsqueeze(0)
+    attn = attn.view(-1, self.num_heads, N, N)
+    attn = self.softmax(attn)
+else:
+    attn = self.softmax(attn)
+```
+
+> 上面操作很容易理解：对于**注意力计算**：计算$QK^T$之后，得到各个点的**权重**，然后把这个权重加权到$V$上，上面操作通过加$-100$然后通过softmax处理，那么不属于分区内的“点”（比如53组合）权重就会被处理为0
 
 ## 三、多模态backbone
 
 这部分内容主要介绍在多模态算法中常用的几类`backbone`，主要为代码（SAM/Clip等）
 > 多模态算法涉及到的`backbone`比较杂，传统卷积/Transformer都有
 
+简短介绍：`Clip`：将文本和图像已经通过对齐；`SAM`：主要用来作分割（简单理解为：抠图）
+```python
+# Clip
+'''
+预先下载/直接transformer下载：
+config.json, preprocessor_config.json, tokenizer.json vocab.json pytorch_model.bin
+'''
+import transformers
+import torch
+import torch.nn as nn
+from transformers import CLIPProcessor, CLIPModel
 
+class ClipBackbone(nn.Module):
+    def __init__(self, ):
+        super(ClipBackbone, self).__init__()
+        self.clip_model = CLIPModel.from_pretrained('./clip/')
+        self.processor = CLIPProcessor.from_pretrained('./clip/')
+        ...
+        # 加载llm
+        ...
+    def forward(self, image, text):
+        # clip提取特征
+        inputs = self.processor(images= image, return_tensors= "pt")
+        with torch.no_grad():
+            image_embeddings = self.clip_model.get_image_features(**inputs)
+        ...
+        # 将image_embeddings和llm尺寸对其
+        ...
+        # llm处理
+        ...
+        return image_embeddings
+```
+输出为维度`config.json`中参数`"projection_dim": 768`
 
 # 参考:
 1、https://arxiv.org/pdf/2206.08016
@@ -249,3 +302,5 @@ class DetectionHead(nn.Module):
 11、https://arxiv.org/pdf/1807.10165v1
 12、https://arxiv.org/pdf/2103.14030
 13、https://www.cnblogs.com/chentiao/p/18379629
+14、https://github.com/facebookresearch/segment-anything
+15、https://github.com/openai/CLIP
