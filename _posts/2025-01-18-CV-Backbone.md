@@ -6,6 +6,7 @@ extMath: true
 images: true
 address: changsha
 show_footer_image: true
+description: 主要介绍深度学习基础理论————CV中常用Backbone(Resnet/Unet/Vit系列/多模态系列等)以及代码
 ---
 
 主要介绍在CV中常用的Backbone**原理**简易[代码](https://www.big-yellow-j.top/code/cv_backbone.html)（*代码以及原理经常更新*），参考论文中的表格，对不同的任务所使用的backbone如下:

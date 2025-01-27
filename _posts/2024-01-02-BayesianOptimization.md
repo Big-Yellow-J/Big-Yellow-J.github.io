@@ -7,6 +7,7 @@ images: true
 show: true
 show_footer_image: true
 address: changsha
+description: 对贝叶斯优化进行较为全面的介绍，以及部分代码复现
 ---
 
 本文通过结合如下论文以及blog：

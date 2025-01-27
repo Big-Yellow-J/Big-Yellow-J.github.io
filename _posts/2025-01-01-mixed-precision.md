@@ -6,11 +6,8 @@ extMath: true
 images: true
 show_footer_image: true
 address: changsha
+description: 主要介绍训练加速（单/半/混合精度训练）/显存优化（gradient-checkpoint）
 ---
-
-<!-- # 深度学习基础理论————训练加速（单/半/混合精度训练）/显存优化（gradient-checkpoint） -->
-
-主要介绍单精度/半精度/混合精度训练，以及部分框架（DeepSpeed/Apex）
 
 ## 不同精度训练
 
@@ -158,9 +155,9 @@ else:
 
 ## 显存优化
 
-`gradient-checkpoint`参考
+`gradient-checkpoint`参考：https://www.big-yellow-j.top/posts/2025/01/03/DistributeTraining.html
 
-# 参考
+## 参考
 1、https://arxiv.org/pdf/1710.03740
 2、https://www.exxactcorp.com/blog/hpc/what-is-fp64-fp32-fp16
 3、https://zhuanlan.zhihu.com/p/79887894

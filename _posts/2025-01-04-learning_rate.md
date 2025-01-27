@@ -5,6 +5,7 @@ categories: 深度学习基础理论
 address: changsha
 extMath: true
 show_footer_image: true
+description: 主要介绍深度学习基础理论————学习率优化方法(AdaGrad/RMSprop/Adam/Warm-UP)
 ---
 
 <!-- # 深度学习基础理论————学习率优化方法(AdaGrad/RMSprop/Adam/Warm-UP) -->
@@ -237,7 +238,7 @@ def decay_lr_stable(base_lr, epoch_i, batch_i, total_epochs, total_batches, warm
     return rate * base_lr
 ```
 
-# 实践操作
+## 实践操作
 
 有时候需要对不同模型做使用不同学习率（比如说多模态中对于`Vision-Model`和`Text-Model`）可以这么操作：
 ```python

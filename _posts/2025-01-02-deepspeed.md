@@ -5,10 +5,9 @@ categories: 深度学习基础理论
 extMath: true
 show_footer_image: true
 address: changsha
+description: 主要介绍深度学习基础理论————DeepSpeed
 ---
 
-
-<!-- # 深度学习基础理论————DeepSpeed -->
 
 ## `DeepSpeed`原理
 DeepSpeed 是由微软开发的一种深度学习优化库，专为高性能训练和推理而设计，尤其适用于大规模深度学习模型（如 GPT 系列、BERT 等）。它通过一系列技术和优化策略，帮助研究者和开发者高效利用硬件资源，实现快速训练、降低内存使用以及提升推理速度。
@@ -285,11 +284,11 @@ def train(model_engine, optimizer, train_loader, ...):
 3、其他
 实际参数过程中，可能还需要设置`train_batch_size`，`gradient_accumulation_steps`（梯度累计次数），`optimizer`（优化器选择）
 
-# 代码
+## 代码
 
 https://gitee.com/a-ha-a/deep-learning-note/tree/master/DeepLearning-Summary/Computer-Vision/deepspeed
 
-# 参考
+## 参考
 1、https://arxiv.org/pdf/1910.02054  
 2、https://zhuanlan.zhihu.com/p/513571706  
 3、https://zhuanlan.zhihu.com/p/618865052  

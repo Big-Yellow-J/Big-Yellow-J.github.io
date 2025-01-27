@@ -5,6 +5,7 @@ categories: 深度学习基础理论
 address: changsha
 extMath: true
 show_footer_image: true
+description: 深度学习基础理论————分布式训练（模型并行/数据并行/流水线并行/张量并行）
 ---
 
 <!-- # 深度学习基础理论————分布式训练（模型并行/数据并行/流水线并行/张量并行） -->
@@ -26,7 +27,7 @@ show_footer_image: true
 **张量并行** 是一种更精细的并行策略，将矩阵运算中$x,A$拆分，并分配到不同的设备上。这使得单个层可以在多个设备上并行执行，从而提高了训练速度。根据拆分的方式不同，可以分为列并行（Column-wise Parallelism）和行并行（Row-wise Parallelism）等。
 ![img](https://pic4.zhimg.com/v2-af72b2ee7bc9a5949dd3eabe09188851_1440w.jpg)
 
-# 1、并行训练
+## 1、并行训练
 
 ![image](https://pica.zhimg.com/v2-df5581d53c5f00400c201e84233d33d2_1440w.jpg)
 
@@ -698,7 +699,7 @@ class RowParallelLinear(nn.Module):
 ```
 
 
-# 参考
+## 参考
 1、https://www.telesens.co/2019/04/04/distributed-data-parallel-training-using-pytorch-on-aws/
 2、https://github.com/hkproj/pytorch-transformer-distributed
 3、https://mp.weixin.qq.com/s/WdLpHfWLRvDLLxeanFduxA
