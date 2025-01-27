@@ -289,7 +289,7 @@ class ClipBackbone(nn.Module):
 ```
 输出为维度`config.json`中参数`"projection_dim": 768`
 
-# 参考:
+## 参考:
 1、https://arxiv.org/pdf/2206.08016
 2、https://arxiv.org/pdf/1512.03385
 3、https://arxiv.org/pdf/2010.11929
