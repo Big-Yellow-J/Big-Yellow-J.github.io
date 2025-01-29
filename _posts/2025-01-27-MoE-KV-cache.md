@@ -25,7 +25,7 @@ description: 主要介绍深度学习基础理论————混合专家模型�
 
 * 1、**稠密MoE**和 **稀疏MoE**
 
-![1737962357244](image/kvcash/1737962357244.png)
+![1](https://s2.loli.net/2025/01/27/RviK5P6ZwBqYSAz.png)
 
 检验而言：如上图所示，对于**稠密的MoE**（`Dense MoE`）而言（假设4个FFN）在通过Gate处理之后输入`X`要通过每一个FFN进行处理，而对于**稀疏的MoE**（`Sparse MoE`）而言，通过Gate处理只去选择部分FFN进行处理
 
