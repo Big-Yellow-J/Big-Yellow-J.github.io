@@ -9,9 +9,7 @@ show_footer_image: true
 description: 主要介绍深度学习基础理论————混合专家模型（MoE）
 ---
 
-## 深度学习基础理论————MoE
-
-主要介绍 **混合专家模型**（MoE）并且结合代码进行解释
+主要介绍 **混合专家模型**（MoE）、`KV cache`并且结合代码进行解释
 
 ## 1、混合专家模型（`MoE`）
 
@@ -19,7 +17,7 @@ description: 主要介绍深度学习基础理论————混合专家模型�
 1、**稀疏的MoE层**：这些层代替了传统 Transformer 模型中的前馈网络 (FFN) 层。MoE 层包含若干“专家”(例如 8 个)，每个专家本身是一个独立的神经网络。在实际应用中，这些专家通常是前馈网络 (FFN)，但它们也可以是更复杂的网络结构，甚至可以是 MoE 层本身，从而形成层级式的 MoE 结构。
 2、**门控网络/路由（Gate Layer/route Layer）**：这个部分用于决定哪些令牌 (token) 被发送到哪个专家。例如，在下图中，“More”这个令牌可能被发送到第二个专家，而“Parameters”这个令牌被发送到第一个专家。有时，一个令牌甚至可以被发送到多个专家。令牌的路由方式是 MoE 使用中的一个关键点，因为路由器由学习的参数组成，并且与网络的其他部分一同进行预训练。
 
-![](https://s2.loli.net/2025/01/27/raYIo3P9lb5tgGJ.png)
+![1](https://s2.loli.net/2025/01/27/raYIo3P9lb5tgGJ.png)
 
 换言之也就是说：将原始的Transformer框架中的`FFN Layer`（全连接层）替换成一个由`Gate Layer`和若干的`FFN Layer`组成的结构，通过`Gate`来确定一个输入将会被那些`FFN`进行处理，而后对被`FFN`处理后的内容进行加权处理。
 
@@ -27,7 +25,7 @@ description: 主要介绍深度学习基础理论————混合专家模型�
 
 * 1、**稠密MoE**和 **稀疏MoE**
 
-![](https://s2.loli.net/2025/01/27/RviK5P6ZwBqYSAz.png)
+![1737962357244](image/kvcash/1737962357244.png)
 
 检验而言：如上图所示，对于**稠密的MoE**（`Dense MoE`）而言（假设4个FFN）在通过Gate处理之后输入`X`要通过每一个FFN进行处理，而对于**稀疏的MoE**（`Sparse MoE`）而言，通过Gate处理只去选择部分FFN进行处理
 
@@ -114,11 +112,12 @@ class Gate(nn.Module):
         weights *= self.route_scale
         return weights.type_as(x), indices
 ```
+
 整个过程分析：输入数据`x`（假设维度为：（`bs, num_tokens, embed_dim`）），通过线性（W：（`n_routed_experts，embed_dim`）计算得到：`bs，num_tokens，n_routed_experts`）和归一化处理：（`bs，num_tokens， n_routed_experts`）这样一来就可以知道每个tokens的一个分布概率（到底要走哪一个FFN）。如果`n_expert_groups`数量>1，也就是说如果`Gate`数量不止一个，那么也就只需要去选择`topK`即可然后用一个`mask`将其他的给mask掉即可（`scores = (scores * mask.unsqueeze(-1)).flatten(1)`）然后再去对挑选得到的`Gate`选择`topk`（`indices = torch.topk(scores, self.topk, dim=-1)[1]`）
 
 2、`FFN Layer`原理
-
 这部分代码就比较简单（直接用线性层处理即可）：
+
 ```python
 class Expert(nn.Module):
     """
@@ -156,6 +155,7 @@ class Expert(nn.Module):
 ```
 
 最后得到`MoE`代码如下：
+
 ```python
 class MoE(nn.Module):
     """
@@ -224,6 +224,7 @@ class MoE(nn.Module):
 1、获取权重以及索引：`weights, indices = self.gate(x)`
 2、计算每个专家索引：`counts = torch.bincount(indices.flatten(), minlength=self.n_routed_experts).tolist()`通过`torch.bincount`返回数值个数，比如说：[1,2,2,2,3]，那么返回：[0,1,3,1]（0出现0次，1出现1次。。。。）相当于对每个专家都编号了，只需要根据出现次数，来索引出来
 3、计算加权得分：
+
 ```python
 for i in range(self.experts_start_idx, self.experts_end_idx):
     if counts[i] == 0:
@@ -266,6 +267,134 @@ $$
 同时也可以采用另外的方法：
 1、[`GShard`](https://arxiv.org/pdf/2006.16668)设定一个 **专家容量**：设定一个阈值，定义一个专家能处理多少令牌。如果两个专家的容量都达到上限，令牌就会溢出，并通过残差连接传递到下一层，或在某些情况下被完全丢弃。对于专家容量可以借鉴下面处理方式：$\frac{\text{tokens per batch}}{\text{number of experts}}\times \text{capacity factor}$（$\text{capacity factor}$可以选择**1-1.25之间**）
 
+## `KV cache`
+
+Transformer模型推理过程为：
+![image.png](https://jalammar.github.io/images/t/transformer_decoding_2.gif)
+
+目前主流的LLM框架主要都是使用的`decoder-only`（也就是说只用`Transformer`中的`decoder`结构）
+![image.png](https://s2.loli.net/2025/01/29/sAn2qZafbjHiIwk.png)
+
+> 对于LLM任务（通常采用**自回归过程**）可以简单认为是一种“完形填空”的过程，在输入前面i-1个词然后推测第i个词
+
+回归上面的推理过程（翻译输出：i am a student）：模型中在输出'a'的时候会将'i am'都输入到模型中。理解这个过程（假设就是直接输出文本：i am a student）：
+
+> 参考：https://zhuanlan.zhihu.com/p/662498827
+
+`step1`: in: Q=K<S\> || out: i
+$Attention_1: Q_1K_1^T$
+`step2`: in: Q=K=<s\>,i || out: i am
+$Attention_1: Q_1K_1^T \\ Attention_2:Q_2K_1^T, Q_2K_2^T$
+`step3`: in: Q=K=<s\>, i, am || out: i am a
+$Attention_1: Q_1K_1^T \\ Attention_2:Q_2K_1^T, Q_2K_2^T \\ 
+Attention_3: Q_3K_1^T, Q_3K_2^T, Q_3K_3^T$
+`step4`: in: Q=K=<s\>, i, am, a || out: i am a student
+$Attention_1: Q_1K_1^T \\ Attention_2:Q_2K_1^T, Q_2K_2^T \\
+Attention_3: Q_3K_1^T, Q_3K_2^T, Q_3K_3^T \\
+Attention_4: Q_4K_1^T, Q_4K_2^T, Q_4K_3^T, Q_4K_4^T
+$
+
+不过上面操作过程中会有问题：
+计算有很大冗余（每次生成新的词，都需要回归一下之前生成的词），**并且每次计算$Attention_i$只与$Q_i$相关**
+对于后面一点理解（以`step2`为例）：
+我目前已经有两个$Q$：$Q_1:<s>, Q_2:\text{i}$并且还有K和V（这两个也是有两个值），我会初始化一个$Q_3$对于下一个值我就用$Q_3$进行表示，然后我就需要去计算注意力得分（只用Q,K,V这三个值计算过程举例）：$QK^T=(bs, 3, embed_dim)(bs, embed_dim, 2)=(bs, 3, 2)$，接下来计算$QK^TV=(bs, 3, 2)(bs,2,embed_dim)=(bs, 3, embed_dim)$那么在这个过程中就会有一个有意思问题：**Q会有重复的（dim=3，前面两个都是前面已经计算过的）**（观察上面`Attention`计算可以发现:每次计算$Attention_i$只与$Q_i$相关）。因此就有`KV-cache`理论：既然每次都是Q在变化，但是K和V都是用的之前的，那我之前每次就只用新的Q去和旧的KV计算即可（将KV存储起来），`KV-cache`一种典型的用内存换速度的方法
+![image](https://pic2.zhimg.com/v2-655b95ebfb7808563bead28bc89bb459_1440w.jpg)
+
+简易`Demo`:
+
+```python
+import torch
+
+class KVCache:
+    def __init__(self):
+        self.k = None
+        self.v = None
+
+    def update(self, k, v):
+        if self.k is None:
+            self.k = k
+            self.v = v
+        else:
+            self.k = torch.cat([self.k, k], dim=1)  # 在序列维度上拼接
+            self.v = torch.cat([self.v, v], dim=1)
+
+    def get(self):
+        return self.k, self.v
+
+class Decoder(torch.nn.Module):
+    def __init__(self, embed_dim, hidden_dim, vocab_size, num_heads=8):
+        super().__init__()
+        self.embedding = torch.nn.Embedding(vocab_size, embed_dim)
+        self.attention = torch.nn.MultiheadAttention(embed_dim, num_heads)
+        self.linear = torch.nn.Linear(embed_dim, vocab_size)
+        self.kv_cache = KVCache()
+
+    def forward(self, input_ids):
+        x = self.embedding(input_ids)  # (batch_size, seq_len, embed_dim)
+
+        # 获取 KV-cache
+        k, v = self.kv_cache.get()
+
+        # 计算 Attention
+        if k is not None and v is not None:
+            # 使用 KV-cache
+            attn_output, _ = self.attention(x, k, v)  # (batch_size, seq_len, embed_dim)
+        else:
+            # 初始状态，没有 KV-cache
+            attn_output, _ = self.attention(x, x, x)  # (batch_size, seq_len, embed_dim)
+
+        # 更新 KV-cache
+        self.kv_cache.update(x, x)
+
+        # 残差连接
+        x = x + attn_output
+
+        # 线性变换
+        logits = self.linear(x)  # (batch_size, seq_len, vocab_size)
+
+        return logits
+
+batch_size = 2
+seq_len = 4
+embed_dim = 64
+hidden_dim = 256
+vocab_size = 10000  # 假设词汇表大小为 10000
+decoder = Decoder(embed_dim, hidden_dim, vocab_size)
+input_ids = torch.randint(0, vocab_size, (batch_size, seq_len))  # (batch_size, seq_len)
+logits = decoder(input_ids)  # (batch_size, seq_len, vocab_size)
+print("Logits shape:", logits.shape)
+```
+
+使用`Huggingface`的`transformers`框架代码：https://huggingface.co/docs/transformers/main/en/kv_cache。只需要类似下面操作：
+
+```python
+import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM
+ckpt = "microsoft/Phi-3-mini-4k-instruct"
+
+tokenizer = AutoTokenizer.from_pretrained(ckpt)
+model = AutoModelForCausalLM.from_pretrained(ckpt, torch_dtype=torch.float16).to("cuda:0")
+inputs = tokenizer("Fun fact: The shortest", return_tensors="pt").to(model.device)
+
+# 具体参数：https://huggingface.co/docs/transformers/en/main_classes/text_generation
+out = model.generate(**inputs, do_sample=False, max_new_tokens=23, use_cache=True)
+print(tokenizer.batch_decode(out, skip_special_tokens=True)[0])
+
+out = model.generate(**inputs, do_sample=False, max_new_tokens=23)
+print(tokenizer.batch_decode(out, skip_special_tokens=True)[0])
+```
+
+在`Transformers`中不同`cache`方式：
+| 缓存类型              | 描述                                                         | 适用场景                                             | 优点                                                         | 缺点                                                         |
+|-----------------------|--------------------------------------------------------------|----------------------------------------------------|--------------------------------------------------------------|--------------------------------------------------------------|
+| **StaticCache**        | 静态缓存，缓存所有的 K 和 V，不更新。              | 短序列生成、内存充足的场景       | 实现简单，快速        | 不适合长序列生成，内存消耗较大                                  |
+| **OffloadedStaticCache** | 静态缓存，但将缓存内容卸载到外部存储。      | 内存受限的环境，长序列生成         | 减少显存占用，适合大规模生成      | 存取速度较慢，可能影响生成速度                                   |
+| **SlidingWindowCache**  | 滑动窗口缓存，缓存一个固定大小的窗口。    | 长序列生成、内存有限的场景   | 限制内存消耗，适合长序列生成                | 窗口太小可能丢失上下文信息，影响生成效果                        |
+| **HybridCache**         | 混合缓存，结合静态缓存和滑动窗口缓存。   | 长序列生成，要求平衡内存和上下文    | 平衡内存消耗和上下文保留                             | 比静态缓存更复杂，可能需要更多内存管理和计算资源                |
+| **MambaCache**          | 高效的缓存实现，针对推理速度和内存占用进行了优化。               | 高性能计算环境、高并发推理任务                       | 高度优化，适合大规模并行推理                                  | 可能需要特定硬件支持，复杂度较高                                |
+| **QuantizedCache**      | 量化缓存，减少存储需求。                                       | 内存受限的设备、需要减少内存占用的场景               | 大幅度减少内存占用，适合嵌入式设备                           | 量化可能导致精度损失，影响生成质量                             |
+
+争对上面描述其实`KV-cahce`是一种用存储换速度的方法，因此，对于KV存储进行优化就十分有必要了！
 
 ## 参考
 
@@ -275,3 +404,6 @@ $$
 4、https://github.com/deepseek-ai/DeepSeek-V3/blob/main/inference/model.py
 5、https://arxiv.org/pdf/2106.05974
 6、https://arxiv.org/pdf/2006.16668
+7、https://cdn.openai.com/research-covers/language-unsupervised/language_understanding_paper.pdf
+8、https://jalammar.github.io/illustrated-transformer/
+9、https://zhuanlan.zhihu.com/p/662498827
