@@ -11,6 +11,10 @@ description: 主要介绍深度学习基础理论————混合专家模型�
 
 主要介绍 **混合专家模型**（MoE）、`KV cache`并且结合代码进行解释
 
+# 深度学习基础理论————KV cache/MoE/MLA
+
+主要介绍 **混合专家模型**（MoE）、`KV cache`并且结合代码进行解释
+
 ## 1、混合专家模型（`MoE`）
 
 参考[HuggingFace](https://huggingface.co/blog/zh/moe#%E4%BB%80%E4%B9%88%E6%98%AF%E6%B7%B7%E5%90%88%E4%B8%93%E5%AE%B6%E6%A8%A1%E5%9E%8B)中介绍：混合专家模型主要由两部分构成：
@@ -23,14 +27,13 @@ description: 主要介绍深度学习基础理论————混合专家模型�
 
 ---
 
-* 1、**稠密MoE**和 **稀疏MoE**
+### 1、**稠密MoE**和 **稀疏MoE**
 
 ![1](https://s2.loli.net/2025/01/27/RviK5P6ZwBqYSAz.png)
 
 检验而言：如上图所示，对于**稠密的MoE**（`Dense MoE`）而言（假设4个FFN）在通过Gate处理之后输入`X`要通过每一个FFN进行处理，而对于**稀疏的MoE**（`Sparse MoE`）而言，通过Gate处理只去选择部分FFN进行处理
 
-* 2、`MoE`原理
-
+### 2、`MoE`原理
 
 1、`Gate/route`原理
 输入数据$x$，通过一个线性层进行处理：
@@ -116,8 +119,8 @@ class Gate(nn.Module):
 整个过程分析：输入数据`x`（假设维度为：（`bs, num_tokens, embed_dim`）），通过线性（W：（`n_routed_experts，embed_dim`）计算得到：`bs，num_tokens，n_routed_experts`）和归一化处理：（`bs，num_tokens， n_routed_experts`）这样一来就可以知道每个tokens的一个分布概率（到底要走哪一个FFN）。如果`n_expert_groups`数量>1，也就是说如果`Gate`数量不止一个，那么也就只需要去选择`topK`即可然后用一个`mask`将其他的给mask掉即可（`scores = (scores * mask.unsqueeze(-1)).flatten(1)`）然后再去对挑选得到的`Gate`选择`topk`（`indices = torch.topk(scores, self.topk, dim=-1)[1]`）
 
 2、`FFN Layer`原理
-这部分代码就比较简单（直接用线性层处理即可）：
 
+这部分代码就比较简单（直接用线性层处理即可）：
 ```python
 class Expert(nn.Module):
     """
@@ -155,7 +158,6 @@ class Expert(nn.Module):
 ```
 
 最后得到`MoE`代码如下：
-
 ```python
 class MoE(nn.Module):
     """
@@ -224,7 +226,6 @@ class MoE(nn.Module):
 1、获取权重以及索引：`weights, indices = self.gate(x)`
 2、计算每个专家索引：`counts = torch.bincount(indices.flatten(), minlength=self.n_routed_experts).tolist()`通过`torch.bincount`返回数值个数，比如说：[1,2,2,2,3]，那么返回：[0,1,3,1]（0出现0次，1出现1次。。。。）相当于对每个专家都编号了，只需要根据出现次数，来索引出来
 3、计算加权得分：
-
 ```python
 for i in range(self.experts_start_idx, self.experts_end_idx):
     if counts[i] == 0:
@@ -234,11 +235,14 @@ for i in range(self.experts_start_idx, self.experts_end_idx):
     y[idx] += expert(x[idx]) * weights[idx, top, None]
 ```
 
-* 3、[平衡不同专家之间的负载](https://arxiv.org/pdf/2106.05974)
+### 3、[平衡不同专家之间的负载](https://arxiv.org/pdf/2106.05974)
 
-如果涉及到多个专家，很可能就会出现一种情况：**只有部分的专家被使用**进而导致负载不均衡。那么可以通过 **负载均衡损失**（`Load Balancing Loss`）(如上图所示)计算主要为：
+如果涉及到多个专家，很可能就会出现一种情况：**只有部分的专家被使用**进而导致负载不均衡。那么可以通过 **负载均衡损失**（`Load Balancing Loss`）计算主要为：
 1、`importance loss`（重要性损失）
 回到上面对于`router`函数（$s = \text{softmax}(W_{gate}x+b)$）在[论文](https://arxiv.org/pdf/2106.05974)中对于重要性损失定义如下：
+
+> 路由器函数为：$s = \text{Softmax}(\text{TopK}(W_{gate}x+n, k))$，区别在于补充一个高斯分布的$n$，以及选择`TopK`个路由器然后再去通过`softmax`进行处理（因为选择`TopK`这样一来其他的都是负无穷在通过`softmax`处理之后值为0）
+> 在`DeepSeek V-3`里面也是这样操作的，选择`TopK`
 
 $$
 L_{importance}(x)=(\frac{\text{std(x)}}{\text{mean}(x)})^2
@@ -248,7 +252,7 @@ $$
 
 2、`Load Loss`：重要性损失旨在保证所有专家平均而言具有相似的路由权重。但是不难想到这些看上去有着总体趋于平衡的权重的路由配置，仍然有一小部分专家获得了所有分配，如下图：
 
-![](https://s2.loli.net/2025/01/27/z84Yur6U9qbAhma.png)
+![1](https://s2.loli.net/2025/01/27/z84Yur6U9qbAhma.png)
 
 首先，对于专家选择阈值：$threshold_k(x):= max_k(Wx+ \phi)$，其中$\phi$代表前向传播过程中的采样噪声，$max_k$代表选择第$k$个最大的值，对于专家的负载：指的是在整个批次中的使用情况：$load_i(X)=\sum_{x\in X}p_i(x)$对于这个概率的计算：
 
@@ -264,8 +268,20 @@ $$
 
 最后损失函数为：$L=\frac{1}{2}L_{importance}(X)+ \frac{1}{2}L_{load}(X)$
 
+---
+
+借鉴[这部分描述](https://newsletter.maartengrootendorst.com/p/a-visual-guide-to-mixture-of-experts)对于`load balancing loss`描述
+
+![2](https://s2.loli.net/2025/01/31/w9y5KHAVNIuPOcr.png)
+
+对于每个文本都会选择一个专家模型进行输入，因此都会通过路由器去计算他们的“得分”，去将这部分得分加起来，然后最小化$L_{load}(X)=(\frac{std(load(X))}{mean(load(X))})^2$这部分损失
+
+![1](https://s2.loli.net/2025/01/31/mgJNyla79AK2Fxr.png)
+
+---
+
 同时也可以采用另外的方法：
-1、[`GShard`](https://arxiv.org/pdf/2006.16668)设定一个 **专家容量**：设定一个阈值，定义一个专家能处理多少令牌。如果两个专家的容量都达到上限，令牌就会溢出，并通过残差连接传递到下一层，或在某些情况下被完全丢弃。对于专家容量可以借鉴下面处理方式：$\frac{\text{tokens per batch}}{\text{number of experts}}\times \text{capacity factor}$（$\text{capacity factor}$可以选择**1-1.25之间**）
+1、[`GShard`](https://arxiv.org/pdf/2006.16668)设定一个 **专家容量**：**设定一个阈值，定义一个专家能处理多少令牌。如果两个专家的容量都达到上限，令牌就会溢出，并通过残差连接传递到下一层，或在某些情况下被完全丢弃。**对于专家容量可以借鉴下面处理方式：$\frac{\text{tokens per batch}}{\text{number of experts}}\times \text{capacity factor}$（$\text{capacity factor}$可以选择**1-1.25之间**）
 
 ## `KV cache`
 
@@ -295,9 +311,11 @@ Attention_4: Q_4K_1^T, Q_4K_2^T, Q_4K_3^T, Q_4K_4^T
 $
 
 不过上面操作过程中会有问题：
-计算有很大冗余（每次生成新的词，都需要回归一下之前生成的词），**并且每次计算$Attention_i$只与$Q_i$相关**
-对于后面一点理解（以`step2`为例）：
-我目前已经有两个$Q$：$Q_1:<s>, Q_2:\text{i}$并且还有K和V（这两个也是有两个值），我会初始化一个$Q_3$对于下一个值我就用$Q_3$进行表示，然后我就需要去计算注意力得分（只用Q,K,V这三个值计算过程举例）：$QK^T=(bs, 3, embed_dim)(bs, embed_dim, 2)=(bs, 3, 2)$，接下来计算$QK^TV=(bs, 3, 2)(bs,2,embed_dim)=(bs, 3, embed_dim)$那么在这个过程中就会有一个有意思问题：**Q会有重复的（dim=3，前面两个都是前面已经计算过的）**（观察上面`Attention`计算可以发现:每次计算$Attention_i$只与$Q_i$相关）。因此就有`KV-cache`理论：既然每次都是Q在变化，但是K和V都是用的之前的，那我之前每次就只用新的Q去和旧的KV计算即可（将KV存储起来），`KV-cache`一种典型的用内存换速度的方法
+计算有很大冗余（每次生成新的词，都需要回归一下之前生成的词），**并且每次计算$Attention_i$只与$Q_i$相关**对于后面一点理解（以`step2`为例）：
+我目前已经有两个$Q$：$Q_1$:\<s>, $Q_2:\text{i}$。并且还有K和V（这两个也是有两个值），我会初始化一个$Q_3$对于下一个值我就用$Q_3$进行表示，然后我就需要去计算注意力得分（只用Q,K,V这三个值计算过程举例）：
+$QK^T=(bs, 3, embed_dim)(bs, embed_dim, 2)=(bs, 3, 2)$，接下来计算$QK^TV=(bs, 3, 2)(bs,2,embed_dim)=(bs, 3, embed_dim)$
+那么在这个过程中就会有一个有意思问题：**Q会有重复的（dim=3，前面两个都是前面已经计算过的）**（观察上面`Attention`计算可以发现:每次计算$Attention_i$只与$Q_i$相关）。因此就有`KV-cache`理论：既然每次都是Q在变化，但是K和V都是用的之前的，那我之前每次就只用新的Q去和旧的KV计算即可（将KV存储起来），`KV-cache`一种典型的用内存换速度的方法
+
 ![image](https://pic2.zhimg.com/v2-655b95ebfb7808563bead28bc89bb459_1440w.jpg)
 
 简易`Demo`:
@@ -385,8 +403,9 @@ print(tokenizer.batch_decode(out, skip_special_tokens=True)[0])
 ```
 
 在`Transformers`中不同`cache`方式：
-| 缓存类型              | 描述                                                         | 适用场景                                             | 优点                                                         | 缺点                                                         |
-|-----------------------|--------------------------------------------------------------|----------------------------------------------------|--------------------------------------------------------------|--------------------------------------------------------------|
+
+| 缓存类型              | 描述                                                         | 适用场景              | 优点                | 缺点              |
+|-----------------------|--------------------------------------------------------------|----------------------------------|--------------------------------------------------------------|--------------------------------------------------------------|
 | **StaticCache**        | 静态缓存，缓存所有的 K 和 V，不更新。              | 短序列生成、内存充足的场景       | 实现简单，快速        | 不适合长序列生成，内存消耗较大                                  |
 | **OffloadedStaticCache** | 静态缓存，但将缓存内容卸载到外部存储。      | 内存受限的环境，长序列生成         | 减少显存占用，适合大规模生成      | 存取速度较慢，可能影响生成速度                                   |
 | **SlidingWindowCache**  | 滑动窗口缓存，缓存一个固定大小的窗口。    | 长序列生成、内存有限的场景   | 限制内存消耗，适合长序列生成                | 窗口太小可能丢失上下文信息，影响生成效果                        |
@@ -407,3 +426,4 @@ print(tokenizer.batch_decode(out, skip_special_tokens=True)[0])
 7、https://cdn.openai.com/research-covers/language-unsupervised/language_understanding_paper.pdf
 8、https://jalammar.github.io/illustrated-transformer/
 9、https://zhuanlan.zhihu.com/p/662498827
+10、https://newsletter.maartengrootendorst.com/p/a-visual-guide-to-mixture-of-experts
