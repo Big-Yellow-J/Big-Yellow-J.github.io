@@ -19,9 +19,27 @@
   </div>
   {% endif %}
   
-  <div class="post">
+  <!-- <div class="post">
     {{ content }}
+  </div> -->
+  <div class="post">
+    <!-- 处理内容中的图片 -->
+    {% assign content_with_images = content | split: '<img' %}
+    {% for part in content_with_images %}
+      {% if part contains 'src="' %}
+        <!-- 处理图片 -->
+        {% assign img_src = part | split: 'src="' | last | split: '"' | first %}
+        {% assign img_alt = part | split: 'alt="' | last | split: '"' | first %}
+        
+        {% if img_alt == '' %}
+          {% assign img_alt = 'image' %}
+        {% endif %}
+        
+        <img src="{{ img_src }}" alt="{{ img_alt }}" style="max-width: 100%; height: auto;">
+      {% endif %}
+    {% endfor %}
   </div>
+  
   <!-- 在文章内容下方添加图片 -->
   {% if page.show_footer_image %}
   <div style="text-align: center; margin-top: 20px;">
