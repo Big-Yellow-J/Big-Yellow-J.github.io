@@ -30,7 +30,23 @@
     {{ content_with_images }}
   </div>
 
-  
+  <!-- Prism.js CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/themes/prism.css" rel="stylesheet">
+
+  <!-- Prism.js JS -->
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/prism.js"></script>
+
+  <!-- Prism.js 语言支持 -->
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-python.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-markup.min.js"></script>
+
+  <!-- Prism.js 行号插件 -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+  <!-- Prism.js 代码折叠插件 -->
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/previewers/prism-previewers.min.js"></script>
+
   <!-- 在文章内容下方添加图片 -->
   {% if page.show_footer_image %}
   <div style="text-align: center; margin-top: 20px;">

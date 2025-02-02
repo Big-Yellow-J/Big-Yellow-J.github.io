@@ -21,6 +21,7 @@ api_info:
   seniverse: SOOcdTxiop033YKPB
 
 # 这些不要动
+highlighter: prism
 permalink: /posts/:year/:month/:day/:title.html
 kramdown:
   auto_ids: true
