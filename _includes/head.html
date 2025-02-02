@@ -61,6 +61,19 @@
     blog.initDarkMode(localStorage.darkMode)
   </script>
 
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      // 为所有代码块添加 .collapsible 类
+      document.querySelectorAll('pre code').forEach(function(block) {
+        block.classList.add('collapsible');
+      });
+
+      // 初始化 Prism.js 的折叠插件
+      Prism.plugins.collapsible();
+    });
+  </script>
+
+
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
