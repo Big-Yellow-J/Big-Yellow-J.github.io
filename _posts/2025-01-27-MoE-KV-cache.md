@@ -11,10 +11,6 @@ description: 主要介绍深度学习基础理论————混合专家模型�
 
 主要介绍 **混合专家模型**（MoE）、`KV cache`并且结合代码进行解释
 
-# 深度学习基础理论————KV cache/MoE/MLA
-
-主要介绍 **混合专家模型**（MoE）、`KV cache`并且结合代码进行解释
-
 ## 1、混合专家模型（`MoE`）
 
 参考[HuggingFace](https://huggingface.co/blog/zh/moe#%E4%BB%80%E4%B9%88%E6%98%AF%E6%B7%B7%E5%90%88%E4%B8%93%E5%AE%B6%E6%A8%A1%E5%9E%8B)中介绍：混合专家模型主要由两部分构成：
@@ -316,7 +312,7 @@ $
 $QK^T=(bs, 3, embed_dim)(bs, embed_dim, 2)=(bs, 3, 2)$，接下来计算$QK^TV=(bs, 3, 2)(bs,2,embed_dim)=(bs, 3, embed_dim)$
 那么在这个过程中就会有一个有意思问题：**Q会有重复的（dim=3，前面两个都是前面已经计算过的）**（观察上面`Attention`计算可以发现:每次计算$Attention_i$只与$Q_i$相关）。因此就有`KV-cache`理论：既然每次都是Q在变化，但是K和V都是用的之前的，那我之前每次就只用新的Q去和旧的KV计算即可（将KV存储起来），`KV-cache`一种典型的用内存换速度的方法
 
-![image](https://pic2.zhimg.com/v2-655b95ebfb7808563bead28bc89bb459_1440w.jpg)
+![](https://s2.loli.net/2025/02/02/b4p9oAyNEWlZ7mr.gif)
 
 简易`Demo`:
 

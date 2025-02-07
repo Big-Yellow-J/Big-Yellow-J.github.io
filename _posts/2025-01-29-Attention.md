@@ -9,13 +9,39 @@ show_footer_image: true
 description: 主要介绍各类Attention(Flash Attention/MLA/Page Attention)
 ---
 
-## 深度学习基础理论————各类Attention操作
+## Attention操作以及内存优化管理
 
-## 1、`Scaled Dot-Product Attention`
+TODO:
+- [] 1、如何理解：论文（MLA）中提到一个问题：如何结合`RoPE`呢？
+https://spaces.ac.cn/archives/10091
+https://zhuanlan.zhihu.com/p/19585986234
 
+- [ ] 2、vLLm更加多参数代码
+- [ ] 3、大模型整体推理过程
+- [ ] 4、Scaled Dot-Product Attention还有那些补充计算方法
+
+## 一、Attention操作
+
+### 1、`Multi Head Attention`
 https://spaces.ac.cn/archives/8620
 
-## 2、`Flash Attention`
+### 2、`Casual Attention`
+
+因果注意力的主要目的是限制注意力的计算，使得每个位置的查询只能与当前和之前的位置计算注意力得分，而不能“窥视”未来的位置。具体来说：对于位置𝑖，模型只能考虑位置 1,2,...,𝑖的信息，而不能考虑位置 𝑖+1,𝑖+2,...,𝑛。因此，当计算每个位置的注意力时，键（key）和值（value）的位置会被限制在当前的位置及其之前的位置。实现方式也很简单直接最注意力矩阵进行**屏蔽**即可，比如说注意力矩阵为：
+
+![](https://s2.loli.net/2025/02/07/ovpbyFk3m75laGg.png)
+
+<!-- 在多模态中（[Causal Attention for Vision-Language Tasks](https://arxiv.org/pdf/2103.03493)）因果注意力机制提出：作者认为在数据集里面存在“偏差”，A类数据出现次数远超过B类数据，进而导致模型在实际测试会更加青睐了A类数据回答（换言之就是模型结果会更加倾向数据集中出现次数较多的结果），比如说：
+
+![](https://s2.loli.net/2025/02/07/cCYgiVd8L7fNoke.png)
+
+比如说上图中：`Board+Man`在数据集里面比`“Board+Woman`要多，因此最后结果也会去回答：`Male`。因此作者为了消除这种，提出 **因果注意力** -->
+
+### 3、`Channel Attention`
+
+## 二、内存优化管理
+
+### 1、`Flash Attention`
 
 [论文](https://arxiv.org/pdf/2205.14135)提出，是一种高效的注意力计算方法，旨在解决 Transformer 模型在处理长序列时的计算效率和内存消耗问题。**其核心思想是通过在 GPU 显存中分块执行注意力计算，减少显存读写操作，提升计算效率并降低显存占用**。
 
@@ -53,7 +79,7 @@ print(out.shape)
 1、`q,k,v`：形状为：`(batch_size, seqlen, nheads, headdim)`也就是说一般文本输入为：`(batch_size, seqlen, embed_dim)`要根据设计的`nheads`来处理输入的维度，并且需要保证：`headdim`≤256，于此同时要保证数据类型为：`float16` 或 `bfloat16`
 2、`causal`：`bool`判断是不是使用`causal attention mask`
 
-## 3、`Multi-head Latent Attention`（`MLA`）
+### 2、`Multi-head Latent Attention`（`MLA`）
 
 对于[`KV-cache`](https://www.big-yellow-j.top/posts/2025/01/27/MoE-KV-cache.html)会存在一个问题：在推理阶段虽然可以加快推理速度，但是对于显存占用会比较高（因为`KV`都会被存储下来，导致显存占用高），对于此类问题后续提出`Grouped-Query-Attention（GQA）`以及`Multi-Query-Attention（MQA）`可以降低`KV-cache`的容量问题，但是会导致模型的整体性能会有一定的下降。
 
@@ -74,6 +100,8 @@ $$
 $$
 
 ![MLA完整计算过程](https://s2.loli.net/2025/02/01/54VOc7slBMiXWTK.png)
+
+> 对于上面完整的计算过程，对于Q之所以要计算两次（线降维而后升维）而不是只去计算一次，思路和LoRA的相似，将：$xw$中的$w$分解为两部分更加小的矩阵（对应上述图中的$W^{DQ}\text{和}W^{UQ}$）
 
 从上述公式也容易发现，在`MLA`中只是对缓存进行一个“替换”操作，用一个低纬度的$C_t^{KV}$来代替（也就是说：**只需要存储$c_t^{KV}$即可**）原本的`KV`（或者说将容量多的`KV`进行投影操作，这个过程和[LoRA](https://arxiv.org/pdf/2106.09685)有些许相似），在进行投影操作之后就需要对`attention`进行计算。对于上述公式简单理解：
 假设输入模型（输入到`Attention`）数据为$h_t$（假设为：$n\times d$），在传统的`KV-cache`中会将计算过程中的`KV`不断缓存下来，在后续计算过程中“拿出来”（这样就会导致随着输出文本加多，导致缓存的占用不断累计：$\sum 2n\times d$），因此在`MLA`中的操作就是：对于$h_t$进行压缩：$n \times d \times d \times d_s= n \times d_s$这样一来我就只需要缓存：$n \times d_s$即可（如果需要复原就只需要再去乘一下新的矩阵即可）
@@ -159,20 +187,56 @@ class MLA(nn.Module):
         return x
 ```
 
-- [ ] 如何理解：论文中提到一个问题：如何结合`RoPE`呢？
-
 从上述代码的角度除法理解如何使用`RoPE`，从上面代码上，无论是Q还是KV都是从压缩后的内容中分离除部分内容，然后计算结果
 
-## 4、`Page Attention`（`vLLM`）
+### 3、`Page Attention`（`vLLM`）
 
-https://mloasisblog.com/blog/ML/AttentionOptimization
-https://github.com/vllm-project/vllm
+上述描述中：`Flash Attention`（加快速度）、`MLA`（优化`KV-cache`存储），而`Page Attention`也是一种优化方法（区别于`MLA`，`page attention`是对内存进行分配管理）。参考[论文](https://dl.acm.org/doi/pdf/10.1145/3600006.3613165)中描述，对于`KV-cache`存在3个问题：
 
-## 5、`Multi-Head Latent Attention`
+![](https://s2.loli.net/2025/02/02/lEp4YocVSIghJ1z.png)
 
-https://planetbanatt.net/articles/mla.html
-https://arxiv.org/pdf/2412.19437v1
-https://www.cnblogs.com/theseventhson/p/18683602
+1、**预留浪费 (Reserved)**：为将来可能的 token 预留的空间，这些空间被保留但暂未使用，其他请求无法使用这些预留空间；
+2、**内部内存碎片化问题（internal memory fragmentation）**：系统会为每个请求预先分配一块连续的内存空间，大小基于最大可能长度(比如2048个token)，但实际请求长度往往远小于最大长度，这导致预分配的内存有大量空间被浪费。
+3、**外部内存碎片化问题（external memory fragmentation）**：不同内存块之间的零散空闲空间，虽然总空闲空间足够，但因不连续而难以使用。
+
+![](https://s2.loli.net/2025/02/02/M9DibRVTUFXqxjo.png)
+
+只有 **20.4%-38.2%** 的token是被使用的，大部分都被浪费掉了。`Page Attention`允许在非连续的内存空间中存储连续的 key 和 value 。具体来说，`Page Attention`将每个序列的 `KV-cache` 划分为块，每个块包含固定数量 token 的键和值。在注意力计算期间，`Page Attention`内核可以有效地识别和获取这些块。如何理解上面描述呢？还是借用论文中的描述：
+
+![](https://s2.loli.net/2025/02/02/k6a4xh3AvZWmg9j.png)
+
+比如说按照上面Prompt要输出（假设只输出这些内容）：“fathers brought a car”，一般的套路可能是：比如说：“Four score and seven years ago our xxxxx”（xxx代表预留空间）因为实际不知道到底要输出多少文本，因此会提前预留很长的一部分空间（但是如果只输出4个字符，这预留空间就被浪费了），因此在`page attention`里面就到用一种“分块”的思想处理，以上图为例，分为8个Block每个Block只能存储4个内容，因此就可以通过一个`Block Table`来建立一个表格告诉那些Block存储了多少，存储满了就去其他Blobk继续存储。整个过程如下：
+
+![](https://s2.loli.net/2025/02/02/3lWpNMUQyLojhP9.webp)
+
+这样一来浪费就只会发生在最后一个Block中（比如说存储4个但是只存进去了1个就会浪费3个）
+[代码](https://docs.vllm.ai/en/latest/index.html)操作：
+```bash
+git lfs clone https://www.modelscope.cn/qwen/Qwen1.5-1.8B-Chat.git
+```
+
+```python
+from vllm import LLM, SamplingParams
+import torch
+
+# Sample prompts.
+prompts = [
+    "Who're you?",
+]
+# Create a sampling params object.
+sampling_params = SamplingParams(temperature=0.8, top_p=0.95)
+
+# Create an LLM.
+llm = LLM(model="./Qwen1.5-1.8B-Chat/", dtype= torch.float16, enforce_eager= True)
+# Generate texts from the prompts. The output is a list of RequestOutput objects
+# that contain the prompt, generated text, and other information.
+outputs = llm.generate(prompts, sampling_params)
+# Print the outputs.
+for output in outputs:
+    prompt = output.prompt
+    generated_text = output.outputs[0].text
+    print(f"Prompt: {prompt!r}, Generated text: {generated_text!r}")
+```
 
 ## 参考
 1、https://mloasisblog.com/blog/ML/AttentionOptimization
@@ -182,3 +246,10 @@ https://www.cnblogs.com/theseventhson/p/18683602
 5、https://arxiv.org/pdf/2405.04434
 6、https://spaces.ac.cn/archives/10091
 7、https://zhuanlan.zhihu.com/p/696380978
+8、https://dl.acm.org/doi/pdf/10.1145/3600006.3613165
+9、https://zhuanlan.zhihu.com/p/638468472
+10、https://mloasisblog.com/blog/ML/AttentionOptimization
+11、https://github.com/vllm-project/vllm
+12、https://docs.vllm.ai/en/latest/index.html
+13、https://arxiv.org/pdf/2103.03493
+14、https://www.cnblogs.com/gongqk/p/14772297.html
