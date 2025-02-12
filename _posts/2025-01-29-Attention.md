@@ -9,8 +9,6 @@ show_footer_image: true
 description: 主要介绍各类Attention(Flash Attention/MLA/Page Attention)
 ---
 
-## Attention操作以及内存优化管理
-
 TODO:
 - [] 1、如何理解：论文（MLA）中提到一个问题：如何结合`RoPE`呢？
 https://spaces.ac.cn/archives/10091
@@ -19,6 +17,8 @@ https://zhuanlan.zhihu.com/p/19585986234
 - [ ] 2、vLLm更加多参数代码
 - [ ] 3、大模型整体推理过程
 - [ ] 4、Scaled Dot-Product Attention还有那些补充计算方法
+
+## Attention操作以及内存优化管理
 
 ## 一、Attention操作
 
