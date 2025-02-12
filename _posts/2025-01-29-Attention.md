@@ -211,6 +211,7 @@ class MLA(nn.Module):
 
 这样一来浪费就只会发生在最后一个Block中（比如说存储4个但是只存进去了1个就会浪费3个）
 [代码](https://docs.vllm.ai/en/latest/index.html)操作：
+
 ```bash
 git lfs clone https://www.modelscope.cn/qwen/Qwen1.5-1.8B-Chat.git
 ```
@@ -239,6 +240,7 @@ for output in outputs:
 ```
 
 ## 参考
+
 1、https://mloasisblog.com/blog/ML/AttentionOptimization
 2、https://github.com/vllm-project/vllm
 3、https://arxiv.org/pdf/2205.14135
