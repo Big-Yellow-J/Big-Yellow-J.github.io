@@ -409,7 +409,7 @@ print(tokenizer.batch_decode(out, skip_special_tokens=True)[0])
 | **MambaCache**          | 高效的缓存实现，针对推理速度和内存占用进行了优化。               | 高性能计算环境、高并发推理任务                       | 高度优化，适合大规模并行推理                                  | 可能需要特定硬件支持，复杂度较高                                |
 | **QuantizedCache**      | 量化缓存，减少存储需求。                                       | 内存受限的设备、需要减少内存占用的场景               | 大幅度减少内存占用，适合嵌入式设备                           | 量化可能导致精度损失，影响生成质量                             |
 
-争对上面描述其实`KV-cahce`是一种用存储换速度的方法，因此，对于KV存储进行优化就十分有必要了！
+争对上面描述其实`KV-cahce`是一种用存储换速度的方法，因此，对于KV存储进行优化就十分有必要了！对于`KV-cache`存储优化可以[参考文章](https://www.big-yellow-j.top/posts/2025/01/29/Attention.html)。
 
 ## 参考
 
