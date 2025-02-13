@@ -101,7 +101,6 @@ def initialize(args=None,
                mesh_param=None,
                config_params=None):
     """初始化 DeepSpeed 引擎。
-
     参数:
         args: 一个包含 `local_rank` 和 `deepspeed_config` 字段的对象。
             如果提供了 `config`，此参数是可选的。
@@ -110,42 +109,29 @@ def initialize(args=None,
 
         optimizer: 可选：用户定义的 Optimizer 或返回 Optimizer 对象的 Callable。
             如果提供，将覆盖 DeepSpeed JSON 配置中的任何优化器定义。
-
         model_parameters: 可选：torch.Tensors 或字典的可迭代对象。
             指定需要优化的张量。
-
         training_data: 可选：torch.utils.data.Dataset 类型的数据集。
-
         lr_scheduler: 可选：学习率调度器对象或一个 Callable，接收一个 Optimizer 并返回调度器对象。
             调度器对象应定义 `get_lr()`、`step()`、`state_dict()` 和 `load_state_dict()` 方法。
-
         distributed_port: 可选：主节点（rank 0）用于分布式训练期间通信的空闲端口。
-
         mpu: 可选：模型并行单元对象，需实现以下方法：
             `get_{model,data}_parallel_{rank,group,world_size}()`。
-
         dist_init_required: 可选：如果为 None，将根据需要自动初始化 torch 分布式；
             否则用户可以通过布尔值强制初始化或不初始化。
-
         collate_fn: 可选：合并样本列表以形成一个小批量的张量。
             在从 map-style 数据集中使用批量加载时使用。
-
         config: 可选：可以作为路径或字典传递的 DeepSpeed 配置，
             用于替代 `args.deepspeed_config`。
-
         config_params: 可选：与 `config` 相同，为了向后兼容保留。
 
     返回值:
         返回一个包含 `engine`, `optimizer`, `training_dataloader`, `lr_scheduler` 的元组。
-
         * `engine`: DeepSpeed 运行时引擎，用于包装客户端模型以进行分布式训练。
-
         * `optimizer`: 如果提供了用户定义的 `optimizer`，返回包装后的优化器；
           如果在 JSON 配置中指定了优化器也会返回；否则为 `None`。
-
         * `training_dataloader`: 如果提供了 `training_data`，则返回 DeepSpeed 数据加载器；
           否则为 `None`。
-
         * `lr_scheduler`: 如果提供了用户定义的 `lr_scheduler`，或在 JSON 配置中指定了调度器，
           返回包装后的学习率调度器；否则为 `None`。
     """
@@ -287,6 +273,91 @@ def train(model_engine, optimizer, train_loader, ...):
 ## 代码
 
 https://gitee.com/a-ha-a/deep-learning-note/tree/master/DeepLearning-Summary/Computer-Vision/deepspeed
+
+## ⚠️⚠️⚠️⚠️⚠️
+
+> 😶‍🌫️FROM: https://www.deepspeed.ai/docs/config-json/#batch-size-related-parameters
+
+1、`batch_size`参数设置
+
+在`DeepSpeed`中对于`batch_size`有如下几个重要设置
+
+`train_batch_size`=`train_micro_batch_size_per_gpu` * `gradient_accumulation_steps` * `number of GPUs`
+
+针对上面参数只需要指定部分（2-3）参数即可，参数解释如下：
+`train_micro_batch_size_per_gpu`:一次迭代过程中GPU上的`batch_size`
+`gradient_accumulation_steps`:梯度积累次数
+
+**一般来说**，直接指定上面两个参数即可：
+
+```json
+"gradient_accumulation_steps": 2,
+"train_micro_batch_size_per_gpu": 3
+```
+
+这样一来数据的`batch_size=3`
+
+2、一个更加完整的例子
+
+```python
+import json
+config_path = '/root/LLM/model/dp_config.json'
+with open(config_path, 'r') as f:
+    dp_config = json.load(f)
+args = ModelArgs
+
+model = Transformer(args)
+x = torch.randint(low=0, high= args.vocab_size, size=(1000, 1024), dtype=torch.long)
+target = torch.randint(low=0, high= args.vocab_size, size=(1000, 1024), dtype=torch.long)
+train_data = torch.utils.data.TensorDataset(x, target)
+
+model, _, train_loader, _ = deepspeed.initialize(
+    model= model,
+    training_data = train_data,
+    config_params= dp_config)
+
+for epoch in range(10):  # 设置训练轮数
+    model.train()  # 设置模型为训练模式
+    total_loss = 0
+    for batch in train_loader:
+        inputs, targets = batch
+        print(inputs.shape, targets.shape)
+        inputs, targets = inputs.to(model.device), targets.to(model.device)
+        logits, loss = model(inputs, targets)            
+        model.backward(loss)
+        model.step()
+        total_loss += loss.item()
+    avg_loss = total_loss / len(train_loader)
+    print(f'Epoch {epoch+1}, Average Loss: {avg_loss}')
+```
+
+3、更加多项目
+https://juejin.cn/post/7340849989743919138
+https://github.com/wdndev/llm_interview_note/blob/main/04.%E5%88%86%E5%B8%83%E5%BC%8F%E8%AE%AD%E7%BB%83/deepspeed%E4%BB%8B%E7%BB%8D/deepspeed%E4%BB%8B%E7%BB%8D.md
+
+## 报错处理
+
+1、**索引超出了该张量的尺寸**
+
+```
+../aten/src/ATen/native/cuda/Indexing.cu:1289: indexSelectLargeIndex: block: [4,0,0], thread: [63,0,0] Assertion `srcIndex < srcSelectDimSize` failed.
+...
+[rank0]: RuntimeError: CUDA error: device-side assert triggered
+[rank0]: CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+[rank0]: For debugging consider passing CUDA_LAUNCH_BLOCKING=1.
+[rank0]: Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+```
+
+这种一般是超出索引，一般来说对文本编码中会设置一个`vocab_size`参数，如果设置的参数小于定义数据范围就会报这个错误，一种简单方法就是，直接使用`tokenizer`的`vocab_size`即可，比如说：
+
+```python
+from qwen_tokenizer.tokenization_qwen import QWenTokenizer
+from model.model import Transformer, ModelArgs
+
+tokenizer_qwen = QWenTokenizer('./qwen_tokenizer/qwen.tiktoken')
+args = ModelArgs
+args.vocab_size = tokenizer_qwen.vocab_size
+```
 
 ## 参考
 1、https://arxiv.org/pdf/1910.02054  
