@@ -6,7 +6,7 @@ plugins:
 # SEO相关信息
 title: Big-Yellow-J
 description: Big-Yellow-J的个人博客
-keywords: Blog,DL,ML
+keywords: Blog,DeepLearning,MachineLearning
 author: HuangJie
 author_info:
   github: shangxiaaabb
