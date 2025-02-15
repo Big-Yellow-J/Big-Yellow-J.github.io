@@ -8,8 +8,6 @@ show_footer_image: true
 description: 主要介绍深度学习基础理论————学习率优化方法(AdaGrad/RMSprop/Adam/Warm-UP)
 ---
 
-<!-- # 深度学习基础理论————学习率优化方法(AdaGrad/RMSprop/Adam/Warm-UP) -->
-
 ## 学习率基础[^1]
 
 `学习率（Learning Rate）`在优化算法，尤其是梯度下降和其变体中，扮演着至关重要的角色。它影响着模型训练的速度和稳定性，并且是实现模型优化的关键参数之一。
