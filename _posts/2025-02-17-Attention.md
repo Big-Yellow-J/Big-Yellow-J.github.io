@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 深度学习基础理论————各类Attention(Flash Attention/MLA/Page Attention)
+title: 深度学习常用的Attention操作（MHA/Casual Attention）以及内存优化管理(Flash Attention/Page Attention)
 categories: 深度学习基础理论
 extMath: true
 images: true

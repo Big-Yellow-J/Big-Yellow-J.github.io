@@ -22,7 +22,8 @@ api_info:
 
 # 这些不要动
 highlighter: prism
-permalink: /posts/:year/:month/:day/:title.html
+# permalink: /posts/:year/:month/:day/:title.html
+permalink: /posts/:year/:title.html
 kramdown:
   auto_ids: true
   input: GFM
