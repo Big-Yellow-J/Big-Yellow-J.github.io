@@ -575,12 +575,15 @@ if __name__ == "__main__":
 ## 3、张量并行
 
 张量并行是针对模型中的张量进行拆分，将其放置到不同的GPU上。张量切分方式分为按行进行切分和按列进行切分，分别对应**行并行（Row Parallelism）(权重矩阵按行分割)**与**列并行（Column Parallelism）(权重矩阵按列分割)**。假设计算过程为：$y=Ax$其中$A$为权重
+
 ![image](https://pica.zhimg.com/v2-e75b7dc10809d44e569b5dffbd80fbb6_1440w.jpg)
 
 > From：https://github.com/wdndev/llm_interview_note/blob/main/04.%E5%88%86%E5%B8%83%E5%BC%8F%E8%AE%AD%E7%BB%83/4.%E5%BC%A0%E9%87%8F%E5%B9%B6%E8%A1%8C/4.%E5%BC%A0%E9%87%8F%E5%B9%B6%E8%A1%8C.md
 
 对于方向传播过程中梯度处理：$y=Ax$
+
 > 代码初始化：
+
 ```python
 dist.init_process_group(backend='nccl', timeout=datetime.timedelta(minutes=5))
 local_rank = int(os.environ['LOCAL_RANK'])
@@ -591,10 +594,13 @@ torch.cuda.set_device(device)
 * **列并行**
 
 反向传播1：
+
 $$
 \frac{\partial L}{\partial X}=\frac{\partial L}{\partial X}|_{A_1}+\frac{\partial L}{\partial X}|_{A_2} (\text{all-reduce})
 $$
+
 反向传播2：$Y=\text{cat}[Y_1, Y_2]$
+
 $$
 \frac{\partial L}{\partial Y_1} \\
 \frac{\partial L}{\partial Y_2}
@@ -625,10 +631,13 @@ class ColumnParallelLinear(nn.Module):
 * **行并行**
 
 反向传播1：
+
 $$
 \frac{\partial L}{\partial X}=[\frac{\partial L}{\partial X_1}+\frac{\partial L}{\partial X_2}] (\text{all-gather})
 $$
+
 反向传播2：$Y= Y_1+ Y_2$
+
 $$
 \frac{\partial L}{\partial Y_1}= \frac{\partial L}{\partial Y}
 $$
@@ -697,6 +706,9 @@ class RowParallelLinear(nn.Module):
             dist.all_reduce(self.linear.bias.grad)
 ```
 
+## 混合并行方式
+
+上面所提到的数据并行、张量并行、流水线并行等都属于1D的并行方式（换言之，就是只采用了一种并行方式），但是实际应用可能是多种并行方式同时使用。
 
 ## 参考
 1、https://www.telesens.co/2019/04/04/distributed-data-parallel-training-using-pytorch-on-aws/

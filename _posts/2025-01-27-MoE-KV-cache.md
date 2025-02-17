@@ -274,6 +274,18 @@ $$
 
 ![1](https://s2.loli.net/2025/01/31/mgJNyla79AK2Fxr.png)
 
+`DeepSeek v3`处理负载不均衡问题：在常规的路由器处理得到：
+
+![](https://s2.loli.net/2025/02/17/T2lyNZji4Ra9tI1.png)
+
+在`DeepSeek`中通过不同一个“动态调节”参数：$b_i$来保证不同专家之间的负载平衡
+
+![](https://s2.loli.net/2025/02/17/Ev21bKg64M8DPAV.png)
+
+具体实现方法（参考论文：https://arxiv.org/pdf/2408.15664中的描述）：
+
+![](https://s2.loli.net/2025/02/17/pRwW9xGFfCMKBVb.png)
+
 ---
 
 同时也可以采用另外的方法：
@@ -423,3 +435,5 @@ print(tokenizer.batch_decode(out, skip_special_tokens=True)[0])
 8、https://jalammar.github.io/illustrated-transformer/
 9、https://zhuanlan.zhihu.com/p/662498827
 10、https://newsletter.maartengrootendorst.com/p/a-visual-guide-to-mixture-of-experts
+11、https://arxiv.org/pdf/2412.19437
+12、https://arxiv.org/pdf/2408.15664
