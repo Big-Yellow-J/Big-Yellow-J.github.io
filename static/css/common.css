@@ -124,7 +124,7 @@ input:-webkit-autofill {
 .header .menu {
   margin-right: -9px;
   text-align: right;
-  user-select: none;
+  user-select: auto;
 }
 .header .menu a {
   display: inline-block;

@@ -92,7 +92,7 @@ body {
   box-shadow: 0 0.7em 1.5em -0.5em #14a73e98;
   border-radius: 10em;
   cursor: pointer;
-  user-select: none;
+  user-select: auto;
   -webkit-user-select: none;
   touch-action: manipulation;
 }
