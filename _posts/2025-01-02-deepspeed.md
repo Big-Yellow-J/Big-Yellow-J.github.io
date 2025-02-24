@@ -159,7 +159,7 @@ def train(model_engine, optimizer, train_loader, ...):
 ```
 
 值得注意的是：
-* 1、如果需要访问设备，可以直接用：`model_engine.local_ranl()`进行访问即可  
+* 1、如果需要访问设备，可以直接用：`model_engine.local_rank()`进行访问即可  
 * 2、如果再`deepspeed`参数（更加多的参数可以参考官方文档：[1](https://www.deepspeed.ai/docs/config-json/#zero-optimizations-for-fp16-training)，[2](https://deepspeed.readthedocs.io/en/latest/zero3.html#deepspeed.runtime.zero.config.DeepSpeedZeroConfig.contiguous_gradients)）中设置了 *半精度* 训练，在数据里面要设定：`images.to(model.local_rank).half()`
 
 ---
