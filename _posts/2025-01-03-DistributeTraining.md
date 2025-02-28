@@ -578,8 +578,6 @@ if __name__ == "__main__":
 
 ![image](https://pica.zhimg.com/v2-e75b7dc10809d44e569b5dffbd80fbb6_1440w.jpg)
 
-> From：https://github.com/wdndev/llm_interview_note/blob/main/04.%E5%88%86%E5%B8%83%E5%BC%8F%E8%AE%AD%E7%BB%83/4.%E5%BC%A0%E9%87%8F%E5%B9%B6%E8%A1%8C/4.%E5%BC%A0%E9%87%8F%E5%B9%B6%E8%A1%8C.md
-
 对于方向传播过程中梯度处理：$y=Ax$
 
 > 代码初始化：
