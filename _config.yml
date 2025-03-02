@@ -2,6 +2,11 @@ encoding: utf-8
 
 plugins:
   - jekyll-regex-replace
+  - jekyll-last-modified-at
+
+last_modified_at:
+  enabled: true
+  date_format: "%Y-%m-%d %H:%M:%S"
 
 # SEO相关信息
 title: Big-Yellow-J
