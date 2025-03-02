@@ -27,6 +27,11 @@ kramdown:
   auto_ids: true
   input: GFM
   syntax_highlighter: rouge
+  hard_wrap: true
+  syntax_highlighter_opts:
+    disable: true
+  parse_block_html: true
+  toc_levels: 2..4
 include:
   - _jupyter
 exclude: ['CNAME', 'README.md', 'LICENSE', '_site', 'dist', 'Gemfile', 'Gemfile.lock', 'blog.sh']
@@ -57,15 +62,6 @@ menu:
     url: /pages/about.html
   - title: CV
     url: /pages/cv.html
-
-markdown: kramdown
-kramdown:
-  input: GFM
-  hard_wrap: true
-  syntax_highlighter_opts:
-    disable: true
-  parse_block_html: true
-
 
 # 点击页面文字冒出特效,不需要请设置为false
 extClickEffect: false

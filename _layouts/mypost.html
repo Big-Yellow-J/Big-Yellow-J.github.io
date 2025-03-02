@@ -19,6 +19,14 @@
   </div>
   {% endif %}
   
+  <aside class="sidebar">
+    <h3>目录</h3>
+    <nav>
+      {{ content | toc }}
+    </nav>
+  </aside>
+
+  
   <!-- <div class="post">
     {{ content }}
   </div> -->
@@ -26,21 +34,17 @@
     <!-- 处理内容中的图片 -->
     {% assign content_with_images = content | replace: '<img', '<img class="content-image"' %}
   
-    <!-- 渲染处理过的内容 -->
     {{ content_with_images }}
   </div>
 
   <!-- Prism.js CSS -->
   <link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/themes/prism.css" rel="stylesheet">
-
   <!-- Prism.js JS -->
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/prism.js"></script>
-
   <!-- Prism.js 语言支持 -->
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-javascript.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-python.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-markup.min.js"></script>
-
   <!-- Prism.js 行号插件 -->
   <link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
