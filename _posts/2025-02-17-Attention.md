@@ -15,15 +15,27 @@ description: 主要介绍各类Attention(Flash Attention/MLA/Page Attention)
 
 #### 1、`Multi Head Attention`
 
-https://spaces.ac.cn/archives/8620
+关于 **Multi Head Attention**网上有较多的解释了，这里主要记录如下几点
+
+1、对于注意力计算公式的理解：   
+
+$$
+Attention(Q,K,V)=\text{softmax}(\frac{QK^T}{\sqrt{d_k}})V
+$$
+
+**首先是**对于Q、K、V如此计算缘由，[论文](https://arxiv.org/pdf/1706.03762)最开始是用在NLP中，因此我们以 NLP 角度来解释。假设输入的 Q、K、V 形状为 $n \times d_k$，其中 $n$ 是文本 token 的数量，$d_k$ 是键（Key）和查询（Query）的维度。通过线性变换，我们将 token 处理为 $d_k$ 维的表示。计算 $QK^T$ 后，得到一个 $n \times n$ 的矩阵，可以理解为 token 之间的**注意力权重**。随后，我们用这些注意力权重加权求和 Value 矩阵 $V$，从而更新 token 表示。
+**其次**为什么在公式里面要除$\sqrt{d_k}$呢？**1.防止内积值过大，保持稳定的梯度**。假设 $Q$ 和 $K$ 的每个元素服从均值为 0，方差为 $\sigma^2$ 的分布。$QK^T$ 的每个元素是 $d_k$ 个元素的内积，按照独立同分布假设，结果的方差会随着 $d_k$ 增大而增大，大约是 $\mathbb{V}[QK^T] \approx d_k \sigma^2$。这样，$QK^T$ 的值会随着 $d_k$ 的增大而变大，**导致 softmax 归一化后，梯度变得很小，训练变得不稳定**。通过除以 $\sqrt{d_k}$，可以让 $QK^T$ 的方差大致保持在 1 的数量级，使 softmax 输出不会过于极端（接近 0 或 1），从而保持训练稳定性。**2. 让 softmax 具有合适的分布**，避免梯度消失softmax 计算的是 $e^{x_i}$，如果 $x_i$ 过大，会导致梯度消失，模型难以学习。通过 $\sqrt{d_k}$ 归一化，控制 $QK^T$ 的范围，使 softmax 输出不会过于极端，从而提高训练效果。
+
+2、之所以要采用多头，这个理由也比较简单，在计算 $QK^T$ 时，只能基于一个相同的查询-键表示来计算注意力分数，可能会偏向某一种关系模式，导致模型难以捕捉更多层次的语义信息
+3、在模型结构里面的残差处理思路是：$\text{Norm}(x+f(x))$也就是说先通过MHA处理而后残差连接欸，但是**残差会进一步放大方差** 因此也有提出：$x+\text{Norm}(f(x))$前面提到的两种分别是Post Norm以及Pre Norm。对于那种好那种坏并没有很好的解释，与此同时有另外一种连接方式：$x+ \alpha f(x)$在后续训练中不断更新$\alpha$，[参考](https://spaces.ac.cn/archives/8620)$\alpha$以固定的、很小的步长慢慢递增，直到增加到$\alpha=1$就固定下来。
+
+![](https://s2.loli.net/2025/03/02/2Csoc9fVhWPxHrv.png)
 
 #### 2、`Casual Attention`
 
 因果注意力的主要目的是限制注意力的计算，使得每个位置的查询只能与当前和之前的位置计算注意力得分，而不能“窥视”未来的位置。具体来说：对于位置$𝑖$，模型只能考虑位置 $1,2,...,𝑖$的信息，而不能考虑位置$𝑖+1,𝑖+2,...,𝑛$。因此，当计算每个位置的注意力时，键（key）和值（value）的位置会被限制在当前的位置及其之前的位置。实现方式也很简单直接最注意力矩阵进行**屏蔽**即可，比如说注意力矩阵为：
 
 ![](https://s2.loli.net/2025/02/07/ovpbyFk3m75laGg.png)
-
-#### 3、`Channel Attention`
 
 ### 二、内存优化管理
 
@@ -241,3 +253,4 @@ for output in outputs:
 12、https://docs.vllm.ai/en/latest/index.html
 13、https://arxiv.org/pdf/2103.03493
 14、https://www.cnblogs.com/gongqk/p/14772297.html
+15、https://spaces.ac.cn/archives/8620
