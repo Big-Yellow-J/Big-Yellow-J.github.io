@@ -12,29 +12,9 @@
   <div class="subtitle">
     <span>{{site.author}} 于 
       {{ page.date | date: "%Y-%m-%d" }} 
-      发布 上次更新{{ page.last_modified_at | date: "%Y-%m-%d %H:%M:%S" }}
-        ⏳ 预计阅读 {{ minutes }} 分钟
-      天气:<span id="weather-info"> 加载天气...</span>
-    </span>
-  </div>
-  {% endif %}
-
-  {% if site.extCount %}
-    <span>浏览量</span>
-    <span id="busuanzi_value_page_pv"></span>
-  {% endif %}
-
-
-  <!-- {% if page.date %}
-  <div class="subtitle">
-    <span>{{site.author}} 于 
-      {{ page.date | date: "%Y-%m-%d" }} 
       在 {{ page.address }} 发布 上次更新:
-      {% if page.last_modified_at %}
-        {{ page.last_modified_at | date: "%Y-%m-%d %H:%M:%S" }}
-      {% else %}
-        无法获取更新时间
-      ⏳ 预计阅读 {{ minutes }} 分钟
+      {{ page.last_modified_at | date: "%Y-%m-%d %H:%M:%S" }}
+        ⏳ 预计阅读 {{ minutes }} 分钟
       天气:<span id="weather-info"> 加载天气...</span>
     </span>
     {%- if site.extCount %}
@@ -42,7 +22,7 @@
       <span id="busuanzi_value_page_pv"></span>
     {% endif %}
   </div>
-  {% endif %} -->
+  {% endif %}
     
   <!-- <div class="post">
     {{ content }}
