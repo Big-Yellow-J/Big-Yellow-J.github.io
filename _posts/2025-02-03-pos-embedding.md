@@ -9,12 +9,9 @@ show_footer_image: true
 description: 主要介绍各类位置编码方法以及其代码
 ---
 
-TODO:
-- [ ] 1、整理完各个位置编码原理
-- [ ] 2、整理完代码
-
 ## 一、位置编码
-用于在输入序列中标记每个单词或标记的位置，这有助于模型理解输入序列中各个部分的位置关系，从而更好地捕捉序列中的长距离依赖关系。一般而言就是计算得到位置编码之后将其与input embedding进行相加得到结果。对于位置编码借用[论文](https://arxiv.org/pdf/2104.09864)中的定义：定义输入$N$个tokens：$S_N={w_i}_{i=1}^{N}$，并且在Transformer中要使用（对QKV）位置编码：
+
+位置编码用于在输入序列中标记每个单词或标记的位置，这有助于模型理解输入序列中各个部分的相对位置，从而更好地捕捉序列中的长距离依赖关系。换言之，如果仅在查询（Q）和键（K）上使用位置编码，当我们计算 $QK^T$ 时，模型可以得到不同词之间的相似度得分。例如，"猫"和"狗"之间的得分理论上应该比较高。然而，仅通过计算这些得分，模型可能会忽略掉文本中的局部依赖关系（即相邻的token之间的得分应该也较高）。因此，位置编码有助于模型不仅理解长距离依赖，还能关注局部的顺序信息。一般而言就是计算得到位置编码之后将其与input embedding进行相加得到结果。对于位置编码借用[论文](https://arxiv.org/pdf/2104.09864)中的定义：定义输入$N$个tokens：$S_N={w_i}_{i=1}^{N}$，并且在Transformer中要使用（对QKV）位置编码：
 
 $$
 q_m=f_q(x_m,m)\\
@@ -33,7 +30,7 @@ $$
 | **Rotary Position Embedding (RoPE)** | 使用旋转变换的相对位置编码，通常与绝对位置编码结合使用，来增强 Transformer 模型的长距离依赖建模能力。 | RoPE 相比传统的位置编码方法具有更好的扩展性，特别适用于长文本或长序列，提升了处理长距离依赖的能力。 | 相较于传统位置编码和其他相对位置编码方法，RoPE 的实现和理解略为复杂，增加了计算的复杂度。 | 适用于需要建模长序列和长距离依赖的任务，如文本生成、语言建模等。|
 
 
-### 1、`Absolute Positon Embedding`
+### 1、Absolute Positon Embedding
 
 绝对位置编码常规做法是在词嵌入上补充一个位置编码向量然后乘对应的变换矩阵：
 
@@ -54,8 +51,9 @@ $$
 p_i = W,W:[seq_len, embed_dim]
 $$
 
+随之而来，使用绝对位置编码存在一个缺陷（以第一种为例）：每个token的位置编码都是固定的，这意味着每个词的位置信息是独立的，无法灵活地体现不同“单词”之间的相对距离。具体来说，绝对位置编码只为每个token分配一个固定的位置信息，不会根据token之间的相对位置关系来调整其编码。因此，它不能很好地反映序列中不同单词之间的相对距离，尤其是在处理长距离依赖关系时，可能无法准确捕捉到不同位置的语义依赖
 
-### 2、`Relative Position Embedding`
+### 2、Relative Position Embedding
 
 以[`Transformer-XL`](https://arxiv.org/pdf/1901.02860)为例，相对位置编码通过引入动态计算的 相对位置差 来替代传统的 绝对位置编码，这种方法能够有效地捕捉长文本中的长距离依赖。每一层的自注意力机制会结合相对位置编码，进而增强模型的上下文理解能力，尤其在处理长序列时，Transformer-XL 可以显著减少计算开销，并提高模型对长距离依赖的建模能力。
 
@@ -66,7 +64,7 @@ $$
 <f_q(x_m,m), f_k(x_n, n)>=g(x_m, x_n, m-n)
 $$ 
 
-以二维例子为例，
+对于$f_q$以及 $f_k$都包含位置信息，希望通过一个内积函数，得到一个函数 $g$（包含相对位置m-n）以二维例子为例，
 
 $$
 \begin{aligned}
@@ -76,7 +74,7 @@ g(\boldsymbol{x}_{m},\boldsymbol{x}_{n},m-n) & =\mathrm{Re}[(\boldsymbol{W}_q\bo
 \end{aligned}
 $$
 
-借鉴(https://kexue.fm/archives/8265, https://zhuanlan.zhihu.com/p/642884818)中的证明，对于$f_{q}(\boldsymbol{x}_{m},m)$其中指数函数$e^{imx}$可以根据欧拉公式改写为：$e^{imx}=cos(m\theta)+isin(m\theta)$，因为是以2维度为例因此对于前部分（$W_qx_m$）可以改写为：
+[借鉴](https://zhuanlan.zhihu.com/p/642884818)中的证明，对于$f_{q}(\boldsymbol{x}_{m},m)$其中指数函数$e^{imx}$可以根据欧拉公式改写为：$e^{imx}=cos(m\theta)+isin(m\theta)$，因为是以2维度为例因此对于前部分（$W_qx_m$）可以改写为：
 
 $$
 q_m=W_{q} x_{m}=\left(\begin{array}{ll}
@@ -99,7 +97,28 @@ q_m^{(2)}
 \end{matrix} \right)
 $$
 
-最后得到:
+从上面公式从几何角度出发（假设$m \theta= 45°$）发现就是简单一个旋转操作，但是用到的也是 **绝对位置**信息：
+
+![](https://s2.loli.net/2025/03/02/eyrBjzPKn8dx5MX.png)
+
+那么内积计算就可以表示为：
+
+$$
+g(\mathbf{x}_m, \mathbf{x}_n, m-n) = 
+\begin{pmatrix}
+\mathbf{q}_m^{(1)} & \mathbf{q}_m^{(2)}
+\end{pmatrix}
+\begin{pmatrix}
+\cos((m-n)\theta) & -\sin((m-n)\theta) \\
+\sin((m-n)\theta) & \cos((m-n)\theta)
+\end{pmatrix}
+\begin{pmatrix}
+\mathbf{k}_n^{(1)} \\
+\mathbf{k}_n^{(2)}
+\end{pmatrix}
+$$
+
+最开始$f_q$和 $f_k$使用的都是绝对位置信息，通过内积计算，最后实现 **相对位置编码**。推广到n维可以最后得到:
 
 $$
 \boldsymbol{R}_{\Theta, m}^{d} \boldsymbol{x}=\left(\begin{array}{c}
@@ -137,7 +156,12 @@ x_{d-2}
 \end{array}\right)
 $$
 
+从几何角度出发进行理解：
+
 ![](https://s2.loli.net/2025/02/02/gnS7BFPA4UQbVlX.png)
+
+1.对于位置为m的d维q向量，我们分为d/2组，每两个相邻维度为一组，共同旋转一个角度$m\theta_i$。
+2.$\theta_i$是一个这是一个从1渐变到接近于0的函数，因此，前面维度的$\theta_i$旋转的更快，后面的旋转的更慢
 
 借用[博客中](https://kexue.fm/archives/8265)的结论：
 1、RoPE具有良好的**外推性**（指的是：大模型在训练时和预测时的输入长度不一致，导致模型的泛化能力下降的问题。例如，如果一个模型在训练时只使用了512个 token 的文本，那么在预测时如果输入超过512个 token，模型可能无法正确处理。这就限制了大模型在处理长文本或多轮对话等任务时的效果。），应用到Transformer中体现出较好的处理长文本的能力。
@@ -316,3 +340,4 @@ class Dataset(Dataset):
 5、https://huggingface.co/THUDM/glm-4-9b-chat/tree/main
 6、https://huggingface.co/Qwen/Qwen-7B/tree/main
 7、https://arxiv.org/pdf/1901.02860
+8、https://zhuanlan.zhihu.com/p/8306958113

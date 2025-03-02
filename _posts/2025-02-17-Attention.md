@@ -9,34 +9,25 @@ show_footer_image: true
 description: 主要介绍各类Attention(Flash Attention/MLA/Page Attention)
 ---
 
-TODO:
-- [] 1、如何理解：论文（MLA）中提到一个问题：如何结合`RoPE`呢？
-https://spaces.ac.cn/archives/10091
-https://zhuanlan.zhihu.com/p/19585986234
-
-- [ ] 2、vLLm更加多参数代码
-- [ ] 3、大模型整体推理过程
-- [ ] 4、Scaled Dot-Product Attention还有那些补充计算方法
-
 ## Attention操作以及内存优化管理
 
-## 一、Attention操作
+### 一、Attention操作
 
-### 1、`Multi Head Attention`
+#### 1、`Multi Head Attention`
 
 https://spaces.ac.cn/archives/8620
 
-### 2、`Casual Attention`
+#### 2、`Casual Attention`
 
 因果注意力的主要目的是限制注意力的计算，使得每个位置的查询只能与当前和之前的位置计算注意力得分，而不能“窥视”未来的位置。具体来说：对于位置$𝑖$，模型只能考虑位置 $1,2,...,𝑖$的信息，而不能考虑位置$𝑖+1,𝑖+2,...,𝑛$。因此，当计算每个位置的注意力时，键（key）和值（value）的位置会被限制在当前的位置及其之前的位置。实现方式也很简单直接最注意力矩阵进行**屏蔽**即可，比如说注意力矩阵为：
 
 ![](https://s2.loli.net/2025/02/07/ovpbyFk3m75laGg.png)
 
-### 3、`Channel Attention`
+#### 3、`Channel Attention`
 
-## 二、内存优化管理
+### 二、内存优化管理
 
-### 1、`Flash Attention`
+#### 1、`Flash Attention`
 
 [论文](https://arxiv.org/pdf/2205.14135)提出，是一种高效的注意力计算方法，旨在解决 Transformer 模型在处理长序列时的计算效率和内存消耗问题。**其核心思想是通过在 GPU 显存中分块执行注意力计算，减少显存读写操作，提升计算效率并降低显存占用**。
 
@@ -74,7 +65,7 @@ print(out.shape)
 1、`q,k,v`：形状为：`(batch_size, seqlen, nheads, headdim)`也就是说一般文本输入为：`(batch_size, seqlen, embed_dim)`要根据设计的`nheads`来处理输入的维度，并且需要保证：`headdim`≤256，于此同时要保证数据类型为：`float16` 或 `bfloat16`
 2、`causal`：`bool`判断是不是使用`causal attention mask`
 
-### 2、`Multi-head Latent Attention`（`MLA`）
+#### 2、`Multi-head Latent Attention`（`MLA`）
 
 对于[`KV-cache`](https://www.big-yellow-j.top/posts/2025/01/27/MoE-KV-cache.html)会存在一个问题：在推理阶段虽然可以加快推理速度，但是对于显存占用会比较高（因为`KV`都会被存储下来，导致显存占用高），对于此类问题后续提出`Grouped-Query-Attention（GQA）`以及`Multi-Query-Attention（MQA）`可以降低`KV-cache`的容量问题，但是会导致模型的整体性能会有一定的下降。
 
@@ -182,9 +173,9 @@ class MLA(nn.Module):
         return x
 ```
 
-从上述代码的角度除法理解如何使用`RoPE`，从上面代码上，无论是Q还是KV都是从压缩后的内容中分离除部分内容，然后计算结果
+不过 **MLA**存在一个问题，不兼容 **RoPE**（旋转位置编码，因为你将KV进行压缩）从上述代码的角度除法理解如何使用`RoPE`，从上面代码上，无论是Q还是KV都是从压缩后的内容中分离除部分内容，然后计算结果
 
-### 3、`Page Attention`（`vLLM`）
+#### 3、`Page Attention`（`vLLM`）
 
 上述描述中：`Flash Attention`（加快速度）、`MLA`（优化`KV-cache`存储），而`Page Attention`也是一种优化方法（区别于`MLA`，`page attention`是对内存进行分配管理）。参考[论文](https://dl.acm.org/doi/pdf/10.1145/3600006.3613165)中描述，对于`KV-cache`存在3个问题：
 
