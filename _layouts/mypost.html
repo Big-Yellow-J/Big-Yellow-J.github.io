@@ -7,13 +7,13 @@
   <h1 class="title" id="{{ page.title }}">{{ page.title }}</h1>
   {% assign words = content | number_of_words %}
   {% assign minutes = words | divided_by: 200 | plus: 1 %}
-  <p>⏳ 预计阅读 {{ minutes }} 分钟</p>
 
   {% if page.date %}
   <div class="subtitle">
     <span>{{site.author}} 于 
       {{ page.date | date: "%Y-%m-%d" }} 
       在 {{ page.address }} 发布
+        ⏳ 预计阅读 {{ minutes }} 分钟
       天气:<span id="weather-info"> 加载天气...</span>
     </span>
     {%- if site.extCount %}
