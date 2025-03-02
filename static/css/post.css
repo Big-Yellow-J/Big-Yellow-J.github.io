@@ -6,6 +6,11 @@ body {
   width: 90%; /* 页面宽度占据 90% */
 }
 
+.has-jax {
+  line-height: inherit !important; /* 避免 MathJax 公式单独改变行距 */
+  display: inline-block !important; /* 防止公式影响块级元素 */
+}
+
 .page-post {
   font-size: 15px;
   line-height: 2;
