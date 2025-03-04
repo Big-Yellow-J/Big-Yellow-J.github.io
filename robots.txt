@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /pages/categories.html
+Disallow: /pages/search.html
+Allow: /
+Sitemap: https://www.big-yellow-j.top/static/xml/sitemap.xml

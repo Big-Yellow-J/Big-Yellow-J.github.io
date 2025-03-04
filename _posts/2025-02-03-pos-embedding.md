@@ -166,7 +166,6 @@ $$
 借用[博客中](https://kexue.fm/archives/8265)的结论：
 1、RoPE具有良好的**外推性**（指的是：大模型在训练时和预测时的输入长度不一致，导致模型的泛化能力下降的问题。例如，如果一个模型在训练时只使用了512个 token 的文本，那么在预测时如果输入超过512个 token，模型可能无法正确处理。这就限制了大模型在处理长文本或多轮对话等任务时的效果。），应用到Transformer中体现出较好的处理长文本的能力。
 
-
 ## 二、`tokenizer`
 
 `tokenizer`的原理十分简单,就是将文本进行切割,然后用数字去代表这些文本。常见的主要有[如下几类](https://zhuanlan.zhihu.com/p/630696264)：
@@ -341,3 +340,5 @@ class Dataset(Dataset):
 6、https://huggingface.co/Qwen/Qwen-7B/tree/main
 7、https://arxiv.org/pdf/1901.02860
 8、https://zhuanlan.zhihu.com/p/8306958113
+9、https://arxiv.org/pdf/2502.20082
+10、https://arxiv.org/pdf/2402.13753
