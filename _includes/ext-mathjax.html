@@ -34,15 +34,10 @@
       fontCache: 'global'
     }
   };
-
-  // 延迟加载 MathJax 脚本（从本地加载）
-  window.addEventListener('load', function() {
-    var script = document.createElement('script');
-    script.src = './tex-chtml.js';  // 本地文件路径
-    script.async = true;
-    document.head.appendChild(script);
-  });
 </script>
 
-<!-- <script type="text/javascript" async src="https://cdn.bootcdn.net/ajax/libs/polyfill/3.101.0/polyfill.min.js?features=es6"></script>
-<script type="text/javascript" async src="https://cdn.bootcdn.net/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script> -->
+<!-- 加载 MathJax 3 -->
+<!-- <script type="text/javascript" async src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script> -->
+<!-- <script type="text/javascript" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script> -->
+<script type="text/javascript" async src="https://cdn.bootcdn.net/ajax/libs/polyfill/3.101.0/polyfill.min.js?features=es6"></script>
+<script type="text/javascript" async src="https://cdn.bootcdn.net/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
