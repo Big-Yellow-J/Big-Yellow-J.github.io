@@ -17,7 +17,7 @@ description: 主要介绍各类Attention(Flash Attention/MLA/Page Attention)
 
 关于 **Multi Head Attention**网上有较多的解释了，这里主要记录如下几点
 
-1、对于注意力计算公式的理解：   
+1、对于注意力计算公式的理解：
 
 $$
 Attention(Q,K,V)=\text{softmax}(\frac{QK^T}{\sqrt{d_k}})V
@@ -49,14 +49,33 @@ $$
 **分块计算**：传统注意力计算会将整个注意力矩阵 (N×N) 存入 GPU 内存（HBM），这对长序列来说非常消耗内存，FlashAttention 将输入分块，每次只加载一小块数据到更快的 SRAM 中进行计算，传统`Attention`计算和`flash attention`计算：
 ![1](https://s2.loli.net/2025/01/31/IbjDs6EKdO9VUJ2.png)
 
-对比上：传统的计算和存储都是发生再`HBM`上，而对于`flash attention`则是**首先**会将`Q,K,V`进行划分（算法1-4：整体流程上首先根据`SRAM`的大小`M`去计算划分比例（$\lceil \frac{N}{B_r} \rceil$）然后根据划分比例去对`QKV`进行划分这样一来Q（$N\times d$就会被划分为不同的小块，然后只需要去遍历这些小块然后计算注意力即可）），**然后计算**`Attention`（算法5-15），计算中也容易发现：先将分块存储再`HBM`上的值读取到`SRAM`上再它上面进行计算，不过值得注意的是：在传统的$QK^T$计算之后通过`softmax`进行处理，但是如果将上述值拆分了，再去用普通的`softmax`就不合适，因此使用`safe softmax`
+对比上：传统的计算和存储都是发生再`HBM`上，而对于`flash attention`则是**首先**会将`Q,K,V`进行划分（算法1-4：整体流程上首先根据`SRAM`的大小`M`去计算划分比例（$\lceil \frac{N}{B_r} \rceil$）然后根据划分比例去对`QKV`进行划分这样一来Q（$N\times d$就会被划分为不同的小块，然后只需要去遍历这些小块然后计算注意力即可））。
+**然后计算**`Attention`（算法5-15），计算中也容易发现：先将分块存储再`HBM`上的值读取到`SRAM`上再它上面进行计算，不过值得注意的是：在传统的$QK^T$计算之后通过`softmax`进行处理，但是如果将上述值拆分了，再去用普通的`softmax`就不合适，因此使用`safe softmax`
 
 ---
+
 1、**HBM**（High Bandwidth Memory，高带宽内存）:是一种专为高性能计算和图形处理设计的内存类型，旨在提供高带宽和较低的功耗。HBM 常用于需要大量数据访问的任务，如图形处理、大规模矩阵运算和 AI 模型训练。
 2、 **SRAM**（Static Random Access Memory，静态随机存取存储器）:是一种速度极快的存储器，用于存储小块数据。在 GPU 中，SRAM 主要作为缓存（如寄存器文件、共享内存和缓存），用于快速访问频繁使用的数据。例如在图中 FlashAttention 的计算中，将关键的计算块（如小规模矩阵）存放在 SRAM 中，减少频繁的数据传输，提升计算速度。
 3、不同`softmax`计算：
-`softmax`:$x_i=\frac{e^{x_i}}{\sum e^{x_j}}$
-`safe softmax`（主要防止输出过大溢出，就减最大值）:$x_i=\frac{e^{x_i-max(x_{:N})}}{\sum e^{x_j-max(x_{:N})}}$
+`softmax`:
+
+$$
+x_i=\frac{e^{x_i}}{\sum e^{x_j}}
+$$
+
+`safe softmax`（主要防止输出过大溢出，就减最大值）:
+
+$$
+x_i=\frac{e^{x_i-max(x_{:N})}}{\sum e^{x_j-max(x_{:N})}}
+$$
+
+其实这里就提出一个对于Softmax的问题：使用传统的softmax可能会导致一个数值溢出问题。
+
+4、使用 **Flash Attention**如何去处理 **GQA**以及 **MQA**问题？
+
+![1](https://s2.loli.net/2025/02/01/7rLk8NDKXm3aFuI.png)
+
+**GQA** 和**MQA** 本质上是对 Key/Value（KV）头的压缩，即 减少 Key/Value 头的数量，从而降低计算和显存开销。因此，在 Flash Attention 中，主要需要：1、为 K/V 头建立索引映射，确保多个 Query 头正确共享相应的 Key/Value。2、在计算 QK^T 时，使用映射索引进行广播，避免存储重复的 K/V，同时保持正确的注意力计算逻辑。3、利用 Flash Attention 的块计算机制，在低显存环境下高效完成 Softmax 归一化和注意力分配
 
 ---
 
@@ -76,6 +95,7 @@ print(out.shape)
 `flash_attn_func`输入参数：
 1、`q,k,v`：形状为：`(batch_size, seqlen, nheads, headdim)`也就是说一般文本输入为：`(batch_size, seqlen, embed_dim)`要根据设计的`nheads`来处理输入的维度，并且需要保证：`headdim`≤256，于此同时要保证数据类型为：`float16` 或 `bfloat16`
 2、`causal`：`bool`判断是不是使用`causal attention mask`
+
 
 #### 2、`Multi-head Latent Attention`（`MLA`）
 
