@@ -12,10 +12,8 @@
   <div class="subtitle">
     <span>{{site.author}} 于 
       {{ page.date | date: "%Y-%m-%d" }} 
-      在 {{ page.address }} 发布 上次更新:
-      {{ page.last_modified_at | date: "%Y-%m-%d %H:%M:%S" }}
+      在 {{ page.address }} 发布 
         ⏳ 预计阅读 {{ minutes }} 分钟
-      天气:<span id="weather-info"> 加载天气...</span>
     </span>
     {%- if site.extCount %}
       <span>浏览量</span>
@@ -29,10 +27,11 @@
   </div> -->
   <div class="post page-post">
     <!-- 处理内容中的图片 -->
-    {% assign content_with_images = content | replace: '<img', '<img class="content-image"' %}
+    {% assign content_with_images = content | replace: '<img', '<img class="content-image" alt="Image"' %}
   
     {{ content_with_images }}
   </div>
+  
 
   <!-- Prism.js CSS -->
   <link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/themes/prism.css" rel="stylesheet">
@@ -97,85 +96,6 @@
     gitalk.render('gitalk-container');
   </script>
 
-  <!-- 加载天气 -->
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // 获取文章的发布日期（比如 2025-01-17）
-      const publishDate = "{{ page.date | date: '%Y-%m-%d' }}";
-      const address = "{{ page.address }}"; // 获取文章中的地址
-      const weatherElement = document.getElementById('weather-info');
-      
-      // 使用 OpenStreetMap Nominatim API 获取地址的经纬度
-      const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
-
-      fetch(geocodeUrl)
-        .then(response => response.json())
-        .then(data => {
-          if (data && data[0]) {
-            // 维度 经度
-            const latitude = data[0].lat;
-            const longitude = data[0].lon; 
-            const weatherCodeMapping = {
-              0: '☀️',  // Clear sky
-              1: '🌤️',  // Mainly clear
-              2: '⛅',   // Partly cloudy
-              3: '☁️',   // Cloudy
-              45: '🌫️',  // Fog
-              48: '🌫️',  // Depositing rime fog
-              51: '🌧️',  // Light drizzle
-              53: '🌧️',  // Moderate drizzle
-              55: '🌧️',  // Dense drizzle
-              56: '❄️🌧️', // Light freezing drizzle
-              57: '❄️🌧️', // Dense freezing drizzle
-              61: '🌧️',  // Light rain
-              63: '🌧️',  // Moderate rain
-              65: '🌧️',  // Heavy rain
-              66: '❄️🌧️', // Light freezing rain
-              67: '❄️🌧️', // Heavy freezing rain
-              71: '❄️',   // Light snow
-              73: '❄️',   // Moderate snow
-              75: '❄️',   // Heavy snow
-              77: '❄️',   // Snow grains
-              80: '🌧️',  // Showers of rain
-              81: '🌧️',  // Heavy showers of rain
-              82: '🌧️',  // Violent showers of rain
-              85: '❄️🌧️', // Showers of snow
-              86: '❄️🌧️', // Heavy showers of snow
-              95: '⚡',   // Thunderstorm
-              96: '⚡❄️', // Thunderstorm with light hail
-              99: '⚡❄️'  // Thunderstorm with heavy hail
-            };
-
-            // 获取指定日期的天气数据
-            const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&start_date=${publishDate}&end_date=${publishDate}&timezone=Asia%2FShanghai`;
-            // const weatherUrl = `https://rough-queen-833d.hjie20011001.workers.dev/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&start_date=${publishDate}&end_date=${publishDate}&timezone=Asia%2FShanghai`;
-
-            fetch(weatherUrl)
-              .then(weatherResponse => weatherResponse.json())
-              .then(weatherData => {
-                if (weatherData.daily) {
-                  const weatherCode = weatherData.daily.weathercode[0];
-                  const maxTemp = weatherData.daily.temperature_2m_max[0];  // 获取当天的最高温度
-                  const minTemp = weatherData.daily.temperature_2m_min[0];  // 获取当天的最低温度
-                  const weatherText = `${weatherCodeMapping[weatherCode] || '❓'}`;
-                  weatherElement.innerText = weatherText;
-                } else {
-                  weatherElement.innerText = '无法获取历史天气数据';
-                }
-              })
-              .catch(error => {
-                weatherElement.innerText = '天气信息加载失败';
-              });
-          } else {
-            weatherElement.innerText = '地址无效';
-          }
-        })
-        .catch(error => {
-          console.error('地理编码请求错误:', error);
-          weatherElement.innerText = '地理编码失败';
-        });
-    });
-  </script>
   {% if site.extAdsense -%}
   <div class="adsense" style="overflow: hidden;">
     {% include ext-adsense.html -%}
