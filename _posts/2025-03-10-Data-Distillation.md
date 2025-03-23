@@ -92,8 +92,18 @@ $$
 
 ![](https://s2.loli.net/2025/03/12/rslADxTKvu3yBbE.png)
 
+首先对于分布式匹配损失函数定义为：
+
+$$
+\mathcal{L}(S,T)=\mathbb{E}_{\theta \in \Theta}[\mathbb{D}(S,T;\theta)]\\
+\mathcal{D}(S, T; \theta) = \sum_{c=0}^{C-1} \| \mu_{\theta,s,c} - \mu_{\theta,t,c} \|^2 \\
+\mu_{\theta,s,c} = \frac{1}{M_c} \sum_{j=1}^{M_c} f_\theta^{(i)}(X_{s,c}^{(j)}), \quad \mu_{\theta,t,c} = \frac{1}{N_c} \sum_{j=1}^{N_c} f_\theta^{(i)}(X_{t,c}^{(j)})
+$$
+
 
 ## （CVPR-25）上海交大论文
+
+首先作者提到一点：通过分布式匹配进行数据蒸馏，容易导致无法获取分布的差异，进而导致效果不佳
 
 ![](https://s2.loli.net/2025/03/12/3kzxWmfFYI7jN1q.png)
 
