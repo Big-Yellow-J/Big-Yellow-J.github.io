@@ -1,21 +1,55 @@
 import time
-from concurrent.futures import ProcessPoolExecutor, as_completed
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
-# 初始化数据
-num_list = [1] * 8000000  # 800万元素
-num_workers = 8  # 进程数
-chunk_size = len(num_list) // num_workers  # 每个进程处理的数据块大小
+# 计算斐波那契数列的函数
+def fibonacci(n):
+    if n <= 1:
+        return n
+    else:
+        return fibonacci(n - 1) + fibonacci(n - 2)
 
-def chunk_sum(data_chunk):
-    """计算数据块的总和"""
-    return sum(data_chunk)
-
-if __name__ == "__main__":  # Windows 需要这个保护
+def single_process():
     start_time = time.time()
-    chunks = [num_list[i * chunk_size:(i + 1) * chunk_size] for i in range(num_workers)]
-    with ProcessPoolExecutor(max_workers=num_workers) as executor:
-        futures = [executor.submit(chunk_sum, chunk) for chunk in chunks]
-        results = [future.result() for future in as_completed(futures)]
+    for _ in range(4):
+        fibonacci(35)
+    end_time = time.time()
+    print(f"Single-process time: {end_time - start_time:.2f} seconds")
 
-    total_sum = sum(results)
-    print(f"Execution Time:{time.time() - start_time}")
+def multi_thread():
+    start_time = time.time()
+    with ThreadPoolExecutor(max_workers= 4) as executor:
+        futures = [executor.submit(fibonacci, 35) for _ in range(4)]
+        result = [future.result() for future in futures]
+    end_time = time.time()
+    print(f"Multi-thread time: {end_time - start_time:.2f} seconds")
+
+def multi_process1():
+    start_time = time.time()
+    processes = []
+    for _ in range(4):
+        process = multiprocessing.Process(target=fibonacci, args=(35,))
+        processes.append(process)
+        process.start()
+    for process in processes:
+        process.join()
+    end_time = time.time()
+    print(f"Multi-process-1 time: {end_time - start_time:.2f} seconds")
+
+def multi_process2():
+    start_time = time.time()
+    with ProcessPoolExecutor(max_workers= 4) as executor:
+        futures = [executor.submit(fibonacci, 35) for _ in range(4)]
+        result = [future.result() for future in futures]
+    end_time = time.time()
+    print(f"Multi-process-2 time: {end_time - start_time:.2f} seconds")
+
+multi_process1()
+
+# multi_process2()
+
+# if __name__ == "__main__":
+#     single_process()
+#     multi_thread()
+#     multi_process1()
+#     multi_process2()
