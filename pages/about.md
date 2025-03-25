@@ -21,7 +21,10 @@ Hi！欢迎来自<span id="visitor-location">某地</span>
 发表过若干Blog😄😄😄😄😄😄😄 
 我的技能以及常用的工具
 
-<a><img src=https://skillicons.dev/icons?i=python,vscode,git,linux,pytorch,raspberrypi,ubuntu&theme=light> </a>
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=python,vscode,git,linux,pytorch,raspberrypi,ubuntu,docker,sklearn&theme=light" alt="Skill Icons">
+</p>
+
 
 # 联系我  
 

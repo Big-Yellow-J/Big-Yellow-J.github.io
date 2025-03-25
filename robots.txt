@@ -1,5 +1,7 @@
 User-agent: *
 Disallow: /pages/categories.html
 Disallow: /pages/search.html
+Disallow: /pages/about.html
+Disallow: /pages/cv.html
 Allow: /
 Sitemap: https://www.big-yellow-j.top/static/xml/sitemap.xml

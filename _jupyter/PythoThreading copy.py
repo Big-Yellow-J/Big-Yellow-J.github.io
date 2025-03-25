@@ -3,6 +3,24 @@ import multiprocessing
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 # 计算斐波那契数列的函数
+class Function():
+    def __init__(self, n):
+        self.n  = n
+
+    def fibonacci(self, n):
+        if n <= 1:
+            return n
+        else:
+            return self.fibonacci(n - 1) + self.fibonacci(n - 2)
+    
+    def multi_process2(self):
+        start_time = time.time()
+        with ProcessPoolExecutor(max_workers= 4) as executor:
+            futures = [executor.submit(self.fibonacci, self.n) for _ in range(4)]
+            result = [future.result() for future in futures]
+        end_time = time.time()
+        print(f"Multi-process-2 time: {end_time - start_time:.2f} seconds")
+
 def fibonacci(n):
     if n <= 1:
         return n
@@ -44,10 +62,11 @@ def multi_process2():
     end_time = time.time()
     print(f"Multi-process-2 time: {end_time - start_time:.2f} seconds")
 
-multi_process1()
-
+# multi_process1()
 # multi_process2()
 
+if __name__ == '__main__':
+    Function(n= 35).multi_process2()
 # if __name__ == "__main__":
 #     single_process()
 #     multi_thread()

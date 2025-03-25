@@ -206,22 +206,42 @@ python里面使用多进程和多线程代码上没有多大区别，只不过�
 if __name__ == "__main__":
 ```
 
-这是因为创建子进程时，会重新导入主模块。如果不将多进程代码放在 `if __name__ == "__main__":` 块中，可能会导致递归创建子进程，甚至引发程序崩溃。更加底层的原因可以直接参考python[官方解释](https://docs.python.org/zh-cn/3.13/library/multiprocessing.html)
+这是因为创建子进程时，会重新导入主模块。如果不将多进程代码放在 `if __name__ == "__main__":` 块中，可能会导致递归创建子进程，甚至引发程序崩溃。更加底层的原因可以直接参考python[官方解释](https://docs.python.org/zh-cn/3.13/library/multiprocessing.html)。更加进一步的理解 python**多进程**
+
+**首先**在 Python 的多进程编程中，进程之间是相互独立的，它们不能直接共享内存。为了在不同的进程之间传递数据，通常需要将数据序列化为字节流，然后在目标进程中反序列化。pickle（更加详细描述[🔗](https://docs.python.org/zh-cn/3.12/library/pickle.html)） 就是用来完成这个任务的，言外之意就是说需要通过 pickle 来将不同进程之间进行传递数据。比如说：
+
+```python
+import multiprocessing
+
+def square(number):
+    return number ​** 2
+
+if __name__ == "__main__":
+    numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    # 创建一个进程池，使用 4 个子进程
+    with multiprocessing.Pool(processes=4) as pool:
+        # 使用 map 方法将 square 函数应用到 numbers 列表中的每个元素
+        # map 方法会将任务分配给子进程并行执行
+        results = pool.map(square, numbers)
+    print("原始列表:", numbers)
+    print("平方结果:", results)
+```
+
+上面例子中 **pickle**（multiprocessing 模块会自动使用 pickle 来**序列化**（**一般而言**：基本数据类型，列表，元组，字典等容器类型，自定义类的实例，函数（但不包括函数中引用的外部对象，如文件对象、数据库连接等））和反序列化）如下内容：`square` 函数（传递给子进程）。`numbers` 列表（传递给子进程）。`results` 列表（从子进程返回给主进程）。比如说将`square`函数改为：
+
+```python
+def square(number):
+    file = open("test.txt", "w")
+    file.write(f"Processing {number}\n")
+    file.close()
+    return number ​** 2
+```
+
 
 * **3、装饰器**
 
 https://liaoxuefeng.com/books/python/functional/decorator/index.html
 
-## 值得注意的
-
-在使用`from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor`（前者为线程，后者为进程）里面的 **ThreadPoolExecutor**和 **ProcessPoolExecutor**需要注意一个问题，后者在执行时候，比如说：
-
-```python
-with ProcessPoolExecutor(max_workers= len(current_detection_region)) as executor:
-    futures = {executor.submit(process_region, i, region, frame): i for i, region in enumerate(current_detection_region)}
-```
-
-会执行任务 **process_region**那么这个时候可能会出现 **ModuleNotFoundError**问题，主要原因：ProcessPoolExecutor **可能导致不同的进程环境之间无法共享某些依赖或模块**
 
 ## 参考
 1、https://docs.python.org/zh-cn/3.13/library/concurrent.futures.html
@@ -229,3 +249,4 @@ with ProcessPoolExecutor(max_workers= len(current_detection_region)) as executor
 3、https://zh.wikipedia.org/zh-cn/%E5%85%A8%E5%B1%80%E8%A7%A3%E9%87%8A%E5%99%A8%E9%94%81
 4、https://zh.wikipedia.org/wiki/CPU%E5%AF%86%E9%9B%86%E5%9E%8B
 5、https://docs.python.org/zh-cn/3.13/library/multiprocessing.html
+6、https://docs.python.org/zh-cn/3.12/library/pickle.html
