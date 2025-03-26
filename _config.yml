@@ -38,6 +38,7 @@ kramdown:
   parse_block_html: true
 include:
   - _jupyter
+  - index_now.txt
 exclude: ['CNAME', 'README.md', 'LICENSE', '_site', 'dist', 'Gemfile', 'Gemfile.lock', 'blog.sh']
 
 # 域名配置
