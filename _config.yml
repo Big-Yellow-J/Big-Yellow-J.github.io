@@ -2,7 +2,7 @@ encoding: utf-8
 
 plugins:
   - jekyll-regex-replace
-  # - jekyll-last-modified-at
+  - jekyll-last-modified-at
 
 
 last_modified_at:
