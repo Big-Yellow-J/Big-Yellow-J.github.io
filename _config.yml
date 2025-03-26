@@ -66,6 +66,8 @@ menu:
     url: /pages/about.html
   - title: CV
     url: /pages/cv.html
+  - title: Writing
+    url: /writing/
 
 # 点击页面文字冒出特效,不需要请设置为false
 extClickEffect: false

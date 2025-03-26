@@ -1,0 +1,97 @@
+---
+layout: page
+title: writing
+---
+
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件列表</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+    </style>
+    <script>
+        async function loadFiles() {
+            try {
+                const response = await fetch('../writing/'); // 获取文件列表
+                const files = await response.json();
+                const tableBody = document.getElementById('file-table-body');
+
+                let index = 1;
+                for (const file of files) {
+                    if (!file.endsWith('.md')) continue; // 只处理 .md 文件
+
+                    const fileNameWithoutExt = file.replace(/\.md$/, ""); // 去掉 .md
+                    const fileUrl = `https://www.big-yellow-j.top/writing/${fileNameWithoutExt}.html`;
+
+                    // 获取文件内容
+                    const fileContent = await fetch(`../writing/${file}`).then(res => res.text());
+                    const dateMatch = fileContent.match(/\d{4}-\d{2}-\d{2}/); // 提取类似 2025-03-07 的日期
+                    const fileDate = dateMatch ? dateMatch[0] : '未知';
+
+                    // 创建表格行
+                    const row = document.createElement('tr');
+
+                    // 序号
+                    const indexCell = document.createElement('td');
+                    indexCell.textContent = index++;
+
+                    // 名称（超链接）
+                    const nameCell = document.createElement('td');
+                    const link = document.createElement('a');
+                    link.href = fileUrl;
+                    link.textContent = fileNameWithoutExt;
+                    link.target = "_blank";
+                    nameCell.appendChild(link);
+
+                    // 日期
+                    const dateCell = document.createElement('td');
+                    dateCell.textContent = fileDate;
+
+                    // 组装行
+                    row.appendChild(indexCell);
+                    row.appendChild(nameCell);
+                    row.appendChild(dateCell);
+
+                    tableBody.appendChild(row);
+                }
+            } catch (error) {
+                console.error('加载文件列表失败', error);
+            }
+        }
+
+        window.onload = loadFiles;
+    </script>
+</head>
+<body>
+    <h1>文件列表</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>序号</th>
+                <th>名称</th>
+                <th>日期</th>
+            </tr>
+        </thead>
+        <tbody id="file-table-body">
+            <!-- 动态填充 -->
+        </tbody>
+    </table>
+</body>
+</html>
+
+
