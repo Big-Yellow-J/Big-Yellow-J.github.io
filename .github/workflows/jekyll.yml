@@ -54,6 +54,15 @@ jobs:
       - name: Upload artifact
         # Automatically uploads an artifact from the './_site' directory by default
         uses: actions/upload-pages-artifact@v3
+      - name: Ensure required gems are installed
+        run: |
+          if [ ! -f "Gemfile" ]; then
+            echo 'source "https://rubygems.org"' > Gemfile
+            echo 'gem "jekyll"' >> Gemfile
+            echo 'gem "jekyll-last-modified-at"' >> Gemfile
+          fi
+          bundle install
+
 
   # Deployment job
   deploy:
