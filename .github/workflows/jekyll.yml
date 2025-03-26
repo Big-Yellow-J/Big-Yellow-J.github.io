@@ -33,8 +33,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Install dependencies
-        run: bundle install
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Ruby
