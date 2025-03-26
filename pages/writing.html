@@ -40,8 +40,14 @@ title: writing
 
                     // 获取文件内容
                     const fileContent = await fetch(`../writing/${file}`).then(res => res.text());
-                    const dateMatch = fileContent.match(/\d{4}-\d{2}-\d{2}/); // 提取类似 2025-03-07 的日期
-                    const fileDate = dateMatch ? dateMatch[0] : '未知';
+
+                    // 提取 title
+                    const titleMatch = fileContent.match(/^title:\s*(.*)/m);
+                    const fileTitle = titleMatch ? titleMatch[1].trim() : fileNameWithoutExt; // 如果没有 title，则用文件名
+
+                    // 提取 date
+                    const dateMatch = fileContent.match(/^date:\s*(\d{4}-\d{2}-\d{2})/m);
+                    const fileDate = dateMatch ? dateMatch[1] : fileNameWithoutExt.match(/\d{4}-\d{2}-\d{2}/)?.[0] || '未知';
 
                     // 创建表格行
                     const row = document.createElement('tr');
@@ -54,7 +60,7 @@ title: writing
                     const nameCell = document.createElement('td');
                     const link = document.createElement('a');
                     link.href = fileUrl;
-                    link.textContent = fileNameWithoutExt;
+                    link.textContent = fileTitle;
                     link.target = "_blank";
                     nameCell.appendChild(link);
 
@@ -93,5 +99,3 @@ title: writing
     </table>
 </body>
 </html>
-
-
