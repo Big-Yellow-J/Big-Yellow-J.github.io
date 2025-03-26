@@ -11,7 +11,7 @@ last_modified_at:
 # SEO相关信息
 title: Big-Yellow-J
 description: Big-Yellow-J的个人博客
-keywords: Blog,DeepLearning,MachineLearning
+keywords: Blog,DeepLearning,MachineLearning,AI,Python,Paper
 author: HuangJie
 author_info:
   github: shangxiaaabb
@@ -66,8 +66,8 @@ menu:
     url: /pages/about.html
   - title: CV
     url: /pages/cv.html
-  - title: Writing
-    url: /pages/writing.html
+  # - title: Writing
+  #   url: /pages/writing.html
 
 # 点击页面文字冒出特效,不需要请设置为false
 extClickEffect: false
