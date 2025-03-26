@@ -227,21 +227,196 @@ if __name__ == "__main__":
     print("平方结果:", results)
 ```
 
-上面例子中 **pickle**（multiprocessing 模块会自动使用 pickle 来**序列化**（**一般而言**：基本数据类型，列表，元组，字典等容器类型，自定义类的实例，函数（但不包括函数中引用的外部对象，如文件对象、数据库连接等））和反序列化）如下内容：`square` 函数（传递给子进程）。`numbers` 列表（传递给子进程）。`results` 列表（从子进程返回给主进程）。比如说将`square`函数改为：
-
-```python
-def square(number):
-    file = open("test.txt", "w")
-    file.write(f"Processing {number}\n")
-    file.close()
-    return number ​** 2
-```
-
+上面例子中 **pickle**（multiprocessing 模块会自动使用 pickle 来**序列化**（**一般而言**：基本数据类型，列表，元组，字典等容器类型，自定义类的实例，函数（但不包括函数中引用的外部对象，如文件对象、数据库连接等））和反序列化）如下内容：`square` 函数（传递给子进程）。`numbers` 列表（传递给子进程）。`results` 列表（从子进程返回给主进程）。
 
 * **3、装饰器**
 
-https://liaoxuefeng.com/books/python/functional/decorator/index.html
+装饰器（Decorator）是一种用于修改函数或类行为的高级 Python 语法。它本质上是一个高阶函数，可以在不修改原函数代码的情况下，动态地添加功能。主要作用减少重复代码等，说人话就是**将函数作为一种参数输入到函数中**。使用方法很简单直接在需要使用的函数上面添加 `@装饰器` 即可。
+比如说，要计算一个函数运行时间一般而言会通过：
 
+```python
+import time
+
+def test():
+    print("Hello!")
+
+def main():
+    start_time = time.time()
+    test()
+    print(f"Used Time: {time.time()- start_time}")
+```
+
+但是如果定义一个计算时间函数，比如说：
+
+```python
+def com_time(func):
+    start_time = time.time()
+    func()
+    print(f"Used Time: {time.time()- start_time}")
+
+def main():
+    com_time(test)
+```
+
+这个里面就是将函数 `test` 作为一个参数进行输入，更加简便的方法就是直接使用装饰器，比如说：
+
+```python
+def com_time(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()  # 记录开始时间
+        result = func(*args, **kwargs)  # 执行被装饰的函数
+        print(f"Used Time: {time.time() - start_time:.4f} 秒")  # 计算并输出执行时间
+        return result
+    return wrapper
+
+@com_time # 等价于 com_time(test)
+def test():
+    time.sleep(0.5)
+    print("Hello!")
+
+def main():
+    test()
+```
+
+值得注意的是，如果直接下面定义：
+
+```python
+def com_time(func):
+    start_time = time.time()
+    func()
+    print(f"Used Time: {time.time()- start_time}")
+```
+
+会出现错误，这是因为装饰器中的代码逻辑。具体来说，你在装饰器内部直接调用了 func()，而装饰器的正确用法应该是***返回一个包装函数，来替代原函数的执行***
+
+---
+
+Python一些特殊[属性](https://docs.python.org/zh-cn/3.12/library/stdtypes.html#definition.__name__:~:text=%E5%88%87%E7%89%87%E5%AF%B9%E8%B1%A1%E7%AD%89%E3%80%82-,%E7%89%B9%E6%AE%8A%E5%B1%9E%E6%80%A7,-%C2%B6)
+
+* 1. 对象和类的特殊属性（这些属性通常出现在 **类** 和 **对象** 中）
+
+| **属性**      | **作用** |
+|--------------|---------|
+| `__dict__`   | 返回对象的属性字典（仅适用于具有 `__dict__` 的对象）。 |
+| `__class__`  | 获取对象的类。 |
+| `__bases__`  | 获取类的所有基类（仅适用于类）。 |
+| `__name__`   | **返回类或模块的名称**。 |
+| `__module__` | 指示类定义所在的模块。 |
+| `__mro__`    | 返回方法解析顺序（Method Resolution Order）。 |
+
+
+* 2. 模块和文件的特殊属性（这些属性通常用于 **模块** 和 **文件** 级别）
+
+| **属性**         | **作用** |
+|-----------------|---------|
+| `__file__`      | 返回模块的文件路径（仅适用于 Python 脚本）。 |
+| `__name__`      | 返回模块的名称，主程序运行时返回 `"__main__"`。 |
+| `__package__`   | 返回模块的包名，若模块不是包的一部分，则为 `None`。 |
+| `__doc__`       | 返回模块、类或函数的文档字符串（Docstring）。 |
+| `__annotations__` | 返回函数的参数和返回值的注解字典。 |
+
+
+* 3. 运行时相关的特殊属性（这些属性与 **Python 运行时** 有关）
+
+| **属性**          | **作用** |
+|------------------|---------|
+| `__import__`    | 负责导入模块（通常使用 `import` 语句，而不是直接调用）。 |
+| `__builtins__`  | 包含 Python 内置函数和异常的模块。 |
+| `__debug__`     | Python 运行时的 `debug` 模式，默认值为 `True`。 |
+| `__loader__`    | 加载模块的加载器对象。 |
+
+
+* 4. 方法相关的特殊属性（这些属性主要与 **方法** 相关）
+
+| **属性**         | **作用** |
+|-----------------|---------|
+| `__call__`      | 使对象变为可调用（可重载 `__call__` 方法）。 |
+| `__getitem__`   | 允许对象使用 `obj[key]` 访问（可重载 `__getitem__`）。 |
+| `__setitem__`   | 允许对象使用 `obj[key] = value` 赋值（可重载 `__setitem__`）。 |
+| `__delitem__`   | 允许对象使用 `del obj[key]` 删除元素（可重载 `__delitem__`）。 |
+| `__len__`       | 允许对象使用 `len(obj)` 获取长度（可重载 `__len__`）。 |
+| `__repr__`      | 返回对象的**官方字符串表示**，用于 `repr(obj)`。 |
+| `__str__`       | 返回对象的**可读字符串表示**，用于 `str(obj)` 或 `print(obj)`。 |
+
+```python
+class Test():
+    def __init__(self, age):
+        self.age = age
+    
+    def add(self):
+        '''加一'''
+        return self.age+ 1
+
+test = Test(13)
+test.__dict__['name'] = 'https://www.big-yellow-j.top/'
+print(test.name)
+print(test.add.__name__)
+print(test.add.__doc__)
+
+https://www.big-yellow-j.top/
+add
+加一
+
+```
+
+---
+
+一些Python内置的装饰器:
+1、`@staticmethod`：定义静态方法，无须实例化即可调用
+2、`@classmethod`：定义类方法，可以访问类变量
+3、`@property`：将方法转换为属性
+
+比如说：
+
+```python
+class Person:
+    place= 'bj' # 类变量（所有实例共享）
+
+    def __init__(self, name):
+        self.name = name
+    
+    @staticmethod
+    def age1(age):
+        print(f"{age}")
+    
+    @classmethod
+    def new_place(cls, new):
+        cls.place = new
+
+    def age2(self, age):
+        print(f"{self.name}:{age} from {self.place}")
+    
+    def age3(self, age):
+        if age>= 20:
+            Person.new_place('sh')
+        print(f"{self.name}:{age} from {self.__class__.place}")
+
+Person.age1(13)
+Person("Tom").age2(13)
+Person("Tom").age3(23)
+
+13
+Tom:13 from bj
+Tom:23 from sh
+```
+
+但是切换顺序：
+
+```python
+Person.age1(13)
+Person("Tom").age3(23)
+Person("Tom").age2(13)
+
+13
+Tom:23 from sh
+Tom:13 from sh
+```
+
+这是因为使用`age3`时候就将类变量进行了修改，还有一些装饰器比如`pytoch`里面有些要不进行梯度更新，除了使用`with torch.no_grad()`可以直接用`@torch.no_grad()`（这个一般就是在类里面加一个这个（比如生成内容，一般就不需要更新梯度））
+
+## 结论
+
+解释了python里面的 **多进程/多线程/装饰器**。更加详细准确直接去看 官方文档！！！！链接：https://docs.python.org/zh-cn/3.12
 
 ## 参考
 1、https://docs.python.org/zh-cn/3.13/library/concurrent.futures.html
@@ -250,3 +425,4 @@ https://liaoxuefeng.com/books/python/functional/decorator/index.html
 4、https://zh.wikipedia.org/wiki/CPU%E5%AF%86%E9%9B%86%E5%9E%8B
 5、https://docs.python.org/zh-cn/3.13/library/multiprocessing.html
 6、https://docs.python.org/zh-cn/3.12/library/pickle.html
+7、https://docs.python.org/zh-cn/3.12/library/stdtypes.html#definition.__name__
