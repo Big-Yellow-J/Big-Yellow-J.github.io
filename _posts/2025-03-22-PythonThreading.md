@@ -6,7 +6,7 @@ extMath: true
 images: true
 address: changsha
 show_footer_image: true
-description: 主要介绍Python进阶知识：多线程/多进程/装饰器以及具体代码
+description: 本文写作于2025.3.20，恰好作者正好在外面实习，于此同时在实际工作中遇到这些知识点，因此就进行一个简短汇总方便后续回顾
 tags: [python, 多进程, 多线程, 装饰器]
 ---
 
@@ -472,7 +472,7 @@ def process_region(..., ocr):
 
 ---
 
-这里面还有另外一个注意点：入宫所有的子进程都要加载同一个内容，就会发生冲突这个需要避免，比如说在`process_region`里面使用
+这里面还有另外一个注意点：如果所有的子进程都要加载同一个内容，就会发生冲突这个需要避免，比如说在`process_region`里面使用
 
 ```python
   ocr = PaddleOCR(

@@ -6,7 +6,7 @@ extMath: true
 images: true
 address: changsha
 show_footer_image: true
-description: 主要介绍数据蒸馏（Data Distillation）操作原理
+description: 主要介绍数据蒸馏操作，并且介绍CVPR-2025上海交大满分论文：Dataset Distillation with Neural Characteristic Function: A Minmax Perspective。本文主要是借鉴论文1中的整体结构，大致了解什么是DD而后再去介绍（CVPR-2025）论文。
 tags: [深度学习基础理论, cv]
 ---
 
