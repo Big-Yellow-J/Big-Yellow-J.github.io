@@ -32,6 +32,50 @@ Hi！欢迎来自<span id="visitor-location">某地</span>
 - Email2&nbsp;: [2802311325@qq.com](mailto:2802311325@gmail.com)  
 - GitHub: [https://github.com/shangxiaaabb](https://github.com/shangxiaaabb) 
 
+<div id="spotify-player"></div>
+
+<script>
+  // Spotify API access token
+  const accessToken = '5430928c8c8f4b6db3407a05c144aa1c';
+
+  // Spotify playlist ID
+  const playlistId = 'xtu4X-xVQ7GU_e08RXUjKQ';
+
+  // Function to fetch playlist data
+  async function fetchPlaylist() {
+    const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+    const data = await response.json();
+    return data.items;
+  }
+
+  // Function to get a random song from the playlist
+  async function getRandomSong() {
+    const tracks = await fetchPlaylist();
+    const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
+    return randomTrack.track.uri;
+  }
+
+  // Function to embed the random song player
+  async function embedRandomSong() {
+    const songUri = await getRandomSong();
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://open.spotify.com/embed/track/${songUri.split(':')[2]}`;
+    iframe.width = '300';
+    iframe.height = '380';
+    iframe.frameborder = '0';
+    iframe.allowtransparency = 'true';
+    iframe.allow = 'encrypted-media';
+    document.getElementById('spotify-player').appendChild(iframe);
+  }
+
+  // Load the random song player when the page loads
+  window.onload = embedRandomSong;
+</script>
+
 
  <script>
   // 获取访问者地理位置

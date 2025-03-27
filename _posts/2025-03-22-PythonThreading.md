@@ -52,7 +52,7 @@ print(f"Used Time:{time.time()- start_time}")
 
 ## 3、如何在代码中使用多进程/多线程/装饰器
 
-* **1、多线程使用**
+### **1、多线程使用**
 
 多线程使用方式比较简单，以下面例子为例：
 
@@ -135,7 +135,7 @@ def write_to_file(num):
 
 这样一来就可以正常写入结果
 
-* **2、多进程使用**
+### **2、多进程使用**
 
 Python 的 multiprocessing 模块基于 fork 或 spawn 机制，可以创建多个独立进程，让它们并行执行任务，从而绕过**GIL（全局解释器锁）**，提高 CPU 密集型任务的性能（数学运算、数据处理等）。使用起来也比较简单
 
@@ -229,7 +229,7 @@ if __name__ == "__main__":
 
 上面例子中 **pickle**（multiprocessing 模块会自动使用 pickle 来**序列化**（**一般而言**：基本数据类型，列表，元组，字典等容器类型，自定义类的实例，函数（但不包括函数中引用的外部对象，如文件对象、数据库连接等））和反序列化）如下内容：`square` 函数（传递给子进程）。`numbers` 列表（传递给子进程）。`results` 列表（从子进程返回给主进程）。
 
-* **3、装饰器**
+### **3、装饰器**
 
 装饰器（Decorator）是一种用于修改函数或类行为的高级 Python 语法。它本质上是一个高阶函数，可以在不修改原函数代码的情况下，动态地添加功能。主要作用减少重复代码等，说人话就是**将函数作为一种参数输入到函数中**。使用方法很简单直接在需要使用的函数上面添加 `@装饰器` 即可。
 比如说，要计算一个函数运行时间一般而言会通过：
@@ -417,6 +417,76 @@ Tom:13 from sh
 ## 结论
 
 解释了python里面的 **多进程/多线程/装饰器**。更加详细准确直接去看 官方文档！！！！链接：https://docs.python.org/zh-cn/3.12
+
+## 值得注意的是
+
+**1、在使用多进程时候，如果遇到无法 pickle 问题如何处理**
+
+比如说在使用**百度OCR工具**（Win电脑上测试）时候，如果设置不当就会遇到：`TypeError: cannot pickle 'paddle.base.libpaddle.PaddleInferPredictor' object`，比如说你的代码（省略很多内容）如下：
+
+```python
+def main_process():
+    ...
+    ocr = PaddleOCR(
+        det_model_dir="./ch_PP-OCRv4_det_infer",
+        rec_model_dir="./ch_PP-OCRv4_rec_infer",
+        use_angle_cls=True,
+        lang="en",
+        use_gpu=True
+    )
+    with ProcessPoolExecutor(max_workers= max_workers) as executor:
+        futures = {executor.submit(process_region, ..., ocr)
+                   for region_idx, region in enumerate(detection_region)}
+        ...
+def process_region(..., ocr):
+    ...
+    ocr_result = ocr.ocr(roi, cls=True)
+    ...
+
+```
+
+一个比较简单处理办法就是在 `ProcessPoolExecutor`中添加一个 `initializer`[参数](https://docs.python.org/zh-cn/3.13/library/concurrent.futures.html#:~:text=initializer%20%E6%98%AF%E4%B8%80%E4%B8%AA%E5%8F%AF%E9%80%89%E7%9A%84%E5%8F%AF%E8%B0%83%E7%94%A8%E5%AF%B9%E8%B1%A1%EF%BC%8C%E5%AE%83%E4%BC%9A%E5%9C%A8%E6%AF%8F%E4%B8%AA%E5%B7%A5%E4%BD%9C%E8%BF%9B%E7%A8%8B%E5%90%AF%E5%8A%A8%E6%97%B6%E8%A2%AB%E8%B0%83%E7%94%A8)保证：**它会在每个工作进程启动时被调用**。那么代码为：
+
+```python
+def init_worker():
+    global ocr
+    ocr = PaddleOCR(
+        det_model_dir="./ch_PP-OCRv4_det_infer",
+        rec_model_dir="./ch_PP-OCRv4_rec_infer",
+        use_angle_cls=True,
+        lang="en",
+        log_level='ERROR'
+    )
+def main_process():
+    ...
+    with ProcessPoolExecutor(max_workers= max_workers, initializer= init_worker) as executor:
+        futures = {executor.submit(process_region, ..., ocr)
+                   for region_idx, region in enumerate(detection_region)}
+def process_region(..., ocr):
+    global ocr
+    ...
+    ocr_result = ocr.ocr(roi, cls=True)
+    ...
+
+```
+
+---
+
+这里面还有另外一个注意点：入宫所有的子进程都要加载同一个内容，就会发生冲突这个需要避免，比如说在`process_region`里面使用
+
+```python
+  ocr = PaddleOCR(
+      det_model_dir="./ch_PP-OCRv4_det_infer",
+      rec_model_dir="./ch_PP-OCRv4_rec_infer",
+      use_angle_cls=True,
+      lang="en",
+      use_gpu=True
+  )
+```
+
+所有的进程都需要加载同一个文件夹，这里就会出现错误
+
+---
 
 ## 参考
 1、https://docs.python.org/zh-cn/3.13/library/concurrent.futures.html
