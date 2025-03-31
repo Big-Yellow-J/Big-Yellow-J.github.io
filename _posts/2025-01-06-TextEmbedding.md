@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 深度学习基础理论————Word Embedding原理
+title: 深度学习Word Embedding原理及其代码
 categories: 深度学习基础理论
 extMath: true
 images: true

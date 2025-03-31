@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 深度学习基础理论————常见的LLM微调技术及其代码
+title: 深度学习中常见的LLM微调技术及其代码
 categories: 深度学习基础理论
 extMath: true
 images: true

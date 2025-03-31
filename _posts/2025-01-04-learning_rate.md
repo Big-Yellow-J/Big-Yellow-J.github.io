@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 深度学习基础理论————学习率优化方法(AdaGrad/RMSprop/Adam/Warm-UP)
+title: 深度学习中各类学习率优化方法(AdaGrad/RMSprop/Adam/Warm-UP)原理及其代码
 categories: 深度学习基础理论
 address: changsha
 extMath: true

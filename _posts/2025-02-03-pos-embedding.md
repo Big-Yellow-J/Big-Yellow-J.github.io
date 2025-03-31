@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 深度学习基础理论————位置编码原理及其代码
+title: LLM中常用的位置编码原理及其代码
 categories: 深度学习基础理论
 extMath: true
 images: true

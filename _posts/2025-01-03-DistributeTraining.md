@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 深度学习基础理论————分布式训练（模型并行/数据并行/流水线并行/张量并行）
+title: 深度学习分布式训练（模型并行/数据并行/流水线并行/张量并行）
 categories: 深度学习基础理论
 address: changsha
 extMath: true

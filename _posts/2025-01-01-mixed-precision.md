@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 深度学习基础理论————训练加速（单/半/混合精度训练）/显存优化（gradient-checkpoint）
+title: 通过单/半/混合精度加速训练以及显存优化（gradient-checkpoint）操作
 categories: 深度学习基础理论
 extMath: true
 images: true
