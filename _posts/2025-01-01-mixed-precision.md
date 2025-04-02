@@ -88,6 +88,18 @@ scaler = GradScaler()
 scaler.scale(loss).backward()
 scaler.step(optimizer)
 scaler.update()
+
+model = CVModel(args= ModelArgs).to(device)
+scaler = GradScaler()
+optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+for _ in range(20):
+    with autocast():
+        out = model(in_data)
+        loss = nn.CrossEntropyLoss()(out, labels)
+    scaler.scale(loss).backward()
+    scaler.step(optimizer)
+    scaler.update()
+    optimizer.zero_grad()
 ```
 
 `Apex`中`Amp`参数（https://nvidia.github.io/apex/amp.html）：
