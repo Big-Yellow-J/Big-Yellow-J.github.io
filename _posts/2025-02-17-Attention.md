@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 各类Attention变种（MHA/Casual Attention）以及内存优化管理(Flash Attention/Page Attention)
+title: 深入探讨Attention变种与内存优化：从MHA到Flash/Page Attention
 categories: 深度学习基础理论
 extMath: true
 images: true
