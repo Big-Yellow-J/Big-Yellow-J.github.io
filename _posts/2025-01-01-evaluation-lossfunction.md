@@ -163,9 +163,22 @@ if __name__ == '__main__':
 
 ```
 
+对于 **FocalLoss**另外一个改进为：**CB Loss**用于改进样本分布不均衡问题：
+
+$$
+\mathcal{L} = - \frac{1 - \beta}{1 - \beta^{n_y}} \sum (1 - p_y)^\gamma \log(p_y)
+$$
+
+
 ### **L1 loss**
 
-**L1 loss**：算预测值与真实值之间的绝对差值来衡量模型的预测误差，公式为：$L = \frac{1}{N}\sum_{i=1}^{N}|y_i- \hat{y}_i|$
+**L1 loss**：算预测值与真实值之间的绝对差值来衡量模型的预测误差，公式为：
+
+$$
+
+L = \frac{1}{N}\sum_{i=1}^{N}|y_i- \hat{y}_i|
+
+$$
 
 ### **Huber Loss**
 
@@ -185,3 +198,4 @@ $$
 2、https://pytorch.org/docs/stable/generated/torch.nn.L1Loss.html#torch.nn.L1Loss
 3、[Focal Loss for Dense Object Detection](https://arxiv.org/pdf/1708.02002)
 4、https://blog.csdn.net/zhang2010hao/article/details/84559971
+5、https://openaccess.thecvf.com/content_CVPR_2019/papers/Cui_Class-Balanced_Loss_Based_on_Effective_Number_of_Samples_CVPR_2019_paper.pdf
