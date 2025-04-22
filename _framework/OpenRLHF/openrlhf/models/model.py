@@ -156,7 +156,10 @@ def get_llm_for_sequence_regression(
     return model
 
 
-def _get_reward_model(base_pretrained_model, base_llm_model, value_head_prefix="score", packing_samples=False):
+def _get_reward_model(base_pretrained_model, 
+                      base_llm_model, 
+                      value_head_prefix="score", 
+                      packing_samples=False):
     class RewardModel(base_pretrained_model):
         supports_gradient_checkpointing = True
 
@@ -234,7 +237,10 @@ def _get_reward_model(base_pretrained_model, base_llm_model, value_head_prefix="
     return RewardModel
 
 
-def _get_critic_model(base_pretrained_model, base_llm_model, value_head_prefix="score", packing_samples=False):
+def _get_critic_model(base_pretrained_model, 
+                      base_llm_model, 
+                      value_head_prefix="score", 
+                      packing_samples=False):
     class CriticModel(base_pretrained_model):
         supports_gradient_checkpointing = True
 
