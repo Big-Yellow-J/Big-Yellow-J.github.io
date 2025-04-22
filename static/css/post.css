@@ -29,7 +29,7 @@ body {
   color: #999999;
 }
 .page-post .post > * {
-  margin: 18px 0;
+  margin: 0px 0;
 }
 .page-post .post > iframe {
   margin: 0;
@@ -65,7 +65,7 @@ body {
 .page-post blockquote {
   border-left: 3px solid #333333;
   background-color: #f7f7f7;
-  padding: 9px 9px 9px 15px;
+  padding: 0px 0px 9px 15px;
 }
 
 .page-post a {
