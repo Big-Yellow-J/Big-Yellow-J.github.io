@@ -3,7 +3,10 @@ encoding: utf-8
 plugins:
   - jekyll-regex-replace
   - jekyll-last-modified-at
+  - jekyll-paginate
 
+paginate: 15
+paginate_path: "/page:num/"
 
 last_modified_at:
   enabled: true
@@ -21,7 +24,6 @@ author_info:
   email: hjie20011001@gmai.com
   location: 武汉
   stackoverflow: 
-# footerText: 'Copyright © 2016 皖ICP备16016174号'
 api_info:
   tianditu: 5ff361b4ae2c6f51000feb3e58023a8e
   seniverse: SOOcdTxiop033YKPB
@@ -39,13 +41,14 @@ kramdown:
   parse_block_html: true
 include:
   - _jupyter
+  - code
   - index_now.txt
 exclude: ['CNAME', 'README.md', 'LICENSE', '_site', 'dist', 'Gemfile', 'Gemfile.lock', 'blog.sh']
 
 # 域名配置
 # baseurl配置,如果网站部署在根目录下的其他目录中，请设置为 /目录名
-domainUrl: #'https://blog.tmaize.net'
-baseurl: 'https://www.big-yellow-j.top' #'https://big-yellow-j.github.io/'
+domainUrl: 'https://www.big-yellow-j.top'
+baseurl: ''
 
 # 吐个槽地址，会在chat页面中重定向到该地址
 tucaoUrl: https://support.qq.com/product/86335
@@ -56,6 +59,8 @@ tucaoUrl: https://support.qq.com/product/86335
 menu:
   - title: 首页
     url: /
+  - title: Code
+    url: /pages/code.html
   - title: 归类
     url: /pages/categories.html
   - title: 搜索

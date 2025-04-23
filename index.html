@@ -4,16 +4,16 @@ title: 首页
 ---
 <div class="page page-index">
   <!-- 文章列表 -->
-  {% for post in site.posts -%}
-    {%- if post.show != false -%}  <!-- 判断文章是否应该显示 -->
-      {%- capture post_year %}{{ post.date | date: "%Y" }}{% endcapture -%}
-      {%- capture post_previous_year %}{{ post.previous.date | date: "%Y" }}{% endcapture -%}
-      {%- capture post_next_year %}{{ post.next.date | date: "%Y" }}{% endcapture -%}
-      {%- if forloop.first or post_next_year != post_year -%}
+  {% for post in paginator.posts %}
+    {% if post.show != false %}  <!-- 判断文章是否应该显示 -->
+      {% capture post_year %}{{ post.date | date: "%Y" }}{% endcapture %}
+      {% capture post_previous_year %}{{ post.previous.date | date: "%Y" }}{% endcapture %}
+      {% capture post_next_year %}{{ post.next.date | date: "%Y" }}{% endcapture %}
+      {% if forloop.first or post_next_year != post_year %}
       <div class="list-post">
         <h2 id="{{ post_year }}">{{ post_year }}</h2>
         <ul>
-      {%- endif %}
+      {% endif %}
 
       <li>
         <span class="date">{{ post.date | date: "%Y/%m/%d" }}</span>
@@ -21,16 +21,37 @@ title: 首页
           <a href="{{ site.baseurl | append: post.url }}" class="hover-underline">{{ post.title }}</a>
         </div>
         <div class="categories">
-          {% for categorie in post.categories -%}
+          {% for categorie in post.categories %}
           <a href="{{ site.baseurl }}/pages/categories.html#{{ categorie }}" class="hover-underline">{{ categorie }}</a>
-          {%- endfor %}
+          {% endfor %}
         </div>
       </li>
 
-      {%- if forloop.last or post_previous_year != post_year %}
+      {% if forloop.last or post_previous_year != post_year %}
         </ul>
       </div>
-      {%- endif %}
-    {%- endif %}
-  {%- endfor %}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+
+  <!-- 分页导航 -->
+  {% if paginator.total_pages > 1 %}
+  <div class="pagination">
+    {% if paginator.previous_page %}
+      <a href="{{ site.baseurl }}{{ paginator.previous_page_path }}" class="previous">上一页</a>
+    {% else %}
+      <span class="previous disabled">上一页</span>
+    {% endif %}
+
+    <span class="page_number">
+      第 {{ paginator.page }} 页 / 共 {{ paginator.total_pages }} 页
+    </span>
+
+    {% if paginator.next_page %}
+      <a href="{{ site.baseurl }}{{ paginator.next_page_path }}" class="next">下一页</a>
+    {% else %}
+      <span class="next disabled">下一页</span>
+    {% endif %}
+  </div>
+  {% endif %}
 </div>
