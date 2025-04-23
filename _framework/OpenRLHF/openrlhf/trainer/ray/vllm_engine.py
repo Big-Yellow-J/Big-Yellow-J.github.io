@@ -140,6 +140,7 @@ def create_vllm_engines(
     vllm_engines = []
     noset_visible_devices = ray_noset_visible_devices(ray.get(get_all_env_variables.remote()))
     distributed_executor_backend = "uni" if tensor_parallel_size == 1 else "ray"
+    # 资源调度
     use_hybrid_engine = shared_pg is not None
     num_gpus = int(tensor_parallel_size == 1)
     if use_hybrid_engine and tensor_parallel_size == 1:
@@ -162,7 +163,7 @@ def create_vllm_engines(
             placement_group=shared_pg,
             placement_group_capture_child_tasks=True,
             placement_group_bundle_index=i * tensor_parallel_size,
-        )
+        ) # 调度策略
 
         if num_engines >= num_total_actors:
             num_actors = 1

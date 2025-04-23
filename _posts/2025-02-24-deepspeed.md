@@ -1,7 +1,7 @@
 ---
 layout: mypost
-title: 深度学习基础理论————DeepSpeed
-categories: 深度学习基础理论
+title: 深入浅出 DeepSpeed：深度学习高效训练框架解析
+categories: DeepSpeed框架
 extMath: true
 show_footer_image: true
 address: changsha
