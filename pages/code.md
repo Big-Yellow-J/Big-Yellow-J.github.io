@@ -1,5 +1,5 @@
 ---
-layout: page
+layout: mypost
 title: Code
 show_footer_image: false
 ---
