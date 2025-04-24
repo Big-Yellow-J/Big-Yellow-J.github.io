@@ -47,7 +47,6 @@ class MultiHeadAttention(nn.Module):
             att = (q@ k.transpose(-2, -1))* (1/ torch.sqrt(k.size(-1)))
             if attention_mask is not None:
                 att = att.masked_fill(attention_mask == 0, float('-inf'))
-            att = F.softmax(att, dim= -1)
             att = self.atten_dropout(F.softmax(att, dim=-1))
             y = att @ v
         y = y.transpose(1, 2).contiguous().view(B, T, C)
@@ -67,4 +66,3 @@ if __name__ == '__main__':
     mha = mha.to(device)
     output = mha(x, attention_mask)
     print("输出形状:", output.shape)
-    print("输出内容:", output.shape)
