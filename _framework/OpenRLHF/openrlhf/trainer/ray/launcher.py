@@ -343,7 +343,7 @@ class PPORayActorGroup:
                     vllm_engines=vllm_engines,
                     # whether this actor should triger corresponding critic model training
                     critic_train_remote=(i < len(critic_actors)) if critic_actor else None,
-                )
+                ) # TODO: 了解 fit 函数在干什么
             )
 
         return refs
