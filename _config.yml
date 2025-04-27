@@ -53,25 +53,18 @@ baseurl: ''
 # 吐个槽地址，会在chat页面中重定向到该地址
 tucaoUrl: https://support.qq.com/product/86335
 
-# 菜单
-# 必填字段 title: '文本' url: '链接'
-# 可选字段 target: '_blank' 新页面打开 
 menu:
-  - title: 首页
+  - title: 😶‍🌫️首页
     url: /
   - title: Code
     url: /pages/code.html
-  - title: 归类
+  - title: 🗂️归类
     url: /pages/categories.html
-  - title: 搜索
+  - title: 🔎搜索
     url: /pages/search.html
-  # - title: 友链
-  #   url: /pages/links.html
-  # - title: 留言
-  #   url: /pages/chat.html
-  - title: 关于
+  - title: 😁关于
     url: /pages/about.html
-  - title: CV
+  - title: 📃CV
     url: /pages/cv.html
   # - title: Writing
   #   url: /pages/writing.html
