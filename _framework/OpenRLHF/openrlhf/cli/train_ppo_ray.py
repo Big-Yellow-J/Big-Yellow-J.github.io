@@ -96,7 +96,7 @@ def train(args):
             pg if args.colocate_all_models else None,
             args.vllm_gpu_memory_utilization,
             args.vllm_enable_sleep,
-        )
+        )# 分布式创建vLLM引擎
 
     actor_model = PPORayActorGroup(
         args.actor_num_nodes,

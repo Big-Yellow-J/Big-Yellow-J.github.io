@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ page.title }}</title>
+
+  <!-- Prism 样式 -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.css" rel="stylesheet" />
+  <!-- Prism 插件样式（行号/链接）-->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs/plugins/line-numbers/prism-line-numbers.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/prismjs/plugins/autolinker/prism-autolinker.css" rel="stylesheet" />
+
+  <style>
+    body {
+      background: #2d2d2d;
+      color: #ccc;
+      font-family: 'Fira Code', 'Courier New', monospace;
+      margin: 0;
+      padding: 2rem;
+    }
+    pre {
+      border-radius: 10px;
+      overflow: auto;
+      font-size: 14px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+    a {
+      color: #81a1c1;
+      text-decoration: underline;
+    }
+    /* 让代码块更舒服点 */
+    code {
+      font-family: 'Fira Code', 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+
+<pre class="line-numbers"><code class="language-python">{{ content | escape }}</code></pre>
+
+<!-- Prism 本体 -->
+<script src="https://cdn.jsdelivr.net/npm/prismjs/prism.js"></script>
+<!-- Python 支持 -->
+<script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-python.min.js"></script>
+<!-- 插件支持 -->
+<script src="https://cdn.jsdelivr.net/npm/prismjs/plugins/line-numbers/prism-line-numbers.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs/plugins/autolinker/prism-autolinker.min.js"></script>
+
+<script>
+// 启用行号跳转，比如 URL 加 #L10 会跳到第10行
+document.addEventListener('DOMContentLoaded', function () {
+  const hash = window.location.hash;
+  if (hash.startsWith("#L")) {
+    const lineNumber = hash.substring(2);
+    const target = document.querySelector(`pre > code > span:nth-child(${lineNumber})`);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+});
+</script>
+
+</body>
+</html>
