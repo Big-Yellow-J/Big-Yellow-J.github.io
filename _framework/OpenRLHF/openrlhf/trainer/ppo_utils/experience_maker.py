@@ -260,7 +260,7 @@ class RemoteExperienceMaker(BaseExperienceMaker):
                 experience_cpu.to_device("cpu")
                 self._ref = self.critic.append.remote(experience_cpu)
         return experiences
-
+    #TODO: 2025.04.28 阅读到这里了
     @torch.no_grad()
     def make_experience(self, samples_list: List[Samples]) -> List[Experience]:
         """
@@ -707,10 +707,12 @@ class RemoteExperienceMaker(BaseExperienceMaker):
         args = self.strategy.args
         self.actor.eval()
         # sample multiple response
+        # n_samples_per_prompt 对每一条 prompt 生成内容数量
         all_prompts = sum([[prompt] * args.n_samples_per_prompt for prompt in all_prompts], [])
         all_labels = sum([[label] * args.n_samples_per_prompt for label in all_labels], [])
         samples_list = []
-        for i in range(0, len(all_prompts), args.micro_rollout_batch_size):
+        for i in range(0, len(all_prompts), args.micro_rollout_batch_size): 
+            # micro_rollout_batch_size=8
             prompts = all_prompts[i : i + args.micro_rollout_batch_size]
             labels = all_labels[i : i + args.micro_rollout_batch_size]
             inputs = self.tokenize_fn(prompts, self.prompt_max_len, device="cuda")
@@ -737,7 +739,8 @@ class RemoteExperienceMaker(BaseExperienceMaker):
         rank = torch.distributed.get_rank() // self.strategy.ring_attn_size
         world_size = torch.distributed.get_world_size() // self.strategy.ring_attn_size
 
-        # Select LLM engines: assign each rank an engine, or cycle through engines if world_size < engine_count
+        # Select LLM engines: assign each rank an engine, 
+        # or cycle through engines if world_size < engine_count
         if len(self.vllm_engines) <= world_size:
             llms = [self.vllm_engines[rank % len(self.vllm_engines)]]
         else:
