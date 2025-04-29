@@ -110,11 +110,12 @@ def google_submit_url(url):
 def bing_submit_url(url):
     endpoint = "https://api.indexnow.org/indexnow"
 
+    domain = url.split('/')[2]  # 例如 www.big-yellow-j.top
     payload = {
-        "host": url.split('/')[2],    # 提取出域名部分，比如 www.example.com
+        "host": domain,
         "key": 'd8eac6ca9eb040f28f6ed4ab5cd8d5ad',
-        "keyLocation": 'https://www.big-yellow-j.top/Bing_indexnow.txt',
-        "urlList": [url]
+        "keyLocation": 'https://www.big-yellow-j.top/Bing_indexnow.txt',  # 这里必须是完整URL
+        "urlList": [url]  # 注意！是完整的url，不要截断
     }
 
     headers = {
@@ -145,7 +146,7 @@ if __name__ == '__main__':
     success_count = 0
     for url in urls:
         try:
-            # google_submit_url(url)
+            google_submit_url(url)
             bing_submit_url(url)
         except Exception:
             continue
