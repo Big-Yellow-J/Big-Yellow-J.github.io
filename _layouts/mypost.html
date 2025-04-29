@@ -116,7 +116,8 @@
       owner: 'Big-Yellow-J', // GitHub 用户名
       admin: ['Big-Yellow-J', 'shangxiaaabb'], // 管理员用户名
       id: md5('{{ page.title }}'), // 对标题进行哈希处理
-      distractionFreeMode: false // 专注模式
+      distractionFreeMode: false, // 专注模式
+      createIssueManually: true
     });
     gitalk.render('gitalk-container');
   </script>
