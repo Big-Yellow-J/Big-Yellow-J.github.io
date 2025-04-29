@@ -317,6 +317,7 @@ body, p, div, span, a {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  border-bottom: #ffffff
 }
 
 .nav-button:hover:not(.disabled) {

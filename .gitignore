@@ -3,3 +3,6 @@
 /dist.tar.gz
 /.jekyll-cache
 /.bundle
+./jeklly-blog-dfbf0971c0f1.json
+./google_api.json
+*.json
