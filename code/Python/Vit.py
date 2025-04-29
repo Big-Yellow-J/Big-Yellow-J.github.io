@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from math import *
-from flash_attn import flash_attn_func
 
 class PatchEmbedding(nn.Module):
     def __init__(self, img_size=224, patch_size=16, in_channels=3, embed_dim=768):
@@ -33,6 +32,7 @@ class PositionalEncoding(nn.Module):
         self.register_parameter('pe', nn.Parameter(pe, requires_grad=False))
 
     def forward(self, x):
+        print(self.pe.shape, x.shape)
         x = x + self.pe[:x.size(0), :]
         return self.dropout(x)
 
@@ -50,6 +50,13 @@ class MultiHeadAttention(nn.Module):
         self.atten_dropout = nn.Dropout(self.dropout)
         self.proj_dropout = nn.Dropout(self.dropout)
 
+        pe = torch.zeros(5000, embed_dim)
+        position = torch.arange(0, 5000, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, embed_dim, 2).float() * (-log(10000.0) / embed_dim))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        self.register_parameter('pe', nn.Parameter(pe, requires_grad=False))
+
         self.flash = hasattr(torch.nn.functional,'scaled_dot_product_attention')
         if not self.flash:
             print("WARNING: using slow attention. Flash Attention requires PyTorch >= 2.0")
@@ -59,8 +66,13 @@ class MultiHeadAttention(nn.Module):
         qkv = self.m_atten(x)
         qkv = qkv.reshape(B, T, 3, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]
+        pos_enc = self.pe[:T]  # [T, embed_dim]
+        pos_enc = pos_enc.view(T, self.num_heads, self.head_dim).permute(1, 0, 2).unsqueeze(0)  # [1, nh, T, hd]
+        q = q + pos_enc
+        k = k + pos_enc
         if self.flash and return_attn== False:
             try:
+                from flash_attn import flash_attn_func
                 y = flash_attn_func(q, k, v,
                                     dropout_p= self.dropout if self.training else 0,
                                     causal= True)
@@ -125,7 +137,7 @@ class VisionTransformer(nn.Module):
         x = self.patch_embedding(x)  # [B, num_patches, embed_dim]
         cls_tokens = self.cls_token.repeat(B, 1, 1).clone()  # [B, 1, embed_dim]
         x = torch.cat((cls_tokens, x), dim=1)  # [B, num_patches+1, embed_dim]
-        x = self.pos_encoder(x)  # Add positional encoding
+        # x = self.pos_encoder(x)  # Add positional encoding
 
         attentions = []
         for i,  layer in enumerate(self.encoder_layers):
@@ -183,13 +195,12 @@ def visual_attentions(model, x: torch.tensor, return_attn: bool=True, attn_layer
         plt.axis('off')
         plt.show()
 
-
 if __name__ == '__main__':
     import os
     os.environ["CUDA_VISIBLE_DEVICES"] = "1"
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    in_data = torch.randn(2, 3, 470, 1820).to(device)  # b, c, h, w
-    model = VisionTransformer(img_size= (470, 1820), patch_size= 16).to(device)
+    in_data = torch.randn(2, 3, 224, 224).to(device)  # b, c, h, w
+    model = VisionTransformer(img_size= (224, 224), patch_size= 16).to(device)
 
     out_data, attention = model(in_data, return_attn= True)
     print(out_data.shape)

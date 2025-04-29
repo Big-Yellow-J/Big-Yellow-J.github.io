@@ -80,6 +80,7 @@ class WindowAttention(nn.Module):
 if __name__ == '__main__':
     import time
     from MultiHeadAttention import MultiHeadAttention
+    from QwenWindowAttention import QwenWindowAttention
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     B, T, C = 2, 25, 1024
     num_heads = 8
@@ -89,8 +90,12 @@ if __name__ == '__main__':
         [1, 1, 1, 1, 1]*5,
         [1, 1, 1, 0, 0]*5
     ], dtype=torch.float32).to(device)  # shape: (B, T)
+    grid_thw = torch.tensor([[2, 1024, 1024]], dtype=torch.int32).to(device)
+
     wa = WindowAttention(embed_dim=C, num_heads=num_heads, window_size=window_size, dropout=0.1)
     mha = MultiHeadAttention(embed_dim= C, num_heads= num_heads)
+    qw_wa = QwenWindowAttention(embed_dim= C, num_heads= num_heads, window_size= window_size)
+    qw_wa = qw_wa.to(device)
     wa = wa.to(device)
     mha = mha.to(device)
 
@@ -101,3 +106,7 @@ if __name__ == '__main__':
     start_time_mha = time.time()
     output = mha(x, attention_mask)
     print(f"MultiHeadAttention Time:{time.time()- start_time_wa} {output.shape}")
+
+    start_time_mha = time.time()
+    output = qw_wa(x, attention_mask, grid_thw, use_window_attention=True)
+    print(f"QwenWindowAttention Time:{time.time()- start_time_wa} {output.shape}")
