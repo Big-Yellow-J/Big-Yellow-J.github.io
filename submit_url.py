@@ -15,7 +15,7 @@ CREDENTIALS_FILE = './google_api.json'
 SITE_URL = 'https://www.big-yellow-j.top/'
 SITEMAP_LOCAL_PATH = '_site/static/xml/sitemap.xml'
 SITEMAP_URL = 'https://www.big-yellow-j.top/static/xml/sitemap.xml'
-DAYS_TO_FILTER = 7 # 只提交最近修改的7条
+DAYS_TO_FILTER = 10
 
 credentials = service_account.Credentials.from_service_account_file(
     CREDENTIALS_FILE, scopes=SCOPES)
