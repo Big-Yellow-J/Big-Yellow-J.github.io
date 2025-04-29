@@ -49,11 +49,11 @@
   <!-- Prism.js 代码折叠插件 -->
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/previewers/prism-previewers.min.js"></script>
 
-  <!-- 在文章内容下方添加图片 -->
+  <!-- 在文章内容下方添加图片 {{ site.baseurl }}/posts/wechat.png -->
   {% if page.show_footer_image %}
   <div style="text-align: center; margin-top: 20px;">
     <img 
-      src="{{ site.baseurl }}/posts/wechat.png" 
+      src="https://s2.loli.net/2025/04/29/ntFU5SIfNCeK2Hy.png"
       alt="Footer Image" 
       style="max-width: 70%; height: auto;"
     >
@@ -77,6 +77,28 @@
     <button class="share-button" onclick="shareOnWeChat()">
       <i class="fab fa-weixin"></i>
     </button>
+  </div>
+
+  <div class="navigation-buttons">
+    {% if page.previous.url %}
+      <a href="{{ page.previous.url | relative_url }}" class="nav-button previous" title="{{ page.previous.title }}">
+        <i class="fas fa-arrow-left"></i> {{ page.previous.title }}
+      </a>
+    {% else %}
+      <span class="nav-button previous disabled">
+        <i class="fas fa-arrow-left"></i> 没有上一篇文章
+      </span>
+    {% endif %}
+  
+    {% if page.next.url %}
+      <a href="{{ page.next.url | relative_url }}" class="nav-button next" title="{{ page.next.title }}">
+        {{ page.next.title }} <i class="fas fa-arrow-right"></i>
+      </a>
+    {% else %}
+      <span class="nav-button next disabled">
+        没有下一篇文章 <i class="fas fa-arrow-right"></i>
+      </span>
+    {% endif %}
   </div>
 
   <!-- 添加 Gitalk 评论 -->
