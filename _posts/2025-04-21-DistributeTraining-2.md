@@ -5,6 +5,7 @@ categories: 深度学习基础理论
 address: changsha
 extMath: true
 show_footer_image: true
+tags: [分布式训练,深度学习基础理论,张量并行]
 description: 深度学习基础理论————分布式训练（模型并行/数据并行/流水线并行/张量并行）
 ---
 
