@@ -6,6 +6,7 @@ extMath: true
 images: true
 address: wuhan
 show_footer_image: true
+tags: [word2vec,tokenizer]
 ---
 
 Word Embedding：将文本处理为计算机可以理解的数字表示。一种最简单的表示就是直接用one-hot，我建立一个字典，然后对每个字符都进行编码比如说：你好（表示为：10，01）。但是这种编码会有一个问题：**丧失语义信息**，比如说对于文本：喜欢和爱这两个词可能会被编码成：1000和0100，但是从语义上这两个词所表达的含义应该是相似的，但是用one-hot编码无法表示这种关系。

@@ -7,6 +7,7 @@ images: true
 address: yueyang
 show_footer_image: true
 description: 主要介绍各类位置编码方法以及其代码
+tags: [位置编码,rope]
 ---
 
 ## 一、位置编码

@@ -6,6 +6,7 @@ address: changsha
 extMath: true
 show_footer_image: true
 description: 主要介绍深度学习基础理论————学习率优化方法(AdaGrad/RMSprop/Adam/Warm-UP)
+tags: [学习率优化,adam,warm-up]
 ---
 
 ## 学习率基础[^1]

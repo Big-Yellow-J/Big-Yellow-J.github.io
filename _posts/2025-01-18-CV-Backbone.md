@@ -1,11 +1,12 @@
 ---
 layout: mypost
 title: CV中常用Backbone(Resnet/Unet/Vit系列/多模态系列等)以及代码
-categories: 深度学习基础理论
+categories: Backbone
 extMath: true
 images: true
 address: changsha
 show_footer_image: true
+tags: [cv-backbone,卷积网络,transformer,vit,resnet,vit]
 description: 主要介绍深度学习基础理论————CV中常用Backbone(Resnet/Unet/Vit系列/多模态系列等)以及代码
 ---
 
