@@ -48,6 +48,12 @@
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
   <!-- Prism.js 代码折叠插件 -->
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/previewers/prism-previewers.min.js"></script>
+  <!-- Lightbox CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/lightbox2@2.11.3/dist/css/lightbox.min.css" rel="stylesheet">
+
+  <!-- Lightbox JS -->
+  <script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.3/dist/js/lightbox.min.js"></script>
+
 
   <!-- 在文章内容下方添加图片 {{ site.baseurl }}/posts/wechat.png -->
   {% if page.show_footer_image %}
@@ -127,7 +133,6 @@
 
   <!-- 引入 Valine 所需脚本 -->
   <script src="https://unpkg.com/valine@1.5.1/dist/Valine.min.js"></script>
-  
   <script>
     new Valine({
       el: '#vcomments',
@@ -135,24 +140,26 @@
       appKey: 'Icb1EA8yfNGBNuwOhTqTAagZ',
       serverURLs: 'https://ztnwhikf.api.lncldglobal.com',
       path: window.location.pathname,
-      placeholder: '欢迎留言',
-      avatar: 'robohash',
+      placeholder: '欢迎留言(无法评论请打开VPN)',
+      avatar: 'identicon',
       visitor: true, 
       highlight: true,
       recordIP: true,
       pageSize: 10,
+      requiredFields: ['nick']
     });
   </script>
 
-  {% if site.extAdsense -%}
+  <!-- {% if site.extAdsense -%}
   <div class="adsense" style="overflow: hidden;">
     {% include ext-adsense.html -%}
   </div>
   {% endif %}
-</div>
+</div> -->
 {% include footer.html -%}
 {% include script.html -%}
 <script defer src="https://cloud.umami.is/script.js" data-website-id="b1118f16-642d-4b6b-99b0-fb2b4b34134c"></script>
+<script src="https://analytics.ahrefs.com/analytics.js" data-key="4/nmCEy0+wcsPpIqB0+afg" async></script>
 
 </body>
 </html>
