@@ -102,12 +102,12 @@
   </div>
 
   <!-- 添加 Gitalk 评论 -->
-  <div id="gitalk-container"></div>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+  <!-- <div id="gitalk-container"></div>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css"> -->
   <!-- 引入 md5 库 -->
-  <script src="https://cdn.jsdelivr.net/npm/blueimp-md5@2.10.0/js/md5.min.js"></script>
+  <!-- <script src="https://cdn.jsdelivr.net/npm/blueimp-md5@2.10.0/js/md5.min.js"></script> -->
   <!-- 引入 Gitalk 脚本 -->
-  <script src="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+  <!-- <script src="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
   <script>
     var gitalk = new Gitalk({
       clientID: 'Ov23liAg6ZGUK44WreDc', // GitHub OAuth App 的 Client ID
@@ -121,6 +121,27 @@
       // labels: ['Blog']
     });
     gitalk.render('gitalk-container');
+  </script> -->
+  <!-- 使用valine -->
+  <div id="vcomments"></div>
+
+  <!-- 引入 Valine 所需脚本 -->
+  <script src="https://unpkg.com/valine@1.5.1/dist/Valine.min.js"></script>
+  
+  <script>
+    new Valine({
+      el: '#vcomments',
+      appId: 'zTnWHiKFvCX4R30VQ4qyOjE0-MdYXbMMI',
+      appKey: 'Icb1EA8yfNGBNuwOhTqTAagZ',
+      serverURLs: 'https://ztnwhikf.api.lncldglobal.com',
+      path: window.location.pathname,
+      placeholder: '欢迎留言',
+      avatar: 'robohash',
+      visitor: true, 
+      highlight: true,
+      recordIP: true,
+      pageSize: 10,
+    });
   </script>
 
   {% if site.extAdsense -%}
