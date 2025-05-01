@@ -24,15 +24,16 @@
     
   <!-- Lightbox CSS -->
   <link href="https://cdn.jsdelivr.net/npm/lightbox2@2.11.3/dist/css/lightbox.min.css" rel="stylesheet">
+
   <!-- Lightbox JS -->
   <script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.3/dist/js/lightbox.min.js"></script>
   <div class="post page-post">
     <!-- 处理内容中的图片 -->
     {% assign content_with_images = content 
-      | replace: '<img', '<a href="$&src" data-lightbox="post-images"><img class="content-image" alt="Image"'
-      | replace: 'alt=""', 'alt="image"'
-      | replace: '<img class="content-image" alt="Image" src=', '<img class="content-image" alt="Image" src=' %}
-    {{ content_with_images | replace: '</img>', '</a>' }}
+      | replace: '<img', '<img class="content-image" alt="Image"'
+      | replace: 'alt=""', 'alt="image"' %}
+  
+    {{ content_with_images }}
   </div>
   
 
