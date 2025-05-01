@@ -133,7 +133,7 @@ if __name__ == '__main__':
         ]
         print(f"Falling back to manual URL list: {urls}")
 
-    max_workers = 3
+    max_workers = 10
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(submit_url, url) for url in urls]
 
