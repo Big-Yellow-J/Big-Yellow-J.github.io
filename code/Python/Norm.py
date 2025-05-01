@@ -110,6 +110,65 @@ class BatchNorm(nn.Module):
 
         return x_normalized
 
+class GlobalResponseNorm(nn.Module):
+    def __init__(self, dim, eps=1e-6):
+        super(GlobalResponseNorm, self).__init__()
+        self.dim = dim
+        self.eps = eps
+        
+        # 可学习的缩放和平移参数，初始化为 None，后续根据输入动态调整
+        self.gamma = None
+        self.beta = None
+
+    def _init_parameters(self, shape, device):
+        param_shape = [1, self.dim] + [1] * (len(shape) - 2)
+        self.gamma = nn.Parameter(torch.ones(param_shape)).to(device)
+        self.beta = nn.Parameter(torch.zeros(param_shape)).to(device)
+
+    def forward(self, x):
+        # 输入 x 的形状: (batch_size, channels, ...)，可能是 1D 或 2D
+        if self.gamma is None or self.gamma.shape[1:] != x.shape[1:]:
+            self._init_parameters(x.shape, x.device)
+        
+        spatial_dims = tuple(range(2, x.dim()))  # 对于 (N, C, L) 是 (2,)，对于 (N, C, H, W) 是 (2, 3)
+        
+        global_sum = torch.sum(x ** 2, dim=(0,) + spatial_dims, keepdim=True)
+        
+        norm = torch.sqrt(global_sum + self.eps)
+        
+        x_normalized = x / norm
+        
+        return self.gamma * x_normalized + self.beta
+
+class InstanceNorm(nn.Module):
+    def __init__(self, dim, eps=1e-6):
+        super(InstanceNorm, self).__init__()
+        self.dim = dim  # 通道数
+        self.eps = eps  # 防止除零的小常数
+        
+        # 可学习的缩放和平移参数，初始化为 None，后续根据输入动态调整
+        self.gamma = None
+        self.beta = None
+
+    def _init_parameters(self, shape, device):
+        param_shape = [1, self.dim] + [1] * (len(shape) - 2)
+        self.gamma = nn.Parameter(torch.ones(param_shape)).to(device)
+        self.beta = nn.Parameter(torch.zeros(param_shape)).to(device)
+
+    def forward(self, x):
+        # 输入 x 的形状: (batch_size, channels, ...)，可能是 1D 或 2D
+        if self.gamma is None or self.gamma.shape[1:] != x.shape[1:]:
+            self._init_parameters(x.shape, x.device)
+        
+        spatial_dims = tuple(range(2, x.dim()))  # 对于 (N, C, L) 是 (2,)，对于 (N, C, H, W) 是 (2, 3)
+        
+        mean = x.mean(dim=spatial_dims, keepdim=True)
+        var = x.var(dim=spatial_dims, keepdim=True)
+        
+        x_normalized = (x - mean) / torch.sqrt(var + self.eps)
+        
+        return self.gamma * x_normalized + self.beta
+    
 if __name__ == '__main__':
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     x0 = torch.randn(32, 100, 512).to(device)
@@ -136,3 +195,15 @@ if __name__ == '__main__':
     out0 = rmse_norm0(x0)
     out1 = rmse_norm1(x1)
     print("RMSNorm:", out0.shape, out1.shape)
+
+    grn_norm0 = GlobalResponseNorm(100).to(device)
+    grn_norm1 = GlobalResponseNorm(3).to(device)
+    out0 = grn_norm0(x0)
+    out1 = grn_norm1(x1)
+    print(f"GlobalResponseNorm: {out0.shape} {out1.shape}")
+
+    ins_norm0 = InstanceNorm(100).to(device)
+    ins_norm1 = InstanceNorm(3).to(device)
+    out0 = ins_norm0(x0)
+    out1 = ins_norm1(x1)
+    print(f"InstanceNorm: {out0.shape} {out1.shape}")

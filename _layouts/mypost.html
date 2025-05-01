@@ -22,16 +22,17 @@
   </div>
   {% endif %}
     
-  <!-- <div class="post">
-    {{ content }}
-  </div> -->
+  <!-- Lightbox CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/lightbox2@2.11.3/dist/css/lightbox.min.css" rel="stylesheet">
+  <!-- Lightbox JS -->
+  <script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.3/dist/js/lightbox.min.js"></script>
   <div class="post page-post">
     <!-- 处理内容中的图片 -->
     {% assign content_with_images = content 
-      | replace: '<img', '<img class="content-image" alt="Image"'
-      | replace: 'alt=""', 'alt="image"' %}
-  
-    {{ content_with_images }}
+      | replace: '<img', '<a href="$&src" data-lightbox="post-images"><img class="content-image" alt="Image"'
+      | replace: 'alt=""', 'alt="image"'
+      | replace: '<img class="content-image" alt="Image" src=', '<img class="content-image" alt="Image" src=' %}
+    {{ content_with_images | replace: '</img>', '</a>' }}
   </div>
   
 
@@ -48,12 +49,6 @@
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
   <!-- Prism.js 代码折叠插件 -->
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/previewers/prism-previewers.min.js"></script>
-  <!-- Lightbox CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/lightbox2@2.11.3/dist/css/lightbox.min.css" rel="stylesheet">
-
-  <!-- Lightbox JS -->
-  <script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.3/dist/js/lightbox.min.js"></script>
-
 
   <!-- 在文章内容下方添加图片 {{ site.baseurl }}/posts/wechat.png -->
   {% if page.show_footer_image %}
@@ -150,12 +145,12 @@
     });
   </script>
 
-  <!-- {% if site.extAdsense -%}
-  <div class="adsense" style="overflow: hidden;">
-    {% include ext-adsense.html -%}
-  </div>
-  {% endif %}
-</div> -->
+  <!-- {% if site.extAdsense -%} -->
+  <!-- <div class="adsense" style="overflow: hidden;"> -->
+    <!-- {% include ext-adsense.html -%} -->
+  <!-- </div> -->
+  <!-- {% endif %} -->
+</div>
 {% include footer.html -%}
 {% include script.html -%}
 <script defer src="https://cloud.umami.is/script.js" data-website-id="b1118f16-642d-4b6b-99b0-fb2b4b34134c"></script>

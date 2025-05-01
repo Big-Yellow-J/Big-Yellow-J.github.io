@@ -155,64 +155,55 @@ body {
 }
 
 /* 表格设计 */
-.page-post table {
-  min-width: 100%;
-  border-collapse: collapse;
-  width: 100%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* 为表格添加阴影 */
-  border-radius: 8px; /* 添加圆角 */
-}
-
-.page-post tr {
-  border-bottom: 1px solid #f1f1f1; /* 轻微的分隔线 */
-}
-
-.page-post th {
-  font-weight: bold;
-  background-color: #bcb8b8; /* 表头背景色 */
-  color: #000000; /* 表头文字颜色 */
-  padding: 5px 5px; /* 增加表头内边距 */
-  text-align: center; /* 表头内容居中 */
-  border-top-left-radius: 8px; /* 上左圆角 */
-  border-top-right-radius: 8px; /* 上右圆角 */
-}
-
-.page-post th,
-.page-post td {
-  padding: 5px 5px; /* 增加单元格内边距 */
-  text-align: center; /* 文本内容居中 */
-  vertical-align: middle; /* 垂直居中 */
-  font-size: 12px;
-}
-
-.page-post td {
-  background-color: #ffffff; /* 数据单元格背景色 */
-  font-size: 12px; /* 设置表格数据字体大小 */
-  color: #333333; /* 数据字体颜色 */
-}
-
-.page-post table tr:nth-child(even) {
-  background-color: #b1acac; /* 偶数行背景色 */
-}
-
-.page-post table tr:hover {
-  background-color: #f1f1f1; /* 鼠标悬停效果 */
-}
-
 .page-post .table-container {
-  overflow-x: auto; /* 添加水平滑动条 */
+  overflow-x: auto;
   margin: 20px 0;
-  border-radius: 8px; /* 添加圆角 */
-  border: none; /* 移除边框 */
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.page-post .table-container table {
-  margin: 0;
-  border: 0;
+.page-post table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 12px;
+  overflow: hidden;
+  min-width: 600px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
 }
 
-.page-post .table-container table tbody tr:last-child {
-  border-bottom: none;
+/* 表头 */
+.page-post th {
+  background-color: #f5f5f5;
+  color: #333;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 12px 8px;
+  text-align: center;
+}
+
+/* 单元格 */
+.page-post td {
+  background-color: #ffffff;
+  color: #555;
+  font-size: 13px;
+  padding: 10px 8px;
+  text-align: center;
+  vertical-align: middle;
+  word-break: break-word;
+}
+
+/* 行样式 */
+.page-post tr {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.page-post tr:nth-child(even) td {
+  background-color: #f9f9f9;
+}
+
+.page-post tr:hover td {
+  background-color: #eef2f7;
+  transition: background-color 0.3s ease;
 }
 
 /* 响应式设计，适应不同屏幕 */
