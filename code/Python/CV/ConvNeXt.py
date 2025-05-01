@@ -154,18 +154,26 @@ class LayerNorm(nn.Module):
             x = self.weight[:, None, None] * x + self.bias[:, None, None]
             return x
 
-def ConvNextTiny(num_classes, channel_ratio: float = 1.0):
-    model = ConvNeXt(depths= [3, 3, 9, 3], 
-                     dims= [make_divisible(_* channel_ratio) for _ in [96, 192, 384, 768]], 
+def ConvNeXtModel(num_classes, in_chans: int=3, channel_ratio: float = 1.0, model_name: str= 'tiny'):
+    '''ConvNeXt模型'''
+    model_config = {
+        'tiny': {'depths': [3, 3, 9, 3], 'dims': [96, 192, 384, 768]},
+        'small': {'depths': [3, 3, 27, 3], 'dims': [96, 192, 384, 768]},
+        'base': {'depths': [3, 3, 27, 3], 'dims': [128, 256, 512, 1024]},
+        'large': {'depths': [3, 3, 27, 3], 'dims': [192, 384, 768, 1536]},
+        'xlarge': {'depths': [3, 3, 27, 3], 'dims': [256, 512, 1024, 2048]},
+    }
+    model = ConvNeXt(depths= model_config[model_name]['depths'],
+                     dims= [make_divisible(_* channel_ratio) for _ in  model_config[model_name]['dims']],
+                     in_chans= in_chans,
                      num_classes= num_classes)
     return model
 
 if __name__=='__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(device)
-    model = ConvNextTiny(num_classes= 8, channel_ratio= .5).to(device= device)
-
-    # input = torch.randn(1, 3, 512, 1024).to(device= device)
+    model = ConvNeXtModel(num_classes= 8, channel_ratio= .5, model_name= 'tiny')
+    model = model.to(device)
     input = torch.rand(1, 3, 512, 512).to(device= device)
     out = model(input)
     print(out.shape)
