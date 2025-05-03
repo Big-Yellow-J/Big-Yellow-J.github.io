@@ -17,6 +17,7 @@ tags: [深度学习基础理论, paper, attention]
 对于self-attention中 **每个元素都跟序列内所有的元素都有关联** ，那么一个基本的思路就是 **减少关联性的计算**，也就是认为每个元素只跟序列内的一部分元素相关，这就是**稀疏Attention**的基本原理（其实就是如何高效的处理Q，K，V之间关系，不要全部计算）。
 
 ## 2、Kimi：MOBA
+> 修改代码：[⚙](../code/MoBAAttention.py.txt)
 
 ![](https://s2.loli.net/2025/02/21/2pJQvEahqI6GjFe.png)
 
@@ -30,7 +31,12 @@ $I$代表被筛选的子集。其中如何筛选子集以及如何确定子集�
 
 ![](https://s2.loli.net/2025/02/21/NMdjyztAqH3gG6B.png)
 
-在论文中 **Router**设计方法（不是像MoE里面直接简单用一个MLP计算），因为想通过一个 **Router**来选择出哪些是需要使用的，参考[代码](https://github.com/MoonshotAI/MoBA/blob/master/moba/moba_naive.py#L7)以及上面流程图的描述，对于分块的Key，在MoBA里面直接计算平均值，然后将结果拼接起来，然后直接和Q进行计算然后再去筛选出结果。
+在论文中 **Router**设计方法（不是像MoE里面直接简单用一个MLP计算），参考[代码](https://github.com/MoonshotAI/MoBA/blob/master/moba/moba_naive.py#L7)以及上面流程图的描述，再 MoBA中做法操作如下：
+1. 遍历 batch 中每个样本。通过 cu_seqlens 获取每个样本的起止位置，对其独立处理。
+2. 将 key 按 moba_chunk_size 分块，并计算每个块的“门控向量”（均值）（**对应算法图第4步**）。这用于构造类似 Gated Attention 的机制。
+3. 对每个 query，根据与每个 block gate 的打分，选出 top-k 个可以“访问”的 block：避免 query attend 到未来（使用了 causal mask 的变种），利用 torch.topk 得到 gating 分数前 k 个最相关的 chunk
+4. 构造注意力 mask：只允许 attend 到 top-k 中的块，叠加 causal mask，防止信息泄漏
+5. 执行注意力计算：qk = q·k^T 得到 attention logits，加入 gate mask，并进行 softmax，最终用加权和生成输出：o = softmax(qk + gate_mask) @ v
 
 ## 3、DeepSeek：NSA
 
