@@ -18,13 +18,14 @@
   <meta name="applicable-device" content="pc,mobile" />
   <meta name="author" content="{{ site.author }}" />
   <!-- 动态的 meta 信息 -->
-  {%- if page.categories %}
-  <meta name="description" content="{{ page.title }}" />
-  <meta name="keywords" content="{{ site.author }}{% for category in page.categories %},{{ category }}{% endfor %}" />
-  {% else %}
-  <meta name="description" content="{{ site.description }}" />
-  <meta name="keywords" content="{{ site.keywords }}" />
-  {% endif -%}
+  {%- if page.categories or page.tags -%}
+    <meta name="keywords" content="{{ site.author }}{% if page.categories %}{% for category in page.categories %},{{ category }}{% endfor %}{% endif %}{% if page.tags %}{% for tag in page.tags %},{{ tag }}{% endfor %}{% endif %}" />
+    <meta name="description" content="{{ page.description | default: site.description }}" />
+  {%- else -%}
+    <meta name="description" content="{{ site.description }}" />
+    <meta name="keywords" content="{{ site.tags }}" />
+  {%- endif -%}
+
 
   <!-- 谷歌收录 -->
   <meta name="google-site-verification" content="IDS97Lzd7uweEA7adjgQuo1V__a3xp9oKGq6OuoxZYg" />
