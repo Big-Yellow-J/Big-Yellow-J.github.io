@@ -1,7 +1,7 @@
 ---
 layout: mypost
 title: 深入探讨Attention变种与内存优化：从MHA到Flash/Page Attention
-categories: 深度学习基础理论
+categories: Attention优化
 extMath: true
 images: true
 address: changsha
