@@ -74,7 +74,7 @@ extClickEffect: false
 
 # Google Adsense,不需要请设置为false
 # _includes/ext-adsense.html 里面修改为自己的配置
-extAdsense: true
+extAdsense: false
 
 # 数学公式支持，比较影响加载速度,不需要请设置为false
 extMath: true # false
