@@ -2,24 +2,24 @@
 <style>
   /* 公式容器样式 */
   .has-jax {
-    user-select: text; /* 允许选中公式 */
-    background-color: transparent;
-    line-height: inherit; /* 继承全局行距 */
-    word-break: normal;
-    padding: 0;
-    margin: 0;
-    display: inline-block; /* 避免影响文本布局 */
+    user-select: text !important; /* 允许选中公式 */
+    background-color: transparent !important;
+    line-height: inherit !important; /* 继承全局行距，避免异常 */
+    word-break: normal !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: inline-block !important; /* 避免影响周围文本布局 */
   }
 
   /* 公式字体优化 */
-  .MathJax {
-    font-family: "Noto Serif SC", "Times New Roman", serif !important;
-    font-size: 1em;
+  .has-jax .MathJax {
+    font-family: "Noto Serif SC", "Times New Roman", "STIX Two Math", serif !important;
+    font-size: 1em !important;
   }
 
   /* 公式内部元素样式 */
   .has-jax * {
-    outline: none;
+    outline: 0;
   }
 </style>
 
@@ -28,19 +28,15 @@
   window.MathJax = {
     tex: {
       inlineMath: [['$', '$'], ['\\(', '\\)']], // 行内公式分隔符
-      displayMath: [['$$', '$$'], ['\\[', '\\]']], // 块级公式分隔符
-      processEscapes: true, // 允许转义字符
-      packages: ['base', 'ams', 'noerrors', 'noundefined'] // 加载必要扩展
+      displayMath: [['$$', '$$'], ['\\[', '\\]']] // 块级公式分隔符
     },
     svg: {
-      fontCache: 'global', // 使用全局字体缓存
-      scale: 1 // 确保公式大小一致
-    },
-    loader: {
-      load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] // 按需加载扩展
+      fontCache: 'global'
     }
   };
 </script>
 
 <!-- 加载 MathJax 3 -->
-<script type="text/javascript" async src="https://cdn.bytedance.com/mathjax/3.2.2/es5/tex-mml-chtml.js"></script>
+<script type="text/javascript" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<!-- <script type="text/javascript" async src="https://cdn.bootcdn.net/ajax/libs/polyfill/3.101.0/polyfill.min.js?features=es6"></script>
+<script type="text/javascript" async src="https://cdn.bootcdn.net/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script> -->
