@@ -128,6 +128,30 @@
 {% include script.html -%}
 <script defer src="https://cloud.umami.is/script.js" data-website-id="b1118f16-642d-4b6b-99b0-fb2b4b34134c"></script>
 <script src="https://analytics.ahrefs.com/analytics.js" data-key="4/nmCEy0+wcsPpIqB0+afg" async></script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "{{ page.url | absolute_url }}"
+  },
+  "headline": "{{ page.title }}",
+  "description": "{{ page.description | default: page.title | strip_html | strip_newlines | truncate: 160 }}",
+  "author": {
+    "@type": "Person",
+    "name": "HuangJie"
+  },
+  "publisher": {
+    "@type": "Person",
+    "name": "HuangJie",
+    "url": "https://www.big-yellow-j.top/pages/about.html"
+  },
+  "datePublished": "{{ page.date | date_to_xmlschema }}",
+  "dateModified": "{% if page.last_modified_at %}{{ page.last_modified_at | date_to_xmlschema }}{% else %}{{ page.date | date_to_xmlschema }}{% endif %}",
+  "inLanguage": "zh-CN"
+}
+</script>
 
 </body>
 </html>

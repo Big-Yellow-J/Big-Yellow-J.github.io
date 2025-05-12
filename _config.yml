@@ -14,7 +14,7 @@ last_modified_at:
 
 # SEO相关信息
 title: Big-Yellow-J
-description: Big-Yellow-J的个人博客
+description: 个人技术博客系统记录各类算法原理、实现细节与代码实战，便于总结与复盘技术成长过程
 keywords: Blog,DeepLearning,MachineLearning,AI,Python,Paper
 author: HuangJie
 author_info:
@@ -33,7 +33,7 @@ highlighter: prism
 permalink: /posts/:year/:month/:day/:title.html
 kramdown:
   math_engine: mathjax
-  hard_wrap: false
+  hard_wrap: true
   auto_ids: true
   input: GFM
   syntax_highlighter: rouge
