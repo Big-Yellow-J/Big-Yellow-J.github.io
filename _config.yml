@@ -32,10 +32,11 @@ api_info:
 highlighter: prism
 permalink: /posts/:year/:month/:day/:title.html
 kramdown:
+  math_engine: mathjax
+  hard_wrap: false
   auto_ids: true
   input: GFM
   syntax_highlighter: rouge
-  hard_wrap: true
   syntax_highlighter_opts:
     disable: true
   parse_block_html: true
