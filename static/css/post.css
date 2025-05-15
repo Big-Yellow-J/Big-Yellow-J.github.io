@@ -207,16 +207,15 @@ body {
 }
 
 /* 响应式设计，适应不同屏幕 */
-@media screen and (max-width: 560px) {
-  .page-post table {
-    font-size: 12px;
-  }
-  .page-post th,
-  .page-post td {
-    padding: 8px 12px; /* 调整表格单元格内边距 */
-  }
-}
-
+/* @media screen and (max-width: 560px) { */
+  /* .page-post table { */
+    /* font-size: 12px; */
+  /* } */
+  /* .page-post th, */
+  /* .page-post td { */
+    /* padding: 8px 12px; 调整表格单元格内边距 */
+  /* } */
+/* } */
 
 /* 代码容器样式 */
 .code-container {
@@ -272,7 +271,6 @@ body {
   font-size: 24px; /* 图标大小 */
   color: #333; /* 图标颜色 */
 }
-
 
 /* 评论 */
 #gitalk-container {
