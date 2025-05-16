@@ -1,13 +1,8 @@
 {%- assign buildAt = site.time | date: "%Y%m%d%H%M%S" -%}
 <head>
-  <!-- <link href="https://fonts.googleapis.com/css2?family=Georgia&family=Arial:wght@400;700&family=Courier+New:wght@400;700&display=swap" rel="stylesheet"> -->
-  <!-- <link href="https://fonts.loli.net/css2?family=Noto+Sans+SC:wght@400;700&family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet"> -->
   <link href="https://fonts.loli.net/css2?family=Noto+Sans+SC:wght@400;700&family=Noto+Serif+SC:wght@400;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-  <!-- 标题 -->
-  <!-- <title>{{ page.title }}-{{ site.title }}</title> -->
   <title>{{ page.title }}</title>
-  <!-- 必备的 meta 标签 -->
   <meta charset="utf-8" />
   <meta http-equiv="content-language" content="zh-CN" />
   <meta name="theme-color" content="#ffffff" />
@@ -33,8 +28,6 @@
   {%- assign all_keywords = all_keywords | strip | strip_newlines | replace: ',,', ',' | replace: ' ', '' | escape -%}
   <meta name="keywords" content="{{ site.author }},{{ all_keywords | strip | remove_last: ',' }}" />
   <meta name="description" content="{{ page.description | default: site.description | escape }}" />
-
-
 
   <!-- 谷歌收录 -->
   <meta name="google-site-verification" content="IDS97Lzd7uweEA7adjgQuo1V__a3xp9oKGq6OuoxZYg" />

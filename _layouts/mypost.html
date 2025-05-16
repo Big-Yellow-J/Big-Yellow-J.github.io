@@ -105,7 +105,10 @@
     {% endif %}
   </div>
 
-  <!-- <div id="vcomments"></div>
+  <!-- <div id="vcomments"></div> -->
+  <div id="vcomments" style="position: relative;">
+    <div id="loading" style="text-align:center; padding: 20px;">评论加载中，请稍候...</div>
+  </div>
   <script src="https://unpkg.com/valine@1.5.1/dist/Valine.min.js"></script>
   <script>
     new Valine({
@@ -114,7 +117,7 @@
       appKey: 'Icb1EA8yfNGBNuwOhTqTAagZ',
       serverURLs: 'https://ztnwhikf.api.lncldglobal.com',
       path: window.location.pathname,
-      placeholder: '欢迎留言(无法评论/看不到评论请打开VPN)',
+      placeholder: '欢迎留言(无法评论/看不到评论请打开VPN)评论需要输入名称和邮箱',
       avatar: 'identicon',
       visitor: true, 
       highlight: true,
@@ -122,9 +125,9 @@
       pageSize: 10,
       requiredFields: ['nick', 'mail']
     });
-  </script> -->
+  </script>
 
-  <div id="vcomments"></div>
+  <!-- <div id="vcomments"></div>
   <link rel="stylesheet" href="https://unpkg.com/@waline/client@3.5.6/dist/waline.css" />
   <script defer src="https://unpkg.com/@waline/client@3.5.6/dist/waline.umd.js"></script>
   <script>
@@ -132,6 +135,8 @@
       Waline.init({
         el: '#vcomments',
         serverURL: 'https://walinefile-git-main-shangxiaaabbs-projects.vercel.app',
+        // serverURL: 'https://walinefile-8nl4d4oix-shangxiaaabbs-projects.vercel.app',
+        // serverURL: 'https://walinefile-8nl4d4oix-shangxiaaabbs-projects.vercel.app/',
         path: window.location.pathname,
         lang: 'zh-CN',
         placeholder: '欢迎留言！',
@@ -139,9 +144,7 @@
         avatar: 'retro',
         review: false,
         emoji: [
-          'https://unpkg.com/@waline/emojis@1.2.0/qq', // QQ 表情包
-          'https://unpkg.com/@waline/emojis@1.2.0/bmoji', // Bmoji 表情包
-          'https://unpkg.com/@waline/emojis@1.2.0/tieba', // 贴吧表情包
+          '//unpkg.com/@waline/emojis@1.1.0/tieba'
         ],
         login: 'enable',
         commentSorting: 'latest',
@@ -151,7 +154,7 @@
         comment: true,
       });
     });
-  </script>
+  </script> -->
 
 </div>
 {% include footer.html -%}
