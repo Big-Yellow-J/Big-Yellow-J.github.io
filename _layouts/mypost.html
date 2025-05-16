@@ -105,10 +105,8 @@
     {% endif %}
   </div>
 
-  <div id="vcomments"></div>
-
-  <!-- 引入 Valine 所需脚本 -->
-  <!-- <script src="https://unpkg.com/valine@1.5.1/dist/Valine.min.js"></script>
+  <!-- <div id="vcomments"></div>
+  <script src="https://unpkg.com/valine@1.5.1/dist/Valine.min.js"></script>
   <script>
     new Valine({
       el: '#vcomments',
@@ -126,24 +124,33 @@
     });
   </script> -->
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@waline/client@v3/dist/waline.css" />
-<div id="vcomments"></div>
-<script src="https://cdn.jsdelivr.net/npm/@waline/client@v3/dist/waline.js"></script>
-<script>
-  Waline.init({
-    el: '#vcomments',
-    serverURL: 'https://walinefile-8nl4d4oix-shangxiaaabbs-projects.vercel.app/',
-    path: '/test',
-    lang: 'zh-CN',
-    placeholder: '欢迎留言！',
-    pageSize: 10,
-    avatar: 'retro',
-    emoji: [],
-    requiredMeta: ['nick','email'],
-    pageview: true,
-    comment: true,
-  });
-</script>
+  <div id="vcomments"></div>
+  <link rel="stylesheet" href="https://unpkg.com/@waline/client@3.5.6/dist/waline.css" />
+  <script defer src="https://unpkg.com/@waline/client@3.5.6/dist/waline.umd.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', function () {
+      Waline.init({
+        el: '#vcomments',
+        serverURL: 'https://walinefile-8nl4d4oix-shangxiaaabbs-projects.vercel.app/',
+        path: window.location.pathname,
+        lang: 'zh-CN',
+        placeholder: '欢迎留言！',
+        pageSize: 10,
+        avatar: 'retro',
+        emoji: [
+          'https://unpkg.com/@waline/emojis@1.2.0/qq', // QQ 表情包
+          'https://unpkg.com/@waline/emojis@1.2.0/bmoji', // Bmoji 表情包
+          'https://unpkg.com/@waline/emojis@1.2.0/tieba', // 贴吧表情包
+        ],
+        login: 'enable',
+        commentSorting: 'latest',
+        dark: 'auto',
+        requiredMeta: ['nick', 'mail'],
+        pageview: true,
+        comment: true,
+      });
+    });
+  </script>
 
 </div>
 {% include footer.html -%}
