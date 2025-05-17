@@ -67,19 +67,39 @@
   <!-- 添加分享按钮 -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
   <div class="share-buttons">
-    <!-- 微博分享 -->
+    <!-- 微博 -->
     <button class="share-button" onclick="shareOnSocial('weibo')">
       <i class="fab fa-weibo"></i>
     </button>
-  
-    <!-- QQ 分享 -->
+
+    <!-- QQ -->
     <button class="share-button" onclick="shareOnSocial('qq')">
       <i class="fab fa-qq"></i>
     </button>
-  
-    <!-- 微信分享 -->
+
+    <!-- 微信 -->
     <button class="share-button" onclick="shareOnWeChat()">
       <i class="fab fa-weixin"></i>
+    </button>
+
+    <!-- Facebook -->
+    <button class="share-button" onclick="shareOnSocial('facebook')">
+      <i class="fab fa-facebook-f"></i>
+    </button>
+
+    <!-- Twitter -->
+    <button class="share-button" onclick="shareOnSocial('twitter')">
+      <i class="fab fa-twitter"></i>
+    </button>
+
+    <!-- LinkedIn -->
+    <button class="share-button" onclick="shareOnSocial('linkedin')">
+      <i class="fab fa-linkedin-in"></i>
+    </button>
+
+    <!-- Reddit -->
+    <button class="share-button" onclick="shareOnSocial('reddit')">
+      <i class="fab fa-reddit-alien"></i>
     </button>
   </div>
 
@@ -164,13 +184,6 @@
       placeholder: '✨ 支持Markdown语法：**加粗**、`代码`、[链接]()、> 引用等...'
     },
 
-    // 样式优化（无需额外CSS）
-    style: {
-      card: 'shadow',             // 卡片阴影效果：flat/shadow
-      comment: 'rounded',         // 圆角评论框：square/rounded
-      accent: '#3eaf7c'          // 主题色（匹配你的网站）
-    },
-
     // 保留原有配置
     lang: 'zh-CN',
     path: window.location.pathname,
@@ -183,34 +196,6 @@
     requiredFields: ['nick', 'mail']
   });
 </script>
-  <!-- <div id="vcomments"></div>
-  <link rel="stylesheet" href="https://unpkg.com/@waline/client@3.5.6/dist/waline.css" />
-  <script defer src="https://unpkg.com/@waline/client@3.5.6/dist/waline.umd.js"></script>
-  <script>
-    window.addEventListener('DOMContentLoaded', function () {
-      Waline.init({
-        el: '#vcomments',
-        serverURL: 'https://walinefile-git-main-shangxiaaabbs-projects.vercel.app',
-        // serverURL: 'https://walinefile-8nl4d4oix-shangxiaaabbs-projects.vercel.app',
-        // serverURL: 'https://walinefile-8nl4d4oix-shangxiaaabbs-projects.vercel.app/',
-        path: window.location.pathname,
-        lang: 'zh-CN',
-        placeholder: '欢迎留言！',
-        pageSize: 10,
-        avatar: 'retro',
-        review: false,
-        emoji: [
-          '//unpkg.com/@waline/emojis@1.1.0/tieba'
-        ],
-        login: 'enable',
-        commentSorting: 'latest',
-        dark: 'auto',
-        requiredMeta: ['nick', 'mail'],
-        pageview: true,
-        comment: true,
-      });
-    });
-  </script> -->
 
 </div>
 {% include footer.html -%}
@@ -227,7 +212,7 @@
     max-height: calc(100vh - 120px); /* 视口高度减去顶部间距 */
     overflow-y: auto;
     background: #f8f8f8;
-    padding: 15px;
+    padding: 10px;
     border-radius: 5px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     font-size: 0.9em;
@@ -271,7 +256,7 @@
 
   /* 折叠状态 */
   #toc.collapsed {
-    width: 20px;
+    width: 10px;
     padding: 10px;
   }
 

@@ -1,50 +1,52 @@
-<!-- Code From:https://tsparticles.github.io/404-templates/ -->
-<!doctype html>
-<html lang="en">
-  <head>
-    <title>Party | tsParticles 404</title>
-    <link rel="stylesheet" href="/static/css/404.css" />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css?family=Varela"
-    />
-    <link rel="icon" type="image/x-icon" href="../images/tsParticles-64.png" />
-  </head>
-  <body>
-    <div id="tsparticles"></div>
-
-    <h1 id="heading">404</h1>
-    <br />
-    <br />
-    <h1 id="subheading">OOPS! Wrong Door</h1>
-    <h1 id="subheading1">
-      You can either Join Them or
-      <button
-        class="button-88"
-        onclick='location.href="https://big-yellow-j.github.io/"'
-      >
-        Go Home
-      </button>
-    </h1>
-
-    <img src="/asserts/Dance-1.gif" alt="Dancing Person -1" class="img1" />
-    <img src="/asserts/Dance-2.gif" alt="Dancing Person -2" class="img2" />
-    <img src="/asserts/Dance-3.gif" alt="Dancing Person -3" class="img3" />
-    <img src="/asserts/Dance-4.gif" alt="Dancing Person -4" class="img4" />
-
-    <script src="https://cdn.jsdelivr.net/npm/tsparticles-preset-confetti@2/tsparticles.preset.confetti.bundle.min.js"></script>
-    <script src="/static/js/404.js"></script>
-    <script
-      async
-      src="https://www.googletagmanager.com/gtag/js?id=G-1752YPLP7H"
-    ></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
-      }
-      gtag("js", new Date());
-      gtag("config", "G-1752YPLP7H");
-    </script>
-  </body>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 - 页面未找到</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f3f4f6;
+      font-family: 'Inter', sans-serif;
+    }
+    .container {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 1rem;
+    }
+    .error-code {
+      font-size: 6rem;
+      font-weight: bold;
+      color: #1f2937;
+    }
+    .error-message {
+      font-size: 1.5rem;
+      color: #4b5563;
+      margin-bottom: 2rem;
+    }
+    .home-button {
+      background-color: #3b82f6;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.375rem;
+      text-decoration: none;
+      transition: background-color 0.3s ease;
+    }
+    .home-button:hover {
+      background-color: #2563eb;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="error-code">404</h1>
+    <p class="error-message">抱歉，页面走丢了！</p>
+    <a href="https://www.big-yellow-j.top/" class="home-button">返回首页</a>
+  </div>
+</body>
 </html>

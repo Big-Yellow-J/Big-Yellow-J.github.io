@@ -1,3 +1,7 @@
+html {
+  background-color: #f5f5f5; /* 整个页面的背景色，包括 body 以外的区域 */
+}
+
 body {
   font-family: "Helvetica Neue", Arial, "Noto Sans SC", "Noto Serif SC", "Microsoft YaHei", "WenQuanYi Micro Hei", SimSun, sans-serif;
   margin: 0 auto;
