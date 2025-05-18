@@ -68,6 +68,7 @@ class VectorQuantizer(nn.Module):
 
         # 量化
         quantized = torch.matmul(encodings, self.embeddings.weight).view(inputs.shape)
+        
         e_latent_loss = torch.mean((quantized.detach() - inputs) ** 2)
         q_latent_loss = torch.mean((quantized - inputs.detach()) ** 2)
         loss = q_latent_loss + self.commitment_cost * e_latent_loss
@@ -133,18 +134,6 @@ def generate_samples(vqvae, pixelcnn, num_samples, input_shape, device, model_ty
     with torch.no_grad():
         for i in range(h):
             for j in range(w):
-                # if model_type == 'pixelcnn_plusplus':
-                #     pi, mu, s, _ = pixelcnn(samples)
-                #     pi = pi[:, :, i, j]
-                #     mu = mu[:, :, i, j]
-                #     s = s[:, :, i, j]
-                #     component = torch.multinomial(pi, 1).squeeze(-1)
-                #     values = torch.normal(mu[torch.arange(num_samples), component], s[torch.arange(num_samples), component]).unsqueeze(-1)
-                #     # Clamp and round to valid embedding indices
-                #     values = torch.clamp(values, 0, num_embeddings - 1).round()
-                #     samples[:, :, i, j] = values
-
-                # else:
                 logits = pixelcnn(samples)
                 probs = F.softmax(logits[:, :, i, j], dim=1)
                 samples[:, :, i, j] = torch.multinomial(probs, 1).float()

@@ -2,7 +2,7 @@
 layout: mypost
 title: 深度学习分布式训练-2（模型并行/数据并行/流水线并行/张量并行）
 categories: 深度学习基础理论
-address: changsha
+address: 长沙
 extMath: true
 show_footer_image: true
 tags: [分布式训练,深度学习基础理论,张量并行]

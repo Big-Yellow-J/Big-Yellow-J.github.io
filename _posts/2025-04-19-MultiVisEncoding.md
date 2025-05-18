@@ -4,7 +4,7 @@ title: 多视觉编码器协同与高低分辨率特征融合技术综述
 categories: paper
 extMath: true
 images: true
-address: wuhan
+address: 武汉🏯
 show_footer_image: true
 tags: [多模态,paper]
 description: 本文主要介绍（论文发表时间：24.03-25.01）在多模态中使用**多个视觉编码器如何进行特征融合操作**
