@@ -41,9 +41,11 @@ kramdown:
     disable: true
   parse_block_html: true
 include:
+  - writing
   - _jupyter
   - code
   - index_now.txt
+  - preview_writing.html
 exclude: ['CNAME', 'README.md', 'LICENSE', '_site', 'dist', 'Gemfile', 'Gemfile.lock', 'blog.sh']
 
 # 域名配置
@@ -55,9 +57,9 @@ baseurl: ''
 tucaoUrl: https://support.qq.com/product/86335
 
 menu:
-  - title: 😶‍🌫️首页
+  - title: 🐱‍🐉首页
     url: /
-  - title: 😮Code
+  - title: 🐱‍🚀Code
     url: /pages/code.html
   - title: 🗂️归类
     url: /pages/categories.html

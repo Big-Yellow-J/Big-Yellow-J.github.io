@@ -12,9 +12,9 @@ tags: [MHA,flash attention,page attention,kv-cache]
 
 本文主要介绍常用的Attention操作（多头注意力等）以及在KV-cahce中如何节约内容的操作
 
-### 一、Attention操作
+## 一、Attention操作
 
-#### 1、`Multi Head Attention`
+### 1、`Multi Head Attention`
 
 关于 **Multi Head Attention**网上有较多的解释了，这里主要记录如下几点
 
@@ -35,15 +35,15 @@ $$
 假设输入为：`batch_size, seq_length`（值得注意的是：一般来说在`data_loader`中我们会去定义一个`collate_fn`函数用来弥补文本长度不统一的问题（这里是因为，对于输入输入文本在长度上必然不一致，通过`tokenizer`进行处理之后，回去额外补充一个填充量，比如说`PAD`））输入模型首先通过一个`nn.embedding`进行处理（这个`nn.embedding`是可学习的）假设输出为`512`（也就是我们定义的变量`d_model`）这样一来我们输入就会变成：`batch_size,seq_length,d_model`然后就是直接输入到`attention`中进行计算了。有些代码是将单头和多头分开计算，但是结合起来更加便捷。这样就需要首先计算**WQ**等，可以直接用`nn.linear(d_model, 3*d_model)`然后后续就可以直接再去将其进行拆分拆分到q、k、v中去。因为我是要进行多头计算，因此就会`qkv = qkv.reshape(B, T, 3, self.n_heads, self.head_dim).permute(2, 0, 3, 1, 4)`然后再去分配到q、k、v中`q, k, v = qkv[0], qkv[1], qkv[2]`这样每个就会变成：`batch_size, n_heads, seq_length, head_dim`再去对这个计算attention（里面的`head_dim＝d_model/n_heada`）计算完成之后再去将所有头的结果拼接起来` y = y.transpose(1, 2).contiguous().view(B, T, C)`
 这样就是一个比较完整的计算过程。
 
-#### 2、`Casual Attention`
+### 2、`Casual Attention`
 
 因果注意力的主要目的是限制注意力的计算，使得每个位置的查询只能与当前和之前的位置计算注意力得分，而不能“窥视”未来的位置。具体来说：对于位置$𝑖$，模型只能考虑位置 $1,2,...,𝑖$的信息，而不能考虑位置$𝑖+1,𝑖+2,...,𝑛$。因此，当计算每个位置的注意力时，键（key）和值（value）的位置会被限制在当前的位置及其之前的位置。实现方式也很简单直接最注意力矩阵进行**屏蔽**即可，比如说注意力矩阵为：
 
 ![](https://s2.loli.net/2025/02/07/ovpbyFk3m75laGg.png)
 
-### 二、内存优化管理
+## 二、内存优化管理
 
-#### 1、`Flash Attention`
+### 1、`Flash Attention`
 
 [论文](https://arxiv.org/pdf/2205.14135)提出，是一种高效的注意力计算方法，旨在解决 Transformer 模型在处理长序列时的计算效率和内存消耗问题。**其核心思想是通过在 GPU 显存中分块执行注意力计算，减少显存读写操作，提升计算效率并降低显存占用**。
 
@@ -101,7 +101,7 @@ print(out.shape)
 2、`causal`：`bool`判断是不是使用`causal attention mask`
 
 
-#### 2、`Multi-head Latent Attention`（`MLA`）
+### 2、`Multi-head Latent Attention`（`MLA`）
 
 对于[`KV-cache`](https://www.big-yellow-j.top/posts/2025/01/27/MoE-KV-cache.html)会存在一个问题：在推理阶段虽然可以加快推理速度，但是对于显存占用会比较高（因为`KV`都会被存储下来，导致显存占用高），对于此类问题后续提出`Grouped-Query-Attention（GQA）`以及`Multi-Query-Attention（MQA）`可以降低`KV-cache`的容量问题，但是会导致模型的整体性能会有一定的下降。
 
@@ -212,7 +212,7 @@ class MLA(nn.Module):
 
 不过 **MLA**存在一个问题，不兼容 **RoPE**（旋转位置编码，因为你将KV进行压缩）从上述代码的角度除法理解如何使用`RoPE`，从上面代码上，无论是Q还是KV都是从压缩后的内容中分离除部分内容，然后计算结果
 
-#### 3、`Page Attention`（`vLLM`）
+### 3、`Page Attention`（`vLLM`）
 
 上述描述中：`Flash Attention`（加快速度）、`MLA`（优化`KV-cache`存储），而`Page Attention`也是一种优化方法（区别于`MLA`，`page attention`是对内存进行分配管理）。参考[论文](https://dl.acm.org/doi/pdf/10.1145/3600006.3613165)中描述，对于`KV-cache`存在3个问题：
 

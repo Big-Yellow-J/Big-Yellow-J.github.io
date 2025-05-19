@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Writing 文件夹预览</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.12/marked.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        .sidebar {
+            width: 250px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .content {
+            flex-grow: 1;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        li:hover {
+            background-color: #f0f0f0;
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        p {
+            line-height: 1.6;
+            color: #555;
+        }
+        pre {
+            background-color: #f8f8f8;
+            padding: 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h2>文件列表</h2>
+            <ul id="fileList"></ul>
+        </div>
+        <div class="content" id="content">
+            <h2>预览内容</h2>
+            <p>点击左侧文件列表中的文件以预览内容。</p>
+        </div>
+    </div>
+
+    <script>
+        // 假设 writing 文件夹中的文件列表通过后端 API 或其他方式提供
+        // 这里模拟文件列表，实际使用时需要后端支持或静态文件列表
+        const files = [
+            // 示例文件列表，实际需要动态获取
+            "2025-05-18-Clip-sam.md",
+            "post2.md",
+            "draft.md"
+        ];
+
+        // 动态填充文件列表
+        const fileList = document.getElementById('fileList');
+        files.forEach(file => {
+            const li = document.createElement('li');
+            li.textContent = file;
+            li.onclick = () => loadFile(file);
+            fileList.appendChild(li);
+        });
+
+        // 加载并渲染 Markdown 文件
+        async function loadFile(fileName) {
+            try {
+                // const response = await fetch(`writing/${fileName}`);
+                const response = await fetch(`writing/2025/05/18/Clip-sam.md`);
+                if (!response.ok) {
+                    throw new Error(`无法加载文件: ${fileName}`);
+                }
+                const text = await response.text();
+                const contentDiv = document.getElementById('content');
+                contentDiv.innerHTML = marked.parse(text);
+            } catch (error) {
+                console.error(error);
+                document.getElementById('content').innerHTML = `<p>加载文件失败: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
