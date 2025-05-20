@@ -57,15 +57,56 @@ $$
 回顾一下生成模型都在做什么。在[GAN](./2025-05-08-GAN.md)中是通过 *生成器网络* 来拟合正式的数据分布也就是是 $G_\theta(x)≈P(x)$，在 [VAE](./2025-05-11-VAE.md)中则是通过将原始的数据分布通过一个 低纬的**潜在空间**来表示其优化的目标也就是让 $p_\theta(x)≈p(x)$，而在Diffusion Model中则是直接通过让我们 去噪过程得到结果 和 加噪过程结果接近，什么意思呢？df就像是一个无监督学习我所有的GT都是知道的（每一步结果我都知道）也就是是让：$p_\theta(x_{t-1}\vert x_t)≈p(x_{t-1}\vert x_t)$ 换句话说就是让我们最后解码得到的数据分布和正式的数据分布相似：$p_\theta(x_0)≈p(x_0)$ 既然如此知道我们需要优化的目标之后下一步就是直接构建损失函数然后去优化即可。
 
 ### 优化过程
-通过上面分析，发现df模型的优化目标和VAE的优化目标很相似，其损失函数也是相似的，首先我们的优化目标是最大化下面的边际对数似然：$\log p_\theta(x_0)=\log \int_{x_{1:T}}p_\theta(x_0,x_{1:T})dx_{1:T}$，对于这个积分计算是比较困难的，因此引入：$q(x_{1:T}\vert x_0)$ 那么对于这个公式有：
+通过上面分析，发现df模型的优化目标和VAE的优化目标很相似，其损失函数也是相似的，首先我们的优化目标是最大化下面的边际对数似然[^5]：$\log p_\theta(x_0)=\log \int_{x_{1:T}}p_\theta(x_0,x_{1:T})dx_{1:T}$，对于这个积分计算是比较困难的，因此引入：$q(x_{1:T}\vert x_0)$ 那么对于这个公式有：
 
 $$
 \begin{align*}
     \log p_\theta(x_0)&=\log \int_{x_{1:T}}p_\theta(x_{0:T})dx_{1:T} \\
     &=\log \int_{x_{1:T}} q(x_{1:T}\vert x_0)\frac{p_\theta(x_{0:T})}{q(x_{1:T}\vert x_0)}dx_{1:T}\\
-    &=\mathbb{E}_{q(x_{1:T|x_0})}[\log \frac{p_\theta(x_{0:T})}{q(x_{1:T}\vert x_0)}]
+    &=\log\mathbb{E}_{q(x_{1:T|x_0})}[\frac{p_\theta(x_{0:T})}{q(x_{1:T}\vert x_0)}]\\
+    &≥\mathbb{E}_{q(x_{1:T|x_0})}[\log \frac{p_\theta(x_{0:T})}{q(x_{1:T}\vert x_0)}]\\
+    &=\underbrace{\mathbb{E}_{q(\boldsymbol{x}_1|\boldsymbol{x}_0)}[\log p_\theta(\boldsymbol{x}_0|\boldsymbol{x}_1)]}_{\text{reconstruction term}} - \underbrace{\mathbb{E}_{q(\boldsymbol{x}_{T-1}|\boldsymbol{x}_0)}[D_{\text{KL}}(q(\boldsymbol{x}_T|\boldsymbol{x}_{T-1})\parallel p(\boldsymbol{x}_T))]}_{\text{prior matching term}} - \sum_{t=1}^{T-1} \underbrace{\mathbb{E}_{q(\boldsymbol{x}_{t-1},\boldsymbol{x}_{t+1}|\boldsymbol{x}_0)}[D_{\text{KL}}(q(\boldsymbol{x}_t|\boldsymbol{x}_{t-1})\parallel p_\theta(\boldsymbol{x}_t|\boldsymbol{x}_{t+1})]}_{\text{consistency term}}\\
+    &=\underbrace{\mathbb{E}_{q(\boldsymbol{x}_1|\boldsymbol{x}_0)}[\log p_\theta(\boldsymbol{x}_0|\boldsymbol{x}_1)]}_{\text{reconstruction term}} - 
+    \underbrace{D_{KL}(q(x_T|x_0)||p(x_T))}_{\text{prior matching term}} - 
+    \sum_{t=2}^{T} \underbrace{\mathbb{E}_{q(\boldsymbol{x}_{t}|\boldsymbol{x}_0)}[D_{\text{KL}}(q(\boldsymbol{x}_{t-1}|\boldsymbol{x}_{t}, x_0)\parallel p_\theta(\boldsymbol{x}_{t-1}|\boldsymbol{x}_{t})]}_{\text{denoisiong matching term}}
 \end{align*}
 $$
+
+中间化简步骤可以见论文[^5]中的描述（论文里面有两个推导，推导步骤直接省略，第二个等式： $q(x_t\vert x_{t-1})=q(x_t\vert x_{t-1},x_0)$），那么上面结果分析，在计算我们的参数$\theta$时候（反向传播求导计算）第2项直接为0，第1项可以直接通过蒙特卡洛模拟就行计算，那么整个结果就只有第三项，因此对于第二个灯饰为例可以将优化目标变为：$\text{arg}\min_\theta D_{KL}(q(x_{t-1}\vert x_t, x_0)\Vert p_\theta(x_{t-1}\vert x_t))$
+对于这个优化目标根据论文[^6]可以得到：
+
+$$
+L_{\mathrm{simple}}=\mathbb{E}_{t,\mathbf{x}_0,\epsilon}\left[\left\|\epsilon-\epsilon_\theta(\sqrt{\bar{\alpha}_t}\mathbf{x}_0+\sqrt{1-\bar{\alpha}_t}\epsilon,t)\right\|^2\right]
+$$
+
+最终，训练目标是让神经网络 $\epsilon_\theta$ 准确预测前向过程中添加的噪声，从而实现高效的去噪生成,因此整个DF模型训练和采样过程就变为[^6]：
+
+![](https://s2.loli.net/2025/05/20/H4p8YqjKDTz7Rhu.png)
+
+比如说下面一个例子：对于输入数据$x_0=[1,2]$ 于此同时假设我们的采样噪声 $\epsilon \in[0.5, -0.3]$并且进行500次加噪声处理，假设$\bar{\alpha}_{500} = 0.8$那么计算500次加噪得到结果为：$x_t=\sqrt{\bar{\alpha_t}}x_0+ \sqrt{1-\bar{\alpha_t}}\epsilon=\sqrt{0.8}\times[1,2]+\sqrt{0.2}[0.5, -0.3]≈[1.118,1.654]$。**关键在于损失函数**，通过上面简化过程可以直接通过模型预测噪声因此可以直接计算$\epsilon_\theta(x_t,t)=[0.48，-0.28]$然后去计算loss即可。
+**直接上代码**，代码实现上面过程可以自定义实现/使用`diffusers`[^7]
+**diffusers**实现简易demo
+
+```python
+from diffusers import DDPMScheduler
+
+# 直接加载训练好的调度器
+# scheduler = DDPMScheduler.from_pretrained("google/ddpm-cat-256")
+# 初始化调度器
+scheduler = DDPMScheduler(num_train_timesteps=1000) #添加噪声步数
+...
+for image in train_dataloader:
+    # 假设 image为 32，3，128，128
+    noise = torch.randn(image.shape, device=image.device)
+    timesteps = torch.randint(0, noise_scheduler.config.num_train_timesteps, 
+                                      (image.shape[0],), device=image.device, dtype=torch.int64)
+    noisy_images = scheduler.add_noise(image, noise, timesteps) # 32 3 128 128
+    ...
+    model(noisy_images)
+```
+
+**自定义实现**简易demo
+
 
 ## Conditional Diffusion Model
 
@@ -97,6 +138,8 @@ def forward(self, x, c):
 ```
 
 在这个代码中不是直接使用注意力而是使用通过一个 `modulate`这个为了实现将传统的layer norm（$\gamma{\frac{x- \mu}{\sigma}}+ \beta$）改为动态的$\text{scale}{\frac{x- \mu}{\sigma}}+ \text{shift}$，直接使用动态是为了允许模型根据时间步和类标签调整 Transformer 的行为，使生成过程更灵活和条件相关，除此之外将传统的残差连接改为 权重条件连接 $x+cf(x)$。再通过线性层进行处理类似的也是使用上面提到的正则化进行处理，处理之后结果通过`unpatchify`处理（将channels扩展2倍而后还原到最开始的输入状态）
+### Unet
+
 ## DF训练
 * **传统训练**
 
@@ -104,89 +147,19 @@ def forward(self, x, c):
 > 对于加噪声等过程可以直接借助 `diffusers`来进行处理，对于diffuser：
 > 1、schedulers：调度器
 > 主要实现功能：1、图片的前向过程添加噪声（也就是上面的$x_T=\sqrt{\bar{\alpha_T}}x_0+ \sqrt{1-\bar{\alpha_T}}\epsilon$）；2、图像的反向过程去噪；3、时间步管理等。如果不是用这个调度器也可以自己设计一个只需要：1、前向加噪过程（需要：使用固定的$\beta$还是变化的、加噪就比较简单直接进行矩阵计算）；2、采样策略
-
-```python
-def get_beta_schedule(timesteps, start=beta_start, end=beta_end, schedule='linear'):
-    if schedule == 'linear':
-        betas = torch.linspace(start, end, timesteps, device=device)
-    elif schedule == 'cosine':
-        s = 0.008  # 余弦调度的平滑参数
-        timesteps_tensor = torch.arange(timesteps, device=device, dtype=torch.float32)
-        f_t = torch.cos((timesteps_tensor / timesteps + s) / (1 + s) * np.pi / 2) ** 2
-        alphas_cumprod = f_t / f_t[0]
-        betas = 1 - alphas_cumprod[1:] / alphas_cumprod[:-1]
-        betas = betas.clamp(min=1e-4, max=0.999)
-    else:
-        raise ValueError("Unsupported schedule type")
-    alphas = 1.0 - betas
-    alphas_cumprod = torch.cumprod(alphas, dim=0)
-    return betas, alphas, alphas_cumprod
-
-betas, alphas, alphas_cumprod = get_beta_schedule(timesteps, schedule='linear')
-
-# 前向扩散：添加噪声
-def q_sample(x0, t, noise=None):
-    """
-    在时间步 t 为图像 x0 添加噪声
-    Args:
-        x0: 干净图像，形状 (N, C, H, W)
-        t: 时间步，形状 (N,)
-        noise: 噪声张量，形状同 x0
-    Returns:
-        带噪图像 x_t
-    """
-    if noise is None:
-        noise = torch.randn_like(x0).to(device)
-    sqrt_alphas_cumprod = torch.sqrt(alphas_cumprod[t]).view(-1, 1, 1, 1)
-    sqrt_one_minus_alphas_cumprod = torch.sqrt(1.0 - alphas_cumprod[t]).view(-1, 1, 1, 1)
-    return sqrt_alphas_cumprod * x0 + sqrt_one_minus_alphas_cumprod * noise
-
-# DDIM 逆向采样
-def ddim_step(x_t, t, pred_noise, t_prev, eta=0.0):
-    """
-    DDIM 去噪一步
-    Args:
-        x_t: 当前带噪图像，形状 (N, C, H, W)
-        t: 当前时间步（整数）
-        pred_noise: 模型预测的噪声
-        t_prev: 下一时间步（t-1 或跳跃步）
-        eta: 控制随机性的参数（0.0 表示确定性）
-    Returns:
-        x_{t-1}：去噪后的图像
-    """
-    alpha_t = alphas_cumprod[t].view(-1, 1, 1, 1)
-    alpha_t_prev = alphas_cumprod[t_prev].view(-1, 1, 1, 1) if t_prev >= 0 else torch.tensor(1.0, device=device)
-    
-    # 预测 x_0
-    pred_x0 = (x_t - torch.sqrt(1 - alpha_t) * pred_noise) / torch.sqrt(alpha_t)
-    pred_x0 = pred_x0.clamp(-1, 1)  # 防止数值溢出
-    
-    # 计算方向（噪声部分）
-    sigma_t = eta * torch.sqrt((1 - alpha_t_prev) / (1 - alpha_t) * (1 - alpha_t / alpha_t_prev))
-    noise = torch.randn_like(x_t) if t > 0 else torch.zeros_like(x_t)
-    
-    # DDIM 更新
-    x_t_prev = (torch.sqrt(alpha_t_prev) * pred_x0 + 
-                torch.sqrt(1 - alpha_t_prev - sigma_t**2) * pred_noise + 
-                sigma_t * noise)
-    return x_t_prev
-```
-
 测试得到结果为：
 
 ![](https://cdn.z.wiki/autoupload/20250520/CHJj/1000X200/Generate-image.gif)
 
 
-* Latent Diffusion Model训练
+* **Latent Diffusion Model训练**
 
 ## 参考
-1、https://www.tonyduan.com/diffusion/index.html
-2、https://arxiv.org/pdf/2006.11239
-3、https://arxiv.org/pdf/1503.03585
-4、https://arxiv.org/pdf/2208.11970
-5、https://arxiv.org/pdf/2102.09672
-
 [^1]: https://arxiv.org/pdf/2102.09672
 [^2]: https://arxiv.org/abs/2212.09748
-[^3]:https://github.com/facebookresearch/DiT
-[^4]:https://huggingface.co/docs/diffusers/en/tutorials/basic_training
+[^3]: https://github.com/facebookresearch/DiT
+[^4]: https://huggingface.co/docs/diffusers/en/tutorials/basic_training
+[^5]: https://arxiv.org/pdf/2208.11970
+[^6]: https://arxiv.org/abs/2006.11239
+[^7]: https://huggingface.co/docs/diffusers/en/index
+[^8]: https://lilianweng.github.io/posts/2021-07-11-diffusion-models/
