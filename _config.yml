@@ -5,7 +5,7 @@ plugins:
   - jekyll-last-modified-at
   - jekyll-paginate
 
-paginate: 15
+paginate: 30
 paginate_path: "/page:num/"
 
 last_modified_at:

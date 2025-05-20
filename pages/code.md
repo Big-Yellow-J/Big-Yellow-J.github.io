@@ -3,6 +3,9 @@ layout: mypost
 title: Code
 show_footer_image: false
 ---
+> **所有代码**：[https://github.com/Big-Yellow-J/Big-Yellow-J.github.io/tree/master/code/Python](https://github.com/Big-Yellow-J/Big-Yellow-J.github.io/tree/master/code/Python)
+
+**部分代码说明**
 
 | 文件名称               | 实现功能      | 文件地址    |
 |:--------------------:|:------------:|:----------:|

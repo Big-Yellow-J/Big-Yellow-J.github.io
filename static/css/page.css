@@ -1,3 +1,11 @@
+body {
+  font-family: "Helvetica Neue", Arial, "Noto Sans SC", "Noto Serif SC", "Microsoft YaHei", "WenQuanYi Micro Hei", SimSun, sans-serif;
+  margin: 0 auto;
+  padding: 0;
+  max-width: 800px; /* 增大页面最大宽度 */
+  width: 90%; /* 页面宽度占据 90% */
+}
+
 .list-post > h2 {
   font-size: 15px;
   font-weight: bold;
