@@ -8,7 +8,7 @@ address: 武汉🏯
 show_footer_image: true
 tags: [cv-backbone,生成模型,diffusion model]
 show: true
-description: 日常使用比较多的生成模型比如GPT/Qwen等这些大多都是“文生文”模型（当然GPT有自己的大一统模型可以“文生图”）但是网上流行很多AI生成图像，而这些生成图像模型大多都离不开下面三种模型：1、GAN；2、VAE；3、Diffusion Model。因此本文通过介绍这三个模型作为生成模型的入门。本文主要介绍三类Diffusion Model
+description: 日常使用比较多的生成模型比如GPT/Qwen等这些大多都是“文生文”模型（当然GPT有自己的大一统模型可以“文生图”）但是网上流行很多AI生成图像，而这些生成图像模型大多都离不开下面三种模型：1、GAN；2、VAE；3、Diffusion Model。因此本文通过介绍这三个模型作为生成模型的入门。本文主要介绍第三类Diffusion Model
 ---
 
 前文已经介绍了VAE以及GAN这里介绍另外一个模型：Diffusion Model，除此之外介绍Conditional diffusion model、Latent diffusion model
@@ -79,12 +79,17 @@ $$
 L_{\mathrm{simple}}=\mathbb{E}_{t,\mathbf{x}_0,\epsilon}\left[\left\|\epsilon-\epsilon_\theta(\sqrt{\bar{\alpha}_t}\mathbf{x}_0+\sqrt{1-\bar{\alpha}_t}\epsilon,t)\right\|^2\right]
 $$
 
-最终，训练目标是让神经网络 $\epsilon_\theta$ 准确预测前向过程中添加的噪声，从而实现高效的去噪生成,因此整个DF模型训练和采样过程就变为[^6]：
+最终，训练目标是让神经网络 $\epsilon_\theta$ 准确预测前向过程中添加的噪声，从而实现高效的去噪生成,因此整个DF模型训练和**采样过程**就变为[^6]：
 
 ![](https://s2.loli.net/2025/05/20/H4p8YqjKDTz7Rhu.png)
 
-比如说下面一个例子：对于输入数据$x_0=[1,2]$ 于此同时假设我们的采样噪声 $\epsilon \in[0.5, -0.3]$并且进行500次加噪声处理，假设$\bar{\alpha}_{500} = 0.8$那么计算500次加噪得到结果为：$x_t=\sqrt{\bar{\alpha_t}}x_0+ \sqrt{1-\bar{\alpha_t}}\epsilon=\sqrt{0.8}\times[1,2]+\sqrt{0.2}[0.5, -0.3]≈[1.118,1.654]$。**关键在于损失函数**，通过上面简化过程可以直接通过模型预测噪声因此可以直接计算$\epsilon_\theta(x_t,t)=[0.48，-0.28]$然后去计算loss即可。
-**直接上代码**，代码实现上面过程可以自定义实现/使用`diffusers`[^7]
+比如说下面一个例子：对于输入数据$x_0=[1,2]$ 于此同时假设我们的采样噪声 $\epsilon \in[0.5, -0.3]$并且进行500次加噪声处理，假设$\bar{\alpha}_{500} = 0.8$那么计算500次加噪得到结果为：
+
+$$
+x_t=\sqrt{\bar{\alpha_t}}x_0+ \sqrt{1-\bar{\alpha_t}}\epsilon=\sqrt{0.8}\times[1,2]+\sqrt{0.2}[0.5, -0.3]≈[1.118,1.654]
+$$
+
+**关键在于损失函数**，通过上面简化过程可以直接通过模型预测噪声因此可以直接计算$\epsilon_\theta(x_t,t)=[0.48，-0.28]$然后去计算loss即可。**直接上代码**，代码实现上面过程可以自定义实现/使用`diffusers`[^7]
 **diffusers**实现简易demo
 
 ```python
@@ -102,18 +107,60 @@ for image in train_dataloader:
                                       (image.shape[0],), device=image.device, dtype=torch.int64)
     noisy_images = scheduler.add_noise(image, noise, timesteps) # 32 3 128 128
     ...
-    model(noisy_images)
+    noise_pred = model(noisy_images)
+    loss = F.mse_loss(noise_pred, noise)
+    ...
+
 ```
 
-**自定义实现**简易demo
-
-
 ## Conditional Diffusion Model
+TODO: 待完善
 
 ## Latent Diffusion Model
+对于Latent Diffusion Model（LDM）[^9]主要出发点就是：最开始的DF模型在像素空间（高纬）进行评估这是消耗计算的，因此LDF就是直接通过对 **autoencoding model**得到的 *潜在空间*（低维）进行建模。整个思路就比较简单，用降低维度的潜在空间来进行建模，整个模型结构为：
+![image.png](https://s2.loli.net/2025/05/21/Is4tUOo2ueFTqzE.png)
 
-## DF模型
-### Dit模型
+对于上述过程，输入图像为$x=[3,H,W]$而后通过encoder将其转化为 潜在空间（$z=\varepsilon(x)$）而后直接在潜在空间 $z$进行扩散处理得到$z_T$直接对这个$z_T$通过U-Net进行建模，整个过程比较简单。不过值得注意的是在U-Net里面因为可能实际使用DF时候会有一些特殊输入（文本、图像等）因此会对这些内容通过一个encoder进行编码得到：$\tau_\theta(y)\in R^{M\times d_\tau}$，而后直接进行注意力计算：
+
+$$
+\text{Attention}(Q,K,V)=\text{softmax}(\frac{QK^T}{\sqrt{d}})V
+$$
+
+其中：$Q=W_{Q}^{(i)}\cdot\varphi_{i}(z_{t}),K=W_{K}^{(i)}\cdot\tau_{\theta}(y),V=W_{V}^{(i)}\cdot\tau_{\theta}(y)$并且各个参数维度为：$W_V^{i}\in R^{d\times d_\epsilon^i},W_Q^i\in R^{d\times d_\tau},W_k^i\in R^{d\times d_\tau}$
+
+## DF模型生成
+> 具体的代码操作见：[DF生成代码操作](#df生成)
+### DDPM
+最开始上面有介绍如何使用DF模型来进行生成，比如说在DDPM中生成范式为：
+![](https://s2.loli.net/2025/05/20/H4p8YqjKDTz7Rhu.png)
+
+也就是说DDPM生成为：
+
+$$
+x_{t-1}=\frac{1}{\sqrt{\alpha_t}}\left(x_t-\frac{1- \alpha_t}{\sqrt{1-\bar{\alpha}_t}}\epsilon_\theta(x_t,t)\right)+\sigma_tz,\quad z\sim\mathcal{N}(0,I)
+$$
+
+但是这种生成范式存在问题，比如说T=1000那就意味着一张“合格”图片就需要进行1000次去噪如果1次是为为0.1s那么总共时间大概是100s如果要生产1000张图片那就是：1000x1000x0.1/60≈27h。这样时间花销就会比较大
+### DDIM
+最开始在介绍DDPM中将图像的采样过程定义为马尔科夫链过程，而DDIM[^10]则是相反直接定义为：非马尔科夫链过程
+![](https://s2.loli.net/2025/05/21/IthaCMBKzwojY1T.png)
+
+并且定义图像生成过程为：
+$$
+x_{t-1}=\sqrt{\alpha_{t-1}}\left(\frac{x_t-\sqrt{1-\alpha_t}\epsilon_\theta(x_t,t)}{\sqrt{\alpha_t}}\right)+\sqrt{1-\alpha_{t-1}-\sigma_t^2}\epsilon_\theta(x_t,t)+\sigma_tz
+$$
+
+## 代码操作
+https://github.com/CompVis/stable-diffusion/blob/main/ldm/models/diffusion/ddpm.py
+### DF生成
+TODO:待完善:https://github.com/CompVis/stable-diffusion/tree/main/ldm/models/diffusion
+
+
+### DF模型结构
+> 通过上面分析，知道对于 $x_T=\sqrt{\bar{\alpha_T}}x_0+ \sqrt{1-\bar{\alpha_T}}\epsilon$通过这个方式添加噪声，但是实际因为时间是一个标量，就像是最开始的位置编码一样，对于这些内容都会通过“类似位置编码”操作一样将其**进行embedding处理然后在模型里面**一般输入的参数也就是这三部分：`noise_image`, `time_step`, `class_label`
+
+#### Dit模型
+
 将Transformer使用到Diffusion Model中，而Dit[^2]属于Latent Diffusion Model也就是在通过一个autoencoder来将图像压缩为低维度的latent，扩散模型用来生成latent，然后再采用autoencoder来重建出图像，比如说在Dit中使用KL-f8对于输入图像维度为：256x256x3那么压缩得到的latent为32x32x4。Dit的模型结构为：
 ![image.png](https://s2.loli.net/2025/05/19/K8frUqVY4la7Xeg.png)
 
@@ -138,17 +185,56 @@ def forward(self, x, c):
 ```
 
 在这个代码中不是直接使用注意力而是使用通过一个 `modulate`这个为了实现将传统的layer norm（$\gamma{\frac{x- \mu}{\sigma}}+ \beta$）改为动态的$\text{scale}{\frac{x- \mu}{\sigma}}+ \text{shift}$，直接使用动态是为了允许模型根据时间步和类标签调整 Transformer 的行为，使生成过程更灵活和条件相关，除此之外将传统的残差连接改为 权重条件连接 $x+cf(x)$。再通过线性层进行处理类似的也是使用上面提到的正则化进行处理，处理之后结果通过`unpatchify`处理（将channels扩展2倍而后还原到最开始的输入状态）
-### Unet
 
-## DF训练
+#### Unet模型结构
+[Unet模型](https://www.big-yellow-j.top/posts/2025/01/18/CV-Backbone.html#:~:text=%E6%A2%AF%E5%BA%A6%E6%B6%88%E5%A4%B1%E9%97%AE%E9%A2%98%E3%80%82-,2.Unet%E7%B3%BB%E5%88%97,-Unet%E4%B8%BB%E8%A6%81%E4%BB%8B%E7%BB%8D)在前面有介绍过了就是通过下采样和上采用并且同层级之间通过特征拼接来补齐不同采用过程之间的“信息”损失。这里直接使用`diffuser`里面的[UNet模型](https://github.com/huggingface/diffusers/blob/main/src/diffusers/models/unets/unet_2d_blocks.py)进行解释（使用UNet2DModel模型解释），整个Unet模型就是3部分：1、下采样；2、中间层；3、上采样。假设模型参数为：
+```python
+model = UNet2DModel(
+    sample_size= 128,
+    in_channels=3,
+    out_channels=3,
+    layers_per_block=2,
+    block_out_channels=(128, 128, 256, 256, 512, 512),
+    down_block_types=("DownBlock2D", "DownBlock2D", "DownBlock2D", "DownBlock2D", "DownBlock2D", "DownBlock2D"),
+    up_block_types=("UpBlock2D", "UpBlock2D", "UpBlock2D", "UpBlock2D", "UpBlock2D", "UpBlock2D")
+).to(device)
+```
+
+整个过程维度变化，假设输入为：image:(32,3,128,128), time_steps: (32, )：
+**首先通过第一层卷积**：(32,128,128,128)与此同时会将时间步进行编码得到：(32, 512)（如果有label数据也是(32,)那么会将其加入到time_steps中）
+**下采样处理**：总共6层下采样，得到结果为：
+Down-0: torch.Size([32, 128, 128, 128])
+Down-1: torch.Size([32, 128, 64, 64])
+Down-2: torch.Size([32, 256, 32, 32])
+Down-3: torch.Size([32, 256, 16, 16])
+Down-4: torch.Size([32, 512, 8, 8])
+Down-5: torch.Size([32, 512, 4, 4])
+**中间层处理**：torch.Size([32, 512, 4, 4])
+**上采样处理**：总共6层上采样，得到结果为：
+Up-0 torch.Size([32, 512, 8, 8])
+Up-1 torch.Size([32, 512, 16, 16])
+Up-2 torch.Size([32, 256, 32, 32])
+Up-3 torch.Size([32, 256, 64, 64])
+Up-4 torch.Size([32, 128, 128, 128])
+Up-5 torch.Size([32, 128, 128, 128])
+**输出**：输出就直接通过groupnorm以及silu激活之后直接通过一层卷积进行处理得到：torch.Size([32, 128, 128, 128])
+<font color='red'>进一步了解模型处理</font>
+
+TODO: 待完善！1、https://github.com/CompVis/stable-diffusion/blob/main/ldm/modules/diffusionmodules/model.py 2、https://zhuanlan.zhihu.com/p/613337342
+**1、time_embedding**：这个比较容易理解就像transformer里面的位置编码一样进行处理，输入（N，）得到 **（N，4xM）**（其中M代表的是第一层采样输出输出维度，比如128x4=512）
+**2、label_embedding**：标签进行编码处理和 time_embedding相同
+**3、prompt embedding**：如果有文本进行输入，比如直接使用clip，输入：（N，）得到 **（N，K，E）**（其中K代表max_length、E代表embedding大小）
+处理之外`stable diffusion`模型代码分析：
+
+### DF训练
 * **传统训练**
 
 对于传统的DF训练（前向+反向）比较简单，直接通过输入图像而后不断添加噪声而后解噪。以huggingface[^4]上例子为例（测试代码: [Unet2Model.py]('Big-Yellow-J.github.io/code/Unet2Model.py.txt')），**首先**、对图像进行添加噪声。**而后**、直接去对添加噪声后的模型进行训练“去噪”（也就是预测图像中的噪声）。**最后**、计算loss反向传播。
 > 对于加噪声等过程可以直接借助 `diffusers`来进行处理，对于diffuser：
 > 1、schedulers：调度器
 > 主要实现功能：1、图片的前向过程添加噪声（也就是上面的$x_T=\sqrt{\bar{\alpha_T}}x_0+ \sqrt{1-\bar{\alpha_T}}\epsilon$）；2、图像的反向过程去噪；3、时间步管理等。如果不是用这个调度器也可以自己设计一个只需要：1、前向加噪过程（需要：使用固定的$\beta$还是变化的、加噪就比较简单直接进行矩阵计算）；2、采样策略
-测试得到结果为：
 
+测试得到结果为：
 ![](https://cdn.z.wiki/autoupload/20250520/CHJj/1000X200/Generate-image.gif)
 
 
@@ -163,3 +249,5 @@ def forward(self, x, c):
 [^6]: https://arxiv.org/abs/2006.11239
 [^7]: https://huggingface.co/docs/diffusers/en/index
 [^8]: https://lilianweng.github.io/posts/2021-07-11-diffusion-models/
+[^9]: https://arxiv.org/abs/2112.10752
+[^10]: https://arxiv.org/pdf/2010.02502

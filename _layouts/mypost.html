@@ -18,6 +18,10 @@
       在 {{ page.address }} 发布 
         ⏳ 预计阅读 {{ minutes }} 分钟
     </span>
+    <!-- 检查页面 URL 是否包含 "TODO" -->
+    {% if page.url contains "TODO" %}
+      <span style="color: red; font-weight: bold; font-size: large;">writing.....</span>
+    {% endif %}
   </div>
   {% endif %}
     
