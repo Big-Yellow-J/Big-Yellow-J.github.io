@@ -117,7 +117,7 @@ for image in train_dataloader:
 TODO: 待完善
 
 ## Latent Diffusion Model
-对于Latent Diffusion Model（LDM）[^9]主要出发点就是：最开始的DF模型在像素空间（高纬）进行评估这是消耗计算的，因此LDF就是直接通过对 **autoencoding model**得到的 *潜在空间*（低维）进行建模。整个思路就比较简单，用降低维度的潜在空间来进行建模，整个模型结构为：
+对于Latent Diffusion Model（LDM）[^9]主要出发点就是：最开始的DF模型在像素空间（高纬）进行评估这是消耗计算的，因此LDF就是直接通过对 **autoencoding model**得到的 *潜在空间*（低维）进行建模。整个思路就比较简单，用降低维度的潜在空间来进行建模，整个模型结构为（[代码操作](#unet模型结构)）：
 ![image.png](https://s2.loli.net/2025/05/21/Is4tUOo2ueFTqzE.png)
 
 对于上述过程，输入图像为$x=[3,H,W]$而后通过encoder将其转化为 潜在空间（$z=\varepsilon(x)$）而后直接在潜在空间 $z$进行扩散处理得到$z_T$直接对这个$z_T$通过U-Net进行建模，整个过程比较简单。不过值得注意的是在U-Net里面因为可能实际使用DF时候会有一些特殊输入（文本、图像等）因此会对这些内容通过一个encoder进行编码得到：$\tau_\theta(y)\in R^{M\times d_\tau}$，而后直接进行注意力计算：
@@ -187,7 +187,35 @@ def forward(self, x, c):
 在这个代码中不是直接使用注意力而是使用通过一个 `modulate`这个为了实现将传统的layer norm（$\gamma{\frac{x- \mu}{\sigma}}+ \beta$）改为动态的$\text{scale}{\frac{x- \mu}{\sigma}}+ \text{shift}$，直接使用动态是为了允许模型根据时间步和类标签调整 Transformer 的行为，使生成过程更灵活和条件相关，除此之外将传统的残差连接改为 权重条件连接 $x+cf(x)$。再通过线性层进行处理类似的也是使用上面提到的正则化进行处理，处理之后结果通过`unpatchify`处理（将channels扩展2倍而后还原到最开始的输入状态）
 
 #### Unet模型结构
-[Unet模型](https://www.big-yellow-j.top/posts/2025/01/18/CV-Backbone.html#:~:text=%E6%A2%AF%E5%BA%A6%E6%B6%88%E5%A4%B1%E9%97%AE%E9%A2%98%E3%80%82-,2.Unet%E7%B3%BB%E5%88%97,-Unet%E4%B8%BB%E8%A6%81%E4%BB%8B%E7%BB%8D)在前面有介绍过了就是通过下采样和上采用并且同层级之间通过特征拼接来补齐不同采用过程之间的“信息”损失。这里直接使用`diffuser`里面的[UNet模型](https://github.com/huggingface/diffusers/blob/main/src/diffusers/models/unets/unet_2d_blocks.py)进行解释（使用UNet2DModel模型解释），整个Unet模型就是3部分：1、下采样；2、中间层；3、上采样。假设模型参数为：
+[Unet模型](https://www.big-yellow-j.top/posts/2025/01/18/CV-Backbone.html#:~:text=%E6%A2%AF%E5%BA%A6%E6%B6%88%E5%A4%B1%E9%97%AE%E9%A2%98%E3%80%82-,2.Unet%E7%B3%BB%E5%88%97,-Unet%E4%B8%BB%E8%A6%81%E4%BB%8B%E7%BB%8D)在前面有介绍过了就是通过下采样和上采用并且同层级之间通过特征拼接来补齐不同采用过程之间的“信息”损失。如果直接使用stable diffusion model（*封装不多*），假设参数如下进行代码操作：
+```python
+{
+    'ch': 64,
+    'out_ch': 3,
+    'ch_mult': (1, 2, 4), # 通道增加倍数 in: 2,3,128,128 第一层卷积：2,64,128,128 通过这个参数直接结合 num_res_blocks来判断通道数量增加 ch_mut*num_res_blocks=(1, 1, 2, 2, 4, 4)
+    'num_res_blocks': 2,  # 残差模块数量
+    'attn_resolutions': (16,),
+    'dropout': 0.1,
+    'resamp_with_conv': True,
+    'in_channels': 3,
+    'resolution': 128,
+    'use_timestep': True,
+    'use_linear_attn': False,
+    'attn_type': "vanilla"
+}
+```
+> 基本模块
+
+**1、残差模块**：
+![image.png](https://s2.loli.net/2025/05/22/18Db4m2tnReQyE6.png)
+
+**2、time embedding**：直接使用attention的sin位置编码
+
+> 具体过程
+
+![image.png](https://s2.loli.net/2025/05/22/N6gJFQfS41EY7Mc.png)
+
+在得到的分辨率=attn_resolutions时候就会直接进行注意力计算（直接用卷积处理得到q，k，v然后进行计算attention），整个[结构]({{ site.baseurl }}/Dio.drawio)。如果这里直接使用`diffuser`里面的[UNet模型](https://github.com/huggingface/diffusers/blob/main/src/diffusers/models/unets/unet_2d_blocks.py)进行解释（使用UNet2DModel模型解释），整个Unet模型就是3部分：1、下采样；2、中间层；3、上采样。假设模型参数为：
 ```python
 model = UNet2DModel(
     sample_size= 128,
@@ -218,13 +246,6 @@ Up-3 torch.Size([32, 256, 64, 64])
 Up-4 torch.Size([32, 128, 128, 128])
 Up-5 torch.Size([32, 128, 128, 128])
 **输出**：输出就直接通过groupnorm以及silu激活之后直接通过一层卷积进行处理得到：torch.Size([32, 128, 128, 128])
-<font color='red'>进一步了解模型处理</font>
-
-TODO: 待完善！1、https://github.com/CompVis/stable-diffusion/blob/main/ldm/modules/diffusionmodules/model.py 2、https://zhuanlan.zhihu.com/p/613337342
-**1、time_embedding**：这个比较容易理解就像transformer里面的位置编码一样进行处理，输入（N，）得到 **（N，4xM）**（其中M代表的是第一层采样输出输出维度，比如128x4=512）
-**2、label_embedding**：标签进行编码处理和 time_embedding相同
-**3、prompt embedding**：如果有文本进行输入，比如直接使用clip，输入：（N，）得到 **（N，K，E）**（其中K代表max_length、E代表embedding大小）
-处理之外`stable diffusion`模型代码分析：
 
 ### DF训练
 * **传统训练**
