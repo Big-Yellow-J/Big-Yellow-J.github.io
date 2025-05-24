@@ -114,7 +114,12 @@ for image in train_dataloader:
 ```
 
 ## Conditional Diffusion Model
-TODO: 待完善
+条件扩散模型（Conditional Diffusion Model）[^11]顾名思义就是在使用DF过程中添加一个 *限定条件*（文本、图像等）来指导模型的生成（原理很简单，而且 *条件扩散模型*这个概念比较广泛，只要在生成图片过程中加上一个“条件”），这里主要介绍OpenAI的论文来解释 *条件扩散模型*。
+![image.png](https://s2.loli.net/2025/05/23/ZIj9dDx2ROtJ5Nb.png)
+
+在论文里面提到了一点： **可以通过文本来提升模型的生成质量**。主要了解一下对于条件如何嵌入到模型中：
+1、直接相加范式：这类主要就是将文本、标签进行编码之后直接和 **噪声**/ **时间步**进行相加而后进行后续实验；
+2、注意力融合范式：比如下面的Stable Diffusion直接将文本编码之后融入到注意力里面进行计算
 
 ## Latent Diffusion Model
 对于Latent Diffusion Model（LDM）[^9]主要出发点就是：最开始的DF模型在像素空间（高纬）进行评估这是消耗计算的，因此LDF就是直接通过对 **autoencoding model**得到的 *潜在空间*（低维）进行建模。整个思路就比较简单，用降低维度的潜在空间来进行建模，整个模型结构为（[代码操作](#unet模型结构)）：
@@ -248,18 +253,31 @@ Up-5 torch.Size([32, 128, 128, 128])
 **输出**：输出就直接通过groupnorm以及silu激活之后直接通过一层卷积进行处理得到：torch.Size([32, 128, 128, 128])
 
 ### DF训练
-* **传统训练**
+#### 1、DDPM
 
 对于传统的DF训练（前向+反向）比较简单，直接通过输入图像而后不断添加噪声而后解噪。以huggingface[^4]上例子为例（测试代码: [Unet2Model.py]('Big-Yellow-J.github.io/code/Unet2Model.py.txt')），**首先**、对图像进行添加噪声。**而后**、直接去对添加噪声后的模型进行训练“去噪”（也就是预测图像中的噪声）。**最后**、计算loss反向传播。
 > 对于加噪声等过程可以直接借助 `diffusers`来进行处理，对于diffuser：
 > 1、schedulers：调度器
 > 主要实现功能：1、图片的前向过程添加噪声（也就是上面的$x_T=\sqrt{\bar{\alpha_T}}x_0+ \sqrt{1-\bar{\alpha_T}}\epsilon$）；2、图像的反向过程去噪；3、时间步管理等。如果不是用这个调度器也可以自己设计一个只需要：1、前向加噪过程（需要：使用固定的$\beta$还是变化的、加噪就比较简单直接进行矩阵计算）；2、采样策略
 
-测试得到结果为：
+测试得到结果为（因为HF官方提供了很好的参数去训练模型，因此测试新的数据集可能就没有那么效果好，只是做一个效果展示**调参可能可以改善模型最后生成效果**）：
 ![](https://cdn.z.wiki/autoupload/20250520/CHJj/1000X200/Generate-image.gif)
 
+> **Stable Diffusion Model**代码测试。数据集："saitsharipov/CelebA-HQ"
 
-* **Latent Diffusion Model训练**
+![SD-Generate-image-normal.gif](https://cdn.z.wiki/autoupload/20250523/jJT2/1000X200/SD-Generate-image-normal.gif)
+
+> **Hugging Face**代码测试。数据集："saitsharipov/CelebA-HQ"
+
+![Generate-image-normal.gif](https://cdn.z.wiki/autoupload/20250523/OZmN/1000X200/HF-Generate-image-normal.gif)
+
+#### 2、Latent Diffusion Model
+
+#### 3、Condition Diffusion Model
+这里直接使用的是比较简单的 **CIFAR-10**数据集进行测试，得到不同测试效果如下：
+
+## 总结
+上面介绍了各类DF以及具体的代码操作，总的来说在DF训练过程中（从代码角度）基本上就是这个公式：$x_t=\sqrt{\bar{\alpha_t}}x_0+ \sqrt{1-\bar{\alpha_t}}\epsilon$ 加噪过程得到$x_t$/去噪过程通过$x_t$通过去预测 **噪声**来优化模型的参数。于此同时训练过程中发现：**训练一个合格的DF模型需要很长的时间去训练才能保证最后生成图片“可用”**
 
 ## 参考
 [^1]: https://arxiv.org/pdf/2102.09672
@@ -272,3 +290,4 @@ Up-5 torch.Size([32, 128, 128, 128])
 [^8]: https://lilianweng.github.io/posts/2021-07-11-diffusion-models/
 [^9]: https://arxiv.org/abs/2112.10752
 [^10]: https://arxiv.org/pdf/2010.02502
+[^11]: https://arxiv.org/pdf/2204.06125

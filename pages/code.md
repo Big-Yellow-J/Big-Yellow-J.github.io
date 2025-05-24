@@ -3,7 +3,81 @@ layout: mypost
 title: Code
 show_footer_image: false
 ---
-> **所有代码**：[https://github.com/Big-Yellow-J/Big-Yellow-J.github.io/tree/master/code/Python](https://github.com/Big-Yellow-J/Big-Yellow-J.github.io/tree/master/code/Python)
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Link Card</title>
+  <style>
+    .link-card {
+      display: flex;
+      align-items: center;
+      max-width: 600px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px auto;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.2s;
+    }
+    .link-card:hover {
+      transform: translateY(-2px);
+    }
+    .link-card img {
+      width: 32px;
+      height: 32px;
+      margin-right: 16px;
+    }
+    .link-card-content {
+      flex: 1;
+    }
+    .link-card-title {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin: 0 0 8px;
+    }
+    .link-card-description {
+      font-size: 0.9em;
+      color: #555;
+      margin: 0;
+    }
+    .link-card-url {
+      font-size: 0.8em;
+      color: #888;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <a id="link-card" class="link-card" href="" target="_blank">
+    <img id="link-favicon" src="" alt="Favicon">
+    <div class="link-card-content">
+      <div id="link-title" class="link-card-title"></div>
+      <div id="link-description" class="link-card-description"></div>
+      <div id="link-url" class="link-card-url"></div>
+    </div>
+  </a>
+
+  <script>
+    // Configuration for the link to convert
+    const linkConfig = {
+      url: "{{ include.url | default: 'https://github.com/Big-Yellow-J/Big-Yellow-J.github.io/tree/master/code/Python' }}",
+      title: "{{ include.title | default: 'Code！！😁😁😁' }}",
+      description: "{{ include.description | default: 'All Code in my blog！' }}"
+    };
+
+    // Update card elements with provided or default values
+    document.getElementById('link-card').href = linkConfig.url;
+    document.getElementById('link-favicon').src = `https://www.google.com/s2/favicons?domain=${linkConfig.url}`;
+    document.getElementById('link-title').textContent = linkConfig.title;
+    document.getElementById('link-description').textContent = linkConfig.description;
+    document.getElementById('link-url').textContent = linkConfig.url;
+  </script>
+</body>
+</html>
 
 **部分代码说明**
 
