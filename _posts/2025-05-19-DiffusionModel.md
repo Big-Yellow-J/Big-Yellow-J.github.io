@@ -160,7 +160,7 @@ $$
 
 #### Dit模型
 
-将Transformer使用到Diffusion Model中，而Dit[^2]属于Latent Diffusion Model也就是在通过一个autoencoder来将图像压缩为低维度的latent，扩散模型用来生成latent，然后再采用autoencoder来重建出图像，比如说在Dit中使用KL-f8对于输入图像维度为：256x256x3那么压缩得到的latent为32x32x4。Dit的模型结构为：
+将Transformer使用到Diffusion Model中，而Dit[^2]在论文中进行的操作：通过一个autoencoder来将图像压缩为低维度的latent，扩散模型用来生成latent，然后再采用autoencoder来重建出图像，比如说在Dit中使用KL-f8对于输入图像维度为：256x256x3那么压缩得到的latent为32x32x4。Dit的模型结构为：
 ![image.png](https://s2.loli.net/2025/05/19/K8frUqVY4la7Xeg.png)
 
 模型输入参数3个分别为：1、低纬度的latent；2、标签label；3、时间步t。对于latent直接通过一个patch embed来得到不同的patch（得到一系列的token）而后将其和位置编码进行相加得到最后的embedding内容，直接结合代码[^3]来解释模型：
