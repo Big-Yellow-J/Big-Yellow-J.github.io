@@ -244,12 +244,7 @@ def decay_lr_stable(base_lr, epoch_i, batch_i, total_epochs, total_batches, warm
 optim.SGD([{'params': model.VisionModel.parameters(), 'lr': 1e-2},{'params': model.TextModel.parameters(), 'lr: 1e-3}], lr=1e-3, momentum=0.9)
 ```
 
-
 ## 参考
-1:https://cloud.tencent.com/developer/article/2351463
-2:https://youtu.be/zzbr1h9sF54?t=1614
-3:https://arxiv.org/abs/2404.06395
-
 [^1]:https://cloud.tencent.com/developer/article/2351463
 [^2]:https://youtu.be/zzbr1h9sF54?t=1614
 [^3]:https://arxiv.org/abs/2404.06395
