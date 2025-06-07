@@ -55,7 +55,7 @@ Python 的 `ThreadPoolExecutor` 受 **GIL 限制**，多个线程并不会真正
 多线程使用方式比较简单，以下面例子为例：
 
 ```python
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 with ThreadPoolExecutor(max_workers= n) as executor:
     futures = [executor.submit(sum, chunk) for chunk in chunks]  # 提交任务
     results = [future.result() for future in as_completed(futures)]  # 获取结果
@@ -79,11 +79,11 @@ thread_2.join()
 第一种相对而言比较简单（自动管理线程），而第二种需要我去创建多个进程，然后对不同进程之间进行 `start()` 以及 `join()`，实际使用如果是一个长期执行任务可以用 `threading.Thread`（比如说要一致保持摄像头开启就可以直接 `threading.Thread(target=video_capture_thread, daemon=True).start()` ）而并行任务可以选择 `ThreadPoolExecutor`不用去手动创建
 
 一般来说使用过程中只需要注意如下几个操作：1、向你创建的进程中提交任务（提交的内容是：你要进行计算的函数，函数所需要的参数）；2、获取你提交任务所得到的结果（因为是多线程，因此返回得到的结果也就是不同线程的结果）
-需要注意的就是下面几个内容：1、`submit` 提交你的任务；2、`as_completed` 执行你的任务
+需要注意的就是下面几个内容：1、`submit` **提交你的任务**；2、`as_completed` **执行你的任务**
 **不过需要小心的一点是**，使用多线程，需要保证 thread-safe（线程安全），比如说同时向一个文件里面写入时候，我通过使用LLM的api执行时候，我有一个较长的文本，先将他拆分（保证是模型的最大允许输入），然后“一次性”（假设的是线程数量恰好和分割数量一致）将其进行api访问（这样时间消耗肯定比普通的要少）将处理结果然后写入到一个文件中就需要考虑进程锁问题，因为所有任务结果都写入同一个问题可能会导致 **进程冲突**，比如说：
 
 ```python
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 
 def llm_api_result(num):
