@@ -7,6 +7,7 @@ int main()
     using namespace std;
     char charr[20]; 
     string str;
+    int array[10];
 
     cout << "Length of string in charr before input: " 
          << strlen(charr) << endl;

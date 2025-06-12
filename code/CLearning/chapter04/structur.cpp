@@ -1,8 +1,11 @@
 // structur.cpp -- a simple structure
 #include <iostream>
+#include <string>
+using namespace std;
+
 struct inflatable   // structure declaration
 {
-    char name[20];
+    string name;
     float volume;
     double price;
 };
@@ -10,13 +13,17 @@ struct inflatable   // structure declaration
 int main()
 {
     using namespace std;
+    inflatable peo1[1]={
+        {"aa", 1, 1}
+    };
+    cout<< peo1[0].name<<endl;
     inflatable guest =
     {
         "Glorious Gloria",  // name value
         1.88,               // volume value
         29.99               // price value
-    };  // guest is a structure variable of type inflatable
-// It's initialized to the indicated values
+    }; 
+
     inflatable pal =
     {
         "Audacious Arthur",

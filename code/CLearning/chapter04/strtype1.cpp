@@ -1,13 +1,19 @@
 // strtype1.cpp -- using the C++ string class
 #include <iostream>
 #include <string>               // make string class available
+
+using namespace std;
+
 int main()
 {
-    using namespace std;
     char charr1[20];            // create an empty array
     char charr2[20] = "jaguar"; // create an initialized array
     string str1;                // create an empty string object
     string str2 = "panther";    // create an initialized string
+
+//     string str_1 = "huang";
+//     string str_2 {"jie"};
+//     cout<< "str_1:" << str_1<< " add str_2:"<< str_2<< "="<< str_1+ str_2<< endl;
 
     cout << "Enter a kind of feline: ";
     cin >> charr1;
