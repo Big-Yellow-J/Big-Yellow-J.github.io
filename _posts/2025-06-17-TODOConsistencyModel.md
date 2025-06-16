@@ -7,7 +7,6 @@ images: true
 address: 武汉🏯
 show_footer_image: true
 tags: [生成模型,diffusion model,一致性模型]
-show: true
 description: 前面已经介绍了扩散模型，扩散模型往往需要多步才能生成较为满意的图像，但是可一致性模型可以通过几步生成图像，因此这里主要是介绍一致性模型（consistency model）基本原理以及代码实践。
 ---
 
