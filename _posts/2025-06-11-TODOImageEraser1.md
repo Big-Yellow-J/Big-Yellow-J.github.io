@@ -1,15 +1,15 @@
 ---
 layout: mypost
-title: 图像擦除论文综述-1：PixelHacker、PowerPanint、BrushNet
+title: 图像擦除论文综述-1：PixelHacker、PowerPanint等
 categories: 图像消除
 address: 武汉🏯
 extMath: true
 show_footer_image: true
 tags: [diffusion model,图像消除]
-description: 本文主要介绍几篇图像擦除论文模型：PixelHacker、PowerPanint、BrushNet，并且实际测试模型的表现效果
+description: 本文主要介绍几篇图像擦除论文模型：PixelHacker、PowerPanint等，并且实际测试模型的表现效果
 ---
 
-本文主要介绍几篇图像擦除论文模型：PixelHacker、PowerPanint、BrushNet，并且实际测试模型的表现效果
+本文主要介绍几篇图像擦除论文模型：PixelHacker、PowerPanint等，并且实际测试模型的表现效果
 
 ## PixelHacker
 > Code: https://github.com/hustvl/PixelHacker
@@ -67,17 +67,26 @@ $L_t$计算过程：
 于此同时参考上面过程还是进行加权组合
 ![image.png](https://s2.loli.net/2025/06/12/xGHQwX1aSCz3WdU.png)
 
-### PowerPanint实际测试效果
-
 
 ## Improving Text-guided Object Inpainting with Semantic Pre-inpainting
 > From: https://github.com/Nnn-s/CATdiffusion.
+> **没有提供权重无法测试**
 
-![image.png](https://s2.loli.net/2025/06/12/UjBkJedqNypub67.png)
+![image.png](https://s2.loli.net/2025/06/16/ns3BWXRkpFVlwLt.png)
 
-由于DDM生成过程中是不可控的，本文提出通过text来提高模型可控。
+由于DDM生成过程中是不可控的，本文提出通过text来提高模型可控。相比较之前研究（直接将图片通过VAE处理输入DF中，并且将文本作为条件进行输入），最开始得到的latent space和text feature之间存在“信息不对齐”。在该文中“提前”将text feature输入到模型中。具体做法是：
+* **首先通过CLIP来对齐特征信息**
 
-## BrushNet
-> BrushNet: A Plug-and-Play Image Inpainting Model with Decomposed Dual-Branch Diffusion
-> From:https://github.com/TencentARC/BrushNet
+将image通过clip image encoder进行编码得到特征而后通过**SemInpainter**：同时结合可学习的位置信息（PE）、可学习的mask图像特征（ME）、文本特征，整个过程为：
+![image.png](https://s2.loli.net/2025/06/16/FjtYDoqGpQ3cnPH.png)
 
+其中：**SemInpainter**（和CLIP的image encoder相似结构）根据视觉上下文和文本提示c的条件下，恢复CLIP空间中mask对象的ground-truth语义特征，说人话就是通过知识蒸馏方式来训练这个模块参数。对于两部分特征最后通过下采样方式得到最后特征：
+![image.png](https://s2.loli.net/2025/06/16/UeuKvto4gcp2myA.png)
+
+* **reference adapter layer (RefAdapter) **
+
+![](https://s2.loli.net/2025/06/16/5dOF2uwxilc3ZoU.png)
+
+
+## 总结
+简单终结上面几篇论文，基本出发思路都是基于Stable diffusion Moddel然后通过修改Condition方式：无论为是CLip编码文本嵌入还是clip编码图像嵌入。不过值得留意几个点：1、对于mask内容可以用“非规则”（类似对mask内容进行膨胀处理）的方式输入到模型中来提高能力。2、在图像擦除中容易出现几个小问题：**图像替换问题**（理论上是擦除图像但是实际被其他图像给“替换”）、**图像模糊问题**（擦除图像之后可能会在图像上加一个“马赛克”，擦除区域模糊）对于这两类问题可以参考[论文](https://openaccess.thecvf.com/content/CVPR2025/papers/Wang_Towards_Enhanced_Image_Inpainting_Mitigating_Unwanted_Object_Insertion_and_Preserving_CVPR_2025_paper.pdf)。
