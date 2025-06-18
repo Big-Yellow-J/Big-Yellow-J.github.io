@@ -67,6 +67,22 @@ $L_t$计算过程：
 于此同时参考上面过程还是进行加权组合
 ![image.png](https://s2.loli.net/2025/06/12/xGHQwX1aSCz3WdU.png)
 
+### PowerPanint实际测试效果
+
+> 只测试 `Object removal inpainting`，测试的权重：`ppt-v1`
+
+| 图像 | mask | 结果 | 测试 |
+|:----:|:----:|:----:|:----:|
+|![sa_329749.jpg](https://s2.loli.net/2025/06/17/Aa2FXNjRY1EPlen.jpg)| ![mask-1.png](https://s2.loli.net/2025/06/17/daUWqhv4wmzS71g.png)|![gt-1.png](https://s2.loli.net/2025/06/17/fDrkWlSEPsNKogL.png)| 部分移除 |
+|![sa_329749.jpg](https://s2.loli.net/2025/06/17/Aa2FXNjRY1EPlen.jpg)| ![mask-2.png](https://s2.loli.net/2025/06/17/tHR3CqhGYWgJiNI.png)|![gt-2.png](https://s2.loli.net/2025/06/17/hOmGQrjiXo5NuFb.png)| 全部移除 |
+|![sa_325886.jpg](https://s2.loli.net/2025/06/17/muL3hZ4YRgXBMv8.jpg)| ![mask-image-1.png](https://s2.loli.net/2025/06/17/7vG1JuHqrAOpmDR.png)| ![gt-image-1.png](https://s2.loli.net/2025/06/17/Li4mGcKlCADfNav.png)| 复杂布局全部移除 |
+|![sa_325886.jpg](https://s2.loli.net/2025/06/17/muL3hZ4YRgXBMv8.jpg)| ![mask-image-2.png](https://s2.loli.net/2025/06/17/eK1xSsLq3W7mQzy.png)| ![gt-image-2.png](https://s2.loli.net/2025/06/17/ruji2cnMfoQ3Cem.png)| 复杂布局细小内容移除 |
+|![sa_325886.jpg](https://s2.loli.net/2025/06/17/muL3hZ4YRgXBMv8.jpg)| ![mask-3.png](https://s2.loli.net/2025/06/17/8lKbT5v2t471LU6.png)| ![gt-3.png](https://s2.loli.net/2025/06/17/PRWX7bmBdYGF4QK.png)| 多目标内容移除 |
+|![sa_331946.jpg](https://s2.loli.net/2025/06/17/EKmwRYbiqBGC7cj.jpg)| ![image-mask _2_.png](https://s2.loli.net/2025/06/17/i9xAVXKqSrh3FPy.png)| ![image _1_.png](https://s2.loli.net/2025/06/17/EG8jNUhMXlxLfsR.png)| 多目标内容移除 |
+
+总的来说：PowerPanint还是比较优秀的消除模型，总体移除效果“说得过去”（如果不去追求消除的细节，见下面图像，比如说消除带来的图像被扭曲等）不过得到最后的图像的尺寸会被修改（in：2250x1500 out：960x640，此部分没有仔细去检查源代码是否可以取消或者自定义），除此之外，参考Github上提出的[issue-1](https://github.com/open-mmlab/PowerPaint/issues/111)：图像 resize 了，修改了分辨率，VAE 对人脸的重建有损失，如果mask没有完全覆盖掉人，留了一些边缘，模型有bias容易重建生成出新的东西。[issue-2](https://github.com/open-mmlab/PowerPaint/issues/56)：平均推理速度20s A100 GPU。
+![image.png](https://s2.loli.net/2025/06/17/3EBmuQgCcV59twK.png)
+
 
 ## Improving Text-guided Object Inpainting with Semantic Pre-inpainting
 > From: https://github.com/Nnn-s/CATdiffusion.
@@ -90,3 +106,4 @@ $L_t$计算过程：
 
 ## 总结
 简单终结上面几篇论文，基本出发思路都是基于Stable diffusion Moddel然后通过修改Condition方式：无论为是CLip编码文本嵌入还是clip编码图像嵌入。不过值得留意几个点：1、对于mask内容可以用“非规则”（类似对mask内容进行膨胀处理）的方式输入到模型中来提高能力。2、在图像擦除中容易出现几个小问题：**图像替换问题**（理论上是擦除图像但是实际被其他图像给“替换”）、**图像模糊问题**（擦除图像之后可能会在图像上加一个“马赛克”，擦除区域模糊）对于这两类问题可以参考[论文](https://openaccess.thecvf.com/content/CVPR2025/papers/Wang_Towards_Enhanced_Image_Inpainting_Mitigating_Unwanted_Object_Insertion_and_Preserving_CVPR_2025_paper.pdf)。
+**进一步阅读**： 1、[https://arxiv.org/pdf/2504.00996](https://arxiv.org/pdf/2504.00996)；2、[RAD: Region-Aware Diffusion Models for Image Inpainting](https://openaccess.thecvf.com/content/CVPR2025/papers/Kim_RAD_Region-Aware_Diffusion_Models_for_Image_Inpainting_CVPR_2025_paper.pdf)
