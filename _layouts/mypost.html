@@ -33,7 +33,7 @@
   <div class="post page-post">
     <!-- 处理内容中的图片 -->
     {% assign content_with_images = content 
-      | replace: '<img', '<img class="content-image" alt="Image"'
+      | replace: '<img', '<img loading="lazy" class="content-image" alt="Image"'
       | replace: 'alt=""', 'alt="image"' %}
   
     {{ content_with_images }}
