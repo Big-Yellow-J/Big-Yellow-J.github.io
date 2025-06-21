@@ -13,7 +13,7 @@ description: 主要介绍深度学习基础理论————DeepSpeed
 DeepSpeed 是由微软开发的一种深度学习优化库，专为高性能训练和推理而设计，尤其适用于大规模深度学习模型（如 GPT 系列、BERT 等）。它通过一系列技术和优化策略，帮助研究者和开发者高效利用硬件资源，实现快速训练、降低内存使用以及提升推理速度。
 正如其官方描述那样：
 
-![image](https://pica.zhimg.com/v2-0fa74fc643a5f420c57bf12a0c2f5d16_1440w.jpg)
+![image](https://s2.loli.net/2025/06/21/XCztHyfDvhTQG5x.webp)
 > Image From: https://github.com/microsoft/DeepSpeed
 
 ---
@@ -36,7 +36,7 @@ DeepSpeed 是由微软开发的一种深度学习优化库，专为高性能训�
 > `ZeRO-DP`原理
 
 主要是通过**切分**（`partitioning`）的方式来减少 **模型状态**显存占用
-![image](https://pic1.zhimg.com/v2-7aab2570bac94c8073742244cef969ae_1440w.jpg)
+![image](https://s2.loli.net/2025/06/21/4OUkVeJpjsF8zvc.webp)
 
 第一种方式为$P_{OS}$：对优化器的状态进行切分，将$N$块GPU上每块只存储$\frac{1}{N}$，那么最后显存占用（按上面的显存分析为例）就为：$4\Phi+ \frac{12\times \Phi}{N}$
 第二种方式为$P_{OS+g}$也就是在对优化器切分的基础上补充一个对梯度的切分，那么显存占用上就变成为：$2\Phi+ \frac{(2+ 12)\times \Phi}{N}$
@@ -50,12 +50,12 @@ DeepSpeed 是由微软开发的一种深度学习优化库，专为高性能训�
 
 **第一种方式$P_{OS}$**
 因为会将优化器状态切分，那么在3个不同设备上分别存储**3分优化器状态**（o1, o2, o3）,对于这3部分优化器（因为优化器最后还是去“作用”到梯度上），分别对各自的梯度进行优化，但是会有一个问题：每块GPU上存储的是 **一部分优化器状态**，那么对于每份优化器也只能去优化各自的参数，每次更新需要通过 **All-Gather** 操作合并梯度，完成优化器状态更新
-![image](https://pic4.zhimg.com/v2-c24157111233c20a944dc813d133bc85_1440w.jpg)
+![image](https://s2.loli.net/2025/06/21/zZP5wKRG2duH7L3.webp)
 **第二种方式$P_{OS+g}$**
-![image](https://pic4.zhimg.com/v2-c0bc081c383f3588497071c7958a09bf_1440w.jpg)
+![image](https://s2.loli.net/2025/06/21/WSEDgNrws4n6hC1.webp)
 在进行前向+反向传播之后，**得到完整的梯度**，因为要实现梯度拆分，那么就对梯度进行`reduce-scatter`对于不同的GPU就会存储不同的梯度（g1, g2, g3白色的就会剔除掉）前向和反向传播需要通过 **All-Gather** 和 **All-Reduce** 操作同步梯度和参数
 **第三种方式为$P_{OS+g+p}$**
-![image](https://picx.zhimg.com/v2-84f87cf8a0eb38731a4cab58352dc7c3_1440w.jpg)
+![image](https://s2.loli.net/2025/06/21/eViXt9sI2rluF4H.webp)
 
 通过 **All-Gather**和 **Reduce-Scatter** 高效完成参数同步和更新。总的来说：`ZeRO-DP`是一种 *用完就丢* 的套路，**计算时候是完整内容，但是使用完之后就丢掉**
 
@@ -69,9 +69,9 @@ DeepSpeed 是由微软开发的一种深度学习优化库，专为高性能训�
 > 对于 **all-gather**和 **all-reduce**简单理解为：前者每块显卡都只保留部分内容，需要“组合”起来，后者每块显卡都是保留完整内容，但是计算结果不同，只需要“汇聚”起来。
 > `Ring-ALLReduce`操作：
 > **第一阶段**，通过`reduce-sactter`传递参数
-> ![image](https://pic2.zhimg.com/v2-7eded4ef19ababdf94de1014bc24c279_1440w.jpg)
+> ![image](https://s2.loli.net/2025/06/21/WipqDmgUbZ9TAnc.webp)
 > 通过3次参数更新之后，这样就会出现不同设备上都会有一个都具有参数$a_i+ b_i+ c_i+ d_i$那么下一阶段就是通过`all-gather`将不同设备上参数广播到不同设备最后实现参数都实现更新。
-> ![image](https://pica.zhimg.com/v2-cbc5501752ef3340a56d1b3a1f690bec_1440w.jpg)
+> ![image](https://s2.loli.net/2025/06/21/YMbcTewvnJFjDZC.webp)
 > **补充2**：通信量和传统的数据并行之间有无区别？
 > 这部分描述来自论文（https://arxiv.org/pdf/1910.02054）中的描述：
 > **传统的数据并行方式**：传统的`DDP`主要使用的是`Ring AllReduce`在通信量上为：$2\Phi$（主要来自两部分：）

@@ -16,13 +16,13 @@ tags: [深度学习基础理论,cv,数据蒸馏]
 
 **数据蒸馏**（Data Distillatiob）是一种从大量数据中提取关键信息，生成高质量、小规模合成数据集的技术。它的目标是通过这些合成数据来替代原始数据集，用于模型训练、验证或其他任务，从而提高效率、降低成本或保护隐私。数据蒸馏的核心思想是“从数据中提取数据”，让合成数据集中保留原始数据集的关键特征和分布信息，同时去除冗余和噪声。参考论文1中的描述：
 
-![](https://s2.loli.net/2025/03/10/w3xVtlISa9mnvAW.png)
+![](https://s2.loli.net/2025/06/21/TIe7VApf2cDz1Fw.webp)
 
 数据蒸馏（DD）目标为：对于一个真实的数据集：$\mathrm{T}=(X_t,Y_t)$ 其中 $X_t\in R^{N\times d}$ 其中 $N$ 代表样本数量 $d$ 代表特征数量，$Y_t\in R^{N\times C}$ 其中$C$为输出实体。对于蒸馏得到的数据集：$\mathrm{S}={X_s,Y_s}$其中$X_s\in R^{M\times D}$其中$M$代表数据蒸馏后的样本数量。最终的优化目标为： $\text{arg min} \mathrm{L}(\mathrm{S}, \mathrm{T})$
 
 比如说对于图像分类任务而言$D$代表的是：HWC而y代表的是独热编码，C代表类别数量
 
-![](https://s2.loli.net/2025/03/10/RuIAWElQZ3FqSDL.png)
+![](https://s2.loli.net/2025/06/21/hkjof59eGIQOyqX.webp)
 
 论文1中对于损失函数优化主要分析3种处理思路
 
@@ -37,7 +37,7 @@ $$
 
 其中$\theta, l, T, \eta$分别代表：神经网络参数、损失函数、迭代次数、学习率
 
-![](https://s2.loli.net/2025/03/10/cXI6hvqWruSd3E9.png)
+![](https://s2.loli.net/2025/06/21/beZiMlSaU3QqjHX.webp)
 
 对于上面公式以及优化过程理解：似乎整体优化过程没有体现源数据：$\mathrm{T}$ 和蒸馏数据： $\mathrm{S}$ 两者之间是如何进行优化的，第二个过程直接通过 **蒸馏数据**去优化梯度，第一个过程则是借助第$T$步得到的参数去计算蒸馏数据集之间差异（这个过程可以理解为模型参数是固定的，但是数据是变化的，需要的是一个数据集在通过源数据集上也有较好的表现）
 
@@ -45,7 +45,7 @@ $$
 
 **分别使用合成数据集和原始数据集对同一个网络进行若干步训练，并促使它们训练得到的神经网络参数保持一致**。根据使用合成数据集（S）和原始数据集（T）进行训练的步数，参数匹配方法可以进一步分为两类：单步参数匹配和多步参数匹配。
 
-![Parameter Matching](https://s2.loli.net/2025/03/10/gjtrKVp1Ccy86Ue.png)
+![Parameter Matching](https://s2.loli.net/2025/06/21/EgVvIesf3tST9Ua.webp)
 
 左图为单参数匹配，右图为多参数匹配
 
@@ -91,7 +91,7 @@ $$
 
 * **3、分布式匹配**
 
-![](https://s2.loli.net/2025/03/12/rslADxTKvu3yBbE.png)
+![](https://s2.loli.net/2025/06/21/r8Uh95CXKf3asSn.webp)
 
 首先对于分布式匹配损失函数定义为：
 
@@ -106,7 +106,7 @@ $$
 
 首先作者提到一点：通过分布式匹配进行数据蒸馏，容易导致无法获取分布的差异，进而导致效果不佳
 
-![](https://s2.loli.net/2025/03/12/3kzxWmfFYI7jN1q.png)
+![](https://s2.loli.net/2025/06/21/n8tTWkR47i2C3KM.webp)
 
 ## 参考
 1、[Dataset Distillation: A Comprehensive Review](https://arxiv.org/pdf/2301.07014)

@@ -30,7 +30,7 @@ $$
 2、之所以要采用多头，这个理由也比较简单，在计算 $QK^T$ 时，只能基于一个相同的查询-键表示来计算注意力分数，可能会偏向某一种关系模式，导致模型难以捕捉更多层次的语义信息
 3、在模型结构里面的残差处理思路是：$\text{Norm}(x+f(x))$也就是说先通过MHA处理而后残差连接欸，但是**残差会进一步放大方差** 因此也有提出：$x+\text{Norm}(f(x))$前面提到的两种分别是Post Norm以及Pre Norm。对于那种好那种坏并没有很好的解释，与此同时有另外一种连接方式：$x+ \alpha f(x)$在后续训练中不断更新$\alpha$，[参考](https://spaces.ac.cn/archives/8620)$\alpha$以固定的、很小的步长慢慢递增，直到增加到$\alpha=1$就固定下来。
 
-![](https://s2.loli.net/2025/03/02/2Csoc9fVhWPxHrv.png)
+![](https://s2.loli.net/2025/06/21/lwJKWxc2oXaFfGS.webp)
 
 假设输入为：`batch_size, seq_length`（值得注意的是：一般来说在`data_loader`中我们会去定义一个`collate_fn`函数用来弥补文本长度不统一的问题（这里是因为，对于输入输入文本在长度上必然不一致，通过`tokenizer`进行处理之后，回去额外补充一个填充量，比如说`PAD`））输入模型首先通过一个`nn.embedding`进行处理（这个`nn.embedding`是可学习的）假设输出为`512`（也就是我们定义的变量`d_model`）这样一来我们输入就会变成：`batch_size,seq_length,d_model`然后就是直接输入到`attention`中进行计算了。有些代码是将单头和多头分开计算，但是结合起来更加便捷。这样就需要首先计算**WQ**等，可以直接用`nn.linear(d_model, 3*d_model)`然后后续就可以直接再去将其进行拆分拆分到q、k、v中去。因为我是要进行多头计算，因此就会`qkv = qkv.reshape(B, T, 3, self.n_heads, self.head_dim).permute(2, 0, 3, 1, 4)`然后再去分配到q、k、v中`q, k, v = qkv[0], qkv[1], qkv[2]`这样每个就会变成：`batch_size, n_heads, seq_length, head_dim`再去对这个计算attention（里面的`head_dim＝d_model/n_heada`）计算完成之后再去将所有头的结果拼接起来` y = y.transpose(1, 2).contiguous().view(B, T, C)`
 这样就是一个比较完整的计算过程。
@@ -39,7 +39,7 @@ $$
 
 因果注意力的主要目的是限制注意力的计算，使得每个位置的查询只能与当前和之前的位置计算注意力得分，而不能“窥视”未来的位置。具体来说：对于位置$𝑖$，模型只能考虑位置 $1,2,...,𝑖$的信息，而不能考虑位置$𝑖+1,𝑖+2,...,𝑛$。因此，当计算每个位置的注意力时，键（key）和值（value）的位置会被限制在当前的位置及其之前的位置。实现方式也很简单直接最注意力矩阵进行**屏蔽**即可，比如说注意力矩阵为：
 
-![](https://s2.loli.net/2025/02/07/ovpbyFk3m75laGg.png)
+![](https://s2.loli.net/2025/06/21/thMSJybzu1d395W.webp)
 
 ## 二、内存优化管理
 
@@ -47,11 +47,11 @@ $$
 
 [论文](https://arxiv.org/pdf/2205.14135)提出，是一种高效的注意力计算方法，旨在解决 Transformer 模型在处理长序列时的计算效率和内存消耗问题。**其核心思想是通过在 GPU 显存中分块执行注意力计算，减少显存读写操作，提升计算效率并降低显存占用**。
 
-![1](https://s2.loli.net/2025/01/31/Gqe94YpAXKftVJg.png)
+![1](https://s2.loli.net/2025/06/21/rOHS2XYvQh846IK.webp)
 
 `Flash Attention`计算机制：
 **分块计算**：传统注意力计算会将整个注意力矩阵 (N×N) 存入 GPU 内存（HBM），这对长序列来说非常消耗内存，FlashAttention 将输入分块，每次只加载一小块数据到更快的 SRAM 中进行计算，传统`Attention`计算和`flash attention`计算：
-![1](https://s2.loli.net/2025/01/31/IbjDs6EKdO9VUJ2.png)
+![1](https://s2.loli.net/2025/06/21/6hLGm7WMqBkgyUr.webp)
 
 对比上：传统的计算和存储都是发生再`HBM`上，而对于`flash attention`则是**首先**会将`Q,K,V`进行划分（算法1-4：整体流程上首先根据`SRAM`的大小`M`去计算划分比例（$\lceil \frac{N}{B_r} \rceil$）然后根据划分比例去对`QKV`进行划分这样一来Q（$N\times d$就会被划分为不同的小块，然后只需要去遍历这些小块然后计算注意力即可））。
 **然后计算**`Attention`（算法5-15），计算中也容易发现：先将分块存储再`HBM`上的值读取到`SRAM`上再它上面进行计算，不过值得注意的是：在传统的$QK^T$计算之后通过`softmax`进行处理，但是如果将上述值拆分了，再去用普通的`softmax`就不合适，因此使用`safe softmax`
@@ -77,7 +77,7 @@ $$
 
 4、使用 **Flash Attention**如何去处理 **GQA**以及 **MQA**问题？
 
-![1](https://s2.loli.net/2025/02/01/7rLk8NDKXm3aFuI.png)
+![1](https://s2.loli.net/2025/06/21/LnbcEZ2BYKpVkeq.webp)
 
 **GQA** 和**MQA** 本质上是对 Key/Value（KV）头的压缩，即 减少 Key/Value 头的数量，从而降低计算和显存开销。因此，在 Flash Attention 中，主要需要：1、为 K/V 头建立索引映射，确保多个 Query 头正确共享相应的 Key/Value。2、在计算 QK^T 时，使用映射索引进行广播，避免存储重复的 K/V，同时保持正确的注意力计算逻辑。3、利用 Flash Attention 的块计算机制，在低显存环境下高效完成 Softmax 归一化和注意力分配
 
@@ -105,14 +105,14 @@ print(out.shape)
 
 对于[`KV-cache`](https://www.big-yellow-j.top/posts/2025/01/27/MoE-KV-cache.html)会存在一个问题：在推理阶段虽然可以加快推理速度，但是对于显存占用会比较高（因为`KV`都会被存储下来，导致显存占用高），对于此类问题后续提出`Grouped-Query-Attention（GQA）`以及`Multi-Query-Attention（MQA）`可以降低`KV-cache`的容量问题，但是会导致模型的整体性能会有一定的下降。
 
-![1](https://s2.loli.net/2025/02/01/7rLk8NDKXm3aFuI.png)
+![1](https://s2.loli.net/2025/06/21/LnbcEZ2BYKpVkeq.webp)
 
 > `MHA`: 就是普通的计算方法
 > `GQA`: 将多个`Q`分组，并共享相同的`K`和`V`
 > `MQA`: 所有Attention Head共享同一个`K`、`V`
 > 详细代码：[🔗](../pages/code.md)
 > 
-> ![1](https://s2.loli.net/2025/02/01/86puHjycqt43Ow9.png)
+> ![1](https://s2.loli.net/2025/06/21/CvguOVbp7DtBRWn.webp)
 
 对于`MLA`（[DeepSeek-V2](https://arxiv.org/pdf/2405.04434)以及[DeepSeek-V3](https://arxiv.org/pdf/2412.19437v1)中都用到）作为一种`KV-cache`压缩方法，原理如下：
 
@@ -122,14 +122,14 @@ $$
 \mathbf{v}_{t}^{C}=W^{UV}\mathbf{c}_{t}^{KV} \\
 $$
 
-![MLA完整计算过程](https://s2.loli.net/2025/02/01/54VOc7slBMiXWTK.png)
+![MLA完整计算过程](https://s2.loli.net/2025/06/21/tfRXSoD7T68zwnp.webp)
 
 > 对于上面完整的计算过程，对于Q之所以要计算两次（线降维而后升维）而不是只去计算一次，思路和LoRA的相似，将：$xw$中的$w$分解为两部分更加小的矩阵（对应上述图中的$W^{DQ}\text{和}W^{UQ}$）
 
 从上述公式也容易发现，在`MLA`中只是对缓存进行一个“替换”操作，用一个低纬度的$C_t^{KV}$来代替（也就是说：**只需要存储$c_t^{KV}$即可**）原本的`KV`（或者说将容量多的`KV`进行投影操作，这个过程和[LoRA](https://arxiv.org/pdf/2106.09685)有些许相似），在进行投影操作之后就需要对`attention`进行计算。对于上述公式简单理解：
 假设输入模型（输入到`Attention`）数据为$h_t$（假设为：$n\times d$），在传统的`KV-cache`中会将计算过程中的`KV`不断缓存下来，在后续计算过程中“拿出来”（这样就会导致随着输出文本加多，导致缓存的占用不断累计：$\sum 2n\times d$），因此在`MLA`中的操作就是：对于$h_t$进行压缩：$n \times d \times d \times d_s= n \times d_s$这样一来我就只需要缓存：$n \times d_s$即可（如果需要复原就只需要再去乘一下新的矩阵即可）
 
-![MLA](https://s2.loli.net/2025/02/01/bLTQeUsHKE5MByc.png)
+![MLA](https://s2.loli.net/2025/06/21/4ZIMukCfQgSWBTJ.webp)
 
 [部分代码](https://github.com/deepseek-ai/DeepSeek-V3/blob/b5d872ead062c94b852d75ce41ae0b10fcfa1c86/inference/model.py#L393)部分参数初始化值按照[236B的设置中的设定](https://github.com/deepseek-ai/DeepSeek-V3/blob/main/inference/configs/config_236B.json)：
 
@@ -216,17 +216,17 @@ class MLA(nn.Module):
 
 上述描述中：`Flash Attention`（加快速度）、`MLA`（优化`KV-cache`存储），而`Page Attention`也是一种优化方法（区别于`MLA`，`page attention`是对内存进行分配管理）。参考[论文](https://dl.acm.org/doi/pdf/10.1145/3600006.3613165)中描述，对于`KV-cache`存在3个问题：
 
-![](https://s2.loli.net/2025/02/02/lEp4YocVSIghJ1z.png)
+![](https://s2.loli.net/2025/06/21/9QpfhleHvRPxLmW.webp)
 
 1、**预留浪费 (Reserved)**：为将来可能的 token 预留的空间，这些空间被保留但暂未使用，其他请求无法使用这些预留空间；
 2、**内部内存碎片化问题（internal memory fragmentation）**：系统会为每个请求预先分配一块连续的内存空间，大小基于最大可能长度(比如2048个token)，但实际请求长度往往远小于最大长度，这导致预分配的内存有大量空间被浪费。
 3、**外部内存碎片化问题（external memory fragmentation）**：不同内存块之间的零散空闲空间，虽然总空闲空间足够，但因不连续而难以使用。
 
-![](https://s2.loli.net/2025/02/02/M9DibRVTUFXqxjo.png)
+![](https://s2.loli.net/2025/06/21/ryt7kgaGZSw32HN.webp)
 
 只有 **20.4%-38.2%** 的token是被使用的，大部分都被浪费掉了。`Page Attention`允许在非连续的内存空间中存储连续的 key 和 value 。具体来说，`Page Attention`将每个序列的 `KV-cache` 划分为块，每个块包含固定数量 token 的键和值。在注意力计算期间，`Page Attention`内核可以有效地识别和获取这些块。如何理解上面描述呢？还是借用论文中的描述：
 
-![](https://s2.loli.net/2025/02/02/k6a4xh3AvZWmg9j.png)
+![](https://s2.loli.net/2025/06/21/sZ1uOlYStP3ehDb.webp)
 
 比如说按照上面Prompt要输出（假设只输出这些内容）：“fathers brought a car”，一般的套路可能是：比如说：“Four score and seven years ago our xxxxx”（xxx代表预留空间）因为实际不知道到底要输出多少文本，因此会提前预留很长的一部分空间（但是如果只输出4个字符，这预留空间就被浪费了），因此在`page attention`里面就到用一种“分块”的思想处理，以上图为例，分为8个Block每个Block只能存储4个内容，因此就可以通过一个`Block Table`来建立一个表格告诉那些Block存储了多少，存储满了就去其他Blobk继续存储。整个过程如下：
 

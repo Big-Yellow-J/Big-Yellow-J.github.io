@@ -12,7 +12,7 @@ show_footer_image: true
 传统机器学习算法 (例如：决策树，人工神经网络，支持向量机，朴素贝叶斯等) 都是通过**弱学习机**（weak learners）来对目标进行预测（分类）。但是，以决策树算法为例，决策树算法在递归过程中，可能会过度分割样本空间，最终导致过拟合。集成学习 (Ensemble Learning) 算法的基本思想就是将多个弱学习机组合，从而实现一个预测效果更好的集成学习机[^1]。集成学习在**统计（Statistical）**、 **计算（computational）** 以及 **表示（representation）** 上相较之弱学习机有较大改善[^2]。```Bagging```和```Boosting```对比如下：
 
 
-![image](https://s2.loli.net/2023/12/13/5mqiQrsteTAkuoY.png)
+![image](https://s2.loli.net/2025/06/21/KHySl63Y7dra8PC.webp)
 
 > **红色线条**代表训练过程；**绿色线条**代表```Boosting```更新权重得到的权重训练集；**蓝色线条**代表结合策略；**中间蓝色方块**代表得到的训练集（```Bagging```通过随机采样，```Boosting```则是更新权重得到训练集）
 
@@ -62,7 +62,7 @@ $$
 ```GBDT(Gradient Boosting Decision Tree)```是决策树的集成模型，按顺序训练[^9]。在每次迭代中，GBDT通过拟合负梯度（也称为残差）来学习决策树[^10]。比如说：假设一个对一个人年龄（40岁）进行预测，第一次迭代：30（10）（预测值（损失值））；第二次迭代（在损失值10的基础上进行迭代）：7（3）；第三次迭代：2（1）；第四次迭代：1（0）。那么可以得到最终年龄的预测值为：30+7+2+1=40。而```GBDT```主要有3个主要概念构成：1、Regression Decision Tree（DT）；2、Gradient Boosting（GB）；3、Shrinkage
 > GBDT is an ensemble model of decision trees, which are trained in sequence[^9]. In each iteration, GBDT learns the decision trees by fitting the negative gradients (also known as residual errors)[^10]
 
-![image](https://s2.loli.net/2023/12/14/sGOV3tekfDjRr8l.png)
+![image](https://s2.loli.net/2025/06/21/UvXepAYWgdjyKO7.webp)
 
 其算法过程：假设训练样本：$T=\{(x_1,y_1),...,(x_m,y_m)\}$，最大的迭代次数为：$T$，损失函数：$L$。那么：
 

@@ -220,7 +220,7 @@ array([[0, 1],
 
 **原文描述如下**：
 
-![image](https://s2.loli.net/2023/07/07/PbUp2IOas8mFKdJ.png)
+![image](https://s2.loli.net/2025/06/21/6laiB2YT1DkyRGE.webp)
 
 **解释如下**：
 

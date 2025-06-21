@@ -45,7 +45,7 @@ BLEU 采用一种`N-gram`的匹配规则，原理比较简单，就是比较译�
 命中5个词，那么计算得到匹配度为：$5/6$
 `3-gram`:
 
-![](https://s2.loli.net/2025/02/23/K8LMjsrxgAEmt7i.png)
+![](https://s2.loli.net/2025/06/21/mXOzRurUjsBaAWF.webp)
 
 计算得到匹配度为：$2/4$
 

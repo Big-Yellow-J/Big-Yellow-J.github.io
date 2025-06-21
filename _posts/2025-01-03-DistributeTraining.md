@@ -12,22 +12,22 @@ description: 深度学习基础理论————分布式训练（模型并行/
 
 **模型并行** 是指将一个模型的不同部分（如层或子模块）分配到不同的设备上运行。它通常用于非常大的模型，这些模型无法完整地放入单个设备的内存中。在模型并行中，数据会顺序通过各个层，即一层处理完所有数据之后再传递给下一层。这意味着，在任何时刻，只有当前正在处理的数据位于相应的设备上。
 
-![img](https://pic4.zhimg.com/v2-4d755539b2887702a0151a5c4ef15537_1440w.jpg)
+![img](https://s2.loli.net/2025/06/21/7xkViqGMJr9jSQc.webp)
 
 **流水线并行** 是一种特殊的模型并行形式，它不仅拆分模型的不同层，还将输入数据流分为多个微批次（micro-batches）。这样可以实现多批次数据的同时处理，提高了设备利用率和训练效率。比如$t_0$时刻再$layer_0$处理$data_0$在$t_1$时刻会有$layer_0$处理$data_1$并且$layer_1$处理$data_0$
 
-![img](https://pic1.zhimg.com/v2-f844142e6c7fc611578197101a6086ee_1440w.jpg)
+![img](https://s2.loli.net/2025/06/21/SZhCqoc1VHuriQJ.webp)
 
 **数据并行** 是最常用的分布式训练策略之一，它通过复制整个模型到多个设备上来实现。每个设备处理一小批数据，并在每次迭代结束时同步梯度。这种方法简单且易于实现，适用于大多数情况。
 
-![img](https://pic3.zhimg.com/v2-88cca672506ac5e021e1bcb6090d0bbc_1440w.jpg)
+![img](https://s2.loli.net/2025/06/21/trEScGz3XsWHfew.webp)
 
 **张量并行** 是一种更精细的并行策略，将矩阵运算中$x,A$拆分，并分配到不同的设备上。这使得单个层可以在多个设备上并行执行，从而提高了训练速度。根据拆分的方式不同，可以分为列并行（Column-wise Parallelism）和行并行（Row-wise Parallelism）等。
-![img](https://pic4.zhimg.com/v2-af72b2ee7bc9a5949dd3eabe09188851_1440w.jpg)
+![img](https://s2.loli.net/2025/06/21/GoJnzxrp4vIYeHX.webp)
 
 ## 1、并行训练
 
-![image](https://pica.zhimg.com/v2-df5581d53c5f00400c201e84233d33d2_1440w.jpg)
+![image](https://s2.loli.net/2025/06/21/MLJGWDSiZ6NyouP.webp)
 
 > **Image From**: https://github.com/hkproj/pytorch-transformer-distributed
 
@@ -44,7 +44,7 @@ description: 深度学习基础理论————分布式训练（模型并行/
 ## 1、数据并行
 
 > `DP流程`
-> ![image](https://pic3.zhimg.com/v2-4ebfce88d37da0746a5b88e85489d89e_1440w.jpg)
+> ![image](https://s2.loli.net/2025/06/21/BpalDmSEKdA5Y9s.webp)
 >
 > 缺点也是显而易见：
 > * 1、数据副本会冗余（因为要把数据先复制，然后进行分布）；
@@ -52,7 +52,7 @@ description: 深度学习基础理论————分布式训练（模型并行/
 > * 3、GPU 利用率不均衡（损失计算在主 GPU 上进行，在主 GPU 上进行梯度降低和参数更新
 
 `DDP流程`
-![image](https://pic3.zhimg.com/v2-f42bec027d5b26c9be26e66c359b8d66_1440w.jpg)
+![image](https://s2.loli.net/2025/06/21/xTAvw7Sm9GFKc5X.webp)
 
 > 对比`DP`和`DDP`
 > 1、`DP`是一种`集中-分发`机制（优化器/梯度计算都是再`master`进程上处理好之后，然后分发到不同的进程中）
@@ -320,7 +320,7 @@ if __name__ == "__main__":
 ### 2.1 `GPipe`实现流水线并行: https://torchgpipe.readthedocs.io
 
 `GPipe` 将一个小批量（`mini-batch`）分割成多个微批量（`micro-batch`），使设备尽可能并行工作。这就是所谓的流水线并行。基本上，流水线并行是一个小型数据并行的堆栈。当每个分区处理完一个微型批次后，可以将输出扔给下一个分区，并立即开始处理下一个微型批次。现在，分区可以重叠。
-![image](https://picx.zhimg.com/v2-eafe3120d8c7c121ea5f5e51182db90b_1440w.jpg)
+![image](https://s2.loli.net/2025/06/21/65roh7zdVCAqIQE.webp)
 
 > Image From: https://arxiv.org/pdf/1811.06965
 
@@ -407,7 +407,7 @@ for input in data_loader:
 
 下图是PipeDream的调度图，4个GPU和8个microbatchs。蓝色的方块表示前向传播，绿色表示反向传播，数字则是microbatch的id。
 
-![image](https://pic4.zhimg.com/v2-a765ab2010c5a360f16c30451e35904f_1440w.jpg)
+![image](https://s2.loli.net/2025/06/21/nLhrot2z8s6kAwZ.webp)
 
 
 GPipe需要等所有的microbatch前向传播完成后，才会开始反向传播。PipeDream则是当一个microbatch的前向传播完成后，立即进入反向传播阶段
@@ -483,7 +483,7 @@ GPU 1+ GPU 3：处理第 2 个 mini-batch
 流水线并行过程发生在：GPU 0+ GPU 2 和 GPU 1+ GPU 3
 数据并行过程发生在：GPU 0+ GPU 1 和 GPU 2+ GPU 3
 
-![image](https://picx.zhimg.com/v2-31568bb06ba60d2b751ca48598fe3069_1440w.jpg)
+![image](https://s2.loli.net/2025/06/21/5HIOCmjGpVNqlPR.webp)
 
 ```python
 # 数据并行+流水线并行 简单 demo
@@ -576,7 +576,7 @@ if __name__ == "__main__":
 
 张量并行是针对模型中的张量进行拆分，将其放置到不同的GPU上。张量切分方式分为按行进行切分和按列进行切分，分别对应**行并行（Row Parallelism）(权重矩阵按行分割)**与**列并行（Column Parallelism）(权重矩阵按列分割)**。假设计算过程为：$y=Ax$其中$A$为权重
 
-![image](https://pica.zhimg.com/v2-e75b7dc10809d44e569b5dffbd80fbb6_1440w.jpg)
+![image](https://s2.loli.net/2025/06/21/kqYUGJy7N3Bpmna.webp)
 
 对于方向传播过程中梯度处理：$y=Ax$
 
