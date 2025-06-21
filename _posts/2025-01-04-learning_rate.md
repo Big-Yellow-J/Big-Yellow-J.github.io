@@ -108,11 +108,11 @@ $$
 
 
 > **动量方法**：深度学习参数的优化不只考虑本次的梯度方向还要去考虑上一次的梯度方向[^2]
-> ![image](https://picx.zhimg.com/v2-5517ea55f5bd4bea9e9b87d87691bb8d_1440w.jpg)
+> ![image](https://s2.loli.net/2025/06/21/g75bGRLMp4BDyuv.webp)
 > 
 > 初始化动量为0从$\theta_0$到$\theta_1$因为动量为0，那么就直接走梯度方向，从$\theta_1$到$\theta_2$此时就有动量了，不只是走本次的梯度方向（$g^1$）还要考虑上一次的$m^2$因此对两个叠加得到新的方向：$\theta^2$
 > **动量方法如何起作用**：
-> ![image](https://pic3.zhimg.com/v2-7e3951a7dcc966f00f67db23cd34cf3a_1440w.jpg)
+> ![image](https://s2.loli.net/2025/06/21/aKdfc9moWwXlJ3s.webp)
 > 
 > 通过考虑前面的梯度避免陷入“鞍点”
 
@@ -218,7 +218,7 @@ cosine_decay = 0.5 * (1.0 + np.cos(np.pi * progress / ((total_epochs - warm_up) 
 rate = cosine_decay
 ```
 2、`Warmup-Stable-Decay`[^3]
-![image](https://picx.zhimg.com/v2-dca91475898cbf88ca229eb48e94c0df_1440w.jpg)
+![image](https://s2.loli.net/2025/06/21/29cMLnqwbA6rWeK.webp)
 
 
 ```python

@@ -15,7 +15,7 @@ description: 主要介绍训练加速（单/半/混合精度训练）/显存优�
 **半精度训练**（`half-precision`）指的是用16位浮点数（FP16 或 BF16）表示数据。（FP16 是 IEEE 标准，BF16 是一种更适合 AI 计算的变种）
 **混合精度训练**（`mixed-precision`）指的是同时使用 FP16/BF16 和 FP32，利用二者的优点。通常，模型权重和梯度使用 FP32，而激活值和中间计算使用 FP16/BF16
 
-![image](https://s2.loli.net/2025/01/17/oRejYEdqOfcaHmp.png)
+![image](https://s2.loli.net/2025/06/21/ZloTJ2DBX3SWHCE.webp)
 
 > Image From: https://www.exxactcorp.com/blog/hpc/what-is-fp64-fp32-fp16
 
@@ -34,7 +34,7 @@ description: 主要介绍训练加速（单/半/混合精度训练）/显存优�
 > 1、直接使用半精度（FP16）容易引发数值问题，如`溢出（overflow）`和`下溢（underflow）`：这里是因为**单精度有效尾数（约10位尾数）**较单精度要小得多，那么就会有一个问题因此在训练过程中，如果激活函数的梯度非常小，可能会因**精度不足而被舍弃为零，导致梯度下溢**。此外，当数值超过半精度的表示范围时，也会发生溢出问题。这些限制会使训练难以正常进行，导致模型无法收敛或性能下降；
 > 2、**舍入误差（Rounding Error）** 舍入误差指的是当梯度过小，小于当前区间内的最小间隔时，该次梯度更新可能会失败，用一张图清晰地表示：
 >
-> ![](https://s2.loli.net/2025/02/28/XsdmACx9wn6aVjK.png)
+> ![](https://s2.loli.net/2025/06/21/akWAYlZ4THXzBJG.webp)
 >
 > Image: https://zhuanlan.zhihu.com/p/79887894
 > 总的来说就是：如果只用半精度会导致精度损失严重，因此就会提出用混合精度进行训练
@@ -53,13 +53,13 @@ results in 80% relative accuracy loss
 
 > 另外一方面，如果拷贝权重，不也等同于把显存的占用拉大了？参考[知乎](https://zhuanlan.zhihu.com/p/103685761)上描述显存占用上主要是中间过程值
 
-![image](https://s2.loli.net/2025/01/17/i8Vzf9m3AXTnHdF.png)
+![image](https://s2.loli.net/2025/06/21/HLfs29UiNaCo48g.webp)
 
 * 2、`LOSS SCALING`
 
 下图展示了 SSD 模型在训练过程中，激活函数梯度的分布情况，容易发现部分梯度值如果用FP16容易导致最后的梯度值变为0，这样就会导致上面提到的溢出问题，那么论文里面的做法就是：在反向传播前将loss增打$2^k$倍，这样就会保证不发生下溢出（乘一个常数，后面再去除这个常数不影响结果），如何反向传播再去除这个常数即可。
 
-![image](https://s2.loli.net/2025/01/17/yMcOnekmv9I78fu.png)
+![image](https://s2.loli.net/2025/06/21/nUQriGIc9HAY1CD.webp)
 
 * 3、`Apex`实现混合精度训练
 

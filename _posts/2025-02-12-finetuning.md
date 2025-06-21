@@ -19,11 +19,11 @@ description: 主要介绍常见的LLM微调技术及其代码
 
 ### 1.1 `Prefix-Tuning`
 
-![](https://s2.loli.net/2025/02/14/KaZ2IwLDQHY3Ecr.png)
+![](https://s2.loli.net/2025/06/21/BY5cik7tPNTxz4U.webp)
 
 上面为全面微调`Transformer`全部参数，而下面为只微调`Prefix`（一种可学习的前缀）,如下图描述一样：
 
-![](https://s2.loli.net/2025/02/14/fCvhLK1doGDRWxE.png)
+![](https://s2.loli.net/2025/06/21/fgAZlSHWtab5GR4.webp)
 
 对于输入文本：$X=(x_1,...,x_n)$，我在其前面补充一个 **前缀**：$P=(p_1,...,p_m)$，前缀长度是远小于输入文本长度的，在微调过程中保持模型参数$\theta$保持不变，这样一来优化过程就变成了：
 
@@ -37,7 +37,7 @@ $$
 
 对于一段输入，我通过预先生成的Prompt进行embedding（**代码中作者是通过LSTM对prompt的embedding进行训练**）然后融合到input中，然后输入到预训练的模型中去，然后去将预训练模型参数以及LSTM计算得到的Prompt参数一起加入训练
 
-![](https://s2.loli.net/2025/02/14/ZnfpdcDozXKJrut.png)
+![](https://s2.loli.net/2025/06/21/xFYeo9KLA2wlCNH.webp)
 
 左侧为传统的Prompt处理方法，通过事先定义好的Prompt进行微调，P-tuning与之存在区别：用预训练词表中的unused token作为伪prompt「BERT的vocab里有unused 1 ~ unused99」，然后通过训练去更新这些token的参数也就是，`P-tuning`的Prompt不是显式的，不是我们可以看得懂的字符，而是一些隐式的、经过训练的、**模型认为最好的prompt token**。换言之，
 
@@ -49,16 +49,16 @@ $$
 
 ### 2.1 `LoRA`
 
-![](https://s2.loli.net/2025/02/14/uMeYSC7DPVA3yKo.png)
+![](https://s2.loli.net/2025/06/21/zlLUfV7bmhK9Diy.webp)
 
 对于预训练权重：$W_0 \in R^{d \times k}$，可以将其表示成一种低序表示：$W_0 + \Delta W= W_0+ BA$ 其中：$B \in R ^{d \times r}，A \in R ^{r \times k}$，其中r远小于$min(d,k)$。训练过程中$W_0$被冻结不接受更新，A，B作参数进行训练，得到：$h= W_0x+ \Delta Wx=W_0x+BAx$。这样一来就很大程度减小了参数调整（比如说：$W_0$：5x5的，设置B：5x1；A：1x5。这样一来较之25参数调整和(5,5)的参数调整，就小了很多）
 
-![](https://s2.loli.net/2025/02/14/jl9WrpadNAxYJbO.png)
+![](https://s2.loli.net/2025/06/21/TJR5nD2QbpXKZhf.webp)
 
 对于论文中的结果进一步描述：
 **1、LoRA作用在Transformer的那个参数矩阵**：
 
-![](https://s2.loli.net/2025/02/14/bHrQAWLqa7x459G.png)
+![](https://s2.loli.net/2025/06/21/aYRSLX97KOHVGsf.webp)
 
 从上面分析：可以将微调参数平均分配到$W_q$和$W_v$的效果更加好
 
@@ -77,7 +77,7 @@ lora_model = LoraModel(model, lora_config)
 
 ### 2.2 `QLoRA`
 
-![](https://s2.loli.net/2025/02/14/sgfDEkVbKHq3Sia.png)
+![](https://s2.loli.net/2025/06/21/IJEx4Ctr27cQfDj.webp)
 
 `QLoRA`的最后一个工作则是将量化的思想和LoRA的低秩适配器的思想结合到一起拿来对大模型进行微调。具体来讲，对于LLM的参数$W$，首先将它量化到NF4的精度，在进行特征计算时，通过双重反量化将它还原到BF16精度。同LoRA一样，QLoRA也在原参数一侧添加了一个与原参数并行的低秩适配器，它的精度是BF16。
 
@@ -93,7 +93,7 @@ $$
 
 ### 2.3 `Adapter`
 
-![](https://s2.loli.net/2025/02/14/dDWesRka2CFP71c.png)
+![](https://s2.loli.net/2025/06/21/Q1k9gncXvVrRMp4.webp)
 
 结构上很容易理解就在原始的Transformer模块中添加一个$Adapter \quad Layer$。具体微调过程为：将输入特征维度为：m缩小到d。那么得到的每一层的参数量（包含bias）就是：$2md+d+m$。通过设置$m \ll d$。整个实验过程中模型参数大概为原始参数的0.5-8%，在Adapater内部有一个跳跃连接。使用跳跃连接，如果projection layer的参数初始化为接近零，则模块将初始化为近似恒等函数。
 

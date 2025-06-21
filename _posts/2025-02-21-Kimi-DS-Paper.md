@@ -19,7 +19,7 @@ tags: [深度学习基础理论, paper, attention]
 ## 2、Kimi：MOBA
 > 修改代码：[⚙](../code/MoBAAttention.py.txt)
 
-![](https://s2.loli.net/2025/02/21/2pJQvEahqI6GjFe.png)
+![](https://s2.loli.net/2025/06/21/cZjgFhXAoEs2Jun.webp)
 
 正如上面提到的，文本长度（n）变成导致无论是时间还是空间上消耗增加，因此在MOBA中就是让 **Q**去和K，V的子集进行计算：
 
@@ -29,7 +29,7 @@ $$
 
 $I$代表被筛选的子集。其中如何筛选子集以及如何确定子集个数。对于后者子集个数的确定，对于长度为$N$可以直接划分到$n$个blocks中,至于如何筛选子集，作者提到就是直接通过MoE中的 router机制去筛选出来即可。
 
-![](https://s2.loli.net/2025/02/21/NMdjyztAqH3gG6B.png)
+![](https://s2.loli.net/2025/06/21/pUufnwcH4JZIkTj.webp)
 
 在论文中 **Router**设计方法（不是像MoE里面直接简单用一个MLP计算），参考[代码](https://github.com/MoonshotAI/MoBA/blob/master/moba/moba_naive.py#L7)以及上面流程图的描述，再 MoBA中做法操作如下：
 1. 遍历 batch 中每个样本。通过 cu_seqlens 获取每个样本的起止位置，对其独立处理。
@@ -42,7 +42,7 @@ $I$代表被筛选的子集。其中如何筛选子集以及如何确定子集�
 
 正如论文里面描述的，NSA采用了一种动态层次稀疏策略，将粗粒度的**token压缩**与细粒度的**token选择**相结合，以保持全局上下文感知和局部精度。换言之就是通过：**压缩Token以及筛选Token来实现稀疏注意力**
 
-![](https://s2.loli.net/2025/02/21/Bo79FzULxTshcji.png)
+![](https://s2.loli.net/2025/06/21/2XJ9tvIcEpZSMh6.webp)
 
 从上面提供的结构图，在NSA中的稀疏注意力大致3个部分：
 

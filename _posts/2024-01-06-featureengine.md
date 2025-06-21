@@ -656,9 +656,9 @@ $$
 
 ## 1.3 总结
 
-![image](https://s2.loli.net/2023/07/08/KDNG3vM5raeypkE.png)
+![image](https://s2.loli.net/2025/06/21/3uAqnByOUWLYtoS.webp)
 
-![image](https://s2.loli.net/2023/07/08/zgo1Ic8DRCQUuZa.png)
+![image](https://s2.loli.net/2025/06/21/l1yvIwgqQAZki4U.webp)
 
 ## 二、数据降维
 
@@ -667,7 +667,7 @@ $$
 > 数据降维和特征筛选:两者都是对数据的维度进行减少,但是特征筛选:侧重在于从$D$维特征从选择$d$维特征,数据特征个数发生减少;数据降维:从高维向低维投影;通俗易懂描述为:**前者为阉割**(数量变化),**后者为压缩**("形状"变化)
 数据降维分类[^4]：
 
-![image](https://s2.loli.net/2023/07/05/pS7VKD9gRAMbzCx.png)
+![image](https://s2.loli.net/2025/06/21/Hd3rX4NawJkUMAt.webp)
 
 ### 2.1 Principal Components Analysis（PCA）主成分分析
 

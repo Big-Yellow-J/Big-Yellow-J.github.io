@@ -10,4 +10,4 @@ show_footer_image: true
 ---
 <iframe src="{{ site.baseurl }}/code/googlenet.html" width="100%" height="600px"></iframe>
 
-![1](https://s2.loli.net/2025/01/18/hZzmJaRBQukPLC2.png)
+![1](https://s2.loli.net/2025/06/21/QRTAj1GeivKHrDs.webp)
