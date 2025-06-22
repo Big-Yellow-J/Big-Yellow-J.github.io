@@ -14,7 +14,7 @@ description: 深度学习基础理论————分布式训练（模型并行/
 ## 1、张量并行
 张量并行目的是模型参数矩阵太大，需要将他们拆分到不同设备。张量切分方式分为按行进行切分和按列进行切分，分别对应行并行（Row Parallelism）(权重矩阵按行分割)与列并行（Column Parallelism）(权重矩阵按列分割)。假设计算过程为：$y=Ax$其中$A$为权重
 
-![image](https://pica.zhimg.com/v2-e75b7dc10809d44e569b5dffbd80fbb6_1440w.jpg)
+![image](https://s2.loli.net/2025/06/22/neZUk6FpYKy2EOz.webp)
 
 **列并行操作**
 观察上面图像上半部分，forward部分容易理解，对于backward部分理解：第一部分计算（反向传播-1）：得到两个新的Y1和Y2然后将他们进行**拼接**，计算梯度可以直接$\frac{\partial L}{\partial Y_1}

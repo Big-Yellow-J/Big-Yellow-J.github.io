@@ -74,34 +74,34 @@ $L_t$计算过程：
 | 图像 | mask | 结果 | 测试 |
 |:----:|:----:|:----:|:----:|
 |![sa_329749.jpg](https://s2.loli.net/2025/06/21/krH6sUt9YVvnidI.webp)| ![mask-1.png](https://s2.loli.net/2025/06/21/yf2pz3aTWQrAvXG.webp)|![gt-1.png](https://s2.loli.net/2025/06/21/2M5VKDpa1H9kRUA.webp)| 部分移除 |
-|![sa_329749.jpg](https://s2.loli.net/2025/06/21/krH6sUt9YVvnidI.webp)| ![mask-2.png](https://s2.loli.net/2025/06/17/tHR3CqhGYWgJiNI.png)|![gt-2.png](https://s2.loli.net/2025/06/17/hOmGQrjiXo5NuFb.png)| 全部移除 |
-|![sa_325886.jpg](https://s2.loli.net/2025/06/17/muL3hZ4YRgXBMv8.jpg)| ![mask-image-1.png](https://s2.loli.net/2025/06/17/7vG1JuHqrAOpmDR.png)| ![gt-image-1.png](https://s2.loli.net/2025/06/17/Li4mGcKlCADfNav.png)| 复杂布局全部移除 |
-|![sa_325886.jpg](https://s2.loli.net/2025/06/17/muL3hZ4YRgXBMv8.jpg)| ![mask-image-2.png](https://s2.loli.net/2025/06/17/eK1xSsLq3W7mQzy.png)| ![gt-image-2.png](https://s2.loli.net/2025/06/17/ruji2cnMfoQ3Cem.png)| 复杂布局细小内容移除 |
-|![sa_325886.jpg](https://s2.loli.net/2025/06/17/muL3hZ4YRgXBMv8.jpg)| ![mask-3.png](https://s2.loli.net/2025/06/17/8lKbT5v2t471LU6.png)| ![gt-3.png](https://s2.loli.net/2025/06/17/PRWX7bmBdYGF4QK.png)| 多目标内容移除 |
-|![sa_331946.jpg](https://s2.loli.net/2025/06/17/EKmwRYbiqBGC7cj.jpg)| ![image-mask _2_.png](https://s2.loli.net/2025/06/17/i9xAVXKqSrh3FPy.png)| ![image _1_.png](https://s2.loli.net/2025/06/17/EG8jNUhMXlxLfsR.png)| 多目标内容移除 |
+|![sa_329749.jpg](https://s2.loli.net/2025/06/21/krH6sUt9YVvnidI.webp)| ![mask-2.png](https://s2.loli.net/2025/06/22/V8LRsOryWegcKUw.webp)|![gt-2.png](https://s2.loli.net/2025/06/22/Cuj24vh3QIGieSk.webp)| 全部移除 |
+|![sa_325886.jpg](https://s2.loli.net/2025/06/22/LGjovJgFxflrQU7.webp)| ![mask-image-1.png](https://s2.loli.net/2025/06/22/MavCANuoThiEdPO.webp)| ![gt-image-1.png](https://s2.loli.net/2025/06/22/pPurFsomIdBAyKW.webp)| 复杂布局全部移除 |
+|![sa_325886.jpg](https://s2.loli.net/2025/06/22/LGjovJgFxflrQU7.webp)| ![mask-image-2.png](https://s2.loli.net/2025/06/22/QwLKMzPA1NdsDBI.webp)| ![gt-image-2.png](https://s2.loli.net/2025/06/22/ndiQBHgvwNRFAor.webp)| 复杂布局细小内容移除 |
+|![sa_325886.jpg](https://s2.loli.net/2025/06/22/LGjovJgFxflrQU7.webp)| ![mask-3.png](https://s2.loli.net/2025/06/22/dq86IZAkCo1Sg9i.webp)| ![gt-3.png](https://s2.loli.net/2025/06/22/AoEXBhQjrNaCwZx.webp)| 多目标内容移除 |
+|![sa_331946.jpg](https://s2.loli.net/2025/06/22/Z2maup6b5hKBEnv.webp)| ![image-mask _2_.png](https://s2.loli.net/2025/06/22/GFwYgCoEaRhVjdx.webp)| ![image _1_.png](https://s2.loli.net/2025/06/22/cWGXqlyv6KJia7p.webp)| 多目标内容移除 |
 
 总的来说：PowerPanint还是比较优秀的消除模型，总体移除效果“说得过去”（如果不去追求消除的细节，见下面图像，比如说消除带来的图像被扭曲等）不过得到最后的图像的尺寸会被修改（in：2250x1500 out：960x640，此部分没有仔细去检查源代码是否可以取消或者自定义），除此之外，参考Github上提出的[issue-1](https://github.com/open-mmlab/PowerPaint/issues/111)：图像 resize 了，修改了分辨率，VAE 对人脸的重建有损失，如果mask没有完全覆盖掉人，留了一些边缘，模型有bias容易重建生成出新的东西。[issue-2](https://github.com/open-mmlab/PowerPaint/issues/56)：平均推理速度20s A100 GPU。
-![image.png](https://s2.loli.net/2025/06/17/3EBmuQgCcV59twK.png)
+![image.png](https://s2.loli.net/2025/06/22/vZsS4iO6QcWNult.webp)
 
 
 ## Improving Text-guided Object Inpainting with Semantic Pre-inpainting
 > From: https://github.com/Nnn-s/CATdiffusion.
 > **没有提供权重无法测试**
 
-![image.png](https://s2.loli.net/2025/06/16/ns3BWXRkpFVlwLt.png)
+![image.png](https://s2.loli.net/2025/06/22/DbZat7LKTMCpXhA.webp)
 
 由于DDM生成过程中是不可控的，本文提出通过text来提高模型可控。相比较之前研究（直接将图片通过VAE处理输入DF中，并且将文本作为条件进行输入），最开始得到的latent space和text feature之间存在“信息不对齐”。在该文中“提前”将text feature输入到模型中。具体做法是：
 * **首先通过CLIP来对齐特征信息**
 
 将image通过clip image encoder进行编码得到特征而后通过**SemInpainter**：同时结合可学习的位置信息（PE）、可学习的mask图像特征（ME）、文本特征，整个过程为：
-![image.png](https://s2.loli.net/2025/06/16/FjtYDoqGpQ3cnPH.png)
+![image.png](https://s2.loli.net/2025/06/22/wZk3FCtjslSy1ir.webp)
 
 其中：**SemInpainter**（和CLIP的image encoder相似结构）根据视觉上下文和文本提示c的条件下，恢复CLIP空间中mask对象的ground-truth语义特征，说人话就是通过知识蒸馏方式来训练这个模块参数。对于两部分特征最后通过下采样方式得到最后特征：
-![image.png](https://s2.loli.net/2025/06/16/UeuKvto4gcp2myA.png)
+![image.png](https://s2.loli.net/2025/06/22/V7YQFwaHhKzu8fI.webp)
 
 * **reference adapter layer (RefAdapter) **
 
-![](https://s2.loli.net/2025/06/16/5dOF2uwxilc3ZoU.png)
+![](https://s2.loli.net/2025/06/22/61q9QjAmYCZLnHx.webp)
 
 
 ## 总结

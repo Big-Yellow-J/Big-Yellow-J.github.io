@@ -11,7 +11,7 @@ description: 主要介绍深度学习基础理论————CV中常用Backbone
 ---
 
 主要介绍在CV中常用的Backbone**原理**简易[代码](https://www.big-yellow-j.top/code/cv_backbone.html)（*代码以及原理经常更新*），参考论文中的表格，对不同的任务所使用的backbone如下:
-![image](https://s2.loli.net/2025/01/15/xKEOXT6hBdL4ziG.png)
+![image](https://s2.loli.net/2025/06/22/frtz8wFg1u3m59e.webp)
 
 针对上面内容分为两块内容：1、基于卷积神经网络的CV Backbone：1.`Resnet`系列;2.`Unet`系列等；2、基于Transformer的 CV Backbone：1.`Vit`系列等；3、在多模态中常用的backbone如：SAM/Clip等
 > FROM:https://www.big-yellow-j.top/posts/2025/01/18/CV-Backbone.html
@@ -20,7 +20,7 @@ description: 主要介绍深度学习基础理论————CV中常用Backbone
 ### 1. `Resnet`系列
 
 主要有[何凯明大佬](https://arxiv.org/pdf/1512.03385)提出，主要有`resnet18`，`resnet34`，`resnet50`，`resnet101`，`resnet152`，这几种区别主要就在于卷积层数上存在差异（18：18个卷积后面依次类推）,对于`Resnet`论文中最重要的一个就是`残差连接`：
-![残差连接](https://s2.loli.net/2025/01/18/cqUbe39QZTjwC5f.png)
+![残差连接](https://s2.loli.net/2025/06/22/QcfiNqxBODakKjg.webp)
 
 因为随着不断的叠加卷积层数，那么就容易导致 **梯度消失**以及 **退化**问题，残差连接就是通过跳跃连接（skip connection），允许输入信息绕过若干层直接传递到后面的层：
 
@@ -90,11 +90,11 @@ model.fc = nn.Linear(2048, 10) # 预测10个类别
 
 `Unet`主要介绍3种：`Unet1`，`Unet++`，`Unet3`，主要应用在医学影像分割（当然图像分割领域都适用）
 
-![2](https://s2.loli.net/2025/01/20/8BrmtOAKH6ETc5W.png)
+![2](https://s2.loli.net/2025/06/22/Mmz1coPNlqSny7C.webp)
 
 对比上面三种结构，主体结构上并无太大差异，都是首先通过下采样（左边），然后通过上采样（右边）+特征融合。主要差异就在于**如何进行特征融合**。以`Unet`进行理解：
 
-![2](https://s2.loli.net/2025/01/20/2Ip9ZOBF7mCq5uv.png)
+![2](https://s2.loli.net/2025/06/22/Bil6xMFwr9VXWsS.webp)
 
 **左侧encoder操作**：首先通过两层$3 \times3$卷积进行处理，然后通过一个 **池化**处理
 **右侧decoder操作**：一个上采样的卷积层（去卷积层）+特征拼接concat（上图中白色部分就是要拼接的encoder内容）+两个3x3的卷积层（ReLU）反复构成。
@@ -102,13 +102,13 @@ model.fc = nn.Linear(2048, 10) # 预测10个类别
 **`Unet`好处就在于，因为是逐层的去累加卷积操作，随着卷积的“深入”，越往下的卷积就拥有更加大的 *感受野*，但局部细节可能会逐渐丢失。为了解决这个问题，通过 *上采样*操作来恢复这些细节。上采样操作将低分辨率的特征图尺寸恢复到较高分辨率，从而保留更多的局部特征，弥补下采样过程中丢失的细节。最后将两部分内容继续融合（里面的skip-connection操作）相互进行弥补实现较好性能**
 
 > **感受野**：可以简单理解：比如说一个512x512图像，最开始用卷积核（假设为3x3）去“扫”，那么这个卷积核就会把其“扫”的内容“汇总”起来，比如说某一个值是汇聚了他周围其他的值，这样一来**细节的感知就很多**，但是随着网络层数叠加，这些细节内容就会越来越少，但是计算得到的每个值却是“了解”到了更加“全局”的内容，如下图展示一样
-> ![3](https://s2.loli.net/2025/01/20/CwfnKalUu1zNgox.png)
+> ![3](https://s2.loli.net/2025/06/22/3jaHSlBpb5WcCdh.webp)
 >
 > **上采样**：可以简单理解为：将图片给“扩大”，既然要扩大，那么就会需要对内容进行填补，因此就会有不同的插值方式：'nearest', 'linear', 'bilinear', 'bicubic'（`pytorch`提供的）
 > ![4](https://s2.loli.net/2025/01/20/UQMEFlPKks8DRLt.webp)
 >
 > 补充一点： **亚像素上采样 (Pixel Shuffle)**：普通的上采样采用的临近像素填充算法，主要考虑空间因素，没有考虑channel因素，上采样的特征图人为修改痕迹明显，图像分割与GAN生成图像中效果不好。为了解决这个问题，ESPCN中提到了亚像素上采样方式。[具体原理](https://www.cnblogs.com/zhaozhibo/p/15024928.html)如下
-> ![](https://s2.loli.net/2025/01/21/5oYgfqvnFswNR7X.png)
+> ![](https://s2.loli.net/2025/06/22/BY8NhfOzQti6brV.webp)
 >
 > 根据上图，可以得出将维度为$[B,C,H,W]$的 feature map 通过亚像素上采样的方式恢复到维度$[B,C,sH,sW]$的过程分为两步：
 > 1.首先通过卷积进行特征提取，将$[B,C,H,W]=>[B,s^2C,H,W]$
@@ -146,7 +146,7 @@ torch.Size([1, 1, 9, 9])
 总结上面三种网络结构改进在于：1、`Skip-connection`方式上区别（也就是**如何进行特征连接过程**）
 
 > `Unet++`网络结构
-> ![](https://s2.loli.net/2025/01/21/lPIWTdUvpyKfco5.png)
+> ![](https://s2.loli.net/2025/06/22/DrdxPM7BUEfgalI.webp)
 
 
 ### 3.其他
@@ -160,7 +160,7 @@ torch.Size([1, 1, 9, 9])
 
 主要介绍两种：`Vit`和`MAE`。`Vit`:核心思想是将图像划分为小块（`Patch`），将每个小块视为一个 "单词"（类似 NLP 中的 Token），然后通过标准的 Transformer 架构对这些 Patch 进行处理。
 
-![2](https://s2.loli.net/2025/01/18/csRmbCPaGz7yA3e.png)
+![2](https://s2.loli.net/2025/06/22/vEGOWdy1fkgh2JT.webp)
 
 `Vit`主要操作流程：
 - 1、`patch embedding`和`position embeeding`：将图片进行切分为固定大小的patch，比如说输入一张224x224RGB图像，path=16x16。那么的话就会生成：$\frac{224\times224}{16\times16}=196$个patch，那么输入模型的序列数量：**196**，经过拉长处理之后得到的序列长度为：$16\times 16\times 3=768$。通过线性投射层处理之后维度为：$196\times 768$一共为 **196**个token，然后补充一个位置编码，对于位置编码最简单的就是直接对每一个patch都生成一个1维的向量（类似one-hot，但是对于位置编码的方式有很多）然后去拼接起来（同时还需要补充一个`CLS`），最后维度就是：$197\times768$
@@ -200,17 +200,17 @@ class DetectionHead(nn.Module):
 
 `Swin Transformer`模型
 
-![](https://s2.loli.net/2025/01/22/fmwug3xclInRQKX.png)
+![](https://s2.loli.net/2025/06/22/Sd8O5E1Pouc7x3t.webp)
 
 对比之前的`Vit`和`MAE`存在**问题**在计算注意力的时候都是**全局计算**的（每个token之间都是进行注意力计算）因此在`Swin Transformer`中作者认为这种操作不利于：高分辨率图像（像素点多计算量大）以及密集预测任务（全局的话可能对有些细节就会丢失）
 > The global computation leads to quadratic complexity with respect to the number of tokens, making it unsuitable for many vision problems requiring an immense set of tokens for dense prediction or to represent a high-resolution image.
 
 要去避免全局计算，一个最简单的办法就是：我去从不同的patch中挑选出一部分内容组合起来，然后再组合的这一块内容中去计算注意力。
 
-![](https://s2.loli.net/2025/01/23/dkzKpN6qjORZUtS.png)
+![](https://s2.loli.net/2025/06/22/RJOCIneTc4sFM9t.webp)
 
 * 1、`Patch Merging`操作，这部分操作就是进行 **挑选组合**操作，对`patch`之间进行组合，作者论文中表示是：挑选2x2的邻居进行分组（这里操作和`Unet`中下采样很像，每个stage中都进行一次减小尺寸，这样一来就可以看到更加“全局”）
-![](https://s2.loli.net/2025/01/23/NJGwT5cgaQRlo4z.png)
+![](https://s2.loli.net/2025/06/22/7lygxw4G2XmNAOk.webp)
 
 * 2、`Swin Transformer Block`：在将`patch`组合操作之后，输入到Transformer中，在这里作者将传统的注意力计算改为两种：`W-MSA`（Window-Multi-Head Self Attention）和`SW-MSA`（Shift-Window-Multi-Head Self Attention）之所以这样，作者还是在解决上面提到的问题：去避免全局计算。
 `W-MSA`操作：对于传统的计算量大问题（$MSA=4hwC^2+2(hw)^2C$）提出改进（$W\text{-}MSA=4hwC^2+ 2M^2hwC$）这部分操作好理解，对于（H，W，C）划分为MxM的窗口得到：（N，MxM，C），然后就只需要对这部分计算Attention-Score即可
@@ -218,15 +218,15 @@ class DetectionHead(nn.Module):
 ![](https://s2.loli.net/2025/01/23/MI9xOlNzo1C8wPZ.gif)
 
 通过上面移动进而构成下面图像：
-![](https://s2.loli.net/2025/01/23/hUiOq8IrlvtNYnw.png)
+![](https://s2.loli.net/2025/06/22/kmCV5FGcvlAdTWp.webp)
 
 这里就会有9块，再`W-MSA`中是4块（都是4x4），无疑加大了计算量，因此只需要将9块重新进行拼接起来（保证最后为4x4即可）就可以，比如下面，
-![](https://s2.loli.net/2025/01/23/VWstRQKJbCjTUFx.png)
+![](https://s2.loli.net/2025/06/22/Kimuh2CfRrbH3VP.webp)
 
 > 对于上面的操作，可以直接通过`torch.roll`实现先**左移动3然后上移动3**。`torch.roll(x, shifts=(-self.shift_size, -self.shift_size), dims=(1, 2))`
 
 这样一来就都满足（4x4）还可以实现不同window之间进行交互（5，3为例，将他们视作整体，计算AttentionScore）不过值得注意的是，5和3之间像素都是有差异的，直接计算会引入误差，因此原文在计算注意力时，在执行softmax之前，分别将模块3像素对应的注意力值分别减去100，使得softmax后，权重都是0，从而实现模块[3对模块5的影响](https://www.cnblogs.com/chentiao/p/18379629)。
-![](https://s2.loli.net/2025/01/23/CcVtYFHmUR89bIK.png)
+![](https://s2.loli.net/2025/06/22/seG9NVSqd658QRK.webp)
 
 具体操作：
 

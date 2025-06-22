@@ -13,7 +13,7 @@ description: 视觉多模态模型在结构上比较统一，一个视觉编码�
 
 ## 对比学习范式对模态对齐
 
-![](https://s2.loli.net/2025/02/28/Etd12rvwxXoLNPg.png)
+![](https://s2.loli.net/2025/06/22/H6kEoxgzYAWNhXp.webp)
 
 代表模型 [**CLIP**](https://arxiv.org/pdf/2103.00020)，更加像一种 **图像-文本**对齐模型，按照论文里面他自己提到的计算范式：
 
@@ -49,7 +49,7 @@ loss = (loss_i + loss_t)/2
 
 在论文 **BLIP**以及论文 **BLIP-2**中处理视觉以及文本模态信息，并不是直接编码，然后丢到LLM中进行处理，以BLIP-2模型中处理方式为例
 
-![](https://s2.loli.net/2025/02/28/V1KEQ5dgnMZyo6Y.png)
+![](https://s2.loli.net/2025/06/22/LejUt6HI5XRYZcr.webp)
 
 在 **BLIP-2**中因为同时冻结了Image Encoder以及LLM因此为了弥补不同模态之间的差异，就需要设计一个“模块”来进行表示（在论文中做法是：**将Image/Text上的信息都”反映“到一个Learned-Queries上**）。具体操作为：
 1、**ITC**（Image-Text Contrastive Learning）：优化目标是对齐图像特征和文本特征，也就是对齐image transformer输出的query representation与来自text transformer输出的text representation。为了避免信息泄漏，ITC采用了单模态自注意掩码，不允许query和text看到对方。计算时先计算每个query与文本embedding之间的相似度，然后选择最高的作为图文相似度

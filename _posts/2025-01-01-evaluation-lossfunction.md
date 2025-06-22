@@ -40,7 +40,7 @@ BLEU 采用一种`N-gram`的匹配规则，原理比较简单，就是比较译�
 人工译文：Today is a nice day
 `1-gram`:
 
-![](https://s2.loli.net/2025/02/23/l7mtKwH3RX2oGTk.png)
+![](https://s2.loli.net/2025/06/22/4GtcvSEy2bBMgrW.webp)
 
 命中5个词，那么计算得到匹配度为：$5/6$
 `3-gram`:
@@ -114,7 +114,7 @@ $$
 FL(p_t)=-\alpha_t(1-p_t)^{\gamma}log(p_t)
 $$
 
-![](https://s2.loli.net/2025/02/23/KmrNDeI6xGTs2ud.png)
+![](https://s2.loli.net/2025/06/22/IgpT8yhRXoBazOW.webp)
 
 $\gamma$：调节因子，用于控制对易分类样本的惩罚程度。它是一个非负实数，通常设置为大于 0 的值。当$\gamma$>0 时，随着$p_t$的增加，$(1-p_t)^{\gamma}$的值会迅速减小，从而降低易分类样本的损失值。**这样可以使得模型更加关注那些难以分类的样本**。
 $\alpha$: 平衡因子，用于调整正类和负类之间的权重。它是一个可调参数，通常设置为$\alpha$对于正类和 1−$\alpha$对于负类。当数据集中正负样本数量不均衡时，可以通过调整$\alpha$来**平衡两类样本的贡献**。例如，在一个正负样本比例为 1:9 的数据集中，可以将$\alpha$设置为 0.9，以增加正类样本的权重
