@@ -26,8 +26,8 @@
   {% endif %}
     
   <!-- Lightbox CSS -->
-  <!-- <link href="https://cdn.jsdelivr.net/npm/lightbox2@2.11.3/dist/css/lightbox.min.css" rel="stylesheet"> -->
-  <!-- <script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.3/dist/js/lightbox.min.js"></script> -->
+  <script src="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/lightbox2/2.11.3/js/lightbox.min.js" type="application/javascript"></script>
+  <link href="https://lf9-cdn-tos.bytecdntp.com/cdn/expire-1-M/lightbox2/2.11.3/css/lightbox.min.css" type="text/css" rel="stylesheet" />
   <div class="post page-post">
     <!-- 处理内容中的图片 -->
     {% assign content_with_images = content 
@@ -63,7 +63,8 @@
   {% endif %}
 
   <!-- 添加分享按钮 -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+  <!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"> -->
+  <link href="https://lf9-cdn-tos.bytecdntp.com/cdn/expire-1-M/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <div class="share-buttons">
     <!-- 微博 -->
     <button class="share-button" onclick="shareOnSocial('weibo')">
@@ -152,7 +153,8 @@
 <link rel="stylesheet" href="{{ site.baseurl }}/static/css/katex.css">
 <script defer src="{{ site.baseurl }}/static/js/katex.js"></script>
 <script defer src="{{ site.baseurl }}/static/js/auto_render.js"></script>
-<script src="{{ site.baseurl }}/static/js/twikoo.js"></script>
+<!-- <script src="{{ site.baseurl }}/static/js/twikoo.js"></script> -->
+<script src="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/twikoo/1.4.18/twikoo.min.js"></script>
 <script>
   twikoo.init({
     envId: 'https://meek-halva-a18f24.netlify.app/.netlify/functions/twikoo',
@@ -193,7 +195,7 @@
     meta: ['nick', 'mail', 'link'],
     pageSize: 15,
     maxLength: 2000,
-    emojiCDN: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/',
+    emojiCDN: 'https://cdn.bootcdn.net/ajax/libs/twemoji/14.0.2/svg/',
     commentCount: true,
     requiredFields: ['nick', 'mail']
   });

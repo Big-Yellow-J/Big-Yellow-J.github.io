@@ -3,13 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <title>{{ page.title }}</title>
-
-  <!-- Prism 样式 -->
-  <link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.css" rel="stylesheet" />
-  <!-- Prism 插件样式（行号/链接）-->
-  <link href="https://cdn.jsdelivr.net/npm/prismjs/plugins/line-numbers/prism-line-numbers.css" rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/prismjs/plugins/autolinker/prism-autolinker.css" rel="stylesheet" />
-
   <style>
     body {
       background: #2d2d2d;
@@ -39,8 +32,8 @@
 <pre class="line-numbers"><code class="language-python">{{ content | escape }}</code></pre>
 
 <!-- Prism 本体 -->
+<link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/prismjs/prism.js"></script>
-<!-- Python 支持 -->
 <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-python.min.js"></script>
 <!-- 插件支持 -->
 <script src="https://cdn.jsdelivr.net/npm/prismjs/plugins/line-numbers/prism-line-numbers.min.js"></script>

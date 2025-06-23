@@ -72,6 +72,7 @@ show_footer_image: false
     // Update card elements with provided or default values
     document.getElementById('link-card').href = linkConfig.url;
     document.getElementById('link-favicon').src = `https://www.google.com/s2/favicons?domain=${linkConfig.url}`;
+    // document.getElementById('link-favicon').src = `https://api.faviconkit.com/${new URL(linkConfig.url).hostname}/144`;
     document.getElementById('link-title').textContent = linkConfig.title;
     document.getElementById('link-description').textContent = linkConfig.description;
     document.getElementById('link-url').textContent = linkConfig.url;
