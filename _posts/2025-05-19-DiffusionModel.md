@@ -215,6 +215,7 @@ def forward(self, x, c):
 ![image.png](https://s2.loli.net/2025/06/21/ZAWCEJSKmMjVuvt.webp)
 
 在得到的分辨率=attn_resolutions时候就会直接进行注意力计算（直接用卷积处理得到q，k，v然后进行计算attention），整个[结构]({{ site.baseurl }}/Dio.drawio)。如果这里直接使用`diffuser`里面的[UNet模型](https://github.com/huggingface/diffusers/blob/main/src/diffusers/models/unets/unet_2d_blocks.py)进行解释（使用UNet2DModel模型解释），整个Unet模型就是3部分：1、下采样；2、中间层；3、上采样。假设模型参数为：
+
 ```python
 model = UNet2DModel(
     sample_size= 128,
@@ -251,7 +252,7 @@ Up-5 torch.Size([32, 128, 128, 128])
 
 #### 1、DDPM
 
-对于传统的DF训练（前向+反向）比较简单，直接通过输入图像而后不断添加噪声而后解噪。以huggingface[^4]上例子为例（测试代码: [Unet2Model.py]('Big-Yellow-J.github.io/code/Unet2Model.py.txt')），**首先**、对图像进行添加噪声。**而后**、直接去对添加噪声后的模型进行训练“去噪”（也就是预测图像中的噪声）。**最后**、计算loss反向传播。
+对于传统的DF训练（前向+反向）比较简单，直接通过输入图像而后不断添加噪声而后解噪。以huggingface[^4]上例子为例（[测试代码](https://github.com/Big-Yellow-J/Big-Yellow-J.github.io/blob/master/code/Python/DFModelTraining/df_training.py)），**首先**、对图像进行添加噪声。**而后**、直接去对添加噪声后的模型进行训练“去噪”（也就是预测图像中的噪声）。**最后**、计算loss反向传播。
 > 对于加噪声等过程可以直接借助 `diffusers`来进行处理，对于diffuser：
 > 1、schedulers：调度器
 > 主要实现功能：1、图片的前向过程添加噪声（也就是上面的$x_T=\sqrt{\bar{\alpha_T}}x_0+ \sqrt{1-\bar{\alpha_T}}\epsilon$）；2、图像的反向过程去噪；3、时间步管理等。如果不是用这个调度器也可以自己设计一个只需要：1、前向加噪过程（需要：使用固定的$\beta$还是变化的、加噪就比较简单直接进行矩阵计算）；2、采样策略

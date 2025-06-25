@@ -205,15 +205,17 @@
 {% include footer.html -%}
 {% include script.html -%}
 
+<!-- Font Awesome 图标（确保引入） -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 <!-- 目录样式 -->
 <style>
-  /* 侧边栏容器 */
   #toc {
     position: fixed;
-    top: 100px; /* 根据 header 高度调整 */
+    top: 100px;
     left: 20px;
     width: 180px;
-    max-height: calc(100vh - 120px); /* 视口高度减去顶部间距 */
+    max-height: calc(100vh - 120px);
     overflow-y: auto;
     background: #f8f8f8;
     padding: 10px;
@@ -221,15 +223,44 @@
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     font-size: 0.9em;
     z-index: 10;
-    display: none; /* 默认隐藏 */
+    transition: all 0.3s ease;
   }
 
-  /* 显示目录时 */
-  #toc:not(:empty) {
-    display: block;
+  #toc.collapsed {
+    width: auto;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
   }
 
-  /* 目录标题容器 */
+  #toc.collapsed .toc-header,
+  #toc.collapsed .toc-title,
+  #toc.collapsed .toc-list {
+    display: none;
+  }
+
+  /* 透明浮动汉堡按钮 */
+  .toc-toggle-floating {
+    position: fixed;
+    top: 100px; /* 可自定义位置 */
+    left: 20px;
+    background: transparent;
+    border: none;
+    font-size: 1.6em;
+    cursor: pointer;
+    padding: 8px;
+    z-index: 1000;
+  }
+
+  .toc-toggle-floating i {
+    color: rgba(0, 0, 0, 0.2); /* 半透明三条线 */
+  }
+
+  .toc-toggle-floating:hover i {
+    color: rgba(0, 123, 255, 0.5);
+  }
+
   .toc-header {
     display: flex;
     justify-content: space-between;
@@ -237,14 +268,12 @@
     margin-bottom: 10px;
   }
 
-  /* 目录标题 */
   .toc-title {
     font-size: 1.1em;
     font-weight: bold;
     color: #333;
   }
 
-  /* 折叠按钮 */
   .toc-toggle {
     background: none;
     border: none;
@@ -258,26 +287,6 @@
     color: #007bff;
   }
 
-  /* 折叠状态 */
-  #toc.collapsed {
-    width: 10px;
-    padding: 10px;
-  }
-
-  #toc.collapsed .toc-title,
-  #toc.collapsed .toc-list {
-    display: none;
-  }
-
-  #toc.collapsed .toc-header {
-    display: block;
-  }
-
-  #toc.collapsed .toc-toggle {
-    display: block;
-  }
-
-  /* 目录列表 */
   .toc-list {
     list-style: none;
     padding: 0;
@@ -304,13 +313,11 @@
     padding-left: 15px;
   }
 
-  /* 高亮当前章节 */
   .toc-list a.active {
     color: #007bff;
     font-weight: bold;
   }
 
-  /* 响应式设计 */
   @media (max-width: 768px) {
     #toc {
       position: static;
@@ -318,48 +325,47 @@
       max-height: none;
       margin: 20px 0;
     }
-    #toc.collapsed {
-      width: 100%;
-      padding: 15px;
-    }
-    #toc.collapsed .toc-title,
-    #toc.collapsed .toc-list {
-      display: block;
-    }
-    #toc.collapsed .toc-header,
-    #toc.collapsed .toc-toggle {
-      display: block;
+
+    .toc-toggle-floating {
+      top: auto;
+      left: 10px;
+      bottom: 20px;
     }
   }
 </style>
 
 <!-- 目录脚本 -->
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function () {
     const toc = document.getElementById('toc');
     if (!toc) return;
+
     const content = document.querySelector('.post.page-post');
     if (!content) return;
-    const headings = content.querySelectorAll('h2, h3, h4, h5, h6'); // 跳过 h1
+
+    const headings = content.querySelectorAll('h2, h3, h4, h5, h6');
     if (headings.length === 0) {
       toc.style.display = 'none';
       return;
     }
 
-    // 创建标题和折叠按钮
+    // 创建目录头部
     const tocHeader = document.createElement('div');
     tocHeader.className = 'toc-header';
+
     const tocTitle = document.createElement('span');
     tocTitle.className = 'toc-title';
     tocTitle.textContent = '目录';
+
     const tocToggle = document.createElement('button');
     tocToggle.className = 'toc-toggle';
     tocToggle.innerHTML = '<i class="fas fa-times"></i>';
+
     tocHeader.appendChild(tocTitle);
     tocHeader.appendChild(tocToggle);
     toc.appendChild(tocHeader);
 
-    let tocList = document.createElement('ul');
+    const tocList = document.createElement('ul');
     tocList.className = 'toc-list';
 
     headings.forEach((heading, index) => {
@@ -367,19 +373,20 @@
         heading.id = 'heading-' + index;
       }
 
-      let listItem = document.createElement('li');
-      let link = document.createElement('a');
+      const listItem = document.createElement('li');
+      const link = document.createElement('a');
       link.href = '#' + heading.id;
       link.textContent = heading.textContent || '无标题';
       link.setAttribute('data-target-id', heading.id);
       listItem.appendChild(link);
 
-      let level = parseInt(heading.tagName.replace('H', '')) - 2; // 从 h2 开始
+      let level = parseInt(heading.tagName.replace('H', '')) - 2;
       let currentList = tocList;
+
       for (let i = 0; i < level; i++) {
         let lastLi = currentList.lastElementChild;
         if (!lastLi || !lastLi.querySelector('ul')) {
-          let newUl = document.createElement('ul');
+          const newUl = document.createElement('ul');
           newUl.className = 'toc-list';
           lastLi?.appendChild(newUl);
           currentList = newUl;
@@ -392,19 +399,25 @@
 
     toc.appendChild(tocList);
 
-    // 折叠功能
-    tocToggle.addEventListener('click', function() {
+    // 透明汉堡按钮
+    const floatingToggle = document.createElement('button');
+    floatingToggle.className = 'toc-toggle-floating';
+    floatingToggle.innerHTML = '<i class="fas fa-bars"></i>';
+    document.body.appendChild(floatingToggle);
+    floatingToggle.style.display = 'none';
+
+    function toggleTOC() {
       toc.classList.toggle('collapsed');
-      if (toc.classList.contains('collapsed')) {
-        tocToggle.innerHTML = '<i class="fas fa-bars"></i>';
-      } else {
-        tocToggle.innerHTML = '<i class="fas fa-times"></i>';
-      }
-    });
+      const isCollapsed = toc.classList.contains('collapsed');
+      floatingToggle.style.display = isCollapsed ? 'block' : 'none';
+    }
+
+    tocToggle.addEventListener('click', toggleTOC);
+    floatingToggle.addEventListener('click', toggleTOC);
 
     // 平滑滚动
     toc.querySelectorAll('a').forEach(link => {
-      link.addEventListener('click', function(e) {
+      link.addEventListener('click', function (e) {
         e.preventDefault();
         const targetId = this.getAttribute('data-target-id');
         const target = document.getElementById(targetId);
@@ -419,13 +432,13 @@
     });
 
     // 高亮当前章节
-    window.addEventListener('scroll', function() {
+    window.addEventListener('scroll', function () {
       let fromTop = window.scrollY + 100;
       let activeSet = false;
       headings.forEach(heading => {
         if (heading.offsetTop <= fromTop && !activeSet) {
           toc.querySelectorAll('a').forEach(link => link.classList.remove('active'));
-          let link = toc.querySelector(`a[data-target-id="${heading.id}"]`);
+          const link = toc.querySelector(`a[data-target-id="${heading.id}"]`);
           if (link) {
             link.classList.add('active');
             activeSet = true;
@@ -437,10 +450,10 @@
       }
     });
 
-    // 跟随滚动
+    // 避免 footer 遮挡
     const footer = document.querySelector('footer');
     const tocHeight = toc.offsetHeight;
-    window.addEventListener('scroll', function() {
+    window.addEventListener('scroll', function () {
       const footerTop = footer ? footer.getBoundingClientRect().top : Infinity;
       const windowHeight = window.innerHeight;
       if (footerTop < windowHeight + tocHeight) {
@@ -451,6 +464,8 @@
     });
   });
 </script>
+
+
 
 <script defer src="https://cloud.umami.is/script.js" data-website-id="b1118f16-642d-4b6b-99b0-fb2b4b34134c"></script>
 <script src="https://analytics.ahrefs.com/analytics.js" data-key="4/nmCEy0+wcsPpIqB0+afg" async></script>
