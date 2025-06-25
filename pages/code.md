@@ -64,7 +64,7 @@ show_footer_image: false
   <script>
     // Configuration for the link to convert
     const linkConfig = {
-      url: "{{ include.url | default: 'https://github.com/Big-Yellow-J/Big-Yellow-J.github.io/tree/master/code/Python' }}",
+      url: "{{ include.url | default: 'https://github.com/shangxiaaabb/ProjectCode' }}",
       title: "{{ include.title | default: 'Code！！😁😁😁' }}",
       description: "{{ include.description | default: 'All Code in my blog！' }}"
     };
