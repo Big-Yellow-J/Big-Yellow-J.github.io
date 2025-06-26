@@ -112,7 +112,7 @@ for i, batch in enumerate(dataloader):
                 acc=acc, f1=f1)
             accelerator.log(logs, step= epoch* total_data+ i)
 
-# Step-3 同步不同进程并且最后 养成好习惯结束所有经常
+# Step-3 同步不同进程
 accelerator.wait_for_everyone()
 if accelerator.is_main_process:
     model = accelerator.unwrap_model(model)
@@ -121,12 +121,11 @@ accelerator.end_training()
 ```
 
 不过对于上面的代码需要注意如下几个内容
-## 跟踪器的使用
-在accelerator中集成了7中不同的跟踪器，主要介绍用的比较多的两种：tensorboard以及wandb使用
-### Tensorboard使用
-
-### Wandb使用
+1、追踪器使用：一般多显卡使用过程中通过使用 `accelerator.end_training()` 去结束 `tracker`
+2、tqdm使用：一般只需要主进程进行显示进度条，因此一般直接：`tqdm(..., disable=not accelerator.is_local_main_process)`
 
 ## diffuser
 > 推荐直接阅读官方文档：[https://huggingface.co/docs/diffusers/main/en/index](https://huggingface.co/docs/diffusers/main/en/index)
 > [`pip install git+https://github.com/huggingface/diffusers`](https://huggingface.co/docs/diffusers/main/en/installation?install=Python)
+
+https://github.com/huggingface/diffusers/blob/main/src/diffusers/schedulers/scheduling_ddim.py#L342

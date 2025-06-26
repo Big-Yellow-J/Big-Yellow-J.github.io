@@ -61,7 +61,7 @@ out_mask=True \
 out_bbox=True
 # device=cuda:1
 ```
-![image.png](https://s2.loli.net/2025/05/26/wKCxTc3sGEhn8bg.png)
+![image.png](https://s2.loli.net/2025/06/26/rsjlvuxha75tpiY.webp)
 
 **而后**，**新建一个终端窗口**启动 Label-Studio 网页服务
 ```bash

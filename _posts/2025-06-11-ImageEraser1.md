@@ -1,12 +1,12 @@
 ---
 layout: mypost
-title: 图像擦除论文综述-1：PixelHacker、PowerPanint等
+title: 图像擦除论文综述-1：PixelHacker、PowerPanint、Attentive Eraser等
 categories: 图像消除
 address: 武汉🏯
 extMath: true
 show_footer_image: true
 tags: [diffusion model,图像消除]
-description: 本文主要介绍几篇图像擦除论文模型：PixelHacker、PowerPanint等，并且实际测试模型的表现效果
+description: 本文主要介绍几篇图像擦除论文模型：PixelHacker、PowerPanint、Attentive Eraser等，并且实际测试模型的表现效果
 ---
 
 本文主要介绍几篇图像擦除论文模型：PixelHacker、PowerPanint等，并且实际测试模型的表现效果
@@ -103,6 +103,36 @@ $L_t$计算过程：
 
 ![](https://s2.loli.net/2025/06/22/61q9QjAmYCZLnHx.webp)
 
+
+## Attentive Eraser: Unleashing Diffusion Model’s Object Removal Potential via Self-Attention Redirection Guidance
+> [https://ojs.aaai.org/index.php/AAAI/article/view/34285](https://ojs.aaai.org/index.php/AAAI/article/view/34285)
+> [测试demo](https://www.modelscope.cn/studios/Anonymou3/AttentiveEraser)
+> AAAI-2025
+
+模型结构：
+
+![image.png](https://s2.loli.net/2025/06/26/6IeoTPcVBxu9mbz.webp)
+
+模型出出发点：图像擦除过程中会生成随机伪影，以及在删除后无法用适当的内容重新绘制前景对象区域。主要改进：
+1、**Attention Activation and Suppres-sion (AAS)**：是一种自我注意机制修改操作，专为应对物体移除任务的固有挑战而量身定制，旨在使前景物体区域的生成更加关注背景，同时消除物体的外观信息。此外，"相似性抑制"（SS）可抑制由于自我注意的固有特性而可能导致的对相似物体的高度关注。具体做法：计算得到注意得分：$S$；以及$A=softmax(S)\in R^{N^2 \times N^2}$。其中具体计算方式（对于上面流程图中对呀公式序号，其中$M_{l,t}$代表的是如果属于obg那么标记1否则0）：
+
+![image.png](https://s2.loli.net/2025/06/26/ukhXjl5v9Cf71xn.webp)
+![image.png](https://s2.loli.net/2025/06/26/4bJXif5AV2Sku9I.webp)
+
+对于公式13：强化obj信息（将$obj\rightarrow obj$设定为负无穷）；对于公式14：强化$obj\rightarrow bg$ 将其设为负无穷。
+2、**Self-Attention Redirection Guidance (SARG)**：这是一种应用于扩散反向取样过程的引导方法，它通过 AAS 利用重定向自我注意引导取样过程朝物体移除的方向进行。
+![image.png](https://s2.loli.net/2025/06/26/FjqnizZ2AORHgId.webp)
+
+算法流程：
+![image.png](https://s2.loli.net/2025/06/26/lnbURV15qryCQKa.webp)
+
+实际测试效果
+| 原图 | Mask | 结果 |
+|------|------|------|
+|![sa_324952.jpg](https://s2.loli.net/2025/06/26/znSUtwamOk9r47I.webp)|![sa_324952-0.jpg](https://s2.loli.net/2025/06/26/QXdWSb46FREakVN.webp) |![image _2_.webp](https://s2.loli.net/2025/06/26/BRFf3E2Qamyu8zv.webp) |
+|![sa_325886.jpg](https://s2.loli.net/2025/06/26/Bw4D9pEi7McULbv.webp)|![sa_325886-1.jpg](https://s2.loli.net/2025/06/26/P8mKbFdTqxZ19Yn.webp) |![image _3_.webp](https://s2.loli.net/2025/06/26/kl5tOBd4IufT2C9.webp) |
+|![sa_324501.jpg](https://s2.loli.net/2025/06/26/kxZjsRLSvpX96ne.webp)|![sa_324501-2.jpg](https://s2.loli.net/2025/06/26/bHMSowgfXm4sqO5.webp) |![image.webp](https://s2.loli.net/2025/06/26/r7nS6ZQYLs8kuv1.webp)||
+|![sa_324930.jpg](https://s2.loli.net/2025/06/26/SA8rRFMc4Zjlp21.webp)|![sa_324930-1.jpg](https://s2.loli.net/2025/06/26/fQdXwRUCg5JVjs6.webp) |![image _1_.webp](https://s2.loli.net/2025/06/26/BXtbq8gEZPAJTjS.webp)|
 
 ## 总结
 简单终结上面几篇论文，基本出发思路都是基于Stable diffusion Moddel然后通过修改Condition方式：无论为是CLip编码文本嵌入还是clip编码图像嵌入。不过值得留意几个点：1、对于mask内容可以用“非规则”（类似对mask内容进行膨胀处理）的方式输入到模型中来提高能力。2、在图像擦除中容易出现几个小问题：**图像替换问题**（理论上是擦除图像但是实际被其他图像给“替换”）、**图像模糊问题**（擦除图像之后可能会在图像上加一个“马赛克”，擦除区域模糊）对于这两类问题可以参考[论文](https://openaccess.thecvf.com/content/CVPR2025/papers/Wang_Towards_Enhanced_Image_Inpainting_Mitigating_Unwanted_Object_Insertion_and_Preserving_CVPR_2025_paper.pdf)。
