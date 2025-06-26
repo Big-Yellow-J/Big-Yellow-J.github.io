@@ -30,10 +30,11 @@ description: 本文主要介绍几篇图像擦除论文中如何构建一个imag
 ![image.png](https://s2.loli.net/2025/06/26/tcIhCEDeuGf3UXv.webp)
 
 实际测试效果（使用prompt为：`'There is nothing here.'`）
+
 | 原图 | Mask | 结果 | 测试细节 |
-|------|------|------|----------|
-|![sa_324952.jpg](https://s2.loli.net/2025/06/26/znSUtwamOk9r47I.webp)|![sa_324952-0.jpg](https://s2.loli.net/2025/06/26/QXdWSb46FREakVN.webp) |![sa_324952.jpg](https://s2.loli.net/2025/06/26/7pdgqO45CbDhluw.webp) |
-|![sa_325886.jpg](https://s2.loli.net/2025/06/26/Bw4D9pEi7McULbv.webp)|![sa_325886-1.jpg](https://s2.loli.net/2025/06/26/P8mKbFdTqxZ19Yn.webp) |![sa_325886.jpg](https://s2.loli.net/2025/06/26/89qmPaIY3tW1uUv.webp) |
-|![sa_324501.jpg](https://s2.loli.net/2025/06/26/kxZjsRLSvpX96ne.webp)|![sa_324501-2.jpg](https://s2.loli.net/2025/06/26/bHMSowgfXm4sqO5.webp) |![sa_324501.jpg](https://s2.loli.net/2025/06/26/GV9n6u1As3ZoqkJ.webp) ||
+|-----|------|------|--------|
+|![sa_324952.jpg](https://s2.loli.net/2025/06/26/znSUtwamOk9r47I.webp)|![sa_324952-0.jpg](https://s2.loli.net/2025/06/26/QXdWSb46FREakVN.webp) |![sa_324952.jpg](https://s2.loli.net/2025/06/26/7pdgqO45CbDhluw.webp) | |
+|![sa_325886.jpg](https://s2.loli.net/2025/06/26/Bw4D9pEi7McULbv.webp)|![sa_325886-1.jpg](https://s2.loli.net/2025/06/26/P8mKbFdTqxZ19Yn.webp) |![sa_325886.jpg](https://s2.loli.net/2025/06/26/89qmPaIY3tW1uUv.webp) | |
+|![sa_324501.jpg](https://s2.loli.net/2025/06/26/kxZjsRLSvpX96ne.webp)|![sa_324501-2.jpg](https://s2.loli.net/2025/06/26/bHMSowgfXm4sqO5.webp) |![sa_324501.jpg](https://s2.loli.net/2025/06/26/GV9n6u1As3ZoqkJ.webp) | |
 |![sa_324930.jpg](https://s2.loli.net/2025/06/26/SA8rRFMc4Zjlp21.webp)|![sa_324930-1.jpg](https://s2.loli.net/2025/06/26/fQdXwRUCg5JVjs6.webp) |![sa_324930.jpg](https://s2.loli.net/2025/06/26/Npr6tT9A75gwcY4.webp) |![image.png](https://s2.loli.net/2025/06/26/xfBuX4RniAj7Z2D.webp)|
 
