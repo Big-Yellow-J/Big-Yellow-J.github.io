@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 图像擦除论文综述-2：擦除类型数据集构建(1)
+title: 图像擦除论文-2：擦除类型数据集构建(1)
 categories: 图像消除
 address: 武汉🏯
 extMath: true

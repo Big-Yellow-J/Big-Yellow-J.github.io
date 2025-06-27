@@ -1,12 +1,12 @@
 ---
 layout: mypost
-title: 图像擦除论文综述-1：PixelHacker、PowerPanint、Attentive Eraser等
+title: 图像擦除论文-1：PixelHacker、PowerPanint等
 categories: 图像消除
 address: 武汉🏯
 extMath: true
 show_footer_image: true
 tags: [diffusion model,图像消除]
-description: 本文主要介绍几篇图像擦除论文模型：PixelHacker、PowerPanint、Attentive Eraser等，并且实际测试模型的表现效果
+description: 本文主要介绍几篇图像擦除论文模型：PixelHacker、PowerPanint等，并且实际测试模型的表现效果
 ---
 
 本文主要介绍几篇图像擦除论文模型：PixelHacker、PowerPanint等，并且实际测试模型的表现效果
@@ -104,6 +104,7 @@ $L_t$计算过程：
 ![](https://s2.loli.net/2025/06/22/61q9QjAmYCZLnHx.webp)
 
 
+
 ## Attentive Eraser: Unleashing Diffusion Model’s Object Removal Potential via Self-Attention Redirection Guidance
 > [https://ojs.aaai.org/index.php/AAAI/article/view/34285](https://ojs.aaai.org/index.php/AAAI/article/view/34285)
 > [测试demo](https://www.modelscope.cn/studios/Anonymou3/AttentiveEraser)
@@ -127,12 +128,15 @@ $L_t$计算过程：
 ![image.png](https://s2.loli.net/2025/06/26/lnbURV15qryCQKa.webp)
 
 实际测试效果
+
 | 原图 | Mask | 结果 |
 |------|------|------|
-|![sa_324952.jpg](https://s2.loli.net/2025/06/26/znSUtwamOk9r47I.webp)|![sa_324952-0.jpg](https://s2.loli.net/2025/06/26/QXdWSb46FREakVN.webp) |![image _2_.webp](https://s2.loli.net/2025/06/26/BRFf3E2Qamyu8zv.webp) |
-|![sa_325886.jpg](https://s2.loli.net/2025/06/26/Bw4D9pEi7McULbv.webp)|![sa_325886-1.jpg](https://s2.loli.net/2025/06/26/P8mKbFdTqxZ19Yn.webp) |![image _3_.webp](https://s2.loli.net/2025/06/26/kl5tOBd4IufT2C9.webp) |
+|![sa_324952.jpg](https://s2.loli.net/2025/06/26/znSUtwamOk9r47I.webp)|![sa_324952-0.jpg](https://s2.loli.net/2025/06/26/QXdWSb46FREakVN.webp) |![image_2_.webp](https://s2.loli.net/2025/06/26/BRFf3E2Qamyu8zv.webp) |
+|![sa_325886.jpg](https://s2.loli.net/2025/06/26/Bw4D9pEi7McULbv.webp)|![sa_325886-1.jpg](https://s2.loli.net/2025/06/26/P8mKbFdTqxZ19Yn.webp) |![image_3_.webp](https://s2.loli.net/2025/06/26/kl5tOBd4IufT2C9.webp) |
 |![sa_324501.jpg](https://s2.loli.net/2025/06/26/kxZjsRLSvpX96ne.webp)|![sa_324501-2.jpg](https://s2.loli.net/2025/06/26/bHMSowgfXm4sqO5.webp) |![image.webp](https://s2.loli.net/2025/06/26/r7nS6ZQYLs8kuv1.webp)||
-|![sa_324930.jpg](https://s2.loli.net/2025/06/26/SA8rRFMc4Zjlp21.webp)|![sa_324930-1.jpg](https://s2.loli.net/2025/06/26/fQdXwRUCg5JVjs6.webp) |![image _1_.webp](https://s2.loli.net/2025/06/26/BXtbq8gEZPAJTjS.webp)|
+|![sa_324930.jpg](https://s2.loli.net/2025/06/26/SA8rRFMc4Zjlp21.webp)|![sa_324930-1.jpg](https://s2.loli.net/2025/06/26/fQdXwRUCg5JVjs6.webp) |![image_1_.webp](https://s2.loli.net/2025/06/26/BXtbq8gEZPAJTjS.webp)|
+
+
 
 ## 总结
 简单终结上面几篇论文，基本出发思路都是基于Stable diffusion Moddel然后通过修改Condition方式：无论为是CLip编码文本嵌入还是clip编码图像嵌入。不过值得留意几个点：1、对于mask内容可以用“非规则”（类似对mask内容进行膨胀处理）的方式输入到模型中来提高能力。2、在图像擦除中容易出现几个小问题：**图像替换问题**（理论上是擦除图像但是实际被其他图像给“替换”）、**图像模糊问题**（擦除图像之后可能会在图像上加一个“马赛克”，擦除区域模糊）对于这两类问题可以参考[论文](https://openaccess.thecvf.com/content/CVPR2025/papers/Wang_Towards_Enhanced_Image_Inpainting_Mitigating_Unwanted_Object_Insertion_and_Preserving_CVPR_2025_paper.pdf)。

@@ -55,7 +55,16 @@ body {
   font-weight: bold;
   padding-right: 6px;
 }
-.page-post h3,
+/* .page-post h3,
+ */
+.page-post .post h3 {
+  font-family: "Noto Serif SC", "Georgia", serif;
+  font-weight: normal;
+  font-size: 18px;
+  position: relative;
+  font-weight: bold;
+  cursor: pointer;
+}
 .page-post h4,
 .page-post h5,
 .page-post h6 {

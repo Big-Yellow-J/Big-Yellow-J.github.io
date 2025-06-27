@@ -150,6 +150,7 @@ $$
 ![](https://s2.loli.net/2025/06/21/pwIndituAKX4kjh.webp)
 
 并且定义图像生成过程为：
+
 $$
 x_{t-1}=\sqrt{\alpha_{t-1}}\left(\frac{x_t-\sqrt{1-\alpha_t}\epsilon_\theta(x_t,t)}{\sqrt{\alpha_t}}\right)+\sqrt{1-\alpha_{t-1}-\sigma_t^2}\epsilon_\theta(x_t,t)+\sigma_tz
 $$

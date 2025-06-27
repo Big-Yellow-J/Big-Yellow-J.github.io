@@ -128,4 +128,110 @@ accelerator.end_training()
 > 推荐直接阅读官方文档：[https://huggingface.co/docs/diffusers/main/en/index](https://huggingface.co/docs/diffusers/main/en/index)
 > [`pip install git+https://github.com/huggingface/diffusers`](https://huggingface.co/docs/diffusers/main/en/installation?install=Python)
 
-https://github.com/huggingface/diffusers/blob/main/src/diffusers/schedulers/scheduling_ddim.py#L342
+### 基本使用
+对于[Diffusion Model原理](https://www.big-yellow-j.top/posts/2025/05/19/DiffusionModel.html)理解可以参考，以及直接通过下面[训练一个Diffusion Model代码](https://github.com/shangxiaaabb/ProjectCode/blob/main/code/Python/DFModelTraining/df_training.py)（代码不一定很规范）进行解释。
+
+```python
+from diffusers import DDPMScheduler
+
+noise_scheduler = DDPMScheduler(num_train_timesteps= config.num_train_timesteps,
+                            beta_start= config.beta_start, # 两个beta代表加噪权重
+                            beta_end= config.beta_end,
+                            beta_schedule= 'scaled_linear')
+...
+# training
+for epoch in range(config.epochs):
+    for i, batch in enumerate(train_dataloader):
+        image = batch["images"]
+        ...
+        timesteps = torch.randint(0, noise_scheduler.config.num_train_timesteps, 
+                                    (image.shape[0],), 
+                                    device=image.device, 
+                                    dtype=torch.int64)
+            
+        noise = torch.randn(image.shape, device= accelerator.device)
+        noise_image = noise_scheduler.add_noise(image, noise, timesteps)
+        ...
+        noise_pred = model(noise_image, timesteps)
+        loss = F.mse_loss(noise_pred, noise)
+        ...
+# eva
+def evaluate(..., noise_scheduler, ):
+    ...
+    noise = torch.randn((config.eval_batch_size, config.channel, config.image_size, config.image_size)) # 可以选择固定随机数种子
+    for t in noise_scheduler.timesteps:
+        t_tensor = torch.full((noise.shape[0],), 
+                                t, 
+                                dtype=torch.long, 
+                                device= device)
+        predicted_noise = model(noise, t_tensor, text_label)
+        noise = noise_scheduler.step(predicted_noise, t, noise).prev_sample
+    images = (noise.clamp(-1, 1) + 1) / 2
+    ...
+```
+
+训练过程
+**1、加噪处理**：通过选择使用DDPM/DDIM而后将生成的"确定的噪声"添加到图片上 `noise_scheduler.add_noise(image, noise, timesteps)`
+![image.png](https://s2.loli.net/2025/06/27/yLPrx7tkdOh3AiD.webp)
+
+**2、模型预测**：通过模型去预测所添加的噪声并且计算loss
+生成过程
+**3、逐步解噪**：训练好的模型逐步预测噪声之后将其从噪声图片中将噪声剥离出来
+
+### 1、Scheduler
+> https://huggingface.co/docs/diffusers/api/schedulers/overview
+
+以[DDPMScheduler](https://github.com/huggingface/diffusers/blob/d7dd924ece56cddf261cd8b9dd901cbfa594c62c/src/diffusers/schedulers/scheduling_ddpm.py#L129)为例主要使用两个功能：
+**1、add_noise**（[输入](https://github.com/huggingface/diffusers/blob/d7dd924ece56cddf261cd8b9dd901cbfa594c62c/src/diffusers/schedulers/scheduling_ddpm.py#L501)：`sample、noise、timesteps`）：这个比较简单就是直接：$x=\sqrt{\alpha}x+ \sqrt{1-\alpha}\epsilon$
+**2、step**（[输入](https://github.com/huggingface/diffusers/blob/d7dd924ece56cddf261cd8b9dd901cbfa594c62c/src/diffusers/schedulers/scheduling_ddpm.py#L398)：`model_output、timestep、sample`）：step做的就是将上面的add_noise进行逆操作。具体代码处理
+* [**Step-1**](https://github.com/huggingface/diffusers/blob/d7dd924ece56cddf261cd8b9dd901cbfa594c62c/src/diffusers/schedulers/scheduling_ddpm.py#L437) 首先计算几个参数：$\alpha、\beta$
+
+```python
+alpha_prod_t = self.alphas_cumprod[t]
+alpha_prod_t_prev = self.alphas_cumprod[prev_t] if prev_t >= 0 else self.one
+beta_prod_t = 1 - alpha_prod_t
+beta_prod_t_prev = 1 - alpha_prod_t_prev
+current_alpha_t = alpha_prod_t / alpha_prod_t_prev
+current_beta_t = 1 - current_alpha_t
+```
+
+* [**Step-2**](https://github.com/huggingface/diffusers/blob/d7dd924ece56cddf261cd8b9dd901cbfa594c62c/src/diffusers/schedulers/scheduling_ddpm.py#L445) 根据计算得到参数反推$t-1$的计算结果（提供3种类，介绍“epsilon”）$x_0=\frac{x_T- \sqrt{1- \alpha_t}\epsilon}{\alpha_t}$
+
+```pred_original_sample = (sample - beta_prod_t ** (0.5) * model_output) / alpha_prod_t ** (0.5)```
+
+* [**Step-3**](https://github.com/huggingface/diffusers/blob/d7dd924ece56cddf261cd8b9dd901cbfa594c62c/src/diffusers/schedulers/scheduling_ddpm.py#L469C9-L474C109)：从数学公式上在上一步就可以计算得到，但是在[论文](https://arxiv.org/pdf/2006.11239)中为了更加近似预测结果还会计算：
+
+$$
+\frac{\sqrt{\bar{\alpha}_{t-1}}\beta_{t}}{1-\bar{\alpha}_{t}}\mathbf{x}_{0}+\frac{\sqrt{\alpha_{t}}(1-\bar{\alpha}_{t-1})}{1-\bar{\alpha}_{t}}\mathbf{x}_{t}
+$$
+
+```python
+pred_original_sample_coeff = (alpha_prod_t_prev ** (0.5) * current_beta_t) / beta_prod_t
+current_sample_coeff = current_alpha_t ** (0.5) * beta_prod_t_prev / beta_prod_t
+pred_prev_sample = pred_original_sample_coeff * pred_original_sample + current_sample_coeff * sample
+```
+
+区别DDIM的处理过程将DDPM的马尔科夫链替换为非马尔科夫链过程而后进行采样，这样我们就可以每次迭代中跨多个step，从而减少推理迭代次数和时间：
+
+$$
+x_{t-1}=\sqrt{\alpha_{t-1}}\left(\frac{x_t-\sqrt{1-\alpha_t}\epsilon_\theta(x_t,t)}{\sqrt{\alpha_t}}\right)+\sqrt{1-\alpha_{t-1}-\sigma_t^2}\epsilon_\theta(x_t,t)+\sigma_tz
+$$
+
+```python
+std_dev_t = eta * variance ** (0.5)
+pred_sample_direction = (1 - alpha_prod_t_prev - std_dev_t**2) ** (0.5) * pred_epsilon
+prev_sample = alpha_prod_t_prev ** (0.5) * pred_original_sample + pred_sample_direction
+ 
+prev_sample = prev_sample + variance
+```
+
+### 2、pipeline
+> https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/README.md
+> https://huggingface.co/docs/diffusers/v0.34.0/en/api/pipelines/overview#diffusers.DiffusionPipeline
+
+很多论文里面基本都是直接去微调训练好的模型比如说StableDiffusion等，使用别人训练后的就少不了看到 `pipeline`的影子，直接介绍[`StableDiffusionPipeline`](https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion.py)的构建（文生图pipeline）。
+
+![image.png](https://s2.loli.net/2025/06/21/5eTfQwG6tLDpycv.webp)
+
+参考：
+1、https://github.com/huggingface/diffusers/blob/v0.34.0/src/diffusers/pipelines/pipeline_utils.py#L180
