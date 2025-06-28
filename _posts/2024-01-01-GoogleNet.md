@@ -7,7 +7,7 @@ images: true
 address: changsha
 show: false
 show_footer_image: true
-description: 文中包含嵌入的src为“{{ site.baseurl }}/code/googlenet.html”且宽高设定的iframe，同时有<图片>占位符内容。
+description: 本文介绍GoogLeNet深度学习模型的核心技术与架构特点，涵盖Inception模块设计、多尺度特征提取及网络深度优化等关键内容，分析其在图像分类任务中的性能优势与实现原理。
 ---
 
 <iframe src="{{ site.baseurl }}/code/googlenet.html" width="100%" height="600px"></iframe>

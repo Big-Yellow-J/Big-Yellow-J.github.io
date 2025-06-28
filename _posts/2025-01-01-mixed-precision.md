@@ -6,8 +6,8 @@ extMath: true
 images: true
 show_footer_image: true
 address: changsha
-description: 本文介绍不同精度训练，包括单精度、半精度定义，对比三者精度、显存等指标。阐述混合精度训练解决单精度问题的办法，如FP32 MASTER COPY
-  OF WEIGHTS、LOSS SCALING等，提及Apex实现混合精度的参数，还有在数据集上的测试效果及相关实验建议、显存优化等内容。
+description: 单精度训练使用32位浮点数（FP32），精度高但显存占用大、速度慢；半精度（FP16/BF16）显存低、速度快但稳定性不足。混合精度训练结合二者优点，通过FP32主权重、损失缩放（LOSS
+  SCALING）等技术平衡性能与稳定，Apex框架实现可有效减少显存占用并加速训练。
 ---
 
 ## 不同精度训练

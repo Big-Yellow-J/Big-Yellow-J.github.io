@@ -6,9 +6,8 @@ extMath: true
 images: true
 address: changsha
 show_footer_image: true
-description: 本文主要介绍常用Attention操作，包括多头注意力（解释其计算缘由、多头作用及残差处理等）、因果注意力（限制注意力只能考虑当前及之前位置）。还涉及内存优化，如Flash
-  Attention分块计算提效降内存，Multi - head Latent Attention压缩KV - cache，Page Attention解决KV
-  - cache预留浪费等问题。
+description: 本文介绍常用Attention操作（如多头注意力、因果注意力）及KV-cache内存优化方法，包括Flash Attention分块计算、MLA压缩缓存、Page
+  Attention（vLLM）内存管理等技术，提升Transformer模型效率与显存利用率。
 tags:
 - MHA
 - flash attention

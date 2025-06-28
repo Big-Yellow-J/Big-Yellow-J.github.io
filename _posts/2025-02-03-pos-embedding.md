@@ -6,7 +6,7 @@ extMath: true
 images: true
 address: yueyang
 show_footer_image: true
-description: 文章主要介绍位置编码和tokenizer相关内容。位置编码包括绝对、相对、RoPE等类型，各有特点；tokenizer有word、character、subword等分词方式，BPE等分词器有其原理，且数据加载需注意文本长度统一。
+description: 位置编码用于标记序列中token位置，帮助模型捕捉长距离依赖与局部顺序，包括绝对、相对、RoPE等类型，适用于不同序列长度任务。Tokenizer通过切割文本为数字表示，常见subword方法如BPE、WordPiece、SentencePiece，主流LLM如GPT、BERT等采用相应分词器提升处理效率。
 tags:
 - 位置编码
 - rope

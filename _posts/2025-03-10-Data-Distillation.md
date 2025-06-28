@@ -6,8 +6,8 @@ extMath: true
 images: true
 address: changsha
 show_footer_image: true
-description: 本文主要介绍数据蒸馏操作，先借鉴论文1了解数据蒸馏（DD），阐述其目标。论文1中损失函数优化有Performance Matching、Parameter
-  Matching（含单步、多步参数匹配）。还提及CVPR - 2025上海交大论文，该论文指出通过分布式匹配进行数据蒸馏易无法获取分布差异。
+description: 本文介绍数据蒸馏技术，其通过从大量数据中提取关键特征与分布信息，生成小规模高质量合成数据集，以替代原始数据提升训练效率、降低成本。涵盖Performance
+  Matching、Parameter Matching（单步/多步）及分布式匹配等优化思路，并重点解析CVPR-2025上海交大满分论文对分布式匹配中分布差异获取问题的研究。
 tags:
 - 深度学习基础理论
 - cv

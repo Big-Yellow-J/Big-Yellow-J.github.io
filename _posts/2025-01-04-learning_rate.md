@@ -5,8 +5,7 @@ categories: 深度学习基础理论
 address: changsha
 extMath: true
 show_footer_image: true
-description: 本文介绍学习率在优化中的重要性，阐述其影响模型训练速度与稳定性。涉及梯度计算、优化算法，如自适应学习率的AdaGrad、RMSprop、Adam，还有warm
-  - up等调整策略，同时提到实践中不同模型可采用不同学习率设置。
+description: 学习率是梯度下降等优化算法的关键参数，影响模型训练速度与稳定性。过大易导致震荡发散，过小则收敛缓慢。常用调整策略包括自适应算法（Adam、RMSprop、AdaGrad）及warm-up，助力模型有效收敛，提升训练效果。
 tags:
 - 学习率优化
 - adam

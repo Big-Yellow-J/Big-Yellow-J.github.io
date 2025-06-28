@@ -8,26 +8,32 @@ show_footer_image: true
 tags:
 - diffusion model
 - 图像消除
-description: 本文围绕图像擦除展开，涉及SmartEraser、Erase Diffusion、OmniEraser等模型。SmartEraser有合成数据集构建步骤；Erase
-  Diffusion改进模型输入等；OmniEraser通过视频获取数据集并微调模型，各模型在数据集构建与模型结构上有不同改进及测试情况。
+description: 图像擦除是图像生成模型重要应用，本文介绍CVPR-2025相关的SmartEraser、Erase Diffusion、OmniEraser模型，涵盖数据集构建（实体过滤、混合高斯算法MOG）、关键技术（语义分割SAM、CLIP、IoU、alpha
+  blending、GroundDINO+SAM2）及模型优化（输入改进、mask处理、微调FLUX.1-dev）等内容。
 ---
 
 图像生成模型应用系列——图像擦除：
 [图像擦除论文-1：PixelHacker、PowerPanint等](https://www.big-yellow-j.top/posts/2025/06/11/ImageEraser1.html)
 [图像擦除论文-2：擦除类型数据集构建(1)](https://www.big-yellow-j.top/posts/2025/06/26/ImageEraser2.html)
 
-## SmartEraser
-> [SmartEraser: Remove Anything from Images using Masked-Region Guidance](https://openaccess.thecvf.com/content/CVPR2025/papers/Jiang_SmartEraser_Remove_Anything_from_Images_using_Masked-Region_Guidance_CVPR_2025_paper.pdf)
-> CVPR-2025
-
-### 1、数据集构建
-
-### 2、模型结构测试效果
-
 ## Erase Diffusion
 > [Erase Diffusion: Empowering Object Removal Through Calibrating Diffusion Pathways](https://openaccess.thecvf.com/content/CVPR2025/papers/Liu_Erase_Diffusion_Empowering_Object_Removal_Through_Calibrating_Diffusion_Pathways_CVPR_2025_paper.pdf)
 > https://github.com/longtaojiang/SmartEraser
 > CVPR-2025
+
+### 1、模型结构
+
+![](https://s2.loli.net/2025/06/28/dcKx2kr71oGFwV9.webp)
+
+论文出发点主要为：1、**动态图像组合**：区别常规的图像去除实验**target image**就是我们的去除内容之后的图片，在该文中将其替换为：$x_t^{mix} = (1-\lambda_t)x_0^{ori}+ \lambda_t x_0^{obj}$ 也就是随着解噪过程（t逐渐减小）图片中所添加的实体（$x^{obj}_0$）所占的权重越来越小，同时将 **input image**也替换为动态的过程：$x_t^{min}=\sqrt{\alpha_t}x_t^{min}+ \sqrt{1- \alpha_t}\epsilon$；2、**改变模型的预测过程**：上面两部分公式处理之后那么得到的输入图像是一个“图像链”输出图像也是一个“图像链”，那么模型需要做的就是将对应“图像链”之间的loss进行计算。
+![](https://s2.loli.net/2025/06/28/XHodtjyncSCDLV6.webp)
+3、**改进注意力计算方式**：这部分比较容易理解在计算注意力过程中将mask加入到计算也就是：$QK^T\bigodot Mask$
+![](https://s2.loli.net/2025/06/28/EXbq2QGRWlImUjK.webp)
+
+## SmartEraser
+> [SmartEraser: Remove Anything from Images using Masked-Region Guidance](https://openaccess.thecvf.com/content/CVPR2025/papers/Jiang_SmartEraser_Remove_Anything_from_Images_using_Masked-Region_Guidance_CVPR_2025_paper.pdf)
+> CVPR-2025
+
 
 ### 1、数据集构建
 

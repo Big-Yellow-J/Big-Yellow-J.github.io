@@ -24,7 +24,7 @@
   </div>
   {% endif %}
 
-{% if page.description %}
+  {% if page.description %}
     <div id="description-llm" style="font-family: 'Courier New', Courier, monospace; white-space: pre-wrap; font-size: 1rem; padding: 16px; border-left: 4px solid #4a90e2; background: #f8fafc; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); line-height: 1.6; color: #333;"></div>
     <script>
       const descriptionText = `🤖:` + `{{ page.description | strip_newlines | escape }}`;
@@ -36,7 +36,7 @@
         if (isTyping && index < descriptionText.length) {
           descriptionEl.textContent += descriptionText.charAt(index);
           index++;
-          setTimeout(typeWriter, 50);
+          setTimeout(typeWriter, 10);
         } else {
           descriptionEl.style.borderLeftColor = '#2ecc71';
         }
@@ -61,7 +61,7 @@
 
       document.addEventListener("visibilitychange", handleVisibilityChange);
     </script>
-{% endif %}
+  {% endif %}
 
     
   <!-- Lightbox CSS -->
@@ -92,11 +92,7 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", function() {
-      // 为所有代码块的 <pre> 添加 line-numbers 类
-      document.querySelectorAll('pre').forEach(function(pre) {
-        pre.classList.add('line-numbers');
-      });
-      
+
       // 手动高亮（如果页面加载时代码动态插入，也可以用 Prism.highlightAll()）
       Prism.highlightAll();
     });
@@ -115,7 +111,6 @@
   {% endif %}
 
   <!-- 添加分享按钮 -->
-  <!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"> -->
   <link href="https://lf9-cdn-tos.bytecdntp.com/cdn/expire-1-M/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <div class="share-buttons">
     <!-- 微博 -->

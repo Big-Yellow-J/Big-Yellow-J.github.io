@@ -11,8 +11,7 @@ tags:
 - 生成模型
 - diffusion model
 show: true
-description: 本文介绍了Diffusion Model，包括其前向加噪、反向去噪原理，还提及Conditional diffusion model（添加条件指导生成）、Latent
-  diffusion model（在潜在空间建模）。同时介绍了DF模型的生成范式（DDPM、DDIM）、代码结构（Dit模型、Unet模型）及训练过程，指出扩散模型需大量迭代来生成高质量图像，侧重学习低频到高频信息。
+description: 扩散模型通过前向加噪与反向去噪过程实现图像生成，核心为噪声调度控制加噪权重，反向过程用神经网络近似分布。介绍条件扩散模型（文本等条件指导生成）、潜在扩散模型（低维潜在空间建模）及DDPM、DDIM等变体，涉及Unet、Dit等模型结构，训练目标为预测噪声以优化去噪生成效果。
 ---
 
 前文已经介绍了VAE以及GAN这里介绍另外一个模型：Diffusion Model，除此之外介绍Conditional diffusion model、Latent diffusion model

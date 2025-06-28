@@ -6,8 +6,8 @@ extMath: true
 images: true
 address: changsha
 show_footer_image: true
-description: 本文主要介绍混合专家模型（MoE）与KV cache。MoE由稀疏MoE层和门控网络构成，通过门控决定令牌路由至专家，涉及稠密与稀疏MoE，还有负载均衡损失相关原理；KV
-  cache是因自回归推理中Q动态变化、KV可缓存，通过缓存KV优化计算速度，还介绍了不同缓存类型。
+description: 混合专家模型（MoE）通过稀疏MoE层替代Transformer的FFN层，由门控网络路由令牌至不同专家处理，结合负载均衡损失解决负载不均衡问题；KV
+  cache在Transformer推理中缓存历史K和V值，减少重复计算，是用内存换速度的优化方法，本文结合代码解释其原理与应用。
 tags:
 - 混合专家模型
 - kv-cache

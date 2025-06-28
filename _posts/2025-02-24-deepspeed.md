@@ -5,7 +5,7 @@ categories: DeepSpeed框架
 extMath: true
 show_footer_image: true
 address: changsha
-description: DeepSpeed是微软开发的深度学习优化库，专为高性能训练推理设计。它通过ZeRO技术优化显存占用，ZeRO-DP分三种方式切分模型状态显存，ZeRO-R优化激活值等。还介绍了DeepSpeed代码安装、使用示例、参数设置及报错处理等，可高效利用硬件资源，实现快速训练等。
+description: DeepSpeed是微软开发的深度学习优化库，专为大规模模型（如GPT、BERT）高性能训练与推理设计。通过ZeRO技术切分模型状态（优化器、梯度、参数）及优化激活值、临时缓冲区、显存碎片等，有效减少显存占用，提升硬件资源利用率，支持高效训练与推理。
 ---
 
 ## `DeepSpeed`原理

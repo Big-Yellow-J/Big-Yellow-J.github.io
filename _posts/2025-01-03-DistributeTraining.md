@@ -5,7 +5,7 @@ categories: 深度学习基础理论
 address: changsha
 extMath: true
 show_footer_image: true
-description: 本文主要介绍Pytorch分布式训练，涵盖模型并行（分模型不同部分到设备）、流水线并行（拆分层并分微批次提效）、数据并行（复制模型处理小批次，DDP流程及代码）、张量并行（矩阵拆分），还涉及梯度累计、混合并行等，阐述各并行方式原理与实现相关内容。
+description: 本文介绍PyTorch分布式训练的核心并行策略，包括模型并行、数据并行（DDP）、流水线并行及张量并行的原理，解析DDP流程与实现方法，并提供简易Demo代码，助于理解分布式训练机制与优化。
 ---
 
 主要介绍`Pytorch`分布式训练代码以及原理以及一些简易的Demo代码

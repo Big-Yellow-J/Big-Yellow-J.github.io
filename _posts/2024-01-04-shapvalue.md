@@ -7,8 +7,8 @@ images: true
 show: true
 show_footer_image: true
 address: changsha
-description: 文章围绕机器学习可解释性展开，提及解释器需具可解释性、局部保真度、与模型无关等特征，介绍了Shapley值，SHAP与LIME类似用简单模型解释复杂模型，还阐述了Kernel
-  SHAP的计算步骤，包括初始化数据、转换到原始空间计算预测值、算权重、拟合线性模型等。
+description: 机器学习模型仅靠预测性能不足以满足需求，可解释性帮助理解决策原因及模型失败风险。其关键特征包括可解释模型与特征、局部保真度及与复杂模型无关，主要通过Shapley
+  Value、SHAP、LIME等方法实现，助力揭开黑盒模型决策机制。
 ---
 
 如果⼀个机器学习模型运⾏良好，为什么我们仅仅信任该模型⽽忽略为什么做出特定的决策呢？

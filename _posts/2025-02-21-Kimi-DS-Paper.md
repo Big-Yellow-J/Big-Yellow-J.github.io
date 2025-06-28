@@ -10,8 +10,8 @@ tags:
 - 深度学习基础理论
 - paper
 - attention
-description: DeepSeek和Kimi最新论文聚焦长上下文压缩问题，长上下文致平方级运算存储复杂度。稀疏注意力原理是减少关联性计算。Kimi的MOBA分块、用门控向量，筛选top
-  - k块算注意力；DeepSeek的NSA采用动态层次稀疏策略，结合token压缩与选择，两者均通过分块压缩实现稀疏注意力。
+description: 长上下文带来的平方级运算/存储复杂度是大模型推理优化的重要问题，DeepSeek的NSA与Kimi的MOBA等论文聚焦稀疏注意力（Sparse
+  Attention）解决方案，包括分块压缩、筛选Token、Router机制选top-k块及滑动窗口等策略，通过减少关联性计算实现高效处理，是长上下文压缩的关键研究方向。
 ---
 
 **DeepSeek**最新论文：[Native Sparse Attention: Hardware-Aligned and Natively Trainable Sparse Attention](https://arxiv.org/pdf/2502.11089)以及 **Kimi**最新论文MOBA: [MIXTURE OF BLOCK ATTENTION FOR  LONG-CONTEXT LLMS](https://arxiv.org/pdf/2502.13189)这几篇文章都是针对长上下文的压缩方法，长上下文带来的平方级别的运算或存储复杂度给推理优化带来非常大的影响，因此是当前大模型推理优化中非常重要的一项研究内容。解决长上下文问题，主要分为稀疏化之后的 Token Dropping、KVCache 的量化压缩、Prompt Compression 提示词压缩、还有结构性稀疏压缩等几大类。里面都提到了 **稀疏**这一个内容，什么是 **稀疏注意力**（Sparse Attention）

@@ -8,9 +8,8 @@ show_footer_image: true
 tags:
 - diffusion model
 - 图像消除
-description: 本文介绍几篇图像擦除论文模型，如PixelHacker框架似Diffusion Model，测试现低分辨率、细节处理问题；PowerPanint结构同DF模型，测试移除效果有不足；Improving
-  Text-guided Object Inpainting提出提前输入text feature对齐信息；Attentive Eraser改进自我注意机制等，各模型基于Stable
-  diffusion修改Condition，涉及图像替换、模糊等问题。
+description: 本文介绍PixelHacker、PowerPanint、CATdiffusion、Attentive Eraser等图像擦除论文模型，基于Stable
+  Diffusion等框架，通过修改Condition、mask处理等方式优化，并实际测试各模型表现，分析分辨率、细节处理及图像替换、模糊等效果与问题。
 ---
 
 本文主要介绍几篇图像擦除论文模型：PixelHacker、PowerPanint等，并且实际测试模型的表现效果

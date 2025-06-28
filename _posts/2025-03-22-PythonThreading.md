@@ -6,7 +6,7 @@ extMath: true
 images: true
 address: changsha
 show_footer_image: true
-description: 本文写于2025.3.20，作者实习时总结多进程（同程序多独立进程，CPU密集型）、多线程（同进程多线程，I/O密集型，受GIL限制）、装饰器（不修改原函数加功能），还涉及实际任务中使用的情况及注意事项，最后提示参考官方文档。
+description: 本文解析Python多进程、多线程、装饰器的基本概念、适用场景与使用方法，涵盖GIL影响、CPU/I/O密集型任务选择、线程安全及pickle序列化等技术要点，助于高效应用并发编程。
 tags:
 - python
 - 多进程

@@ -13,8 +13,8 @@ tags:
 - vit
 - resnet
 - vit
-description: 文章主要介绍CV中常用Backbone，分为三类：基于卷积的有Resnet系列（含残差连接、不同层数差异）、Unet系列（分Unet1、Unet++、Unet3，差异在特征融合）；基于Transformer的有Vit（图像分patch经Transformer处理）、MAE（随机遮盖后重建）、Swin
-  Transformer（通过Patch Merging和特殊注意力操作优化）；多模态常用Backbone如SAM（分割）、Clip（文本图像对齐）等。
+description: 本文介绍CV常用Backbone原理，涵盖基于卷积神经网络的ResNet（残差连接解决梯度消失/退化）、Unet系列，基于Transformer的ViT（Patch嵌入）、MAE（掩码重建）、Swin
+  Transformer（窗口注意力），以及多模态SAM/CLIP等模型，解析核心技术与应用场景。
 ---
 
 主要介绍在CV中常用的Backbone**原理**简易[代码](https://www.big-yellow-j.top/code/cv_backbone.html)（*代码以及原理经常更新*），参考论文中的表格，对不同的任务所使用的backbone如下:
