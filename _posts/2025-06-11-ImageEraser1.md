@@ -5,8 +5,12 @@ categories: 图像消除
 address: 武汉🏯
 extMath: true
 show_footer_image: true
-tags: [diffusion model,图像消除]
-description: 本文主要介绍几篇图像擦除论文模型：PixelHacker、PowerPanint等，并且实际测试模型的表现效果
+tags:
+- diffusion model
+- 图像消除
+description: 本文介绍几篇图像擦除论文模型，如PixelHacker框架似Diffusion Model，测试现低分辨率、细节处理问题；PowerPanint结构同DF模型，测试移除效果有不足；Improving
+  Text-guided Object Inpainting提出提前输入text feature对齐信息；Attentive Eraser改进自我注意机制等，各模型基于Stable
+  diffusion修改Condition，涉及图像替换、模糊等问题。
 ---
 
 本文主要介绍几篇图像擦除论文模型：PixelHacker、PowerPanint等，并且实际测试模型的表现效果
@@ -105,8 +109,8 @@ $L_t$计算过程：
 
 
 
-## Attentive Eraser: Unleashing Diffusion Model’s Object Removal Potential via Self-Attention Redirection Guidance
-> [https://ojs.aaai.org/index.php/AAAI/article/view/34285](https://ojs.aaai.org/index.php/AAAI/article/view/34285)
+## Attentive Eraser
+> [Attentive Eraser: Unleashing Diffusion Model’s Object Removal Potential via Self-Attention Redirection Guidance](https://ojs.aaai.org/index.php/AAAI/article/view/34285)
 > [测试demo](https://www.modelscope.cn/studios/Anonymou3/AttentiveEraser)
 > AAAI-2025
 
@@ -127,7 +131,7 @@ $L_t$计算过程：
 算法流程：
 ![image.png](https://s2.loli.net/2025/06/26/lnbURV15qryCQKa.webp)
 
-实际测试效果
+### Attentive Eraser实际测试效果
 
 | 原图 | Mask | 结果 |
 |------|------|------|

@@ -5,8 +5,12 @@ categories: 深度学习基础理论
 address: changsha
 extMath: true
 show_footer_image: true
-description: 主要介绍深度学习基础理论————学习率优化方法(AdaGrad/RMSprop/Adam/Warm-UP)
-tags: [学习率优化,adam,warm-up]
+description: 本文介绍学习率在优化中的重要性，阐述其影响模型训练速度与稳定性。涉及梯度计算、优化算法，如自适应学习率的AdaGrad、RMSprop、Adam，还有warm
+  - up等调整策略，同时提到实践中不同模型可采用不同学习率设置。
+tags:
+- 学习率优化
+- adam
+- warm-up
 ---
 
 ## 学习率基础[^1]

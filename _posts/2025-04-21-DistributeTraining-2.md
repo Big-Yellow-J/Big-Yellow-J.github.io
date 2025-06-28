@@ -5,8 +5,12 @@ categories: 深度学习基础理论
 address: 长沙
 extMath: true
 show_footer_image: true
-tags: [分布式训练,深度学习基础理论,张量并行]
-description: 深度学习基础理论————分布式训练（模型并行/数据并行/流水线并行/张量并行）
+tags:
+- 分布式训练
+- 深度学习基础理论
+- 张量并行
+description: 本文在先前介绍4种并行训练方式基础上，补充张量并行相关内容，其切分有按行（行并行）和按列（列并行），分别说明了列并行与行并行的前向反向计算等情况，涉及all
+  - reduce、all - gather等操作，还提到专家并行并对各类并行训练方式进行总结。
 ---
 
 前面Blog（https://www.big-yellow-j.top/posts/2025/01/03/DistributeTraining.html） 介绍了4种并行训练方式（模型并行/数据并行/流水线并行/张量并行），本文再去补充几种并行训练方式，并且对于一些内容在丰富一下，并且对所有的并行训练方式做一个总结。

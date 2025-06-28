@@ -6,8 +6,14 @@ extMath: true
 images: true
 address: changsha
 show_footer_image: true
-description: 主要介绍各类Attention(Flash Attention/MLA/Page Attention)操作以及具体代码实操！！
-tags: [MHA,flash attention,page attention,kv-cache]
+description: 本文主要介绍常用Attention操作，包括多头注意力（解释其计算缘由、多头作用及残差处理等）、因果注意力（限制注意力只能考虑当前及之前位置）。还涉及内存优化，如Flash
+  Attention分块计算提效降内存，Multi - head Latent Attention压缩KV - cache，Page Attention解决KV
+  - cache预留浪费等问题。
+tags:
+- MHA
+- flash attention
+- page attention
+- kv-cache
 ---
 
 本文主要介绍常用的Attention操作（多头注意力等）以及在KV-cahce中如何节约内容的操作

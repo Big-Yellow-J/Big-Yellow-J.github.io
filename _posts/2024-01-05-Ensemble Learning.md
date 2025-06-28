@@ -7,6 +7,7 @@ images: true
 show: true
 address: changsha
 show_footer_image: true
+description: 传统机器学习算法易过拟合，集成学习通过组合弱学习机改善。Bagging利用随机采样构建树，Boosting靠更新权重迭代。GBDT按序训练，拟合负梯度来学习决策树。XGBoost是端到端树Boosting方法，最小化正则化目标，兼具统计、计算等多方面优势。
 ---
 
 传统机器学习算法 (例如：决策树，人工神经网络，支持向量机，朴素贝叶斯等) 都是通过**弱学习机**（weak learners）来对目标进行预测（分类）。但是，以决策树算法为例，决策树算法在递归过程中，可能会过度分割样本空间，最终导致过拟合。集成学习 (Ensemble Learning) 算法的基本思想就是将多个弱学习机组合，从而实现一个预测效果更好的集成学习机[^1]。集成学习在**统计（Statistical）**、 **计算（computational）** 以及 **表示（representation）** 上相较之弱学习机有较大改善[^2]。```Bagging```和```Boosting```对比如下：

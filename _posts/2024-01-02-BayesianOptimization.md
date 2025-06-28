@@ -7,7 +7,7 @@ images: true
 show: true
 show_footer_image: true
 address: changsha
-description: 对贝叶斯优化进行较为全面的介绍，以及部分代码复现
+description: 本文围绕贝叶斯优化展开，通过结合相关论文与博客，介绍其用于解决黑盒优化问题，利用代理模型（如高斯过程）替代复杂目标函数，还阐述了常用采集函数（如PI、EI、LCB等）来指导搜索最优，同时提及代码复现及相关参考资料，用于机器学习等领域超参数优化等场景。
 ---
 
 本文通过结合如下论文以及blog：

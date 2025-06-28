@@ -23,6 +23,46 @@
     {% endif %}
   </div>
   {% endif %}
+
+{% if page.description %}
+    <div id="description-llm" style="font-family: 'Courier New', Courier, monospace; white-space: pre-wrap; font-size: 1rem; padding: 16px; border-left: 4px solid #4a90e2; background: #f8fafc; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); line-height: 1.6; color: #333;"></div>
+    <script>
+      const descriptionText = `🤖:` + `{{ page.description | strip_newlines | escape }}`;
+      const descriptionEl = document.getElementById('description-llm');
+      let index = 0;
+      let isTyping = true;
+
+      function typeWriter() {
+        if (isTyping && index < descriptionText.length) {
+          descriptionEl.textContent += descriptionText.charAt(index);
+          index++;
+          setTimeout(typeWriter, 50);
+        } else {
+          descriptionEl.style.borderLeftColor = '#2ecc71';
+        }
+      }
+
+      function handleVisibilityChange() {
+        if (document.visibilityState === 'hidden' && isTyping) {
+          isTyping = false;
+          descriptionEl.textContent = descriptionText; // Render full text immediately
+          descriptionEl.style.borderLeftColor = '#2ecc71';
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        descriptionEl.style.opacity = '0';
+        descriptionEl.style.transition = 'opacity 0.5s ease-in';
+        setTimeout(() => {
+          descriptionEl.style.opacity = '1';
+          typeWriter();
+        }, 200);
+      });
+
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+    </script>
+{% endif %}
+
     
   <!-- Lightbox CSS -->
   <script src="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/lightbox2/2.11.3/js/lightbox.min.js" type="application/javascript"></script>
@@ -36,15 +76,32 @@
     {{ content_with_images }}
   </div>
   
-  <!-- Prism.js CSS -->
+  <!-- Prism 样式与插件 -->
   <link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/themes/prism.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.css" rel="stylesheet">
+
+  <!-- Prism 核心与语言组件 -->
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/prism.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-javascript.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-python.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-markup.min.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.css" rel="stylesheet">
+
+  <!-- Prism 插件 -->
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/previewers/prism-previewers.min.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      // 为所有代码块的 <pre> 添加 line-numbers 类
+      document.querySelectorAll('pre').forEach(function(pre) {
+        pre.classList.add('line-numbers');
+      });
+      
+      // 手动高亮（如果页面加载时代码动态插入，也可以用 Prism.highlightAll()）
+      Prism.highlightAll();
+    });
+  </script>
+
 
   <!-- 在文章内容下方添加图片 -->
   {% if page.show_footer_image %}

@@ -7,7 +7,8 @@ images: true
 show: true
 show_footer_image: true
 address: changsha
-description: 如果⼀个机器学习模型运⾏良好，为什么我们仅仅信任该模型⽽忽略为什么做出特定的决策呢？本文主要对机器学习可解释性Shap Value原理进行介绍并且提供代码
+description: 文章围绕机器学习可解释性展开，提及解释器需具可解释性、局部保真度、与模型无关等特征，介绍了Shapley值，SHAP与LIME类似用简单模型解释复杂模型，还阐述了Kernel
+  SHAP的计算步骤，包括初始化数据、转换到原始空间计算预测值、算权重、拟合线性模型等。
 ---
 
 如果⼀个机器学习模型运⾏良好，为什么我们仅仅信任该模型⽽忽略为什么做出特定的决策呢？

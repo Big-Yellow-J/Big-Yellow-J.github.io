@@ -6,7 +6,11 @@ extMath: true
 images: true
 address: wuhan
 show_footer_image: true
-tags: [word2vec,tokenizer]
+tags:
+- word2vec
+- tokenizer
+description: 本文介绍Word Embedding，one - hot编码存丧失语义信息问题。静态词向量有Word2vec，含CBOW（适小数据库）和Skip
+  - Gram（适大型语料）；GloVe基于统计，用共现矩阵表示词向量但矩阵稀疏大。动态词向量如ELMo可解决静态词向量一词多义，LLM处理文本先经tokenizer分词，再经embedding编码，涉及input_ids等相关内容。
 ---
 
 Word Embedding：将文本处理为计算机可以理解的数字表示。一种最简单的表示就是直接用one-hot，我建立一个字典，然后对每个字符都进行编码比如说：你好（表示为：10，01）。但是这种编码会有一个问题：**丧失语义信息**，比如说对于文本：喜欢和爱这两个词可能会被编码成：1000和0100，但是从语义上这两个词所表达的含义应该是相似的，但是用one-hot编码无法表示这种关系。

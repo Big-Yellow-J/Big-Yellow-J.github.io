@@ -5,7 +5,7 @@ categories: 深度学习基础理论
 address: changsha
 extMath: true
 show_footer_image: true
-description: 深度学习基础理论————分布式训练（模型并行/数据并行/流水线并行/张量并行）
+description: 本文主要介绍Pytorch分布式训练，涵盖模型并行（分模型不同部分到设备）、流水线并行（拆分层并分微批次提效）、数据并行（复制模型处理小批次，DDP流程及代码）、张量并行（矩阵拆分），还涉及梯度累计、混合并行等，阐述各并行方式原理与实现相关内容。
 ---
 
 主要介绍`Pytorch`分布式训练代码以及原理以及一些简易的Demo代码

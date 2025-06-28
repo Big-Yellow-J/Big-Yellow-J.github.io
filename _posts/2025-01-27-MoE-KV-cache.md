@@ -6,8 +6,11 @@ extMath: true
 images: true
 address: changsha
 show_footer_image: true
-description: 主要介绍深度学习基础理论————混合专家模型（MoE）
-tags: [混合专家模型,kv-cache]
+description: 本文主要介绍混合专家模型（MoE）与KV cache。MoE由稀疏MoE层和门控网络构成，通过门控决定令牌路由至专家，涉及稠密与稀疏MoE，还有负载均衡损失相关原理；KV
+  cache是因自回归推理中Q动态变化、KV可缓存，通过缓存KV优化计算速度，还介绍了不同缓存类型。
+tags:
+- 混合专家模型
+- kv-cache
 ---
 
 主要介绍 **混合专家模型**（MoE）、`KV cache`并且结合代码进行解释

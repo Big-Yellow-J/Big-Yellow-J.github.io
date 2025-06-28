@@ -6,9 +6,13 @@ extMath: true
 images: true
 address: 武汉🏯
 show_footer_image: true
-tags: [cv-backbone,生成模型,diffusion model]
+tags:
+- cv-backbone
+- 生成模型
+- diffusion model
 show: true
-description: 日常使用比较多的生成模型比如GPT/Qwen等这些大多都是“文生文”模型（当然GPT有自己的大一统模型可以“文生图”）但是网上流行很多AI生成图像，而这些生成图像模型大多都离不开下面三种模型：1、GAN；2、VAE；3、Diffusion Model。因此本文通过介绍这三个模型作为生成模型的入门。本文主要介绍第三类Diffusion Model
+description: 本文介绍了Diffusion Model，包括其前向加噪、反向去噪原理，还提及Conditional diffusion model（添加条件指导生成）、Latent
+  diffusion model（在潜在空间建模）。同时介绍了DF模型的生成范式（DDPM、DDIM）、代码结构（Dit模型、Unet模型）及训练过程，指出扩散模型需大量迭代来生成高质量图像，侧重学习低频到高频信息。
 ---
 
 前文已经介绍了VAE以及GAN这里介绍另外一个模型：Diffusion Model，除此之外介绍Conditional diffusion model、Latent diffusion model

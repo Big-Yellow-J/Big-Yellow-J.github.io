@@ -6,6 +6,8 @@ extMath: true
 images: true
 address: wuhan
 show_footer_image: true
+description: 文章主要介绍了评价指标，包括准确率、精确率、召回率、F1的计算及优缺点；还介绍了BLEU采用N - gram匹配规则及相关公式；重点讲解了多种损失函数，如交叉熵损失用于分类，均方误差用于回归，Focal
+  Loss处理样本失衡，还有L1 loss、Huber Loss等，并提及相关公式和pytorch中交叉熵损失的参数等。
 ---
 
 ## 评价指标

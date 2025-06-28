@@ -5,7 +5,7 @@ categories: 深度学习基础理论
 address: 武汉
 extMath: true
 show_footer_image: true
-description: 本文主要介绍深度学习中一些warm up函数（直接通过pytorch）以及具体原理以及实际使用方法
+description: 文章介绍pytorch中优化器相关内容，包括torch.optim基础类及AdamW示例，重点讲解torch.optim.lr_scheduler，其调整学习率方法分基于步数、指标、epoch的调度，还说明了使用套路等，提及参考链接。
 ---
 
 warm-up具体原理以及为什么这么做在之前的博客有介绍，这里直接介绍如何直接使用pytorch中的warm-up策略，在pytorch中对于warm-up所有支持的方法都有描述，可以直接阅读[^1]。

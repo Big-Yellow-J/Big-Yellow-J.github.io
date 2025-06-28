@@ -6,7 +6,8 @@ extMath: true
 images: true
 address: changsha
 show_footer_image: true
-description: 主要介绍常见的LLM微调技术及其代码
+description: 大语言模型微调包括全面微调（调整全部参数开销大）和部分参数微调。prompt-tuning分hard prompt（用户直接提供自然语言）和soft
+  prompt（学习的潜在向量）。还有prefix-tuning、p-tuning等。参数高效微调PEFT含LoRA（低序表示微调）、QLoRA（量化结合LoRA）、Adapter（添加适配器微调，预训练时冻结，微调解冻）。
 ---
 
 大语言模型微调，一般来说是指在一个预训练完成的LLM上去针对对应的下游任务进行微调，让其更加适应下游任务，一般来说可以：1、全面微调（对LLM中全部参数进行调整，如果模型参数量很大的时候这个花销是比较大的）；2、部分参数微调

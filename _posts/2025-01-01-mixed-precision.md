@@ -6,7 +6,8 @@ extMath: true
 images: true
 show_footer_image: true
 address: changsha
-description: 主要介绍训练加速（单/半/混合精度训练）/显存优化（gradient-checkpoint）
+description: 本文介绍不同精度训练，包括单精度、半精度定义，对比三者精度、显存等指标。阐述混合精度训练解决单精度问题的办法，如FP32 MASTER COPY
+  OF WEIGHTS、LOSS SCALING等，提及Apex实现混合精度的参数，还有在数据集上的测试效果及相关实验建议、显存优化等内容。
 ---
 
 ## 不同精度训练

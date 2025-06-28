@@ -6,8 +6,12 @@ extMath: true
 images: true
 address: changsha
 show_footer_image: true
-description: 本文主要介绍数据蒸馏操作
-tags: [深度学习基础理论,cv,数据蒸馏]
+description: 本文主要介绍数据蒸馏操作，先借鉴论文1了解数据蒸馏（DD），阐述其目标。论文1中损失函数优化有Performance Matching、Parameter
+  Matching（含单步、多步参数匹配）。还提及CVPR - 2025上海交大论文，该论文指出通过分布式匹配进行数据蒸馏易无法获取分布差异。
+tags:
+- 深度学习基础理论
+- cv
+- 数据蒸馏
 ---
 
 主要介绍数据蒸馏操作，并且介绍CVPR-2025上海交大满分论文：Dataset Distillation with Neural Characteristic Function: A Minmax Perspective。本文主要是借鉴论文1中的整体结构，大致了解什么是DD而后再去介绍（CVPR-2025）论文。
