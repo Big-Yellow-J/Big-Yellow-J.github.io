@@ -9,4 +9,4 @@ gem "jekyll-last-modified-at", "~> 1.3.0"
 gem "jekyll-paginate"
 gem "jekyll-minifier"
 gem "jekyll-feed"
-
+# gem 'jekyll-assets', '~> 3.0', '>= 3.0.12'

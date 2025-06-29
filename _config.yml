@@ -1,11 +1,17 @@
 encoding: utf-8
-
 plugins:
   - jekyll-regex-replace
   - jekyll-last-modified-at
   - jekyll-paginate
   - jekyll-minifier
   - jekyll-feed
+#   - jekyll-assets
+
+# assets:
+#   compress:
+#     css: true
+#     js: true
+#   cachebust: hard 
 
 jekyll-minifier:
   remove_comments: true
