@@ -392,3 +392,127 @@ body, p, div, span, a {
 .next {
   text-align: right;
 }
+
+
+#toc {
+  position: fixed;
+  top: 100px;
+  left: 20px;
+  width: 180px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  background: #f8f8f8;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  font-size: 0.9em;
+  z-index: 10;
+  transition: all 0.3s ease;
+}
+
+#toc.collapsed {
+  width: auto;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+#toc.collapsed .toc-header,
+#toc.collapsed .toc-title,
+#toc.collapsed .toc-list {
+  display: none;
+}
+
+/* 透明浮动汉堡按钮 */
+.toc-toggle-floating {
+  position: fixed;
+  top: 100px; /* 可自定义位置 */
+  left: 20px;
+  background: transparent;
+  border: none;
+  font-size: 1.6em;
+  cursor: pointer;
+  padding: 8px;
+  z-index: 1000;
+}
+
+.toc-toggle-floating i {
+  color: rgba(0, 0, 0, 0.2); /* 半透明三条线 */
+}
+
+.toc-toggle-floating:hover i {
+  color: rgba(0, 123, 255, 0.5);
+}
+
+.toc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.toc-title {
+  font-size: 1.1em;
+  font-weight: bold;
+  color: #333;
+}
+
+.toc-toggle {
+  background: none;
+  border: none;
+  font-size: 1.1em;
+  cursor: pointer;
+  color: #333;
+  padding: 0;
+}
+
+.toc-toggle:hover {
+  color: #007bff;
+}
+
+.toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.toc-list li {
+  margin: 5px 0;
+}
+
+.toc-list a {
+  text-decoration: none;
+  color: #333;
+  transition: color 0.2s;
+  display: block;
+  padding: 2px 0;
+}
+
+.toc-list a:hover {
+  color: #007bff;
+}
+
+.toc-list ul {
+  padding-left: 15px;
+}
+
+.toc-list a.active {
+  color: #007bff;
+  font-weight: bold;
+}
+
+@media (max-width: 768px) {
+  #toc {
+    position: static;
+    width: 100%;
+    max-height: none;
+    margin: 20px 0;
+  }
+
+  .toc-toggle-floating {
+    top: auto;
+    left: 10px;
+    bottom: 20px;
+  }
+}

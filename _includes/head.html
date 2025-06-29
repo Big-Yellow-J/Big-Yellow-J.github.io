@@ -68,20 +68,28 @@
     blog.initDarkMode(localStorage.darkMode)
   </script>
 
-
-
-
   <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "url": "https://big-yellow-j.github.io/",
-      "name": "Big-Yellow-J",
-      "description": "个人技术博客系统记录各类算法原理、实现细节与代码实战，便于总结与复盘",
-      "publisher": {
-        "@type": "Person",
-        "name": "HuangJie"
-      }
-    }
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": "{{ page.url | absolute_url }}"
+    },
+    "headline": "{{ page.title }}",
+    "description": "{{ page.description | default: page.title | strip_html | strip_newlines | truncate: 160 }}",
+    "author": {
+      "@type": "Person",
+      "name": "HuangJie"
+    },
+    "publisher": {
+      "@type": "Person",
+      "name": "HuangJie",
+      "url": "https://www.big-yellow-j.top/pages/about.html"
+    },
+    "datePublished": "{{ page.date | date_to_xmlschema }}",
+    "dateModified": "{% if page.last_modified_at %}{{ page.last_modified_at | date_to_xmlschema }}{% else %}{{ page.date | date_to_xmlschema }}{% endif %}",
+    "inLanguage": "zh-CN"
+  }
   </script>
 </head>

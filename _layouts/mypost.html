@@ -77,28 +77,26 @@
   </div>
   
   <!-- Prism 样式与插件 -->
-  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/themes/prism.css" rel="stylesheet">
+  <!-- <link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/themes/prism.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.css" rel="stylesheet">
-
-  <!-- Prism 核心与语言组件 -->
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/prism.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-javascript.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-python.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-markup.min.js"></script>
-
-  <!-- Prism 插件 -->
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/previewers/prism-previewers.min.js"></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/previewers/prism-previewers.min.js"></script> -->
+  <link href="https://cdn.staticfile.org/prism/1.26.0/themes/prism.min.css" rel="stylesheet">
+  <script src="https://cdn.staticfile.org/prism/1.26.0/prism.min.js"></script>
+  <script src="https://cdn.staticfile.org/prism/1.26.0/components/prism-python.min.js"></script>
+  <script src="https://cdn.staticfile.org/prism/1.26.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdn.staticfile.org/prism/1.26.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+  <link href="https://cdn.staticfile.org/prism/1.26.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet">
   <script>
     document.addEventListener("DOMContentLoaded", function() {
-
-      // 手动高亮（如果页面加载时代码动态插入，也可以用 Prism.highlightAll()）
       Prism.highlightAll();
     });
   </script>
-
-
+  
   <!-- 在文章内容下方添加图片 -->
   {% if page.show_footer_image %}
   <div style="text-align: center; margin-top: 20px;">
@@ -192,373 +190,20 @@
       requiredFields: ['nick', 'mail']
     });
   </script> -->
+<!-- 评论区 -->
 <div id="tcomment"></div>
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    // Dynamically load KaTeX CSS
-    const katexCSS = document.createElement('link');
-    katexCSS.rel = 'stylesheet';
-    katexCSS.href = 'https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css';
-    katexCSS.integrity = 'sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X';
-    katexCSS.crossOrigin = 'anonymous';
-    document.head.appendChild(katexCSS);
-
-    // Dynamically load KaTeX JS
-    const katexJS = document.createElement('script');
-    katexJS.src = 'https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js';
-    katexJS.integrity = 'sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4';
-    katexJS.crossOrigin = 'anonymous';
-    katexJS.defer = true;
-    document.head.appendChild(katexJS);
-
-    // Dynamically load KaTeX auto-render
-    const katexAutoRender = document.createElement('script');
-    katexAutoRender.src = 'https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js';
-    katexAutoRender.integrity = 'sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa';
-    katexAutoRender.crossOrigin = 'anonymous';
-    katexAutoRender.defer = true;
-    document.head.appendChild(katexAutoRender);
-
-    // Dynamically load Twikoo JS
-    const twikooJS = document.createElement('script');
-    twikooJS.src = 'https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/twikoo/1.4.18/twikoo.min.js';
-    document.head.appendChild(twikooJS);
-
-    // Initialize Twikoo after scripts are loaded
-    twikooJS.onload = () => {
-      twikoo.init({
-        envId: 'https://meek-halva-a18f24.netlify.app/.netlify/functions/twikoo',
-        el: '#tcomment',
-        katex: {
-          delimiters: [
-            { left: '$$', right: '$$', display: true },
-            { left: '$', right: '$', display: false },
-            { left: '\\(', right: '\\)', display: false },
-            { left: '\\[', right: '\\]', display: true }
-          ],
-          throwOnError: false
-        },
-        markdown: {
-          enable: true,
-          toc: true,
-          hljs: {
-            enable: true,
-            style: 'github'
-          },
-          mathjax: true,
-          lazyLoad: true
-        },
-        editor: {
-          mode: 'tab',
-          preview: true,
-          height: '200px',
-          placeholder: '✨ 支持Markdown语法：**加粗**、`代码`、[链接]()、> 引用等...'
-        },
-        lang: 'zh-CN',
-        path: window.location.pathname,
-        avatar: 'retro',
-        meta: ['nick', 'mail', 'link'],
-        pageSize: 15,
-        maxLength: 2000,
-        emojiCDN: 'https://cdn.bootcdn.net/ajax/libs/twemoji/14.0.2/svg/',
-        commentCount: true,
-        requiredFields: ['nick', 'mail']
-      });
-    };
-  });
-</script>
-
-</div>
-{% include footer.html -%}
-{% include script.html -%}
-
+<script src="/static/js/comment-twikoo.js"></script>
+<!-- 目录功能 -->
+<script src="/static/js/toc.js"></script>
+<!-- 网页分析器 -->
+<script defer src="https://cloud.umami.is/script.js" data-website-id="b1118f16-642d-4b6b-99b0-fb2b4b34134c"></script>
+<script src="https://analytics.ahrefs.com/analytics.js" data-key="4/nmCEy0+wcsPpIqB0+afg" async></script>
 <!-- Font Awesome 图标（确保引入） -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-<!-- 目录样式 -->
-<style>
-  #toc {
-    position: fixed;
-    top: 100px;
-    left: 20px;
-    width: 180px;
-    max-height: calc(100vh - 120px);
-    overflow-y: auto;
-    background: #f8f8f8;
-    padding: 10px;
-    border-radius: 5px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    font-size: 0.9em;
-    z-index: 10;
-    transition: all 0.3s ease;
-  }
+</div>
 
-  #toc.collapsed {
-    width: auto;
-    padding: 0;
-    background: transparent;
-    box-shadow: none;
-    overflow: visible;
-  }
-
-  #toc.collapsed .toc-header,
-  #toc.collapsed .toc-title,
-  #toc.collapsed .toc-list {
-    display: none;
-  }
-
-  /* 透明浮动汉堡按钮 */
-  .toc-toggle-floating {
-    position: fixed;
-    top: 100px; /* 可自定义位置 */
-    left: 20px;
-    background: transparent;
-    border: none;
-    font-size: 1.6em;
-    cursor: pointer;
-    padding: 8px;
-    z-index: 1000;
-  }
-
-  .toc-toggle-floating i {
-    color: rgba(0, 0, 0, 0.2); /* 半透明三条线 */
-  }
-
-  .toc-toggle-floating:hover i {
-    color: rgba(0, 123, 255, 0.5);
-  }
-
-  .toc-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-  }
-
-  .toc-title {
-    font-size: 1.1em;
-    font-weight: bold;
-    color: #333;
-  }
-
-  .toc-toggle {
-    background: none;
-    border: none;
-    font-size: 1.1em;
-    cursor: pointer;
-    color: #333;
-    padding: 0;
-  }
-
-  .toc-toggle:hover {
-    color: #007bff;
-  }
-
-  .toc-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  .toc-list li {
-    margin: 5px 0;
-  }
-
-  .toc-list a {
-    text-decoration: none;
-    color: #333;
-    transition: color 0.2s;
-    display: block;
-    padding: 2px 0;
-  }
-
-  .toc-list a:hover {
-    color: #007bff;
-  }
-
-  .toc-list ul {
-    padding-left: 15px;
-  }
-
-  .toc-list a.active {
-    color: #007bff;
-    font-weight: bold;
-  }
-
-  @media (max-width: 768px) {
-    #toc {
-      position: static;
-      width: 100%;
-      max-height: none;
-      margin: 20px 0;
-    }
-
-    .toc-toggle-floating {
-      top: auto;
-      left: 10px;
-      bottom: 20px;
-    }
-  }
-</style>
-
-<!-- 目录脚本 -->
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const toc = document.getElementById('toc');
-    if (!toc) return;
-
-    const content = document.querySelector('.post.page-post');
-    if (!content) return;
-
-    const headings = content.querySelectorAll('h2, h3, h4, h5, h6');
-    if (headings.length === 0) {
-      toc.style.display = 'none';
-      return;
-    }
-
-    // 创建目录头部
-    const tocHeader = document.createElement('div');
-    tocHeader.className = 'toc-header';
-
-    const tocTitle = document.createElement('span');
-    tocTitle.className = 'toc-title';
-    tocTitle.textContent = '目录';
-
-    const tocToggle = document.createElement('button');
-    tocToggle.className = 'toc-toggle';
-    tocToggle.innerHTML = '<i class="fas fa-times"></i>';
-
-    tocHeader.appendChild(tocTitle);
-    tocHeader.appendChild(tocToggle);
-    toc.appendChild(tocHeader);
-
-    const tocList = document.createElement('ul');
-    tocList.className = 'toc-list';
-
-    headings.forEach((heading, index) => {
-      if (!heading.id) {
-        heading.id = 'heading-' + index;
-      }
-
-      const listItem = document.createElement('li');
-      const link = document.createElement('a');
-      link.href = '#' + heading.id;
-      link.textContent = heading.textContent || '无标题';
-      link.setAttribute('data-target-id', heading.id);
-      listItem.appendChild(link);
-
-      let level = parseInt(heading.tagName.replace('H', '')) - 2;
-      let currentList = tocList;
-
-      for (let i = 0; i < level; i++) {
-        let lastLi = currentList.lastElementChild;
-        if (!lastLi || !lastLi.querySelector('ul')) {
-          const newUl = document.createElement('ul');
-          newUl.className = 'toc-list';
-          lastLi?.appendChild(newUl);
-          currentList = newUl;
-        } else {
-          currentList = lastLi.querySelector('ul');
-        }
-      }
-      currentList.appendChild(listItem);
-    });
-
-    toc.appendChild(tocList);
-
-    // 透明汉堡按钮
-    const floatingToggle = document.createElement('button');
-    floatingToggle.className = 'toc-toggle-floating';
-    floatingToggle.innerHTML = '<i class="fas fa-bars"></i>';
-    document.body.appendChild(floatingToggle);
-    floatingToggle.style.display = 'none';
-
-    function toggleTOC() {
-      toc.classList.toggle('collapsed');
-      const isCollapsed = toc.classList.contains('collapsed');
-      floatingToggle.style.display = isCollapsed ? 'block' : 'none';
-    }
-
-    tocToggle.addEventListener('click', toggleTOC);
-    floatingToggle.addEventListener('click', toggleTOC);
-
-    // 平滑滚动
-    toc.querySelectorAll('a').forEach(link => {
-      link.addEventListener('click', function (e) {
-        e.preventDefault();
-        const targetId = this.getAttribute('data-target-id');
-        const target = document.getElementById(targetId);
-        if (target) {
-          const headerHeight = document.querySelector('header')?.offsetHeight || 0;
-          window.scrollTo({
-            top: target.offsetTop - headerHeight - 20,
-            behavior: 'smooth'
-          });
-        }
-      });
-    });
-
-    // 高亮当前章节
-    window.addEventListener('scroll', function () {
-      let fromTop = window.scrollY + 100;
-      let activeSet = false;
-      headings.forEach(heading => {
-        if (heading.offsetTop <= fromTop && !activeSet) {
-          toc.querySelectorAll('a').forEach(link => link.classList.remove('active'));
-          const link = toc.querySelector(`a[data-target-id="${heading.id}"]`);
-          if (link) {
-            link.classList.add('active');
-            activeSet = true;
-          }
-        }
-      });
-      if (!activeSet) {
-        toc.querySelectorAll('a').forEach(link => link.classList.remove('active'));
-      }
-    });
-
-    // 避免 footer 遮挡
-    const footer = document.querySelector('footer');
-    const tocHeight = toc.offsetHeight;
-    window.addEventListener('scroll', function () {
-      const footerTop = footer ? footer.getBoundingClientRect().top : Infinity;
-      const windowHeight = window.innerHeight;
-      if (footerTop < windowHeight + tocHeight) {
-        toc.style.top = `${footerTop - tocHeight - 20}px`;
-      } else {
-        toc.style.top = '100px';
-      }
-    });
-  });
-</script>
-
-
-
-<script defer src="https://cloud.umami.is/script.js" data-website-id="b1118f16-642d-4b6b-99b0-fb2b4b34134c"></script>
-<script src="https://analytics.ahrefs.com/analytics.js" data-key="4/nmCEy0+wcsPpIqB0+afg" async></script>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BlogPosting",
-  "mainEntityOfPage": {
-    "@type": "WebPage",
-    "@id": "{{ page.url | absolute_url }}"
-  },
-  "headline": "{{ page.title }}",
-  "description": "{{ page.description | default: page.title | strip_html | strip_newlines | truncate: 160 }}",
-  "author": {
-    "@type": "Person",
-    "name": "HuangJie"
-  },
-  "publisher": {
-    "@type": "Person",
-    "name": "HuangJie",
-    "url": "https://www.big-yellow-j.top/pages/about.html"
-  },
-  "datePublished": "{{ page.date | date_to_xmlschema }}",
-  "dateModified": "{% if page.last_modified_at %}{{ page.last_modified_at | date_to_xmlschema }}{% else %}{{ page.date | date_to_xmlschema }}{% endif %}",
-  "inLanguage": "zh-CN"
-}
-</script>
+{% include footer.html -%}
+{% include script.html -%}
 </body>
 </html>
