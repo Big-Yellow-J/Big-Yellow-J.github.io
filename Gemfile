@@ -7,3 +7,6 @@ gem "webrick",              "~> 1.8"
 gem "jekyll-regex-replace", "~> 1.1"
 gem "jekyll-last-modified-at", "~> 1.3.0" 
 gem "jekyll-paginate"
+gem "jekyll-minifier"
+gem "jekyll-feed"
+

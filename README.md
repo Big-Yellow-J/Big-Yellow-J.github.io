@@ -46,3 +46,11 @@ bundle install
 bundle exec jekyll serve --watch --host=127.0.0.1 --port=8080
 bundle exec jekyll build --destination=dist
 ```
+
+# 安装新的插件
+## 本地化部署
+**首先**修改文件：`./Gemfile` 添加需要安装的插件名称，比如说：`gem "jekyll-minifier"`。**而后**直接运行（停止本地运行而后）：`bundle install`，并且在 `_config.yml`中添加
+```
+plugins:
+  - jekyll-minifier
+```

@@ -4,6 +4,14 @@ plugins:
   - jekyll-regex-replace
   - jekyll-last-modified-at
   - jekyll-paginate
+  - jekyll-minifier
+  - jekyll-feed
+
+jekyll-minifier:
+  remove_comments: true
+  collapse_whitespace: true
+  minify_js: true
+  minify_css: true
 
 paginate: 30
 paginate_path: "/page:num/"
