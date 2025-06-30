@@ -226,12 +226,105 @@ prev_sample = prev_sample + variance
 ```
 
 ### 2、pipeline
-> https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/README.md
+> 所有支持的pipeline：https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/README.md
+
+#### 2.1 StableDiffusionPipeline
 > https://huggingface.co/docs/diffusers/v0.34.0/en/api/pipelines/overview#diffusers.DiffusionPipeline
 
-很多论文里面基本都是直接去微调训练好的模型比如说StableDiffusion等，使用别人训练后的就少不了看到 `pipeline`的影子，直接介绍[`StableDiffusionPipeline`](https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion.py)的构建（文生图pipeline）。
+很多论文里面基本都是直接去微调训练好的模型比如说StableDiffusion等，使用别人训练后的就少不了看到 `pipeline`的影子，直接介绍[`StableDiffusionPipeline`](https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion.py)的构建（**文生图pipeline**）。
 
-![image.png](https://s2.loli.net/2025/06/21/5eTfQwG6tLDpycv.webp)
+```python
+from diffusers import StableDiffusionPipeline
+import torch
 
-参考：
-1、https://github.com/huggingface/diffusers/blob/v0.34.0/src/diffusers/pipelines/pipeline_utils.py#L180
+model_id = "runwayml/stable-diffusion-v1-5"
+pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16)
+
+if torch.cuda.is_available():
+    pipe = pipe.to("cuda")
+
+prompt = "A futuristic city at sunset, cyberpunk style, highly detailed, cinematic lighting"
+image = pipe(prompt, num_inference_steps=50, guidance_scale=7.5).images[0]
+image.save("output.png")
+```
+在[代码](https://github.com/huggingface/diffusers/blob/v0.34.0/src/diffusers/pipelines/pipeline_utils.py#L180)中主要使用到的基础模型如下几个：1、VAE（AutoencoderKL）；2、CLIP（用于文本编码，CLIPTextModel、CLIPTokenizer）；3、Unet（模型骨架，UNet2DConditionModel）
+**Step-1**：对输入文本进行编码（文生图直接输入文本）通过正、负编码对生成图像进行指导：
+```python
+def encode_prompt(..., prompt, do_classifier_free_guidance,...,):
+    # 1、判断文本编码器是否lora微调
+    if lora_scale is not None and isinstance(self, StableDiffusionLoraLoaderMixin):
+        self._lora_scale = lora_scale
+        if not USE_PEFT_BACKEND:
+            adjust_lora_scale_text_encoder(self.text_encoder, lora_scale)
+        else:
+            scale_lora_layers(self.text_encoder, lora_scale)
+    # 2、通过prompt来确定需要生成多少图片
+    ...
+    # 3、对文本进行编码
+    if prompt_embeds is None:
+        ...
+        text_inputs = self.tokenizer(...)
+        text_input_ids = text_inputs.input_ids
+            untruncated_ids = self.tokenizer(prompt, padding="longest", return_tensors="pt").input_ids
+        ...
+        # 会显示一个过长截断警告
+        ...
+        # 选择clip中倒数第几层作为文本编码输出
+        if clip_skip is None:
+            # 默认直接最后一层
+            prompt_embeds = self.text_encoder(text_input_ids.to(device), attention_mask=attention_mask)
+                prompt_embeds = prompt_embeds[0]
+        else:
+            # 倒数层
+            prompt_embeds = self.text_encoder(
+                text_input_ids.to(device), attention_mask=attention_mask, output_hidden_states=True
+            )
+            prompt_embeds = prompt_embeds[-1][-(clip_skip + 1)]
+            prompt_embeds = self.text_encoder.text_model.final_layer_norm(prompt_embeds)
+        # 改变形状得到 batch_size（对应prompt数量）, 77, 748 CLIP: CLIP-ViT-L
+        ...
+        prompt_embeds = prompt_embeds.view(bs_embed * num_images_per_prompt, seq_len, -1) 
+    if do_classifier_free_guidance and negative_prompt_embeds is None:
+        # 此部分和上面正常的编码处理方式相似直接对negative_prompt进行编码
+        ...
+    ...
+    return prompt_embeds, negative_prompt_embeds
+```
+
+**Step-2**：获取推理时间步以及生成latent变量
+**Step-3**：模型处理
+```python
+# 首先通过unet逐步进行解码图像
+with self.progress_bar(total=num_inference_steps) as progress_bar:
+    for i, t in enumerate(timesteps):
+        ...
+        noise_pred = self.unet(...)[0]
+        ...
+        # 通过step来从t反推t-1
+        latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs, return_dict=False)[0]
+        ...
+        # classifier_free_guidance
+if not output_type == "latent":
+    # 图片返回
+    image = self.vae.decode(latents / self.vae.config.scaling_factor, return_dict=False,generator=generator)[0]
+    image, has_nsfw_concept = self.run_safety_checker(image, device, prompt_embeds.dtype)
+else:
+    # 直接返回没被vae处理的结果
+    image = latents
+    has_nsfw_concept = None
+
+if has_nsfw_concept is None:
+    do_denormalize = [True] * image.shape[0]
+else:
+    do_denormalize = [not has_nsfw for has_nsfw in has_nsfw_concept]
+image = self.image_processor.postprocess(image, output_type=output_type, do_denormalize=do_denormalize)
+...
+if not return_dict:
+    return (image, has_nsfw_concept)
+
+return StableDiffusionPipelineOutput(images=image, nsfw_content_detected=has_nsfw_concept)
+```
+
+> **补充-1**：`classifier_free_guidance`
+> 
+
