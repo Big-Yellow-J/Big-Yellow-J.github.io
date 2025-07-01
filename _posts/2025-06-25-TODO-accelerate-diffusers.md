@@ -325,6 +325,32 @@ if not return_dict:
 return StableDiffusionPipelineOutput(images=image, nsfw_content_detected=has_nsfw_concept)
 ```
 
-> **补充-1**：`classifier_free_guidance`
-> 
+> **补充-1**：`classifier_free_guidance`（CFG） 以及 `classifier_guidance`（CG）
+> `classifier_guidance`[^1]：通过一个分类器来引导模型生成的方向，也就是使得模型按类进行生成。数学上描述为[^2]：$\nabla p(x_t\vert y)=\nabla \log p(x_t)+ \nabla \log p(y \vert x_t)$ 也就是说前面部分代表unconditional score后面部分代表分类器的梯度，也就是添加一个分类器梯度来“指导”模型生成方向。
+> `classifier_free_guidance`[^3]：对上面的改进版本，上面过程中会额外训练一个分类器进而增加训练成本。因此对于上面计算公式中：$\nabla \log p(y \vert x_t)= \nabla p(x_t\vert y)- \nabla \log p(x_t)= -\frac{1}{\sqrt{1- \alpha_t}}(\epsilon_\theta(x_t, t, y)- \epsilon_\theta(x_t, t))$ 最后得到梯度过程为： $(w+1)\epsilon_\theta(x_t, t, y)- w\epsilon_\theta(x_t, t)$
 
+回到代码中，代码中具体操作过程为：**1、文本编码过程中**，这部分比较简单直接根据对negative_prompt进行CLIP text encoder处理即可（如果没有输入negative_prompt默认就是直接用空字符进行替代）如果进行CFG那么直接将两部分进行拼接（`torch.cat([negative_prompt_embeds, prompt_embeds])`） `prompt_embeds`；**2、模型解码过程中**，这部分处理过程比较粗暴，如果要进行CFG那么直接将latent扩展为两份（Uncond+Cond各一份）对应的text输出也是两份，通过一个模型处理之后再通过`chunk`分出无条件输出、有条件输出，最后计算两部分组合：$\epsilon(x,t)+ w(\epsilon(x,t,y)- \epsilon(x,t))$
+
+```python
+if self.do_classifier_free_guidance:
+    prompt_embeds = torch.cat([negative_prompt_embeds, prompt_embeds])
+...
+latent_model_input = torch.cat([latents] * 2) if self.do_classifier_free_guidance else latents
+...
+noise_pred = self.unet(latent_model_input, t, prompt_embeds, ...)[0]
+
+if self.do_classifier_free_guidance:
+    noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+    noise_pred = noise_pred_uncond + self.guidance_scale * (noise_pred_text - noise_pred_uncond)
+
+if self.do_classifier_free_guidance and self.guidance_rescale > 0.0:
+    noise_pred = rescale_noise_cfg(noise_pred, noise_pred_text, guidance_rescale=self.guidance_rescale)
+```
+
+#TODO: 对比一下其他开源模型进行的处理方式是什么以SmartEraser/PowerPaint进行对比
+https://zhuanlan.zhihu.com/p/685921518
+
+## 参考
+[^1]: https://arxiv.org/abs/2105.05233
+[^2]: https://zhuanlan.zhihu.com/p/640631667
+[^3]: https://openaccess.thecvf.com/content/WACV2023/papers/Liu_More_Control_for_Free_Image_Synthesis_With_Semantic_Diffusion_Guidance_WACV_2023_paper.pdf
