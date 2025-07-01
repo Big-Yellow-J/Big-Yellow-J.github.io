@@ -34,7 +34,6 @@ description: 图像擦除是图像生成模型重要应用，本文介绍CVPR-20
 > [SmartEraser: Remove Anything from Images using Masked-Region Guidance](https://openaccess.thecvf.com/content/CVPR2025/papers/Jiang_SmartEraser_Remove_Anything_from_Images_using_Masked-Region_Guidance_CVPR_2025_paper.pdf)
 > CVPR-2025
 
-
 ### 1、数据集构建
 
 ![](https://s2.loli.net/2025/06/28/7ojzDsGYEHKc3XC.webp)
@@ -48,6 +47,18 @@ description: 图像擦除是图像生成模型重要应用，本文介绍CVPR-20
 
 ![](https://s2.loli.net/2025/06/28/G8HOtWoB1bhYEqP.webp)
 > ME：将mask变不规则；RG：改变模型输入；VG：将图像编码嵌入到clip文本编码中
+
+| 测试效果 |
+|----------|
+|![55_000000138891.jpg](https://s2.loli.net/2025/07/01/zkB2nCjVIdSwm6W.webp)|
+|![sa_324589.jpg](https://s2.loli.net/2025/07/01/KrQehLwg1yuaEYB.webp)|
+|![sa_326708.jpg](https://s2.loli.net/2025/07/01/fhtiqNJug9Lz4WG.webp)|
+|![sa_324873.jpg](https://s2.loli.net/2025/07/01/V7eBwIMGoK9RAzZ.webp)|
+|![sa_5278781.jpg](https://s2.loli.net/2025/07/01/PWQJ5gi39YthMBf.webp)|
+
+**值得注意的是**，在其合成的数据里面，合成得到结果**很粗糙**（感觉不如随机贴图）
+![image.png](https://s2.loli.net/2025/07/01/QV4FMjNP2BgfhwS.webp)
+![image.png](https://s2.loli.net/2025/07/01/816hmFUBvpQKuJX.webp)
 
 ## OmniEraser
 > https://pris-cv.github.io/Omnieraser/

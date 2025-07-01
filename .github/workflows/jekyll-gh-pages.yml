@@ -26,17 +26,43 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      # 1. 检出代码（获取完整Git历史）
+      - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-      - name: Build with Jekyll
-        uses: actions/jekyll-build-pages@v1
         with:
-          source: ./
-          destination: ./_site
+          fetch-depth: 0  # 必须！获取完整提交历史供last-modified-at使用
+
+      # 2. 设置Ruby环境并安装Gemfile中的所有依赖
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.0'  # 匹配Jekyll 3.9.5的兼容版本
+          bundler-cache: true  # 自动安装Gemfile.lock中的依赖
+
+      # 3. 缓存优化（加速后续构建）
+      - name: Cache Jekyll build
+        uses: actions/cache@v3
+        with:
+          path: |
+            vendor/bundle
+            .jekyll-cache
+          key: ${{ runner.os }}-jekyll-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-jekyll-
+
+      # 4. 构建网站（使用bundle确保加载所有插件）
+      - name: Build with Jekyll
+        run: |
+          bundle exec jekyll build --destination ./_site
+          # 验证插件是否加载（调试用）
+          echo "===== 已加载插件 ====="
+          bundle list | grep jekyll
+
+      # 5. 上传构建产物
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./_site
 
   # Deployment job
   deploy:

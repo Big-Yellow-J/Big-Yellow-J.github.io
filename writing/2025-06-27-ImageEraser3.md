@@ -23,7 +23,7 @@ description: 图像擦除是图像生成模型重要应用，本文介绍CVPR-20
 
 ### 1、模型结构
 
-![image.png](https://s2.loli.net/2025/06/30/2SFfl34tXRDTh9V.png)
+![image.png](https://s2.loli.net/2025/07/01/zixaA9kutdElhcV.webp)
 
 论文主要实现3个子任务：1、Object removal；2、Image harmonization（将两幅图片进行组合）；3、Semantic image composition（通过指定形状去修改目标图像中物品形状）
 **Session-1：object removal**。这部分操纵和[之前介绍](https://www.big-yellow-j.top/posts/2025/06/11/ImageEraser1.html)的的Attentive Eraser、Erase Diffusion模型相似，都是在计算KV时候将mask结果加到进去让模型只关注特定内容。
