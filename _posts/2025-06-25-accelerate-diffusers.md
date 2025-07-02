@@ -6,10 +6,13 @@ extMath: true
 images: true
 address: 武汉🏯
 show_footer_image: true
-tags: [生成模型,diffusion model,python]
+tags:
+- 生成模型
+- diffusion model
+- python
 show: true
 stickie: true
-description: 工欲善其事必先利其器，介绍再多的生成模型没有一个好的工具是不行的，因此本位主要介绍几个在生成模型中常用的python库：diffuser/accelerate的基本使用以及代码操作。
+description: 本文介绍生成模型开发常用Python库，重点讲解Hugging Face的Diffusers和Accelerate基本使用。Accelerate支持分布式训练、梯度累计及混合精度训练；Diffusers涵盖加噪处理、模型预测、逐步解噪，包括Scheduler和Lora配置等核心技术。
 ---
 
 工欲善其事，必先利其器。即便介绍了再多生成模型，没有趁手的工具也难以施展才华。因此，本文将重点介绍几个在生成模型开发中常用的 Python 库，着重讲解 **Diffusers** 和 **Accelerate** 的基本使用。感谢 Hugging Face 为无数算法工程师提供了强大的开源支持！需要注意的是，官方文档对这两个库已有详尽的说明，本文仅作为一篇简明的使用笔记，抛砖引玉，供参考和交流。
@@ -226,13 +229,9 @@ prev_sample = prev_sample + variance
 ```
 
 ### 2、pipeline
-> 所有支持的pipeline：https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/README.md
+> 所有支持的pipeline：[Diffusers Pipelines](https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/README.md)
 
-#### 2.1 StableDiffusionPipeline
-> https://huggingface.co/docs/diffusers/v0.34.0/en/api/pipelines/overview#diffusers.DiffusionPipeline
-
-很多论文里面基本都是直接去微调训练好的模型比如说StableDiffusion等，使用别人训练后的就少不了看到 `pipeline`的影子，直接介绍[`StableDiffusionPipeline`](https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion.py)的构建（**文生图pipeline**）。
-
+一般来说很多论文里面提出的模型，基本都是基于SD（StableDiffusion）等模型进行“微调”的，因此很多改进也都是去争对输入模型的参数进行调整（换言之就是搭积木讲故事），比如说改变输入图片内容、改变SD中条件等。除此之外分析一个`pipeline`直接通过分析里面的`__call__`即可，基本使用：
 ```python
 from diffusers import StableDiffusionPipeline
 import torch
@@ -247,7 +246,11 @@ prompt = "A futuristic city at sunset, cyberpunk style, highly detailed, cinemat
 image = pipe(prompt, num_inference_steps=50, guidance_scale=7.5).images[0]
 image.save("output.png")
 ```
-在[代码](https://github.com/huggingface/diffusers/blob/v0.34.0/src/diffusers/pipelines/pipeline_utils.py#L180)中主要使用到的基础模型如下几个：1、VAE（AutoencoderKL）；2、CLIP（用于文本编码，CLIPTextModel、CLIPTokenizer）；3、Unet（模型骨架，UNet2DConditionModel）
+
+#### 2.1 StableDiffusionPipeline
+> https://huggingface.co/docs/diffusers/v0.34.0/en/api/pipelines/overview#diffusers.DiffusionPipeline
+
+很多论文里面基本都是直接去微调训练好的模型比如说StableDiffusion等，使用别人训练后的就少不了看到 `pipeline`的影子，直接介绍[`StableDiffusionPipeline`](https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion.py)的构建（**文生图pipeline**）。在[代码](https://github.com/huggingface/diffusers/blob/v0.34.0/src/diffusers/pipelines/pipeline_utils.py#L180)中主要使用到的基础模型如下几个：1、VAE（AutoencoderKL）；2、CLIP（用于文本编码，CLIPTextModel、CLIPTokenizer）；3、Unet（模型骨架，UNet2DConditionModel）
 **Step-1**：对输入文本进行编码（文生图直接输入文本）通过正、负编码对生成图像进行指导：
 ```python
 def encode_prompt(..., prompt, do_classifier_free_guidance,...,):
@@ -329,6 +332,7 @@ return StableDiffusionPipelineOutput(images=image, nsfw_content_detected=has_nsf
 > `classifier_guidance`[^1]：通过一个分类器来引导模型生成的方向，也就是使得模型按类进行生成。数学上描述为[^2]：$\nabla p(x_t\vert y)=\nabla \log p(x_t)+ \nabla \log p(y \vert x_t)$ 也就是说前面部分代表unconditional score后面部分代表分类器的梯度，也就是添加一个分类器梯度来“指导”模型生成方向。
 > `classifier_free_guidance`[^3]：对上面的改进版本，上面过程中会额外训练一个分类器进而增加训练成本。因此对于上面计算公式中：$\nabla \log p(y \vert x_t)= \nabla p(x_t\vert y)- \nabla \log p(x_t)= -\frac{1}{\sqrt{1- \alpha_t}}(\epsilon_\theta(x_t, t, y)- \epsilon_\theta(x_t, t))$ 最后得到梯度过程为： $(w+1)\epsilon_\theta(x_t, t, y)- w\epsilon_\theta(x_t, t)$
 
+
 回到代码中，代码中具体操作过程为：**1、文本编码过程中**，这部分比较简单直接根据对negative_prompt进行CLIP text encoder处理即可（如果没有输入negative_prompt默认就是直接用空字符进行替代）如果进行CFG那么直接将两部分进行拼接（`torch.cat([negative_prompt_embeds, prompt_embeds])`） `prompt_embeds`；**2、模型解码过程中**，这部分处理过程比较粗暴，如果要进行CFG那么直接将latent扩展为两份（Uncond+Cond各一份）对应的text输出也是两份，通过一个模型处理之后再通过`chunk`分出无条件输出、有条件输出，最后计算两部分组合：$\epsilon(x,t)+ w(\epsilon(x,t,y)- \epsilon(x,t))$
 
 ```python
@@ -350,7 +354,41 @@ if self.do_classifier_free_guidance and self.guidance_rescale > 0.0:
 #TODO: 对比一下其他开源模型进行的处理方式是什么以SmartEraser/PowerPaint进行对比
 https://zhuanlan.zhihu.com/p/685921518
 
+### 3、Lora微调
+和大语言模型的处理方式相似，通过`peft`去微调模型，简单了解一下`peft`里面微调的处理思路（值得注意的是，使用`peft`来微调只适用于基于`transformer`库来搭建的模型对于自己的模型可能没那么好的适应性）：
+```python
+unet = UNet2DConditionModel.from_pretrained(
+        "stable-diffusion-v1-5/stable-diffusion-inpainting", 
+        subfolder="unet",
+        cache_dir= '/data/huangjie',
+    )
+unet.requires_grad_(False)
+print(unet.down_blocks[0])
+
+unet_lora_config = LoraConfig(
+        r=2,
+        lora_alpha=2,
+        lora_dropout=0.2,
+        init_lora_weights="gaussian",
+        target_modules=["to_k", "to_q", "to_v", "to_out.0", "add_k_proj", "add_v_proj"],
+    )
+unet.add_adapter(unet_lora_config)
+print("after Lora Model:", unet.down_blocks[0])
+```
+
+上面两个过程模型变化为：
+![image.png](https://s2.loli.net/2025/07/02/7KOzpIxEN3bdZQ9.webp)
+
+仔细分析一下`LoraConfig`里面的具体原理，因为很多模型（基于attention）基本就是q、k、v三个，因此通过`target_modules`指定哪些模块的参数是需要通过lora进行调整的模块。`init_lora_weights`代表lora初始化参数分布策略，参数`r`以及 `lora_alpha`代表的含义是：
+$$
+y=Wx+ \text{Dropout}(\text{B}_{out \times r} \text{A}_{r \times in}x)  \times \frac{\text{lora\_alpha}}{r}
+$$
+
+**经典问题**：1、lora里面参数里面之所以初始化为0是因为对于我们的llm/DF模型一般都是“优秀”的，而对于“陌生”的数据通过零初始化确保一切干净，从 0 开始稳步适配（在训练初期引入噪声，可能导致不稳定，尤其在微调少步数、低学习率时，收敛更慢）2、多个lora模型同时作用于一个SD模型，并配置他们的各自权重，并且不同lora参数对模型生成的影响[^4]:
+![image.png](https://s2.loli.net/2025/07/02/oi1umR5jek4LIWp.webp)
+
 ## 参考
 [^1]: https://arxiv.org/abs/2105.05233
 [^2]: https://zhuanlan.zhihu.com/p/640631667
 [^3]: https://openaccess.thecvf.com/content/WACV2023/papers/Liu_More_Control_for_Free_Image_Synthesis_With_Semantic_Diffusion_Guidance_WACV_2023_paper.pdf
+[^4]: https://github.com/cloneofsimo/lora/discussions/37

@@ -48,7 +48,7 @@ description: 图像擦除是图像生成模型重要应用，本文介绍CVPR-20
 ![](https://s2.loli.net/2025/06/28/G8HOtWoB1bhYEqP.webp)
 > ME：将mask变不规则；RG：改变模型输入；VG：将图像编码嵌入到clip文本编码中
 
-| 测试效果 |
+| 微调测试效果 |
 |----------|
 |![55_000000138891.jpg](https://s2.loli.net/2025/07/01/zkB2nCjVIdSwm6W.webp)|
 |![sa_324589.jpg](https://s2.loli.net/2025/07/01/KrQehLwg1yuaEYB.webp)|
@@ -56,7 +56,7 @@ description: 图像擦除是图像生成模型重要应用，本文介绍CVPR-20
 |![sa_324873.jpg](https://s2.loli.net/2025/07/01/V7eBwIMGoK9RAzZ.webp)|
 |![sa_5278781.jpg](https://s2.loli.net/2025/07/01/PWQJ5gi39YthMBf.webp)|
 
-**值得注意的是**，在其合成的数据里面，合成得到结果**很粗糙**（感觉不如随机贴图）
+**值得注意的是**，在其合成的数据里面，合成得到结果**很粗糙**（感觉就像是随机贴图），因此感觉数据可用性不高
 ![image.png](https://s2.loli.net/2025/07/01/QV4FMjNP2BgfhwS.webp)
 ![image.png](https://s2.loli.net/2025/07/01/816hmFUBvpQKuJX.webp)
 

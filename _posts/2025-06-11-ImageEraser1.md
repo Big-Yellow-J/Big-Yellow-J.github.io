@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 图像擦除论文-1：PixelHacker、PowerPanint等
+title: 图像擦除论文-1：PixelHacker、PowerPanint、Attentive Eraser
 categories: 图像消除
 address: 武汉🏯
 extMath: true
@@ -12,7 +12,7 @@ description: 本文介绍PixelHacker、PowerPanint、CATdiffusion、Attentive Er
   Diffusion等框架，通过修改Condition、mask处理等方式优化，并实际测试各模型表现，分析分辨率、细节处理及图像替换、模糊等效果与问题。
 ---
 
-本文主要介绍几篇图像擦除论文模型：PixelHacker、PowerPanint等，并且实际测试模型的表现效果
+本文主要介绍几篇图像擦除论文模型：PixelHacker、PowerPanint、Attentive Eraser，并且实际测试模型的表现效果
 
 ## PixelHacker
 > Code: https://github.com/hustvl/PixelHacker
@@ -105,8 +105,6 @@ $L_t$计算过程：
 * **reference adapter layer (RefAdapter) **
 
 ![](https://s2.loli.net/2025/06/22/61q9QjAmYCZLnHx.webp)
-
-
 
 ## Attentive Eraser
 > [Attentive Eraser: Unleashing Diffusion Model’s Object Removal Potential via Self-Attention Redirection Guidance](https://ojs.aaai.org/index.php/AAAI/article/view/34285)
