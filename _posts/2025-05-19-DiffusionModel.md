@@ -7,7 +7,6 @@ images: true
 address: 武汉🏯
 show_footer_image: true
 tags:
-- cv-backbone
 - 生成模型
 - diffusion model
 show: true
