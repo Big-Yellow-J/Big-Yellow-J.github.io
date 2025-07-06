@@ -26,9 +26,11 @@ description: 本文主要介绍常用基础模型与 ControlNet 等控制权重�
 
 ## 控制类权重
 
-### ControlNet
+### ControlNet[^2]
 
-### T2I-Adapter
+### T2I-Adapter[^3]
 
 ## 参考
 [^1]:https://arxiv.org/pdf/2307.01952
+[^2]:https://arxiv.org/pdf/2302.05543
+[^3]:https://arxiv.org/pdf/2302.08453
