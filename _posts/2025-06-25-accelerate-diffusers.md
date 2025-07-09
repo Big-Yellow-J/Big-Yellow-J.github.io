@@ -1,7 +1,7 @@
 ---
 layout: mypost
 title: 深入浅出了解生成模型-5：diffuser/accelerate库学习
-categories: python
+categories: 生成模型
 extMath: true
 images: true
 address: 武汉🏯
