@@ -86,10 +86,114 @@ ControlNet的处理思路就很简单，再左图中模型的处理过程就是�
 ![image.png](https://s2.loli.net/2025/07/09/gZLDtFSGr25kCwa.webp)
 
 T2I的处理思路也比较简单（T2I-Adap 4 ter Details里面其实就写的很明白了），对于输入的条件图片（比如说边缘图像）:512x512，首先通过 pixel unshuffle进行下采样将图像分辨率改为：64x64而后通过一层卷积+两层残差连接，输出得到特征 $F_c$之后将其与对应的encoder结构进行相加：$F_{enc}+ F_c$，当然T2I也支持多个条件（直接通过加权组合就行）
-### 实际代码操作
+
+
+### ControlNet的代码操作
 > Code: [https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_controlnet](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_controlnet)
 
-Big-Yellow-J.github.io/code/Python/DFModelCode/training_controlnet
+**首先**，简单了解一个ControlNet数据集格式，一般来说（）数据主要是三部分组成：1、image（可以理解为生成的图像）；2、condiction_image（可以理解为输入ControlNet里面的条件 $c$）；3、text。比如说以[raulc0399/open_pose_controlnet](https://huggingface.co/datasets/raulc0399/open_pose_controlnet)为例
+![](https://s2.loli.net/2025/07/10/ywau8kjIlE1L7er.png)
+
+**模型加载**，一般来说扩散模型就只需要加载如下几个：`DDPMScheduler`、`AutoencoderKL`（vae模型）、`UNet2DConditionModel`（不一定加载条件Unet模型），除此之外在ControlNet中还需要加载一个`ControlNetModel`。对于`ControlNetModel`中代码大致结构为，代码中通过`self.controlnet_down_blocks`来存储ControlNet的下采样模块（**初始化为0的卷积层**）。`self.down_blocks`用来存储ControlNet中复制的Unet的下采样层。在`forward`中对于输入的样本（`sample`）首先通过 `self.down_blocks`逐层处理叠加到 `down_block_res_samples`中，而后就是直接将得到结果再去通过 `self.controlnet_down_blocks`每层进行处理，最后返回下采样的每层结果以及中间层处理结果：`down_block_res_samples`，`mid_block_res_sample`
+
+```python
+class ControlNetModel(ModelMixin, ConfigMixin, FromOriginalModelMixin):
+    @register_to_config
+    def __init__(...):
+        ...
+        self.down_blocks = nn.ModuleList([])
+        self.controlnet_down_blocks = nn.ModuleList([])
+        # 封装下采样过程（对应上面模型右侧结构）
+        controlnet_block = nn.Conv2d(output_channel, output_channel, kernel_size=1)
+        controlnet_block = zero_module(controlnet_block)
+        self.controlnet_down_blocks.append(controlnet_block)
+        for i, down_block_type in enumerate(down_block_types):
+            # down_block_types就是Unet里面下采样的每一个模块比如说：CrossAttnDownBlock2D
+            ...
+            down_block = get_down_block(down_block_type) # 通过 get_down_block 获取uet下采样的模块
+            self.down_blocks.append(down_block)
+            for _ in range(layers_per_block):
+                controlnet_block = nn.Conv2d(output_channel, output_channel, kernel_size=1)
+                controlnet_block = zero_module(controlnet_block)
+                self.controlnet_down_blocks.append(controlnet_block)
+    @classmethod
+    def from_unet(cls, unet,...):
+        ...
+        # 通过cls实例化的类本身ControlNetModel
+        controlnet = cls(...)
+        if load_weights_from_unet:
+            # 将各类权重加载到 controlnet 中
+            controlnet.conv_in.load_state_dict(unet.conv_in.state_dict())
+            controlnet.time_proj.load_state_dict(unet.time_proj.state_dict())
+            ...
+
+        return controlnet
+    def forward(...):
+        ...
+        # 时间编码
+        t_emb = self.time_proj(timesteps)
+        emb = self.time_embedding(t_emb, timestep_cond)
+        if self.class_embedding is not None:
+            ...
+            class_emb = self.class_embedding(class_labels).to(dtype=self.dtype)
+            emb = emb + class_emb
+        # 对条件进行编码
+        if self.config.addition_embed_type is not None:
+            if self.config.addition_embed_type == "text":
+                aug_emb = self.add_embedding(encoder_hidden_states)
+            elif self.config.addition_embed_type == "text_time":
+                time_ids = added_cond_kwargs.get("time_ids")
+                time_embeds = self.add_time_proj(time_ids.flatten())
+                time_embeds = time_embeds.reshape((text_embeds.shape[0], -1))
+
+                add_embeds = torch.concat([text_embeds, time_embeds], dim=-1)
+                add_embeds = add_embeds.to(emb.dtype)
+                aug_emb = self.add_embedding(add_embeds)
+        emb = emb + aug_emb if aug_emb is not None else emb       
+
+        sample = self.conv_in(sample)
+        controlnet_cond = self.controlnet_cond_embedding(controlnet_cond)
+        sample = sample + controlnet_cond
+
+        # 下采样处理
+        down_block_res_samples = (sample,)
+        for downsample_block in self.down_blocks:
+            if ...
+                ...
+            else:
+                sample, res_samples = downsample_block(hidden_states=sample, temb=emb)
+            down_block_res_samples += res_samples
+        # 中间层处理
+        ...
+        # 将输出后的内容去和0卷积进行叠加
+        controlnet_down_block_res_samples = ()
+        for down_block_res_sample, controlnet_block in zip(down_block_res_samples, self.controlnet_down_blocks):
+            down_block_res_sample = controlnet_block(down_block_res_sample)
+            controlnet_down_block_res_samples = controlnet_down_block_res_samples + (down_block_res_sample,)
+        ...
+        if not return_dict:
+            return (down_block_res_samples, mid_block_res_sample)
+        ...
+```
+
+**模型训练**，训练过程和DF训练差异不大。将图像通过VAE处理、产生噪声、时间步、将噪声添加到（VAE处理之后的）图像中，而后通过 `controlnet`得到每层下采样的结果以及中间层结果：`down_block_res_samples, mid_block_res_sample = controlnet(...)`而后将这两部分结果再去通过unet处理
+```python
+model_pred = unet(
+    noisy_latents,
+    timesteps,
+    encoder_hidden_states=encoder_hidden_states,
+    down_block_additional_residuals=[
+        sample.to(dtype=weight_dtype) for sample in down_block_res_samples
+    ],
+    mid_block_additional_residual=mid_block_res_sample.to(dtype=weight_dtype),
+    return_dict=False,
+)[0]
+```
+
+后续就是计算loss等处理
+
+**模型验证**，直接就是使用`StableDiffusionControlNetPipeline`来处理了
+
 ## 参考
 [^1]:https://arxiv.org/pdf/2307.01952
 [^2]:https://arxiv.org/pdf/2302.05543
