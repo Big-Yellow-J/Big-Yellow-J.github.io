@@ -87,7 +87,9 @@ ControlNet的处理思路就很简单，再左图中模型的处理过程就是�
 
 T2I的处理思路也比较简单（T2I-Adap 4 ter Details里面其实就写的很明白了），对于输入的条件图片（比如说边缘图像）:512x512，首先通过 pixel unshuffle进行下采样将图像分辨率改为：64x64而后通过一层卷积+两层残差连接，输出得到特征 $F_c$之后将其与对应的encoder结构进行相加：$F_{enc}+ F_c$，当然T2I也支持多个条件（直接通过加权组合就行）
 ### 实际代码操作
+> Code: [https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_controlnet](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_controlnet)
 
+Big-Yellow-J.github.io/code/Python/DFModelCode/training_controlnet
 ## 参考
 [^1]:https://arxiv.org/pdf/2307.01952
 [^2]:https://arxiv.org/pdf/2302.05543
