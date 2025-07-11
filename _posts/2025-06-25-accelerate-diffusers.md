@@ -387,6 +387,9 @@ $$
 **经典问题**：1、lora里面参数里面之所以初始化为0是因为对于我们的llm/DF模型一般都是“优秀”的，而对于“陌生”的数据通过零初始化确保一切干净，从 0 开始稳步适配（在训练初期引入噪声，可能导致不稳定，尤其在微调少步数、低学习率时，收敛更慢）2、多个lora模型同时作用于一个SD模型，并配置他们的各自权重，并且不同lora参数对模型生成的影响[^4]:
 ![image.png](https://s2.loli.net/2025/07/02/oi1umR5jek4LIWp.webp)
 
+### 4、Adapters使用
+lora也是Adapters（可以简单理解为对训练好的模型再去添加一个插件，通过这个插件让SD去生成其他的样式的图片）一种，具体见：[深入浅出了解生成模型-6：常用基础模型与 Adapters等解析](https://www.big-yellow-j.top/posts/2025/07/06/DFBaseModel.html)
+
 ## 参考
 [^1]: https://arxiv.org/abs/2105.05233
 [^2]: https://zhuanlan.zhihu.com/p/640631667

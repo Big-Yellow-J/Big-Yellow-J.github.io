@@ -14,7 +14,7 @@ tags:
 - SD
 - SDVL
 show: true
-description: 本文重点对比Stable Diffusion SD 1.5与SDXL基座模型，分析CLIP编码器差异（SDXL采用OpenCLIP-ViT/G与CLIP-ViT/L拼接，文本理解能力更强）、图像输出维度（SDXL默认1024x1024并使用refiner模型）及SDXL分辨率与裁剪优化策略；同时介绍Adapters中的ControlNet（通过zero-convolution指导输出）和T2I-Adapter（特征相加控制生成）。
+description: 对比Stable Diffusion SD 1.5与SDXL模型差异，SDXL采用双CLIP编码器（OpenCLIP-ViT/G+CLIP-ViT/L）提升文本理解，默认1024x1024分辨率并优化处理；介绍ControlNet（空间结构控制）、T2I-Adapter、DreamBooth（解决语言偏离）等Adapters，实现风格迁移与高效生成。
 ---
 
 ## Stable Diffusion系列
@@ -59,7 +59,7 @@ def _get_add_time_ids(
 ## Adapters
 > https://huggingface.co/docs/diffusers/tutorials/using_peft_for_inference
 
-此类方法是在完备的 DF 权重基础上，额外添加一个“插件”，保持原有权重不变。我只需修改这个插件，就可以让模型生成不同风格的图像。下面介绍的 ControlNet 和 T2I-Adapter，可以理解为在原始模型之外新增一个“生成条件”，通过修改这一条件即可灵活控制模型生成各种风格或满足不同需求的图像。
+此类方法是在完备的 DF 权重基础上，额外添加一个“插件”，保持原有权重不变。我只需修改这个插件，就可以让模型生成不同风格的图像。可以理解为在原始模型之外新增一个“生成条件”，通过修改这一条件即可灵活控制模型生成各种风格或满足不同需求的图像。
 
 ### ControlNet[^2]
 > https://github.com/lllyasviel/ControlNet
@@ -87,12 +87,43 @@ ControlNet的处理思路就很简单，再左图中模型的处理过程就是�
 
 T2I的处理思路也比较简单（T2I-Adap 4 ter Details里面其实就写的很明白了），对于输入的条件图片（比如说边缘图像）:512x512，首先通过 pixel unshuffle进行下采样将图像分辨率改为：64x64而后通过一层卷积+两层残差连接，输出得到特征 $F_c$之后将其与对应的encoder结构进行相加：$F_{enc}+ F_c$，当然T2I也支持多个条件（直接通过加权组合就行）
 
+### DreamBooth[^4]
+> https://huggingface.co/docs/diffusers/v0.34.0/using-diffusers/dreambooth
+
+论文里面主要出发点就是：1、解决**language drif**（语言偏离问题）：指的是模型通过后训练（微调等处理之后）模型丧失了对某些语义特征的感知，就比如说扩散模型里面，模型通过不断微调可能就不知道“狗”是什么从而导致模型生成错误。2、高效的生成需要的对象，不会产生：生成错误、细节丢失问题，比如说下面图像中的问题：
+![](https://s2.loli.net/2025/07/12/mRaHPOtC23li9Fn.webp)
+
+为了实现图像的“高效迁移”，作者直接将图像（比如说我们需要风格化的图片）作为一个特殊的标记，也就是论文里面提到的 `a [identifier] [class noun]`（其中class noun为类别比如所狗，identifier就是一个特殊的标记），在prompt中加入类别，通过利用预训练模型中关于该类别物品的先验知识，并将先验知识与特殊标记符相关信息进行融合，这样就可以在不同场景下生成不同姿势的目标物体。就比如下面的 `fine-tuning`过程通过几张图片让模型学习到 *特殊的狗*，然后再推理阶段模型可以利用这个 *特殊的狗*去生成新的动作。
+
+![](https://s2.loli.net/2025/07/12/hYM1VdykDxALrGo.webp)
+
+再论文里面作者设计如下的Class-specific Prior Preservation Loss（参考stackexchange）[^5]：
+
+$$\begin{aligned}
+ & \mathbb{E}_{x,c,\epsilon,t}\left[\|\epsilon-\varepsilon_{\theta}(z_{t},t,c)\|_{2}^{2}+\lambda\|\epsilon^{\prime}-\epsilon_{pr}(z_{t^{\prime}}^{\prime},t^{\prime},c_{pr})\|_{2}^{2}\right]
+\end{aligned}$$
+
+上面损失函数中后面一部分就是我们的先验损失，比如说$c+{pr}$就是对 "a dog"进行编码然后计算生成损失。在代码中：
+
+```python
+if args.with_prior_preservation:
+    model_pred, model_pred_prior = torch.chunk(model_pred, 2, dim=0)
+    target, target_prior = torch.chunk(target, 2, dim=0)
+    # Compute instance loss
+    loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
+    # Compute prior loss
+    prior_loss = F.mse_loss(model_pred_prior.float(), target_prior.float(), reduction="mean")
+    # Add the prior loss to the instance loss.
+    loss = loss + args.prior_loss_weight * prior_loss
+else:
+    loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
+```
 
 ### ControlNet的代码操作
 > Code: [https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_controlnet](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_controlnet)
 
 **首先**，简单了解一个ControlNet数据集格式，一般来说（）数据主要是三部分组成：1、image（可以理解为生成的图像）；2、condiction_image（可以理解为输入ControlNet里面的条件 $c$）；3、text。比如说以[raulc0399/open_pose_controlnet](https://huggingface.co/datasets/raulc0399/open_pose_controlnet)为例
-![](https://s2.loli.net/2025/07/10/ywau8kjIlE1L7er.png)
+![](https://s2.loli.net/2025/07/12/nphNm3OIebFGazr.webp)
 
 **模型加载**，一般来说扩散模型就只需要加载如下几个：`DDPMScheduler`、`AutoencoderKL`（vae模型）、`UNet2DConditionModel`（不一定加载条件Unet模型），除此之外在ControlNet中还需要加载一个`ControlNetModel`。对于`ControlNetModel`中代码大致结构为，代码中通过`self.controlnet_down_blocks`来存储ControlNet的下采样模块（**初始化为0的卷积层**）。`self.down_blocks`用来存储ControlNet中复制的Unet的下采样层。在`forward`中对于输入的样本（`sample`）首先通过 `self.down_blocks`逐层处理叠加到 `down_block_res_samples`中，而后就是直接将得到结果再去通过 `self.controlnet_down_blocks`每层进行处理，最后返回下采样的每层结果以及中间层处理结果：`down_block_res_samples`，`mid_block_res_sample`
 
@@ -194,7 +225,12 @@ model_pred = unet(
 
 **模型验证**，直接就是使用`StableDiffusionControlNetPipeline`来处理了
 
+## 总结
+对于不同的扩散（基座）模型（SD1.5、SDXL）等大部分都是采用Unet结构，当然也有采用Dit的，这两个模型之间的差异主要在于后者会多一个clip编码器再文本语义上比前者更加有优势。对于adapter而言，可以直接理解为再SD的基础上去使用“风格插件”，这个插件不去对SD模型进行训练（从而实现对参数的减小），对于ControNet就是直接对Unet的下采样所有的模块（前后）都加一个zero-conv而后将结果再去嵌入到下采用中，而T2I-Adapter则是去对条件进行编码而后嵌入到SD模型（上采用模块）中。对于deramboth就是直接通过设计的Class-specific Prior Preservation Loss来实现生成特例的风格化迁移
+
 ## 参考
-[^1]:https://arxiv.org/pdf/2307.01952
-[^2]:https://arxiv.org/pdf/2302.05543
-[^3]:https://arxiv.org/pdf/2302.08453
+[^1]:[https://arxiv.org/pdf/2307.01952](https://arxiv.org/pdf/2307.01952)
+[^2]:[https://arxiv.org/pdf/2302.05543](https://arxiv.org/pdf/2302.05543)
+[^3]:[https://arxiv.org/pdf/2302.08453](https://arxiv.org/pdf/2302.08453)
+[^4]:[https://arxiv.org/pdf/2208.12242](https://arxiv.org/pdf/2208.12242)
+[^5]:https://stats.stackexchange.com/questions/601782/how-to-rewrite-dreambooth-loss-in-terms-of-epsilon-prediction

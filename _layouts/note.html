@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page.title | default: site.title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .note-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .note-block {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            transition: transform 0.2s ease-in-out;
+        }
+        .note-block:hover {
+            transform: translateY(-5px);
+        }
+        .note-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1a202c;
+        }
+        .note-meta {
+            color: #718096;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+        .note-content {
+            color: #2d3748;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="note-container">
+        <div class="note-block">
+            <h1 class="note-title">{{ page.title }}</h1>
+            {% if page.date %}
+            <div class="note-meta">
+                Posted on {{ page.date | date: "%B %d, %Y" }}
+            </div>
+            {% endif %}
+            <div class="note-content">
+                {{ content }}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
