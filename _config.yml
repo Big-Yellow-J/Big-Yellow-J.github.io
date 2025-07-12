@@ -60,6 +60,7 @@ include:
   - code
   - index_now.txt
   - preview_writing.html
+  - life.html
 exclude: ['CNAME', 'README.md', 'LICENSE', '_site', 'dist', 'Gemfile', 'Gemfile.lock', 'blog.sh']
 
 # 域名配置
@@ -82,9 +83,9 @@ menu:
   - title: 😁关于
     url: /pages/about.html
   - title: 🦄生活
-    url: /pages/life/
-  # - title: 📃CV
-  #   url: /pages/cv.html
+    url: /pages/life.html
+  - title: 📃CV
+    url: /pages/cv.html
   # - title: Writing
   #   url: /pages/writing.html
 

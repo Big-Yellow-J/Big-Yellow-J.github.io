@@ -65,5 +65,5 @@ class ControlnetSD15:
     resume_from_checkpoint = None
 
     checkpointing_steps= 500
-    checkpoints_total_limit = None
+    checkpoints_total_limit = None # 只保存多少checkpoint
     validation_steps = 100

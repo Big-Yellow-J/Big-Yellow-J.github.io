@@ -99,15 +99,18 @@
   </script>
   
   <!-- 在文章内容下方添加图片 -->
-  {% if page.show_footer_image %}
-  <div style="text-align: center; margin-top: 20px;">
-    <img 
-      src="https://s2.loli.net/2025/04/29/ntFU5SIfNCeK2Hy.png"
-      alt="Footer Image" 
-      style="max-width: 70%; height: auto;"
-    >
-  </div>
-  {% endif %}
+  {% unless page.categories contains "life" %}
+    {% if page.show_footer_image %}
+      <div style="text-align: center; margin-top: 20px;">
+        <img 
+          src="https://s2.loli.net/2025/04/29/ntFU5SIfNCeK2Hy.png"
+          alt="Footer Image" 
+          style="max-width: 70%; height: auto;"
+        >
+      </div>
+      {% endif %}
+  {% endunless %}
+  
 
   <!-- 添加分享按钮 -->
   <link href="https://lf9-cdn-tos.bytecdntp.com/cdn/expire-1-M/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -149,25 +152,27 @@
   </div>
 
   <div class="navigation-buttons">
-    {% if page.previous.url %}
-      <a href="{{ page.previous.url | relative_url }}" class="nav-button previous" title="{{ page.previous.title }}">
-        <i class="fas fa-arrow-left"></i> {{ page.previous.title }}
-      </a>
-    {% else %}
-      <span class="nav-button previous disabled">
-        <i class="fas fa-arrow-left"></i> 没有上一篇文章
-      </span>
-    {% endif %}
-  
-    {% if page.next.url %}
-      <a href="{{ page.next.url | relative_url }}" class="nav-button next" title="{{ page.next.title }}">
-        {{ page.next.title }} <i class="fas fa-arrow-right"></i>
-      </a>
-    {% else %}
-      <span class="nav-button next disabled">
-        没有下一篇文章 <i class="fas fa-arrow-right"></i>
-      </span>
-    {% endif %}
+    {% unless page.categories contains "life" %}
+      {% if page.previous.url %}
+        <a href="{{ page.previous.url | relative_url }}" class="nav-button previous" title="{{ page.previous.title }}">
+          <i class="fas fa-arrow-left"></i> {{ page.previous.title }}
+        </a>
+      {% else %}
+        <span class="nav-button previous disabled">
+          <i class="fas fa-arrow-left"></i> 没有上一篇文章
+        </span>
+      {% endif %}
+    
+      {% if page.next.url %}
+        <a href="{{ page.next.url | relative_url }}" class="nav-button next" title="{{ page.next.title }}">
+          {{ page.next.title }} <i class="fas fa-arrow-right"></i>
+        </a>
+      {% else %}
+        <span class="nav-button next disabled">
+          没有下一篇文章 <i class="fas fa-arrow-right"></i>
+        </span>
+      {% endif %}
+    {% endunless %}
   </div>
 
   <!-- <div id="vcomments"></div> -->
