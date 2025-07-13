@@ -162,6 +162,7 @@ $$
 > 通过上面分析，知道对于 $x_T=\sqrt{\bar{\alpha_T}}x_0+ \sqrt{1-\bar{\alpha_T}}\epsilon$通过这个方式添加噪声，但是实际因为时间是一个标量，就像是最开始的位置编码一样，对于这些内容都会通过“类似位置编码”操作一样将其**进行embedding处理然后在模型里面**一般输入的参数也就是这三部分：`noise_image`, `time_step`, `class_label`
 
 #### Dit模型
+> 更加详细原理描述: [深入浅出了解生成模型-6：常用基础模型与 Adapters等解析](https://www.big-yellow-j.top/posts/2025/07/06/DFBaseModel.html)
 
 将Transformer使用到Diffusion Model中，而Dit[^2]在论文中进行的操作：通过一个autoencoder来将图像压缩为低维度的latent，扩散模型用来生成latent，然后再采用autoencoder来重建出图像，比如说在Dit中使用KL-f8对于输入图像维度为：256x256x3那么压缩得到的latent为32x32x4。Dit的模型结构为：
 ![image.png](https://s2.loli.net/2025/06/21/d2MSPBkTt9aIlZi.webp)

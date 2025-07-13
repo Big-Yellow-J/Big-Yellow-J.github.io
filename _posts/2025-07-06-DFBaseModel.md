@@ -18,7 +18,7 @@ description: 对比Stable Diffusion SD 1.5与SDXL模型差异，SDXL采用双CLI
 ---
 
 ## 基座扩散模型
-主要介绍SD以及SDXL两类模型，但是SD迭代版本挺多的（从1.2到3.5）因此本文主要重点介绍SD 1.5以及SDXL两个基座模型，以及两者之间的对比差异，除此之外还有许多闭源的扩散模型比如说Imagen、DALE等。
+主要介绍基于Unet以及基于Dit框架的基座扩散模型，其中SD迭代版本挺多的（从1.2到3.5）因此本文主要重点介绍SD 1.5以及SDXL两个基座模型，以及两者之间的对比差异，除此之外还有许多闭源的扩散模型比如说Imagen、DALE等。对于Dit基座模型主要介绍：Hunyuan-DiT、FLUX.1等。对于各类模型评分网站（模型评分仁者见仁智者见智，特别是此类生成模型视觉图像生成是一个很主观的过程，同一张图片不同人视觉感官都是不同的）：[https://lmarena.ai/leaderboard](https://lmarena.ai/leaderboard)
 
 ### SDv1.5 vs SDXL[^1]
 > **SDv1.5**: https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5
@@ -57,7 +57,7 @@ def _get_add_time_ids(
 > **推荐阅读**：
 > 1、[SDv1.5-SDXL-SD3生成效果对比](https://www.magicflow.ai/showcase/sd3-sdxl-sd1.5)
 
-### Imagen系列
+### Imagen
 > https://imagen.research.google/
 > https://deepmind.google/models/imagen/
 > 非官方实现：https://github.com/lucidrains/imagen-pytorch
@@ -69,9 +69,40 @@ Imagen[^6]论文中主要提出：1、纯文本语料库上预训练的通用大
 2、通过提高classifier-free guidance weight（$\epsilon(z,c)=w\epsilon(z,c)+ (1-w)\epsilon(z)$ 也就是其中的参数 $w$）可以提高image-text之间的对齐，但会损害图像逼真度，产生高度饱和不自然的图像（论文里面给出的分析是：每个时间步中预测和正式的x都会限定在 $[-1,1]$这个范围但是较大的 $w$可能导致超出这个范围），论文里面做法就是提出 **动态调整方法**：在每个采样步骤中，我们将s设置为 $x_0^t$中的某个百分位绝对像素值，如果s>1，则我们将 $x_0^t$阈值设置为范围 $[-s,s]$，然后除以s。
 ![](https://s2.loli.net/2025/07/12/jAEBS7I1Ob6DPal.webp)
 
-3、和上面SD模型差异比较大的一点就是，在imagen中直接使用多阶段生成策略，模型先生成64x64图像再去通过超分辨率扩散模型去生成256x256以及1024x1024的图像，在此过程中作者提到使用noise conditioning augmentation（NCA）策略（对输入的文本编码后再去添加随机噪声）
+3、和上面SD模型差异比较大的一点就是，在imagen中直接使用多阶段生成策略，模型先生成64x64图像再去通过超分辨率扩散模型去生成256x256以及1024x1024的图像，在此过程中作者提到使用noise conditioning augmentation（NCA）策略（**对输入的文本编码后再去添加随机噪声**）
 ![](https://s2.loli.net/2025/07/12/HJm96oPr2AlXICs.webp)
 
+### Dit
+> https://github.com/facebookresearch/DiT
+
+![](https://s2.loli.net/2025/07/13/mrEVOwgh6n1xUlF.png)
+
+Dit[^11]模型结构上，1、**模型输入**，将输入的image/latent切分为不同patch而后去对不同编码后的patch上去添加位置编码（直接使用的sin-cos位置编码），2、**时间步以及条件编码**，对于时间步t以及条件c的编码而后将两部分编码后的内容进行相加，在`TimestepEmbedder`上处理方式是：直接通过**正弦时间步嵌入**方式而后将编码后的内容通过两层liner处理；在`LabelEmbedder`处理方式上就比较简单直接通过`nn.Embedding`进行编码处理。3、使用Adaptive layer norm（adaLN）block以及adaZero-Block（对有些参数初始化为0，就和lora中一样初始化AB为0，为了保证后续模型训练过程中的稳定）
+> 在[layernorm](https://docs.pytorch.org/docs/stable/generated/torch.nn.LayerNorm.html)中一般归一化处理方式为：$\text{Norm}(x)=\gamma \frac{x-\mu}{\sqrt{\sigma^2+ \epsilon}}+\beta$ 其中有两个参数 $\gamma$ 和 $\beta$ 是固定的可学习参数（比如说直接通过 `nn.Parameter` 进行创建），在模型初始化时创建，并在训练过程中通过梯度下降优化。但是在 adaLN中则是直接通过 $\text{Norm}(x)=\gamma(c) \frac{x-\mu}{\sqrt{\sigma^2+ \epsilon}}+\beta(c)$ 通过输入的条件c进行学习的，
+
+### Hunyuan-DiT
+> https://huggingface.co/Tencent-Hunyuan/HunyuanDiT
+
+腾讯的Hunyuan-DiT[^8]模型整体结构
+
+![](https://s2.loli.net/2025/07/13/5aWuMJO63tkFw14.png)
+
+整体框架不是很复杂，1、文本编码上直接通过结合两个编码器：CLIP、T5；2、VAE则是直接使用的SD1.5的；3、引入2维的旋转位置编码；4、在Dit结构上（图片VAE压缩而后去切分成不同patch），使用的是堆叠的注意力模块（在SD1.5中也是这种结构）self-attention+cross-attention（此部分输入文本）。论文里面做了改进措施：1、借鉴之前处理，计算attention之前首先进行norm处理（也就是将norm拿到attention前面）。
+
+简短了解一下模型是如何做数据的：
+![](https://s2.loli.net/2025/07/13/gmJZ5cDlQ1Pkz8I.png)
+
+
+### PixArt
+> https://pixart-alpha.github.io/
+
+华为诺亚方舟实验室提出的 $\text{PixArt}-\alpha$模型整体框架如下：
+![](https://s2.loli.net/2025/07/13/9gQ2X5V3GnOusTh.png)
+
+相比较Dit模型论文里面主要进行的改进如下：
+1、**Cross-Attention layer**，在DiT block中加入了一个多头交叉注意力层，它位于自注意力层（上图中的Multi-Head Self
+-Attention）和前馈层（Pointwise Feedforward）之间，使模型能够灵活地引入文本嵌入条件。此外，为了利用预训练权重，将交叉注意力层中的输出投影层初始化为零，作为恒等映射，保留了输入以供后续层使用。
+2、AdaLN-single，在Dit中的adaptive normalization layers（adaLN）中部分参数（27%）没有起作用（在文生图任务中）将其替换为adaLN-single
 
 ## Adapters
 > https://huggingface.co/docs/diffusers/tutorials/using_peft_for_inference
@@ -245,7 +276,7 @@ else:
 ```
 
 ## 总结
-对于不同的扩散（基座）模型（SD1.5、SDXL）等大部分都是采用Unet结构，当然也有采用Dit的，这两个模型之间的差异主要在于后者会多一个clip编码器再文本语义上比前者更加有优势。对于adapter而言，可以直接理解为再SD的基础上去使用“风格插件”，这个插件不去对SD模型进行训练（从而实现对参数的减小），对于ControNet就是直接对Unet的下采样所有的模块（前后）都加一个zero-conv而后将结果再去嵌入到下采用中，而T2I-Adapter则是去对条件进行编码而后嵌入到SD模型（上采用模块）中。对于deramboth就是直接通过设计的Class-specific Prior Preservation Loss来实现生成特例的风格化迁移
+对于不同的扩散（基座）模型（SD1.5、SDXL、Imagen）等大部分都是采用Unet结构，当然也有采用Dit的，这两个模型（SD1.5、SDXL）之间的差异主要在于后者会多一个clip编码器再文本语义上比前者更加有优势。对于adapter而言，可以直接理解为再SD的基础上去使用“风格插件”，这个插件不去对SD模型进行训练（从而实现对参数的减小），对于ControNet就是直接对Unet的下采样所有的模块（前后）都加一个zero-conv而后将结果再去嵌入到下采用中，而T2I-Adapter则是去对条件进行编码而后嵌入到SD模型（上采用模块）中。对于deramboth就是直接通过设计的Class-specific Prior Preservation Loss来实现生成特例的风格化迁移
 
 ## 参考
 [^1]:[https://arxiv.org/pdf/2307.01952](https://arxiv.org/pdf/2307.01952)
@@ -253,4 +284,8 @@ else:
 [^3]:[https://arxiv.org/pdf/2302.08453](https://arxiv.org/pdf/2302.08453)
 [^4]:[https://arxiv.org/pdf/2208.12242](https://arxiv.org/pdf/2208.12242)
 [^5]:https://stats.stackexchange.com/questions/601782/how-to-rewrite-dreambooth-loss-in-terms-of-epsilon-prediction
-[^6]: [https://arxiv.org/pdf/2205.11487](https://arxiv.org/pdf/2205.11487)
+[^6]:[https://arxiv.org/pdf/2205.11487](https://arxiv.org/pdf/2205.11487)
+[^8]:[https://arxiv.org/pdf/2405.08748](https://arxiv.org/pdf/2405.08748)
+[^9]:[https://arxiv.org/pdf/2506.15742](https://arxiv.org/pdf/2506.15742)
+[^10]:[https://arxiv.org/pdf/2310.00426](https://arxiv.org/pdf/2310.00426)
+[^11]:[Scalable Diffusion Models with Transformers](https://openaccess.thecvf.com/content/ICCV2023/papers/Peebles_Scalable_Diffusion_Models_with_Transformers_ICCV_2023_paper.pdf)

@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 深入浅出了解生成模型-5：diffuser/accelerate库学习
+title: 深入浅出了解生成模型-5：diffuser/accelerate库学习及其数据合成
 categories: 生成模型
 extMath: true
 images: true
@@ -23,7 +23,7 @@ description: 本文介绍生成模型开发常用Python库，重点讲解Hugging
 
 介绍之前了解一下这个库是干什么的：这个库主要提供一个快速的分布式训练（避免了直接用torch进行手搓）并且支持各类加速方法：[混合精度训练](https://www.big-yellow-j.top/posts/2025/01/01/mixed-precision.html)、[Deepspeed](https://www.big-yellow-j.top/posts/2025/02/24/deepspeed.html)、梯度累计等
 
-## 一个基本使用场景
+### 一个基本使用场景
 一般任务中一个常见的应用场景是：需要实现一个多显卡（这里假设为双显卡）分布式训练，并且使用梯度累计、混合精度训练，并且训练得到的结果通过tensorboard/wandb进行记录，除此之外还需要使用warm-up学习率调整策略，并且我的模型不同模块使用的学习率不同，训练完成之后所有的模型权重要进行保存/读取权重进行测试。那么可以直接通过下面代码进行实现（部分库的导入以及一些参数比如说config直接忽略）
 
 ```python
@@ -390,6 +390,8 @@ $$
 ### 4、Adapters使用
 lora也是Adapters（可以简单理解为对训练好的模型再去添加一个插件，通过这个插件让SD去生成其他的样式的图片）一种，具体见：[深入浅出了解生成模型-6：常用基础模型与 Adapters等解析](https://www.big-yellow-j.top/posts/2025/07/06/DFBaseModel.html)
 
+## 数据合成
+[数据合成/标签算法汇总](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFDataBuild/diffusion_data_building.ipynb)
 ## 参考
 [^1]: https://arxiv.org/abs/2105.05233
 [^2]: https://zhuanlan.zhihu.com/p/640631667
