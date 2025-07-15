@@ -14,7 +14,7 @@ tags:
 - SD
 - SDVL
 show: true
-description: 对比Stable Diffusion SD 1.5与SDXL模型差异，SDXL采用双CLIP编码器（OpenCLIP-ViT/G+CLIP-ViT/L）提升文本理解，默认1024x1024分辨率并优化处理；介绍ControlNet（空间结构控制）、T2I-Adapter、DreamBooth（解决语言偏离）等Adapters，实现风格迁移与高效生成。
+description: 本文介绍基座扩散模型，涵盖基于Unet的SD1.5、SDXL（CLIP编码器差异、1024x1024输出）及DiT框架的Hunyuan-DiT等，对比模型结构与技术细节，还包括Imagen多阶段生成及ControlNet、DreamBooth等适配器技术，助力图像生成与风格控制。
 ---
 
 ## 基座扩散模型
@@ -37,8 +37,7 @@ description: 对比Stable Diffusion SD 1.5与SDXL模型差异，SDXL采用双CLI
 
 * 2、**图像裁剪优化策略**
 
-直接统一采样裁剪坐标top和cleft（分别指定从左上角沿高度和宽度轴裁剪的像素数量的整数），并通过傅里叶特征嵌入将它们作为调节参数输入模型，类似于上面描述的尺寸调节
-第1，2点代码中的处理方式为：
+直接统一采样裁剪坐标top和cleft（分别指定从左上角沿高度和宽度轴裁剪的像素数量的整数），并通过傅里叶特征嵌入将它们作为调节参数输入模型，类似于上面描述的尺寸调节。第1，2点代码中的处理方式为：
 ```python
 def _get_add_time_ids(
         self, original_size, crops_coords_top_left, target_size, dtype, text_encoder_projection_dim=None
@@ -75,7 +74,7 @@ Imagen[^6]论文中主要提出：1、纯文本语料库上预训练的通用大
 ### Dit
 > https://github.com/facebookresearch/DiT
 
-![](https://s2.loli.net/2025/07/13/mrEVOwgh6n1xUlF.png)
+![](https://s2.loli.net/2025/07/15/CUisy5TPE24kKaH.webp)
 
 Dit[^11]模型结构上，1、**模型输入**，将输入的image/latent切分为不同patch而后去对不同编码后的patch上去添加位置编码（直接使用的sin-cos位置编码），2、**时间步以及条件编码**，对于时间步t以及条件c的编码而后将两部分编码后的内容进行相加，在`TimestepEmbedder`上处理方式是：直接通过**正弦时间步嵌入**方式而后将编码后的内容通过两层liner处理；在`LabelEmbedder`处理方式上就比较简单直接通过`nn.Embedding`进行编码处理。3、使用Adaptive layer norm（adaLN）block以及adaZero-Block（对有些参数初始化为0，就和lora中一样初始化AB为0，为了保证后续模型训练过程中的稳定）
 > 在[layernorm](https://docs.pytorch.org/docs/stable/generated/torch.nn.LayerNorm.html)中一般归一化处理方式为：$\text{Norm}(x)=\gamma \frac{x-\mu}{\sqrt{\sigma^2+ \epsilon}}+\beta$ 其中有两个参数 $\gamma$ 和 $\beta$ 是固定的可学习参数（比如说直接通过 `nn.Parameter` 进行创建），在模型初始化时创建，并在训练过程中通过梯度下降优化。但是在 adaLN中则是直接通过 $\text{Norm}(x)=\gamma(c) \frac{x-\mu}{\sqrt{\sigma^2+ \epsilon}}+\beta(c)$ 通过输入的条件c进行学习的，
@@ -85,19 +84,19 @@ Dit[^11]模型结构上，1、**模型输入**，将输入的image/latent切分�
 
 腾讯的Hunyuan-DiT[^8]模型整体结构
 
-![](https://s2.loli.net/2025/07/13/5aWuMJO63tkFw14.png)
+![](https://s2.loli.net/2025/07/15/Hum9FCtPbV7do1B.webp)
 
 整体框架不是很复杂，1、文本编码上直接通过结合两个编码器：CLIP、T5；2、VAE则是直接使用的SD1.5的；3、引入2维的旋转位置编码；4、在Dit结构上（图片VAE压缩而后去切分成不同patch），使用的是堆叠的注意力模块（在SD1.5中也是这种结构）self-attention+cross-attention（此部分输入文本）。论文里面做了改进措施：1、借鉴之前处理，计算attention之前首先进行norm处理（也就是将norm拿到attention前面）。
 
 简短了解一下模型是如何做数据的：
-![](https://s2.loli.net/2025/07/13/gmJZ5cDlQ1Pkz8I.png)
+![](https://s2.loli.net/2025/07/15/dJZETbyHB6SQPKI.webp)
 
 
 ### PixArt
 > https://pixart-alpha.github.io/
 
 华为诺亚方舟实验室提出的 $\text{PixArt}-\alpha$模型整体框架如下：
-![](https://s2.loli.net/2025/07/13/9gQ2X5V3GnOusTh.png)
+![](https://s2.loli.net/2025/07/15/cWTtLdONRPC9fnz.webp)
 
 相比较Dit模型论文里面主要进行的改进如下：
 1、**Cross-Attention layer**，在DiT block中加入了一个多头交叉注意力层，它位于自注意力层（上图中的Multi-Head Self
@@ -129,7 +128,7 @@ ControlNet[^2]的处理思路就很简单，再左图中模型的处理过程就
 > 不会，因为对于神经网络结构大多都是：$y=wx+b$计算梯度过程中即使 $w=0$但是里面的 $x≠0$模型的参数还是可以被优化的
 
 
-#### ControlNet的代码操作
+#### ControlNet代码操作
 > Code: [https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_controlnet](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_controlnet)
 
 **首先**，简单了解一个ControlNet数据集格式，一般来说（）数据主要是三部分组成：1、image（可以理解为生成的图像）；2、condiction_image（可以理解为输入ControlNet里面的条件 $c$）；3、text。比如说以[raulc0399/open_pose_controlnet](https://huggingface.co/datasets/raulc0399/open_pose_controlnet)为例
@@ -275,8 +274,117 @@ else:
     loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
 ```
 
+#### DreamBooth代码操作
+> 代码：[https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_dreambooth_lora/](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_dreambooth_lora/)
+> 权重：[https://www.modelscope.cn/models/bigyellowjie/SDXL-DreamBooth-LOL/files](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_dreambooth_lora/)
+
+在介绍DreamBooth代码之前，简单回顾DreamBooth原理，我希望我的模型去学习一种画风那么我就需要准备**样本图片**（如3-5）这几张图片就是专门的模型需要学习的，但是为了防止模型过拟合（模型只学习了我的图片内容，但是对一些细节丢掉了，比如说我提供的5张油画，模型就学会了我的油画画风但是为了防止模型对更加多的油画细节忘记了，那么我就准备`num_epochs * num_samples` 张油画类型图片然后通过计算 `Class-specific Prior Preservation Loss`）需要准备 **类型图片**来计算Class-specific Prior Preservation Loss。代码处理（SDXL+Lora）：
+**首先是lora处理模型**：在基于transformer里面的模型很容易使用lora，比如说下面代码使用lora包裹模型并且对模型权重进行保存：
+```python
+from peft import LoraConfig
+def get_lora_config(rank, dropout, use_dora, target_modules):
+    '''lora config'''
+    base_config = {
+        "r": rank,
+        "lora_alpha": rank,
+        "lora_dropout": dropout,
+        "init_lora_weights": "gaussian",
+        "target_modules": target_modules,
+    }
+    return LoraConfig(**base_config)
+# 包裹lora模型权重
+unet_target_modules = ["to_k", "to_q", "to_v", "to_out.0"]
+unet_lora_config = get_lora_config(
+    rank= config.rank,
+    dropout= config.lora_dropout,
+    use_dora= config.use_dora,
+    target_modules= unet_target_modules,
+)
+unet.add_adapter(unet_lora_config)
+```
+
+一般的话考虑SD模型权重都比较大，而且我们使用lora微调模型没必要对所有的模型权重进行存储，那么一般都会定义一个`hook`来告诉模型那些参数需要保存、加载比如：
+```python
+def save_model_hook(models, weights, output_dir):
+    if accelerator.is_main_process:
+        unet_lora_layers_to_save = None
+        
+        for model in models:
+            if isinstance(model, type(unwrap_model(unet))):
+                unet_lora_layers_to_save = convert_state_dict_to_diffusers(get_peft_model_state_dict(model))
+            ...
+            weights.pop() # 去掉不需要保存的参数
+
+        StableDiffusionXLPipeline.save_lora_weights(
+            output_dir,
+            unet_lora_layers= unet_lora_layers_to_save,
+            ...
+        )
+def load_model_hook(models, input_dir):
+    unet_ = None
+
+    while len(models) > 0:
+        model = models.pop()
+
+        if isinstance(model, type(unwrap_model(unet))):
+            unet_ = model
+
+    lora_state_dict, network_alphas = StableDiffusionLoraLoaderMixin.lora_state_dict(input_dir)
+
+    unet_state_dict = {f"{k.replace('unet.', '')}": v for k, v in lora_state_dict.items() if k.startswith("unet.")}
+    unet_state_dict = convert_unet_state_dict_to_peft(unet_state_dict)
+    incompatible_keys = set_peft_model_state_dict(unet_, unet_state_dict, adapter_name="default")
+    ...
+accelerator.register_save_state_pre_hook(save_model_hook)
+accelerator.register_load_state_pre_hook(load_model_hook)
+```
+
+这样一来使用 `accelerator.save_state(save_path)` 就会先去使用 `hook`处理参数然后进行保存。
+**其次模型训练**：就是常规的模型训练（直接在样本图片：`instance_data_dir`以及样本的prompt：`instance_prompt`上进行微调）然后计算loss即可，如果涉及到`Class-specific Prior Preservation Loss`（除了上面两个组合还需要：`class_data_dir`以及 `class_prompt`）那么处理过程为（以SDXL为例），不过需要事先了解的是在计算这个loss之前会将两个数据集以及prompt都**组合到一起成为一个数据集**（`instance-image-prompt` 以及 `class-image-prompt`之间是匹配的）：
+```python
+# 样本内容编码
+instance_prompt_hidden_states, instance_pooled_prompt_embeds = compute_text_embeddings(config.instance_prompt, text_encoders, tokenizers)
+# 类型图片内容编码
+if config.with_prior_preservation:
+    class_prompt_hidden_states, class_pooled_prompt_embeds = compute_text_embeddings(config.class_prompt, text_encoders, tokenizers)
+...
+prompt_embeds = instance_prompt_hidden_states
+unet_add_text_embeds = instance_pooled_prompt_embeds
+if not config.with_prior_preservation:
+    prompt_embeds = torch.cat([prompt_embeds, class_prompt_hidden_states], dim=0)
+    unet_add_text_embeds = torch.cat([unet_add_text_embeds, class_pooled_prompt_embeds], dim=0)
+...
+model_pred = unet(...)
+if config.with_prior_preservation:
+    model_pred, model_pred_prior = torch.chunk(model_pred, 2, dim=0)
+    target, target_prior = torch.chunk(target, 2, dim=0)
+    ...
+    prior_loss = F.mse_loss(model_pred_prior.float(), target_prior.float(), reduction="mean")
+...
+loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
+...
+loss = loss + config.prior_loss_weight * prior_loss
+accelerator.backward(loss)
+```
+
+在这个里面之所以用 `chunk`是因为在数据集构件中：
+```python
+pixel_values = [example["instance_images"] for example in examples]
+...    
+if with_prior_preservation:
+    pixel_values += [example["class_images"] for example in examples]
+pixel_values = torch.stack(pixel_values)
+...
+```
+那么这样一来数据中一半来自样本图片一部分来自类型图片，在模型处理之后在`model_pred`就有一部分是样本图片的预测，另外一部分为类型图片预测。最后测试的结果为（`prompt: "A photo of Rengar the Pridestalker in a bucket"`，模型[代码](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_dreambooth_lora/)以及[权重下载](https://www.modelscope.cn/models/bigyellowjie/SDXL-DreamBooth-LOL/files)）：
+
+![image.png](https://s2.loli.net/2025/07/15/7xIPMW6SJ1degZj.webp)
+
+## 补充内容
+
+
 ## 总结
-对于不同的扩散（基座）模型（SD1.5、SDXL、Imagen）等大部分都是采用Unet结构，当然也有采用Dit的，这两个模型（SD1.5、SDXL）之间的差异主要在于后者会多一个clip编码器再文本语义上比前者更加有优势。对于adapter而言，可以直接理解为再SD的基础上去使用“风格插件”，这个插件不去对SD模型进行训练（从而实现对参数的减小），对于ControNet就是直接对Unet的下采样所有的模块（前后）都加一个zero-conv而后将结果再去嵌入到下采用中，而T2I-Adapter则是去对条件进行编码而后嵌入到SD模型（上采用模块）中。对于deramboth就是直接通过设计的Class-specific Prior Preservation Loss来实现生成特例的风格化迁移
+对于不同的扩散（基座）模型（SD1.5、SDXL、Imagen）等大部分都是采用Unet结构，当然也有采用Dit的，这两个模型（SD1.5、SDXL）之间的差异主要在于后者会多一个clip编码器再文本语义上比前者更加有优势。对于adapter而言，可以直接理解为再SD的基础上去使用“风格插件”，这个插件不去对SD模型进行训练（从而实现对参数的减小），对于ControNet就是直接对Unet的下采样所有的模块（前后）都加一个zero-conv而后将结果再去嵌入到下采用中，而T2I-Adapter则是去对条件进行编码而后嵌入到SD模型（上采用模块）中。对于deramboth就是直接通过给定的样本图片去生“微调”模型，而后通过设计的Class-specific Prior Preservation Loss来确保所生成的样本特里不会发生过拟合。
 
 ## 参考
 [^1]:[https://arxiv.org/pdf/2307.01952](https://arxiv.org/pdf/2307.01952)

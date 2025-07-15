@@ -391,7 +391,8 @@ $$
 lora也是Adapters（可以简单理解为对训练好的模型再去添加一个插件，通过这个插件让SD去生成其他的样式的图片）一种，具体见：[深入浅出了解生成模型-6：常用基础模型与 Adapters等解析](https://www.big-yellow-j.top/posts/2025/07/06/DFBaseModel.html)
 
 ## 数据合成
-[数据合成/标签算法汇总](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFDataBuild/diffusion_data_building.ipynb)
+[数据合成/标签算法汇总](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFDataBuild)
+
 ## 参考
 [^1]: https://arxiv.org/abs/2105.05233
 [^2]: https://zhuanlan.zhihu.com/p/640631667
