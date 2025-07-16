@@ -14,6 +14,7 @@ tags:
 - SD
 - SDVL
 show: true
+special_tag: 更新中
 description: 本文介绍基座扩散模型，涵盖基于Unet的SD1.5、SDXL（CLIP编码器差异、1024x1024输出）及DiT框架的Hunyuan-DiT等，对比模型结构与技术细节，还包括Imagen多阶段生成及ControlNet、DreamBooth等适配器技术，助力图像生成与风格控制。
 ---
 
@@ -130,6 +131,7 @@ ControlNet[^2]的处理思路就很简单，再左图中模型的处理过程就
 
 #### ControlNet代码操作
 > Code: [https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_controlnet](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_controlnet)
+> 模型权重：
 
 **首先**，简单了解一个ControlNet数据集格式，一般来说（）数据主要是三部分组成：1、image（可以理解为生成的图像）；2、condiction_image（可以理解为输入ControlNet里面的条件 $c$）；3、text。比如说以[raulc0399/open_pose_controlnet](https://huggingface.co/datasets/raulc0399/open_pose_controlnet)为例
 ![](https://s2.loli.net/2025/07/12/nphNm3OIebFGazr.webp)
@@ -232,8 +234,8 @@ model_pred = unet(
 
 后续就是计算loss等处理
 
-**模型验证**，直接就是使用`StableDiffusionControlNetPipeline`来处理了
-
+**模型验证**，直接就是使用`StableDiffusionControlNetPipeline`来处理了。最后随机测试的部分例子（controlnet微调效果不是很好）：
+![output.jpg](https://s2.loli.net/2025/07/16/JAVpW4HY1NP85tR.jpg)
 
 ### T2I-Adapter
 > https://github.com/TencentARC/T2I-Adapter
@@ -276,7 +278,7 @@ else:
 
 #### DreamBooth代码操作
 > 代码：[https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_dreambooth_lora/](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_dreambooth_lora/)
-> 权重：[https://www.modelscope.cn/models/bigyellowjie/SDXL-DreamBooth-LOL/files](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_dreambooth_lora/)
+> 权重：[https://www.modelscope.cn/models/bigyellowjie/SDXL-DreamBooth-LOL/files](https://www.modelscope.cn/models/bigyellowjie/SDXL-DreamBooth-LOL/files)
 
 在介绍DreamBooth代码之前，简单回顾DreamBooth原理，我希望我的模型去学习一种画风那么我就需要准备**样本图片**（如3-5）这几张图片就是专门的模型需要学习的，但是为了防止模型过拟合（模型只学习了我的图片内容，但是对一些细节丢掉了，比如说我提供的5张油画，模型就学会了我的油画画风但是为了防止模型对更加多的油画细节忘记了，那么我就准备`num_epochs * num_samples` 张油画类型图片然后通过计算 `Class-specific Prior Preservation Loss`）需要准备 **类型图片**来计算Class-specific Prior Preservation Loss。代码处理（SDXL+Lora）：
 **首先是lora处理模型**：在基于transformer里面的模型很容易使用lora，比如说下面代码使用lora包裹模型并且对模型权重进行保存：
