@@ -183,6 +183,7 @@ def evaluate(..., noise_scheduler, ):
 
 ### 1、Scheduler
 > https://huggingface.co/docs/diffusers/api/schedulers/overview
+> 更加详细的描述：[https://www.big-yellow-j.top/posts/2025/07/06/DFscheduler.html](https://www.big-yellow-j.top/posts/2025/07/06/DFscheduler.html)
 
 以[DDPMScheduler](https://github.com/huggingface/diffusers/blob/d7dd924ece56cddf261cd8b9dd901cbfa594c62c/src/diffusers/schedulers/scheduling_ddpm.py#L129)为例主要使用两个功能：
 **1、add_noise**（[输入](https://github.com/huggingface/diffusers/blob/d7dd924ece56cddf261cd8b9dd901cbfa594c62c/src/diffusers/schedulers/scheduling_ddpm.py#L501)：`sample、noise、timesteps`）：这个比较简单就是直接：$x=\sqrt{\alpha}x+ \sqrt{1-\alpha}\epsilon$
