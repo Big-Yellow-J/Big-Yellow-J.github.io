@@ -235,7 +235,7 @@ model_pred = unet(
 后续就是计算loss等处理
 
 **模型验证**，直接就是使用`StableDiffusionControlNetPipeline`来处理了。最后随机测试的部分例子（controlnet微调效果不是很好）：
-![output.jpg](https://s2.loli.net/2025/07/16/JAVpW4HY1NP85tR.jpg)
+![output.jpg](https://s2.loli.net/2025/07/22/SNfEiTVXpeZgOIP.webp)
 
 ### T2I-Adapter
 > https://github.com/TencentARC/T2I-Adapter

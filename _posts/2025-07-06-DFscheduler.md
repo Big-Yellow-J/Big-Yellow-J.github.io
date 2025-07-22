@@ -139,7 +139,7 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
         # important
 ```
 1、初始化参数（**DDPM和DDIM中没什么差异**）。首先是根据 `beta_schedule`来生成在 `num_train_timesteps`下参数 $\beta$的值（比如说 `linear`那么在1000步下就会生成（直接通过`torch.linspace`）从 `(1-beta_start)-(1-beta_end)` 的1000个数字）而后就是定义好加噪比较重要的几个参数：$\alpha$ 以及迭代次数 $t$，对于`self.alphas_cumprod`则是直接计算**累乘得到的结果**。上面过程对应：
-![](https://s2.loli.net/2025/07/17/siqtr9gclwC7jZ1.png)
+![](https://s2.loli.net/2025/07/22/aVTbcnwKBNj4plg.webp)
 2、加噪过程（**DDPM和DDIM中没什么差异**）。这个整个过程也比较简单就是直接通过计算：$X_T=\sqrt{\bar{\alpha_T}}x_0+ \sqrt{1- \bar{\alpha_T}}\epsilon$
 
 3、生成过程。输入三个参数分别表示：**1、model_output**：模型预测得到的噪声数值；**2、timestep**：时间步；**3、sample**：就是我们加载后的$x_t$（最开始就是一个纯噪声随着迭代逐渐“清晰”）。生成图像过程中无疑就是直接通过$t$去推导 $t-1$的图像结果，因此**在DDPM生成过程中** 首先是分别计算 $\alpha_{t}$以及 $\alpha_{t-1}$，不过生成过程有三种。
@@ -173,7 +173,37 @@ prev_sample = alpha_prod_t_prev ** (0.5) * pred_original_sample + pred_sample_di
 ## DPMSolver
 DPMSolver[^3]
 
+## UniPCMultistepScheduler
+Unip[^4]
+
+## 不同调度器生成对比
+> 只是简单对比不同调度器在生成效果上的速度差异（SDXL模型）
+
+[不同调度器生成对比](https://1drv.ms/f/c/667854cf645e8766/ElCNxPu93Q5Cp1Tqq8YbVUsBV-pVyGG6HG3FJ2AXAxDYDg?e=0H9btC)，从上面简单比较发现一般来说需要20-30步（建立在不适用LCM模型基础上）才能生成一个效果较好的图像，从测试过程发现基本（20-30步）一张图片消耗时间为0.2s左右（A100-80G以及使用`float16`）。从上面的测试结果上来看`UniPCMultistepScheduler`和 `DPMSolverMultistepScheduler`测试的效果最好（仅仅只从迭代步数上分析），借用ChatGPT对不同生成器的分析如下：
+![image.png](https://s2.loli.net/2025/07/22/LbkEu5hO7y8PURj.webp)
+
+不过如果去仔细看生成图像的细节内容的话（单独对比了Unip、DPM、DDIM从10-50步使用的模型是SDXL并且使用`float16`）得到测试[结果](https://1drv.ms/f/c/667854cf645e8766/ElCNxPu93Q5Cp1Tqq8YbVUsBV-pVyGG6HG3FJ2AXAxDYDg?e=0H9btC)
+> 此过程使用的prompt（直接GPT生成）：
+```python
+validation_prompt = [
+    # 1. 动态多主体 + 复杂光影
+    "A fierce dog fighting a cat inside a Victorian living room, ultra realistic fur, dynamic cinematic lighting, motion blur, 8k hyper detail, dramatic shadows, volumetric fog",
+    # 2. 科幻场景 + 光影/反射
+    "A futuristic cyberpunk city skyline at sunset with flying cars, glowing neon signs, reflective glass skyscrapers, cinematic wide-angle shot, ultra realistic 8k textures, complex lighting, atmospheric haze",
+    # 3. 写实人像 + 材质对比
+    "A close-up portrait of an elderly woman with deep wrinkles, realistic skin texture, soft diffused lighting, cinematic depth of field, ultra detailed eyes, 8k hyper realism",
+    # 4. 自然风景 + 微距细节
+    "A crystal-clear mountain lake surrounded by pine trees, sunlight filtering through mist, hyper realistic reflections on water, ultra detailed rocks and moss, 8k cinematic composition",
+    # 5. 奇幻场景 + 复杂材质
+    "A medieval knight in silver armor standing in a glowing enchanted forest, bioluminescent plants, soft god rays, ultra detailed metallic reflections, cinematic epic fantasy lighting, 8k resolution",
+    # 6. 室内物品 + 精细纹理
+    "A rustic wooden table with a vintage pocket watch, spilled coffee, handwritten letters, soft morning sunlight, ultra detailed textures, shallow depth of field, 8k macro photography style"
+]
+negative_prompt = "blurry, low quality, distorted, extra limbs, deformed, low contrast, unrealistic lighting, bad anatomy, oversaturated"
+```
+
 ## 参考
 [^1]:https://arxiv.org/abs/2010.02502
 [^2]:https://arxiv.org/abs/2006.11239
 [^3]:https://arxiv.org/abs/2206.00927
+[^4]:https://arxiv.org/abs/2302.04867
