@@ -394,6 +394,10 @@ lora也是Adapters（可以简单理解为对训练好的模型再去添加一�
 ## 数据合成
 [数据合成/标签算法汇总](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFDataBuild)
 
+## 代码Demo
+[代码Demo]()
+
+
 ## 参考
 [^1]: https://arxiv.org/abs/2105.05233
 [^2]: https://zhuanlan.zhihu.com/p/640631667

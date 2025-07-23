@@ -382,7 +382,11 @@ pixel_values = torch.stack(pixel_values)
 
 ![image.png](https://s2.loli.net/2025/07/15/7xIPMW6SJ1degZj.webp)
 
-## 补充内容
+## 简易Demo代码
+通过总结上面代码在“微调”DF模型中一个简易的代码流程（以微调SDXL模型为例）为（SDXL模型可以直接参考[training_dreambooth_lora](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_dreambooth_lora)）：
+**1、基础模型加载**
+SDXL区别SD1.5其存在两个文本编码器因此在加载过程中需要加载两个文本编码器，并且基础模型加载主要是加载如下几个模型（如果*不涉及到文本可能就不需要文本编码器*）：1、文本编码器；2、VAE模型；3、Unet模型；4、调度器。除此之外对于所有的模型都会不去就行参数更新。
+**2、精度设置**
 
 
 ## 总结
