@@ -352,8 +352,76 @@ if self.do_classifier_free_guidance and self.guidance_rescale > 0.0:
     noise_pred = rescale_noise_cfg(noise_pred, noise_pred_text, guidance_rescale=self.guidance_rescale)
 ```
 
-#TODO: 对比一下其他开源模型进行的处理方式是什么以SmartEraser/PowerPaint进行对比
-https://zhuanlan.zhihu.com/p/685921518
+#### 2.2 StableDiffusionXLInpaintPipeline
+> https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion_xl/pipeline_stable_diffusion_xl_inpaint.py
+
+对于图像消除任务而言使用较多的也是此类pipeline（SDXL开源可以商用）具体使用代码如下：
+```python
+from diffusers import StableDiffusionXLInpaintPipeline
+from diffusers.utils import load_image, make_image_grid
+import torch
+from PIL import Image
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+# 加载基础模型
+base = StableDiffusionXLInpaintPipeline.from_pretrained(
+    "stabilityai/stable-diffusion-xl-base-1.0",
+    torch_dtype=torch.float16,  # 使用半精度浮点数以减少显存占用
+    variant="fp16",             # 使用 fp16 变体以优化性能
+    use_safetensors=True        # 使用 safetensors 格式以提高加载速度
+).to(device)
+
+# 加载优化模型（refiner model）
+refiner = StableDiffusionXLInpaintPipeline.from_pretrained(
+    "stabilityai/stable-diffusion-xl-refiner-1.0",
+    text_encoder_2=base.text_encoder_2,  # 共享基础模型的第二个文本编码器
+    vae=base.vae,                        # 共享基础模型的变分自编码器
+    torch_dtype=torch.float16,
+    use_safetensors=True,
+    variant="fp16",
+).to(device)
+
+img_url = "https://raw.githubusercontent.com/CompVis/latent-diffusion/main/data/inpainting_examples/overture-creations-5sI6fQgYIuo.png"
+mask_url = "https://raw.githubusercontent.com/CompVis/latent-diffusion/main/data/inpainting_examples/overture-creations-5sI6fQgYIuo_mask.png"
+init_image = load_image(img_url)
+mask_image = load_image(mask_url)
+
+
+prompt = "A majestic tiger sitting on a bench" 
+negative_prompt = "distorted, blurry, low quality" 
+
+num_inference_steps = 75 
+high_noise_frac = 0.7
+
+# 使用基础模型进行初步去噪（输出潜在表示）
+base_output = base(
+    prompt=prompt,
+    negative_prompt=negative_prompt,
+    image=init_image,
+    mask_image=mask_image,
+    num_inference_steps=num_inference_steps,
+    denoising_end=high_noise_frac,  # 基础模型处理高噪声阶段
+    output_type="latent"           # 输出潜在表示以供优化模型使用
+).images
+
+# 使用优化模型进行细节增强
+refined_image = refiner(
+    prompt=prompt,
+    negative_prompt=negative_prompt,
+    image=base_output,
+    mask_image=mask_image,
+    num_inference_steps=num_inference_steps,
+    denoising_start=high_noise_frac,  # 优化模型处理低噪声阶段
+).images[0]
+
+# 可视化结果
+grid = make_image_grid([init_image, mask_image, refined_image.resize((512, 512))], rows=1, cols=3)
+grid.save("inpainting_result.png")
+refined_image.save("refined_image.png")
+```
+
+首先模型输入主要为如下几个部分：1、文本输入
 
 ### 3、Lora微调
 和大语言模型的处理方式相似，通过`peft`去微调模型，简单了解一下`peft`里面微调的处理思路（值得注意的是，使用`peft`来微调只适用于基于`transformer`库来搭建的模型对于自己的模型可能没那么好的适应性）：
@@ -391,11 +459,81 @@ $$
 ### 4、Adapters使用
 lora也是Adapters（可以简单理解为对训练好的模型再去添加一个插件，通过这个插件让SD去生成其他的样式的图片）一种，具体见：[深入浅出了解生成模型-6：常用基础模型与 Adapters等解析](https://www.big-yellow-j.top/posts/2025/07/06/DFBaseModel.html)
 
+### 5、自注意力技术（AttnProcessor、AttnProcessor2_0）
+> https://huggingface.co/docs/diffusers/v0.30.1/en/api/attnprocessor
+
+* 1、AttnProcessor
+
+此部分就是非常常规的注意力计算方式
+
+* 2、AttnProcessor2_0
+
+它调用了 PyTorch 2.0 起启用的算子` F.scaled_dot_product_attention` 代替手动实现的注意力计算。这个算子更加高效，如果你确定 PyTorch 版本至少为 2.0，就可以用 AttnProcessor2_0 代替
+参考知乎[^5]中的描述，如何将自注意力进行修改，比如说如下代码：
+```python
+from diffusers.models.attention_processor import (Attention,AttnProcessor,AttnProcessor2_0)
+unet = UNet2DConditionModel()
+for name, module in unet.named_modules():
+   if isinstance(module, Attention) and "attn2" in name:
+      print(f'name: {name}')
+      print("*"*20)
+      break
+```
+那么就会得到一个比如说：`down_blocks.0.attentions.0.transformer_blocks.0.attn2`比如说如果我需要将这个替换那么处理方式为：
+```python3
+for name, module in unet.named_modules():
+   if isinstance(module, Attention) and "attn2" in name:
+      print(f'raw name: {name} \n raw module: {module.processor}')
+      print("*"*20)
+      if isinstance(module.processor, AttnProcessor2_0):
+         module.set_processor(AttnProcessor())
+      print(f"change name: {name} \n change module: {module.processor}")
+      print("*"*20)
+      break
+```
+这样一来有最开始的：`<diffusers.models.attention_processor.AttnProcessor2_0 object at 0x7ff392734eb0>` 替换为`<diffusers.models.attention_processor.AttnProcessor object at 0x7ff5b776bc40>`。或者直接改成自定义的处理方式：
+```python3
+class CustonAttnProcessor(AttnProcessor):
+    def __call__(self, attn, hidden_states, encoder_hidden_states=None, attention_mask=None):
+        query = attn.to_q(hidden_states)
+        encoder_states = hidden_states if encoder_hidden_states is None else encoder_hidden_states
+        key = attn.to_k(encoder_states)
+        value = attn.to_v(encoder_states)
+
+        attn_scores = torch.baddbmm(
+            torch.empty(query.shape[0], query.shape[1], key.shape[1], device=query.device),
+            query,
+            key.transpose(-1, -2),
+            beta=0,
+            alpha=attn.scale,
+        )
+
+        # 比如说对 attn_scores 取log
+        attn_probs = torch.log(attn_scores) 
+        attn_probs = attn_scores.softmax(dim=-1)
+
+        hidden_states = torch.bmm(attn_probs, value)
+        hidden_states = attn.to_out[0](hidden_states)
+        hidden_states = attn.to_out[1](hidden_states)
+        return hidden_states
+
+attn_processor_dict = {}
+for k in unet.attn_processors.keys():
+    if "attn2" in k:
+        attn_processor_dict[k] = CustonAttnProcessor()
+    else:
+        attn_processor_dict[k] = unet.attn_processors[k]
+unet.set_attn_processor(attn_processor_dict)
+for name, processor in unet.attn_processors.items():
+   print(name, "=>", type(processor))
+```
+**总的来说**如果要去修改注意力处理方式，直接去便利`unet.attn_processors.keys()`然后去找到需要修改的层将其替换即可，只不过关键在于`CustonAttnProcessor`的定义方式。
+
 ## 数据合成
 [数据合成/标签算法汇总](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFDataBuild)
 
 ## 代码Demo
-[代码Demo]()
+[微调DF模型代码Demo](https://www.big-yellow-j.top/posts/2025/07/06/DFBaseModel.html#:~:text=%E9%87%8D%E4%B8%8B%E8%BD%BD%EF%BC%89%EF%BC%9A-,%E7%AE%80%E6%98%93Demo%E4%BB%A3%E7%A0%81,-%E9%80%9A%E8%BF%87%E6%80%BB%E7%BB%93%E4%B8%8A%E9%9D%A2)
 
 
 ## 参考
@@ -403,3 +541,4 @@ lora也是Adapters（可以简单理解为对训练好的模型再去添加一�
 [^2]: https://zhuanlan.zhihu.com/p/640631667
 [^3]: https://openaccess.thecvf.com/content/WACV2023/papers/Liu_More_Control_for_Free_Image_Synthesis_With_Semantic_Diffusion_Guidance_WACV_2023_paper.pdf
 [^4]: https://github.com/cloneofsimo/lora/discussions/37
+[^5]: https://zhuanlan.zhihu.com/p/680035048

@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 图像擦除论文-1：PixelHacker、PowerPanint、Attentive Eraser
+title: 图像消除论文-1：PixelHacker、PowerPanint、Attentive Eraser
 categories: 图像消除
 address: 武汉🏯
 extMath: true

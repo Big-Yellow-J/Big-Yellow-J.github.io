@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 图像擦除论文-2：SmartEraser、Erase Diffusion、OmniEraser
+title: 图像消除论文-2：SmartEraser、Erase Diffusion、OmniEraser
 categories: 图像消除
 address: 武汉🏯
 extMath: true
@@ -8,13 +8,13 @@ show_footer_image: true
 tags:
 - diffusion model
 - 图像消除
-description: 图像擦除是图像生成模型重要应用，本文介绍CVPR-2025相关的SmartEraser、Erase Diffusion、OmniEraser模型，涵盖数据集构建（实体过滤、混合高斯算法MOG）、关键技术（语义分割SAM、CLIP、IoU、alpha
+description: 图像消除是图像生成模型重要应用，本文介绍CVPR-2025相关的SmartEraser、Erase Diffusion、OmniEraser模型，涵盖数据集构建（实体过滤、混合高斯算法MOG）、关键技术（语义分割SAM、CLIP、IoU、alpha
   blending、GroundDINO+SAM2）及模型优化（输入改进、mask处理、微调FLUX.1-dev）等内容。
 ---
 
-图像生成模型应用系列——图像擦除：
-[图像擦除论文-1：PixelHacker、PowerPanint等](https://www.big-yellow-j.top/posts/2025/06/11/ImageEraser1.html)
-[图像擦除论文-2：擦除类型数据集构建(1)](https://www.big-yellow-j.top/posts/2025/06/26/ImageEraser2.html)
+图像生成模型应用系列——图像消除：
+[图像消除论文-1：PixelHacker、PowerPanint等](https://www.big-yellow-j.top/posts/2025/06/11/ImageEraser1.html)
+[图像消除论文-2：消除类型数据集构建(1)](https://www.big-yellow-j.top/posts/2025/06/26/ImageEraser2.html)
 
 ## Erase Diffusion
 > [Erase Diffusion: Empowering Object Removal Through Calibrating Diffusion Pathways](https://openaccess.thecvf.com/content/CVPR2025/papers/Liu_Erase_Diffusion_Empowering_Object_Removal_Through_Calibrating_Diffusion_Pathways_CVPR_2025_paper.pdf)
