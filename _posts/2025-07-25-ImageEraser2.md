@@ -8,29 +8,35 @@ show_footer_image: true
 tags:
 - diffusion model
 - 图像消除
-special_tag: 更新中
-description: 
+description: 本文介绍图像擦除模型RORem与ObjectClear。RORem基于SDXL，通过视频帧变化物体构建数据集，人工筛选后训练判别器实现自动化，蒸馏LCM加速至0.5s；ObjectClear基于SDXL-Inpainting，分割小实体贴图构建数据集，引入attention-mask引导消除，提升擦除效果。
 ---
 
 本文主要介绍几篇图像擦除论文模型：RORem、ObjectClear
 ## RORem
 > https://arxiv.org/pdf/2501.00740
 > https://github.com/leeruibin/RORem
+> 基座模型：SDXL
 
+![](https://s2.loli.net/2025/07/26/mDPjCteaObvRqlT.webp)
+数据集选择的是 [**RORD**](https://github.com/Forty-lock/RORD)（**通过视频帧中前后变化的物体就是mask进而构建高质量数据集**）以及 [**Mulan**](https://huggingface.co/datasets/mulan-dataset/v1.0)数据集。对于输入到SDXL中的数据为：1、mask；2、原始图片；3、消除mask后的图片。而后将这三部分数据进行concat。
+只通过上面过程微调的SDXL模型效果不佳，然后（上图的**Human Annotation过程**）再去从开源数据集中进行筛选（排除部分例子如：衣服、身体等）保证每种实体都有500种再得到数据之后然后就是人工筛选出高质量和低质量数据集。但是整个过程是消耗时间的因此会训练一个**判别器网络结构**（**将SDXL-Inpainting中的下采样和中间层作为backbone而后通过Lora进行微调**）通过人工筛选的数据集进行训练进而实现自动化过程（只有判别器得分>0.9的数据集才能算“合格”）。
+![](https://s2.loli.net/2025/07/26/pUaZcx6Ssm7fHKq.webp)
+本路文中（纯力大飞砖，通过构建大规模数据集去微调模型）对于模型改进不大，为例加速消除过程，再去通过蒸馏得到LCM模型来加速消除过程（从4s到0.5s）。
+![](https://s2.loli.net/2025/07/26/qGwMUjcuvEgmIKR.webp)
 
 ## ObjectClear
-> https://arxiv.org/pdf/2505.22636
-> https://github.com/zjx0101/ObjectClear
+> [https://arxiv.org/pdf/2505.22636](https://arxiv.org/pdf/2505.22636)
+> [https://github.com/zjx0101/ObjectClear](https://github.com/zjx0101/ObjectClear)
 > **基座模型**：**SDXL-Inpainting**
 
 本文出发点主要为两个：1、创建数据集；2、通过引入注意力机制（attention-mask）去引导模型消除
 ### 数据集构建
-![image.png](https://s2.loli.net/2025/07/25/bKsqRJNEf3DcH2a.png)
+![image.png](https://s2.loli.net/2025/07/26/pR7wX5jTvSa1BgW.webp)
 
-主要为两部分数据集：1、拍摄数据集（2875张图片）；2、模型数据集。对于 **拍摄数据集**：首先将图片处理为512x512而后，直接通过DIBO+SAM去识别然后切割实体得到mask（$M_o$）然后去结合“mask相关的语义特征”（比如说阴影 $M_e$ 等）得到$M_{fg}=[M_o,M_e]$
+主要为两部分数据集（数据集构建方式上和SmartEraser论文里面处理方式相似：**首先分割小实体**是从图像中通过检查（DINO/YOLO等）加分割（SAM等）得到“小实体”而后**将这些“小实体”去“合理”的贴到图像中**）：1、拍摄数据集（2875张图片）；2、开源下载数据集。对于 **拍摄数据集**处理方式：首先将图片处理为512x512而后，直接通过DIBO+SAM去识别然后切割实体得到mask（$M_o$）然后去结合“mask相关的语义特征”（比如说阴影 $M_e$ 等）得到$M_{fg}=[M_o,M_e]$。除此之外对于下载得到的数据集首先是通过**Mask2former**（切割图像中的实体然后将一些特殊实体（比如说road等）作为背景）+**DepthAnythin**（通过整个算法去保证后续贴图的质量）后续就是直接将从相机拍摄照片里面抽取出来的小实体帖带开源数据集中。
 
 ### 模型结构
-![image.png](https://s2.loli.net/2025/07/25/XUlB5YM8zNqS2hZ.png)
+![image.png](https://s2.loli.net/2025/07/26/TpmxR1GePt58HUl.webp)
 
 将基座模型（**SDXL-Inpainting**）的输入（1、噪声分布$z_t$；2、masked image $I_m$这个一般就是直接将mask从图中扣除；3、mask：$M_o$；4、文本prompt：$c$）中的mask image替换为原始的图像：$I_{in}$（这和之前的SmartEraser处理方式类似），除此之外对于输入DF模型中的处理思路和SmartEraser也是相似的：**图像（需要消除的）和文本分别通过Clip不同编码器处理然后组合**。而后输入到DF的Attention计算当中，对于特征组合部分代码处理方式为：
 ```python
@@ -124,4 +130,9 @@ if output_type == "pil" and attn_map is not None:
 
     image = fused_images
 ```
-**首先**对于`unet_store_cross_attention_scores`主要是处理如下两个步骤：1、搜集down_blocks.0和down_blocks.1中attn2模块的注意力分数；2、将down_blocks.0和down_blocks.1中attn2模块处理器从AttnProcessor2_0替换为AttnProcessor
+**首先**对于`unet_store_cross_attention_scores`主要是处理如下两个步骤：1、搜集**down_blocks.0和down_blocks.1**中attn2模块的注意力分数；2、将down_blocks.0和down_blocks.1中attn2模块处理器从AttnProcessor2_0替换为AttnProcessor
+**而后**在`attention_guided_fusion`[设计](https://github.com/zjx0101/ObjectClear/blob/ef3177ed1d270a9b4d74939ef852876552adfa68/objectclear/utils/attention_guided_fusion.py#L50)中直接将三部分结果：1、原图 image；2、生成得到结果：generated_pils；3、将注意力得分转化为图像：attn_pil进行融合，处理方式如下：
+
+
+## 总结
+总得来说两个论文中都是通过构建数据集去训练模型，对与他们的数据集构建：Rorem中是直接通过“循环”方式去获得高质量数据（首先人工筛选高质量的消除数据集）然后去训练SDXL模型然后会有一个判别判断消除效果如何对于效果好的数据直接加到数据中再去训练模型循环上面过程，而再Object中的处理思路为切割实体然后再去将实体去贴到背景中。

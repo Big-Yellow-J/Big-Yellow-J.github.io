@@ -4,3 +4,4 @@
 
 ## 新博客
 - [ ] *2025.07.25* 完成对RORem、ObjectClear后续内容补充完善
+- [ ] *2025.07.26* 将论文（ObjectClear/SamrtEraser）里面的数据集构建算法复现出来
