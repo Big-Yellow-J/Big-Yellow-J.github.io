@@ -104,6 +104,30 @@ Dit[^11]模型结构上，1、**模型输入**，将输入的image/latent切分�
 -Attention）和前馈层（Pointwise Feedforward）之间，使模型能够灵活地引入文本嵌入条件。此外，为了利用预训练权重，将交叉注意力层中的输出投影层初始化为零，作为恒等映射，保留了输入以供后续层使用。
 2、AdaLN-single，在Dit中的adaptive normalization layers（adaLN）中部分参数（27%）没有起作用（在文生图任务中）将其替换为adaLN-single
 
+### 不同模型参数对生成的影响
+在使用`text2img`过程中使用SD模型一般来说有较多的参数进行选择（以SDXL为例），测试过程中使用的prompt：
+```python
+prompts = ["A serene mountain landscape at sunset","A futuristic cityscape with neon lights"]
+prompts_2 = ["","vibrant colors, highly detailed, cinematic",]
+negtive_prompts = ["","dark, overexposed, unrealistic, cartoonish"]
+```
+* 参数`guidance_rescale`对于生成的影响
+
+引导扩散模型（如 Classifier-Free Guidance，CFG）中，用于调整文本条件对生成图像的影响强度。它的核心作用是控制模型在生成过程中对文本提示的“服从程度”。公式上，CFG 调整预测噪声的方式如下：
+
+$$
+\epsilon = \epsilon_{\text{uncond}} + \text{guidance\_scale} \cdot (\epsilon_{\text{cond}} - \epsilon_{\text{uncond}})
+$$
+
+其中：
+$\epsilon_{\text{cond}}$：基于文本条件预测的噪声。
+$\epsilon_{\text{uncond}}$：无条件（无文本提示）预测的噪声。
+guidance_scale：决定条件噪声相对于无条件噪声的权重。
+
+测试结果如下（参数分别为[1, 3, 5, 7, 15, 30]），容易发现数值越大文本对于图像的影响也就越大。
+![6144X1024/diff_guidance.png](https://tc.z.wiki/autoupload/f/antQs00t6WT0sRAB0jJdK_FdeifRaeP2MKJqqJF2YUayl5f0KlZfm6UsKj-HyTuv/20250727/8Av1/6144X1024/diff_guidance.png)
+
+
 ## Adapters
 > https://huggingface.co/docs/diffusers/tutorials/using_peft_for_inference
 
@@ -127,7 +151,6 @@ ControlNet[^2]的处理思路就很简单，再左图中模型的处理过程就
 > 在[github](https://github.com/lllyasviel/ControlNet/discussions/188)上作者讨论了为什么要使用上面这种结构而非直接使用mlp等（作者给出了很多测试图像），最后总结就是：**这种结构好**
 > **补充-2**：使用0卷积层会不会导致模型无法优化问题？
 > 不会，因为对于神经网络结构大多都是：$y=wx+b$计算梯度过程中即使 $w=0$但是里面的 $x≠0$模型的参数还是可以被优化的
-
 
 #### ControlNet代码操作
 > Code: [https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_controlnet](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_controlnet)
