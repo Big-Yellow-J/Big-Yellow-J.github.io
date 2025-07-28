@@ -25,7 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 动态加载 Twikoo JS
   const twikooJS = document.createElement('script');
-  twikooJS.src = 'https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/twikoo/1.4.18/twikoo.min.js';
+  // twikooJS.src = 'https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/twikoo/1.4.18/twikoo.min.js';
+  twikooJS.src = 'https://cdn.jsdelivr.net/npm/twikoo@1.4.18/dist/twikoo.min.js';
+  
   document.head.appendChild(twikooJS);
 
   // Twikoo 初始化，等待 twikooJS 加载完毕
