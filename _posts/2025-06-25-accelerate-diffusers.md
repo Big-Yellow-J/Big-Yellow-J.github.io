@@ -12,7 +12,8 @@ tags:
 - python
 show: true
 stickie: true
-description: 本文介绍生成模型开发常用Python库，重点讲解Hugging Face的Diffusers和Accelerate基本使用。Accelerate支持分布式训练、梯度累计及混合精度训练；Diffusers涵盖加噪处理、模型预测、逐步解噪，包括Scheduler和Lora配置等核心技术。
+description: 本文介绍生成模型开发常用Python库，重点讲解Diffusers和Accelerate的基本使用。Accelerate支持分布式训练、混合精度训练、梯度累计等加速方法，简化多显卡训练流程；Diffusers包含Scheduler（加噪处理、逐步解噪）、Stable
+  Diffusion Pipeline等，辅助实现生成模型的训练与推理，为算法工程师提供高效工具支持。
 ---
 
 工欲善其事，必先利其器。即便介绍了再多生成模型，没有趁手的工具也难以施展才华。因此，本文将重点介绍几个在生成模型开发中常用的 Python 库，着重讲解 **Diffusers** 和 **Accelerate** 的基本使用。感谢 Hugging Face 为无数算法工程师提供了强大的开源支持！需要注意的是，官方文档对这两个库已有详尽的说明，本文仅作为一篇简明的使用笔记，抛砖引玉，供参考和交流。
@@ -353,7 +354,7 @@ if self.do_classifier_free_guidance and self.guidance_rescale > 0.0:
 ```
 
 #### 2.2 StableDiffusionXLInpaintPipeline
-> https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion_xl/pipeline_stable_diffusion_xl_inpaint.py
+> [https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion_xl/pipeline_stable_diffusion_xl_inpaint.py](https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion_xl/pipeline_stable_diffusion_xl_inpaint.py)
 
 对于图像消除任务而言使用较多的也是此类pipeline（SDXL开源可以商用）具体使用代码如下：
 ```python
@@ -421,7 +422,69 @@ grid.save("inpainting_result.png")
 refined_image.save("refined_image.png")
 ```
 
-首先模型输入主要为如下几个部分：1、文本输入
+首先模型输入主要为如下几个部分：1、文本输入；2、图片输入（正常图片以及mask图片）。**首先对于文本编码**。对于SDXL模型而言文本会通过两个clip的文本编码器进行编码（**OpenCLIP-ViT/G**：1280、**CLIP-ViT/L**：768）对于两个编码器代码处理思路为：
+```python
+...
+tokenizers = [self.tokenizer, self.tokenizer_2] if self.tokenizer is not None else [self.tokenizer_2]
+text_encoders = (
+    [self.text_encoder, self.text_encoder_2] if self.text_encoder is not None else [self.text_encoder_2]
+)
+
+if prompt_embeds is None:
+    prompt_2 = prompt_2 or prompt
+    prompt_2 = [prompt_2] if isinstance(prompt_2, str) else prompt_2
+
+    prompt_embeds_list = []
+    prompts = [prompt, prompt_2]
+    for prompt, tokenizer, text_encoder in zip(prompts, tokenizers, text_encoders):
+        ...
+        text_inputs = tokenizer(prompt,...)
+        text_input_ids = text_inputs.input_ids
+        untruncated_ids = tokenizer(prompt, ...).input_ids
+        ...
+        prompt_embeds = text_encoder(text_input_ids.to(device), output_hidden_states=True)
+        ...
+        prompt_embeds_list.append(prompt_embeds)
+
+    prompt_embeds = torch.concat(prompt_embeds_list, dim=-1)
+...
+if self.do_classifier_free_guidance:
+    prompt_embeds = torch.cat([negative_prompt_embeds, prompt_embeds], dim=0)
+    ...
+  prompt_embeds = prompt_embeds.to(device)
+```
+最后得到的`prompt_embeds`为：`[1, 77, 2048]`（由`[1, 77, 768]` 和 `[1, 77, 1280]`）拼接得到，如果要使用CFG的话就需要输入`negative_prompt`以及参数`guidance_scale`，对于`negative_prompt`的处理方式和上面相同。除此之外再代码中会有`added_cond_kwargs = {"text_embeds": add_text_embeds, "time_ids": add_time_ids}`这个参数，一般作用是：作为一个“额外”的条件添加到时间编码中（`emb = emb + aug_emb if aug_emb is not None else emb`）。不过值得注意的是，很多论文里面都使用：**将图像和文本编码组合作为“文本编码”输入**（[objectclear](https://www.big-yellow-j.top/posts/2025/07/25/ImageEraser2.html#:~:text=4s%E5%88%B00.5s%EF%BC%89%E3%80%82-,ObjectClear,-https%3A//arxiv.org)）如果要实现这个（objectclear）功能伪代码如下：
+```python
+...
+    masked_image = init_image
+    # masked_image = init_image * (mask < 0.5)
+    obj_only = init_image * (mask > 0.5)
+    obj_only = obj_only.to(device=device)
+    object_embeds = self.image_prompt_encoder(obj_only)
+prompt_embeds = self.postfuse_module(prompt_embeds, object_embeds, 5)
+```
+其中`prompt_embeds`就是正常的文本编码，`self.image_prompt_encoder`一般就是使用clip image的文本编码器这样一来就会将文本和图片编码成向量，`self.postfuse_module`一般就是将两个向量进行融合（这个一般就是通过mlp对齐维度之后直接拼接即可）
+**而后再图像编码**。这部分比较容易直接通过vae去编码即可
+```python
+...
+masked_image = init_image * (mask < 0.5)
+...
+mask = torch.cat([mask] * 2) if do_classifier_free_guidance else mask
+masked_image_latents = self._encode_vae_image(masked_image, generator=generator)
+```
+对于图片一般做法是直接`masked_image = init_image * (mask < 0.5)`但是论文里面有些直接使用`masked_image = init_image`。在文本以及图像都编码之后就是模型处理，只不过如果使用CFG：
+```python
+if self.do_classifier_free_guidance:
+    noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+    noise_pred = noise_pred_uncond + self.guidance_scale * (noise_pred_text - noise_pred_uncond)
+
+if self.do_classifier_free_guidance and self.guidance_rescale > 0.0:
+    # Based on 3.4. in https://arxiv.org/pdf/2305.08891.pdf
+    noise_pred = rescale_noise_cfg(noise_pred, noise_pred_text, guidance_rescale=self.guidance_rescale)
+```
+
+> **补充一点**：如果要做CFG一般会将文本的prompt：negative_prompt_embeds（如果没有输入negative_prompt会直接用0代替）, prompt_embeds直接拼接起来，而后其他的就直接“拼接本体”
+
 
 ### 3、Lora微调
 和大语言模型的处理方式相似，通过`peft`去微调模型，简单了解一下`peft`里面微调的处理思路（值得注意的是，使用`peft`来微调只适用于基于`transformer`库来搭建的模型对于自己的模型可能没那么好的适应性）：

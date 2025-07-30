@@ -12,6 +12,7 @@ tags:
 - scheduler
 show: true
 special_tag: 更新中
+description: 文章介绍了扩散模型中SDE与ODE调度器的差异，对比DDPM（马尔科夫链多步生成）和DDIM（跳步处理提速）的实现，详解diffusers库中调度器的初始化、加噪及生成过程的噪声预测方式（epsilon、sample、v_prediction），分析DPMSolver、UniPCMultistepScheduler等调度器的生成效果，并探讨LCM模型的处理要点。
 ---
 
 注意如下内容的描述：1、SDE以及ODE因为不同的调度器可能就是基于不同的方式出发的；2、可以了解一下flow-matching；3、注意LCM模型里面的处理

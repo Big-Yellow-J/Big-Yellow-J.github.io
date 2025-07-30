@@ -15,7 +15,7 @@ tags:
 - SDVL
 show: true
 special_tag: 更新中
-description: 本文介绍基座扩散模型，涵盖基于Unet的SD1.5、SDXL（CLIP编码器差异、1024x1024输出）及DiT框架的Hunyuan-DiT等，对比模型结构与技术细节，还包括Imagen多阶段生成及ControlNet、DreamBooth等适配器技术，助力图像生成与风格控制。
+description: 本文介绍基座扩散模型，涵盖基于Unet的SD1.5、SDXL、Imagen及基于DiT框架的Hunyuan-DiT等。对比SD1.5与SDXL差异：SDXL采用双CLIP编码器（OpenCLIP-ViT/G+CLIP-ViT/L）提升文本理解，默认输出1024x1024图像；解析Imagen多阶段生成策略、DiT的patch分割与adaLN结构，以及ControlNet、DreamBooth等Adapter技术在图像生成控制中的应用。
 ---
 
 ## 基座扩散模型
@@ -125,7 +125,7 @@ $\epsilon_{\text{uncond}}$：无条件（无文本提示）预测的噪声。
 guidance_scale：决定条件噪声相对于无条件噪声的权重。
 
 测试结果如下（参数分别为[1, 3, 5, 7, 15, 30]），容易发现数值越大文本对于图像的影响也就越大。
-![6144X1024/diff_guidance.png](https://tc.z.wiki/autoupload/f/antQs00t6WT0sRAB0jJdK_FdeifRaeP2MKJqqJF2YUayl5f0KlZfm6UsKj-HyTuv/20250727/8Av1/6144X1024/diff_guidance.png)
+![6144X1024/diff_guidance.png](https://s2.loli.net/2025/07/30/KtFRg6My3TWrdUk.webp)
 
 
 ## Adapters
