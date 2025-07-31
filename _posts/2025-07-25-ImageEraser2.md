@@ -29,7 +29,7 @@ description: 本文介绍图像擦除模型RORem与ObjectClear。RORem基于SDXL
 > [https://github.com/zjx0101/ObjectClear](https://github.com/zjx0101/ObjectClear)
 > **基座模型**：**SDXL-Inpainting**
 
-本文出发点主要为两个：1、创建数据集；2、通过引入注意力机制（attention-mask）去引导模型消除
+本文出发点主要为两个：1、创建数据集；2、通过引入注意力机制（attention-mask）去引导模型消除，处理思路和论文：[https://arxiv.org/pdf/2403.18818](https://arxiv.org/pdf/2403.18818)很相似
 ### 数据集构建
 ![image.png](https://s2.loli.net/2025/07/26/pR7wX5jTvSa1BgW.webp)
 
@@ -131,7 +131,7 @@ if output_type == "pil" and attn_map is not None:
     image = fused_images
 ```
 **首先**对于`unet_store_cross_attention_scores`主要是处理如下两个步骤：1、搜集**down_blocks.0和down_blocks.1**中attn2模块的注意力分数；2、将down_blocks.0和down_blocks.1中attn2模块处理器从AttnProcessor2_0替换为AttnProcessor
-**而后**在`attention_guided_fusion`[设计](https://github.com/zjx0101/ObjectClear/blob/ef3177ed1d270a9b4d74939ef852876552adfa68/objectclear/utils/attention_guided_fusion.py#L50)中直接将三部分结果：1、原图 image；2、生成得到结果：generated_pils；3、将注意力得分转化为图像：attn_pil进行融合，处理方式如下：
+**而后**在`attention_guided_fusion`[设计](https://github.com/zjx0101/ObjectClear/blob/ef3177ed1d270a9b4d74939ef852876552adfa68/objectclear/utils/attention_guided_fusion.py#L50)中直接将三部分结果：1、原图 image；2、生成得到结果：generated_pils；3、将注意力得分转化为图像：attn_pil进行融合
 
 
 ## 总结
