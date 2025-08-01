@@ -6,4 +6,7 @@
 ./jeklly-blog-dfbf0971c0f1.json
 ./google_api.json
 *.json
+*.pth
+*.pt
+*.pyc
 optim_post.py
