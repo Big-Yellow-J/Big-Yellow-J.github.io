@@ -37,6 +37,7 @@ class YOLOSamPipeline(nn.Module):
         self.det_model = YOLO(detection_model, verbose=False)
 
     #TODO: 完成切割实体时候最好是找到实体附近的一些阴影对象等
+    #TODO: 可以训练一个模型判断分割后的对象是不是“完整”（SAM有时候分割对象结果不完整）
     def forward_det_seg(self, image):
         # detection+ SAM
         det_result = self.det_model(image, stream=True,
@@ -138,15 +139,9 @@ def worker(process_images, model, instance=False):
                                 mask_num= 'one')
             pbar.update(1)
         
-def chunkify(lst, n):
-    return [lst[i::n] for i in range(n)]
-
-'''
-TODO: 继续完成找到instance之后去对背景粘贴
-'''
 if __name__ == '__main__':
-    # import time
-    # image_path = '../image/sa_324930.jpg'
+    import time
+    # image_path = './test-image.png'
     # s_time = time.time()
     # model = YOLOSamPipeline('./yolo11x-seg.pt',
     #                         './mobile_sam.pt')
@@ -158,7 +153,7 @@ if __name__ == '__main__':
     # save_instance_masks(segments_list, img.shape[:2], mask_list= mask_list, image_name='tmp', output_dir='masks', mask_num='one')
 
     mp.set_start_method('spawn') 
-    pipeline = YOLOSamPipeline('./yolo11x-seg.pt','./mobile_sam.pt')
+    pipeline = YOLOSamPipeline('./yolo11x-seg.pt','sam2.1_t.pt')
     pipeline.to('cuda')
 
     image_dir = '../image/'
@@ -166,12 +161,4 @@ if __name__ == '__main__':
     image_paths = [os.path.join(image_dir, f)
                    for f in os.listdir(image_dir)
                    if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
-    chunks = chunkify(image_paths, n= num_process)
-
-    processes = []
-    for i in range(num_process):
-        p = mp.Process(target=worker, args=(chunks[i], pipeline, 'cuda'))
-        p.start()
-        processes.append(p)
-    for p in processes:
-        p.join()
+    worker(image_paths, pipeline, True)

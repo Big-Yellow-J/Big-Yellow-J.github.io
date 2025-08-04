@@ -3,12 +3,6 @@ import cv2
 import random
 import numpy as np
 import torch
-import logging
-logging.getLogger("ultralytics").setLevel(logging.ERROR)
-
-os.environ["HF_DATASETS_CACHE"] = "/data/huangjie/"
-os.environ["HF_HOME"] = "/data/huangjie/"
-os.environ["HUGGINGFACE_HUB_CACHE"] = "/data/huangjie/"
 
 def expand_boxes_tensor(boxes_filt, w, h, expand_ratio=0.1):
     '''扩展检查框'''
@@ -78,6 +72,8 @@ def save_instance_masks(segments_list, image_size, image_name, mask_list=None, o
         out_path = os.path.join(output_dir, f"{image_name}_mask.png")
         cv2.imwrite(out_path, mask)
 
+def chunkify(lst, n):
+    return [lst[i::n] for i in range(n)]
 
 def create_transparent_crop(image, mask, x, y, bw, bh):
     mask_blur = cv2.GaussianBlur(mask[y:y+bh, x:x+bw], (5, 5), 0)
