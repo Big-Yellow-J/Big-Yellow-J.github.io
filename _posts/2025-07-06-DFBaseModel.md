@@ -14,7 +14,6 @@ tags:
 - SD
 - SDVL
 show: true
-special_tag: 更新中
 description: 本文介绍基座扩散模型，涵盖基于Unet的SD1.5、SDXL、Imagen及基于DiT框架的Hunyuan-DiT等。对比SD1.5与SDXL差异：SDXL采用双CLIP编码器（OpenCLIP-ViT/G+CLIP-ViT/L）提升文本理解，默认输出1024x1024图像；解析Imagen多阶段生成策略、DiT的patch分割与adaLN结构，以及ControlNet、DreamBooth等Adapter技术在图像生成控制中的应用。
 ---
 
@@ -105,12 +104,8 @@ Dit[^11]模型结构上，1、**模型输入**，将输入的image/latent切分�
 2、AdaLN-single，在Dit中的adaptive normalization layers（adaLN）中部分参数（27%）没有起作用（在文生图任务中）将其替换为adaLN-single
 
 ### 不同模型参数对生成的影响
-在使用`text2img`过程中使用SD模型一般来说有较多的参数进行选择（以SDXL为例），测试过程中使用的prompt：
-```python
-prompts = ["A serene mountain landscape at sunset","A futuristic cityscape with neon lights"]
-prompts_2 = ["","vibrant colors, highly detailed, cinematic",]
-negtive_prompts = ["","dark, overexposed, unrealistic, cartoonish"]
-```
+> https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Features#stable-diffusion-20
+
 * 参数`guidance_rescale`对于生成的影响
 
 引导扩散模型（如 Classifier-Free Guidance，CFG）中，用于调整文本条件对生成图像的影响强度。它的核心作用是控制模型在生成过程中对文本提示的“服从程度”。公式上，CFG 调整预测噪声的方式如下：
@@ -119,14 +114,17 @@ $$
 \epsilon = \epsilon_{\text{uncond}} + \text{guidance\_scale} \cdot (\epsilon_{\text{cond}} - \epsilon_{\text{uncond}})
 $$
 
-其中：
-$\epsilon_{\text{cond}}$：基于文本条件预测的噪声。
-$\epsilon_{\text{uncond}}$：无条件（无文本提示）预测的噪声。
-guidance_scale：决定条件噪声相对于无条件噪声的权重。
-
-测试结果如下（参数分别为[1, 3, 5, 7, 15, 30]），容易发现数值越大文本对于图像的影响也就越大。
-![6144X1024/diff_guidance.png](https://s2.loli.net/2025/07/30/KtFRg6My3TWrdUk.webp)
-
+其中：1、$\epsilon_{\text{cond}}$：基于文本条件预测的噪声。2、$\epsilon_{\text{uncond}}$：无条件（无文本提示）预测的噪声。3、guidance_scale：决定条件噪声相对于无条件噪声的权重。得到最后测试结果如下（参数分别为[1.0, 3.0, 5.0, 7.5, 10.0, 15.0, 20.0]，`prompt = "A majestic lion standing on a mountain during golden hour, ultra-realistic, 8k"`， `negative_prompt = "blurry, distorted, low quality"`），容易发现数值越大文本对于图像的影响也就越大。
+![tmp-CFG.png](https://s2.loli.net/2025/08/06/2jk18UISnqKdPZf.webp)
+其中代码具体操作如下，从代码也很容易发现上面计算公式中的 uncond代表的就是我的negative_prompt，也就是说**CFG做的就是negative_prompt对生成的影响**：
+```python
+if self.do_classifier_free_guidance:
+    prompt_embeds = torch.cat([negative_prompt_embeds, prompt_embeds], dim=0)
+    add_text_embeds = torch.cat([negative_pooled_prompt_embeds, add_text_embeds], dim=0)
+    add_neg_time_ids = add_neg_time_ids.repeat(batch_size * num_images_per_prompt, 1)
+    add_time_ids = torch.cat([add_neg_time_ids, add_time_ids], dim=0)
+prompt_embeds = prompt_embeds.to(device)
+```
 
 ## Adapters
 > https://huggingface.co/docs/diffusers/tutorials/using_peft_for_inference
@@ -139,7 +137,7 @@ guidance_scale：决定条件噪声相对于无条件噪声的权重。
 
 ![](https://s2.loli.net/2025/07/09/Tfji2LMv15tgr6d.webp)
 
-ControlNet[^2]的处理思路就很简单，再左图中模型的处理过程就是直接通过：$y=f(x;\theta)$来生成图像，但是在ControlNet里面会将我们最开始的网络结构复制然后通过在其前后引入一个**zero-convolution**层来“指导”（$Z$）模型的输出也就是说将上面的生成过程变为：$y=f(x;\theta)+Z(f(x+Z(c;\theta_{z_1});\theta);\theta_{Z_2})$。通过冻结最初的模型的权重保持不变，保留了Stable Diffusion模型原本的能力；与此同时，使用额外数据对“可训练”副本进行微调，学习我们想要添加的条件。因此在最后我们的SD模型中就是如下一个结构：
+ControlNet[^2]的处理思路就很简单，再左图中模型的处理过程就是直接通过：$y=f(x;\theta)$来生成图像，但是在ControlNet里面会 **将我们最开始的网络结构复制** 然后通过在其前后引入一个 **zero-convolution** 层来“指导”（ $Z$ ）模型的输出也就是说将上面的生成过程变为：$y=f(x;\theta)+Z(f(x+Z(c;\theta_{z_1});\theta);\theta_{Z_2})$。通过冻结最初的模型的权重保持不变，保留了Stable Diffusion模型原本的能力；与此同时，使用额外数据对“可训练”副本进行微调，学习我们想要添加的条件。因此在最后我们的SD模型中就是如下一个结构：
 
 ![](https://s2.loli.net/2025/07/09/uVNAEnleRMJ6p4v.webp)
 
@@ -156,7 +154,7 @@ ControlNet[^2]的处理思路就很简单，再左图中模型的处理过程就
 > Code: [https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_controlnet](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_controlnet)
 > 模型权重：
 
-**首先**，简单了解一个ControlNet数据集格式，一般来说（）数据主要是三部分组成：1、image（可以理解为生成的图像）；2、condiction_image（可以理解为输入ControlNet里面的条件 $c$）；3、text。比如说以[raulc0399/open_pose_controlnet](https://huggingface.co/datasets/raulc0399/open_pose_controlnet)为例
+**首先**，简单了解一个ControlNet数据集格式，一般来说数据主要是三部分组成：1、image（可以理解为生成的图像）；2、condiction_image（可以理解为输入ControlNet里面的条件 $c$）；3、text。比如说以[raulc0399/open_pose_controlnet](https://huggingface.co/datasets/raulc0399/open_pose_controlnet)为例
 ![](https://s2.loli.net/2025/07/12/nphNm3OIebFGazr.webp)
 
 **模型加载**，一般来说扩散模型就只需要加载如下几个：`DDPMScheduler`、`AutoencoderKL`（vae模型）、`UNet2DConditionModel`（不一定加载条件Unet模型），除此之外在ControlNet中还需要加载一个`ControlNetModel`。对于`ControlNetModel`中代码大致结构为，代码中通过`self.controlnet_down_blocks`来存储ControlNet的下采样模块（**初始化为0的卷积层**）。`self.down_blocks`用来存储ControlNet中复制的Unet的下采样层。在`forward`中对于输入的样本（`sample`）首先通过 `self.down_blocks`逐层处理叠加到 `down_block_res_samples`中，而后就是直接将得到结果再去通过 `self.controlnet_down_blocks`每层进行处理，最后返回下采样的每层结果以及中间层处理结果：`down_block_res_samples`，`mid_block_res_sample`
@@ -405,11 +403,11 @@ pixel_values = torch.stack(pixel_values)
 
 ![image.png](https://s2.loli.net/2025/07/15/7xIPMW6SJ1degZj.webp)
 
-## 简易Demo代码
+<!-- ## 简易Demo代码
 通过总结上面代码在“微调”DF模型中一个简易的代码流程（以微调SDXL模型为例）为（SDXL模型可以直接参考[training_dreambooth_lora](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_dreambooth_lora)）：
 **1、基础模型加载**
 SDXL区别SD1.5其存在两个文本编码器因此在加载过程中需要加载两个文本编码器，并且基础模型加载主要是加载如下几个模型（如果*不涉及到文本可能就不需要文本编码器*）：1、文本编码器；2、VAE模型；3、Unet模型；4、调度器。除此之外对于所有的模型都会不去就行参数更新。
-**2、精度设置**
+**2、精度设置** -->
 
 
 ## 总结

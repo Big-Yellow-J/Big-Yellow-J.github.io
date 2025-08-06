@@ -161,7 +161,9 @@ current_sample_coeff = current_alpha_t ** (0.5) *beta_prod_t_prev / beta_prod_t
 pred_prev_sample = pred_original_sample_coeff *pred_original_sample + current_sample_coeff * sample
 ```
 
-最后在模型里面会返回两部分内容：1、pred_prev_sample；2、pred_original_sample。对于这两个值分别表示的是：模型认为最终的干净图像（完全无噪声）（pred_original_sample）。采样一步后，预计在第 499 步应该长的样子（pred_prev_sample）。**对比在DDIM中的差异**，第一个就是**时间步处理差异**，在DDPM中直接用$t-1$来获取上一步就行，但是在DDIM中需要计算`timestep - self.config.num_train_timesteps // self.num_inference_steps`这是因为DDIM会使用“跳步”；2、在计算 $x_0$上两者之间不存差异，只是计算上一步在公式上存在差异：
+最后在模型里面会返回两部分内容：1、pred_prev_sample；2、pred_original_sample。对于这两个值分别表示的是：模型认为最终的干净图像（完全无噪声）（pred_original_sample）。采样一步后，预计在第 499 步应该长的样子（pred_prev_sample）。**对比在DDIM中的差异**，第一个就是**时间步处理差异**，在DDPM中直接用$t-1$来获取上一步就行，但是在DDIM中需要计算`timestep - self.config.num_train_timesteps // self.num_inference_steps`这是因为DDIM会使用“跳步”；2、在计算 $x_0$上两者之间不存差异，只是计算上一步在公式上存在差异（DDIM计算公式）：
+![image.png](https://s2.loli.net/2025/08/06/7VyP3ENhK5rWscO.webp)
+
 ```python
 variance = self._get_variance(timestep, prev_timestep)
 std_dev_t = eta * variance ** (0.5)
