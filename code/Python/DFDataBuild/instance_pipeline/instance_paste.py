@@ -96,6 +96,10 @@ class BackGroundPastePipeline():
         def exam_image():
             '''检测图片中还有没有可以粘贴的区域'''
             pass
+        def exam_overlap():
+            '''检测图像中同一类别之间的重叠度'''
+            pass
+        
         if refer_instance is None:
             return image
         refer_info = [_ for _ in refer_instance if _[0] in self.instance_dict]
@@ -130,7 +134,13 @@ class BackGroundPastePipeline():
         image.save(os.path.join(self.paste_dir, 
                                 f"{os.path.basename(image_path).split('.')[0]}.png"))
 
+if __name__ == '__main__':
+    from instance_split import *
 
-model = BackGroundPastePipeline('./yolo11x-seg.pt', './instance/', './paste/')
-model.main('../image/sa_325551.jpg')
-# model('./test-image.png')
+    image_path = '../image/sa_325551.jpg'
+    img = cv2.imread(image_path)
+    pipeline_split = YOLOSamPipeline('./yolo11x-seg.pt','./mobile_sam.pt')
+    pipeline_paste = BackGroundPastePipeline('./yolo11x-seg.pt', './instance/', './paste/')
+    pipeline_paste.main(image_path)
+    segments_list, mask_list = pipeline_split(image_path, False)
+    draw_segments_and_masks(img, segments_list, mask_list)

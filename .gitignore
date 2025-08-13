@@ -10,3 +10,5 @@
 *.pt
 *.pyc
 optim_post.py
+/code/Python/DFDataBuild/**/*.png
+/code/Python/DFDataBuild/**/*.jpg

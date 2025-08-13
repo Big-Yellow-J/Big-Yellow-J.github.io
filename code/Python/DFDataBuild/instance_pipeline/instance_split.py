@@ -125,20 +125,28 @@ class YOLOSamPipeline(nn.Module):
                             count +=1
         return segments_list, mask_list
 
-def worker(process_images, model, instance=False):
-    with tqdm(total= len(process_images)) as pbar:
-        for image_path in process_images:
-            segments_list, mask_list = model(image_path, instance)
-            img = cv2.imread(image_path)
-            # draw_segments_and_masks(img, segments_list, mask_list)
-            image_name = os.path.basename(image_path).split('.')[0]
-            save_instance_masks(segments_list, img.shape[:2], 
-                                mask_list= mask_list, 
-                                image_name= image_name, 
-                                output_dir= 'masks', 
-                                mask_num= 'one')
-            pbar.update(1)
-        
+def worker(process_images, model_paths, device, instance=False, rank=0):
+    pipeline = YOLOSamPipeline(model_paths[0], model_paths[1])
+    pipeline.to(device)
+    with torch.no_grad():
+        with tqdm(total=len(process_images), position=rank, desc=f"Process {rank}") as pbar:
+            for image_path in process_images:
+                segments_list, mask_list = pipeline(image_path, instance)
+                img = cv2.imread(image_path)
+                image_name = os.path.basename(image_path).split('.')[0]
+                save_instance_masks(
+                    segments_list, img.shape[:2],
+                    mask_list=mask_list,
+                    image_name=image_name,
+                    output_dir='masks',
+                    mask_num='one'
+                )
+                pbar.update(1)
+
+def chunk_list(lst, n):
+    k, m = divmod(len(lst), n)
+    return [lst[i*k + min(i, m):(i+1)*k + min(i+1, m)] for i in range(n)]
+
 if __name__ == '__main__':
     import time
     # image_path = './test-image.png'
@@ -152,13 +160,30 @@ if __name__ == '__main__':
     # draw_segments_and_masks(img, segments_list, mask_list)
     # save_instance_masks(segments_list, img.shape[:2], mask_list= mask_list, image_name='tmp', output_dir='masks', mask_num='one')
 
-    mp.set_start_method('spawn') 
+    mp.set_start_method('spawn', force=True)
+    device = 'cuda:0'
     pipeline = YOLOSamPipeline('./yolo11x-seg.pt','sam2.1_t.pt')
-    pipeline.to('cuda')
 
-    image_dir = '../image/'
-    num_process = 4
+    image_dir = '../tmp_image/'
     image_paths = [os.path.join(image_dir, f)
                    for f in os.listdir(image_dir)
                    if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
-    worker(image_paths, pipeline, True)
+    
+
+    # 单进程测试
+    s_time = time.time()
+    worker(image_paths, ('./yolo11x-seg.pt','sam2.1_t.pt'), device, True)
+    print(f"Single process: {time.time() - s_time:.2f}s")
+
+    # 多进程处理: 每一个进程都加载一个模型
+    num_process =4
+    chunks = chunk_list(image_paths, num_process)
+    processes = []
+    s_time = time.time()
+    for rank in range(num_process):
+        p = mp.Process(target=worker, args=(chunks[rank], ('./yolo11x-seg.pt','sam2.1_t.pt'), device, True, rank))
+        p.start()
+        processes.append(p)
+    for p in processes:
+        p.join()
+    print(f"Multi process: {time.time() - s_time:.2f}s")
