@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 深入浅出了解生成模型-6：常用基础模型与 Adapters等解析
+title: 深入浅出了解生成模型-6：常用基座模型与 Adapters等解析
 categories: 生成模型
 extMath: true
 images: true
@@ -102,6 +102,23 @@ Dit[^11]模型结构上，1、**模型输入**，将输入的image/latent切分�
 1、**Cross-Attention layer**，在DiT block中加入了一个多头交叉注意力层，它位于自注意力层（上图中的Multi-Head Self
 -Attention）和前馈层（Pointwise Feedforward）之间，使模型能够灵活地引入文本嵌入条件。此外，为了利用预训练权重，将交叉注意力层中的输出投影层初始化为零，作为恒等映射，保留了输入以供后续层使用。
 2、AdaLN-single，在Dit中的adaptive normalization layers（adaLN）中部分参数（27%）没有起作用（在文生图任务中）将其替换为adaLN-single
+
+### SD3、FLUX.1、FLUX1.1
+> FLUX模型**商业不开源**并且模型的综合表现上一般而言flux会比较好（模型生成效果对比：[🔗](https://medium.com/@tanshaoyu160/15-photorealistic-ai-images-comparison-flux1-1-vs-sd3-5-6a49fbce05db)）
+
+待完善。。。。。。
+参考：
+1、https://zhuanlan.zhihu.com/p/684068402；
+2、https://zhouyifan.net/2024/09/03/20240809-flux1/；
+3、https://stability.ai/news/stable-diffusion-3-research-paper
+SD3[^12]、FLUX对于这几组模型的前世今生不做介绍，主要了解其模型结构以及论文里面所设计到的一些知识点。
+* SD3模型而言其模型结构如下：
+
+![](https://s2.loli.net/2025/08/14/FoaVTmLGxrU7b69.png)
+
+* FLUX模型而言其结构如下
+
+![](https://s2.loli.net/2025/08/14/ZUmgbJs9fAXKPRW.png)
 
 ### 不同模型参数对生成的影响
 > https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Features#stable-diffusion-20
@@ -424,3 +441,4 @@ SDXL区别SD1.5其存在两个文本编码器因此在加载过程中需要加�
 [^9]:[https://arxiv.org/pdf/2506.15742](https://arxiv.org/pdf/2506.15742)
 [^10]:[https://arxiv.org/pdf/2310.00426](https://arxiv.org/pdf/2310.00426)
 [^11]:[Scalable Diffusion Models with Transformers](https://openaccess.thecvf.com/content/ICCV2023/papers/Peebles_Scalable_Diffusion_Models_with_Transformers_ICCV_2023_paper.pdf)
+[^12]: [https://arxiv.org/pdf/2403.03206](https://arxiv.org/pdf/2403.03206)

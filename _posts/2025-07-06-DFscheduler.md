@@ -142,7 +142,6 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
 1、初始化参数（**DDPM和DDIM中没什么差异**）。首先是根据 `beta_schedule`来生成在 `num_train_timesteps`下参数 $\beta$的值（比如说 `linear`那么在1000步下就会生成（直接通过`torch.linspace`）从 `(1-beta_start)-(1-beta_end)` 的1000个数字）而后就是定义好加噪比较重要的几个参数：$\alpha$ 以及迭代次数 $t$，对于`self.alphas_cumprod`则是直接计算**累乘得到的结果**。上面过程对应：
 ![](https://s2.loli.net/2025/07/22/aVTbcnwKBNj4plg.webp)
 2、加噪过程（**DDPM和DDIM中没什么差异**）。这个整个过程也比较简单就是直接通过计算：$X_T=\sqrt{\bar{\alpha_T}}x_0+ \sqrt{1- \bar{\alpha_T}}\epsilon$
-
 3、生成过程。输入三个参数分别表示：**1、model_output**：模型预测得到的噪声数值；**2、timestep**：时间步；**3、sample**：就是我们加载后的$x_t$（最开始就是一个纯噪声随着迭代逐渐“清晰”）。生成图像过程中无疑就是直接通过$t$去推导 $t-1$的图像结果，因此**在DDPM生成过程中** 首先是分别计算 $\alpha_{t}$以及 $\alpha_{t-1}$，不过生成过程有三种。
 * `epsilon`：预测噪声 $\epsilon$（将上面加噪公司逆推得到$x_0$）
 * `sample`：直接用 $x_0$就是模型的输出
@@ -160,7 +159,6 @@ pred_original_sample_coeff = (alpha_prod_t_prev ** (0.5) * current_beta_t) / bet
 current_sample_coeff = current_alpha_t ** (0.5) *beta_prod_t_prev / beta_prod_t
 pred_prev_sample = pred_original_sample_coeff *pred_original_sample + current_sample_coeff * sample
 ```
-
 最后在模型里面会返回两部分内容：1、pred_prev_sample；2、pred_original_sample。对于这两个值分别表示的是：模型认为最终的干净图像（完全无噪声）（pred_original_sample）。采样一步后，预计在第 499 步应该长的样子（pred_prev_sample）。**对比在DDIM中的差异**，第一个就是**时间步处理差异**，在DDPM中直接用$t-1$来获取上一步就行，但是在DDIM中需要计算`timestep - self.config.num_train_timesteps // self.num_inference_steps`这是因为DDIM会使用“跳步”；2、在计算 $x_0$上两者之间不存差异，只是计算上一步在公式上存在差异（DDIM计算公式）：
 ![image.png](https://s2.loli.net/2025/08/06/7VyP3ENhK5rWscO.webp)
 
