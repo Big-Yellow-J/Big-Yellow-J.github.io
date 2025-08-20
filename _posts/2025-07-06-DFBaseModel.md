@@ -105,6 +105,8 @@ Dit[^11]模型结构上，1、**模型输入**，将输入的image/latent切分�
 
 ### SD3、FLUX.1、FLUX1.1
 > FLUX模型**商业不开源**并且模型的综合表现上一般而言flux会比较好（模型生成效果对比：[🔗](https://medium.com/@tanshaoyu160/15-photorealistic-ai-images-comparison-flux1-1-vs-sd3-5-6a49fbce05db)）
+> SD3的diffusers官方文档：[StableDiffusion3Pipeline](https://huggingface.co/docs/diffusers/en/api/pipelines/stable_diffusion/stable_diffusion_3#diffusers.StableDiffusion3Pipeline)
+> 
 
 - [ ] 1、介绍模型基础结构以及论文中的细节内容
 
@@ -115,10 +117,11 @@ https://zhouyifan.net/2024/09/03/20240809-flux1/
 https://zhouyifan.net/2024/07/14/20240703-SD3/
 https://stability.ai/news/stable-diffusion-3-research-paper
 
-SD3[^12]、FLUX对于这几组模型的前世今生不做介绍，主要了解其模型结构以及论文里面所设计到的一些知识点。
-* SD3模型而言其模型结构如下：
+SD3[^12]、FLUX对于这几组模型的前世今生不做介绍，主要了解其模型结构以及论文里面所涉及到到的一些知识点。首先介绍SD3模型在模型改进上[^16]：1、改变训练时噪声采样方法；2、将一维位置编码改成二维位置编码；3、提升 VAE 隐空间通道数（作者实验发现最开始VAE会将模型**下采样8倍数并且处理通道为4的空间**，也就是说 $512 \times 512 \times 3 \rightarrow 64\times 64 \times 3$，不过在 **SD3**中将通道数由**4改为16**）；4、对注意力 QK 做归一化以确保高分辨率下训练稳定。
 
 ![](https://s2.loli.net/2025/08/14/FoaVTmLGxrU7b69.png)
+其中SD3模型的整体框架如上所述，[**1、文本编码器处理**](https://github.com/huggingface/diffusers/blob/0f252be0ed42006c125ef4429156cb13ae6c1d60/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L972)，在text encoder上SD3使用三个文本编码器：`clip-vit-large-patch14`、 `laion/CLIP-ViT-bigG-14-laion2B-39B-b160k` 、 `t5-v1_1-xxl` ，对于这3个文本编码器对于文本的处理过程为：就像SDXL中一样首先3个编码器分别都去对文本进行编码，首先对于两个[CLIP的文本编码](https://github.com/huggingface/diffusers/blob/0f252be0ed42006c125ef4429156cb13ae6c1d60/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L289)处理过程为直接通过CLIP进行 `prompt_embeds = text_encoder(text_input_ids.to(device)...)` 而后去选择 `prompt_embeds.hidden_states[-(clip_skip + 2)]`（默认条件下 `clip_skip=None`也就是**直接选择倒数第二层**）那么最后得到文本编码的维度为：#TODO 而[T5的encoder](https://github.com/huggingface/diffusers/blob/0f252be0ed42006c125ef4429156cb13ae6c1d60/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L233)就比较检查直接通过encoder进行编码，那么其编码维度为：#TODO ，这样一来就会得到3组的文编码对于CLIP的编码结果直接通过`clip_prompt_embeds=torch.cat([prompt_embed, prompt_2_embed], dim=-1)` 即可，在将得到后的 `clip_prompt_embeds`结果再去和T5的编码结果进行拼接之前会首先 `clip_prompt_embeds=torch.nn.functional.pad(clip_prompt_embeds, (0, t5_prompt_embed.shape[-1] - clip_prompt_embeds.shape[-1]))` 而后将T5的文本内容和 `clip_prompt_embeds`进行合并 `prompt_embeds = torch.cat([clip_prompt_embeds, t5_prompt_embed], dim=-2)`。由于使用T5模型导致模型的参数比较大进导致模型的显存占用过大（2080Ti等GPU上轻量化的部署推理SD 3模型，可以只使用CLIP ViT-L + OpenCLIP ViT-bigG的特征，此时需要**将T5-XXL的特征设置为zero**（不加载）[^14]），选择**不去使用T5模型会对模型对于文本的理解能力有所降低**。
+![image.png](https://s2.loli.net/2025/08/20/W3FaCb2Zyuqgo4N.png)
 
 * FLUX模型而言其结构如下
 
@@ -460,3 +463,7 @@ SDXL区别SD1.5其存在两个文本编码器因此在加载过程中需要加�
 [^11]:[Scalable Diffusion Models with Transformers](https://openaccess.thecvf.com/content/ICCV2023/papers/Peebles_Scalable_Diffusion_Models_with_Transformers_ICCV_2023_paper.pdf)
 [^12]: [https://arxiv.org/pdf/2403.03206](https://arxiv.org/pdf/2403.03206)
 [^13]: [https://arxiv.org/pdf/2109.07161](https://arxiv.org/pdf/2109.07161)
+[^14]: https://zhuanlan.zhihu.com/p/684068402
+[^15]: https://zhouyifan.net/2024/09/03/20240809-flux1/
+[^16]: https://zhouyifan.net/2024/07/14/20240703-SD3/
+[^17]: https://stability.ai/news/stable-diffusion-3-research-paper
