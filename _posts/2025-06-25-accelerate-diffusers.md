@@ -595,10 +595,6 @@ for name, processor in unet.attn_processors.items():
 ## 数据合成
 [数据合成/标签算法汇总](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFDataBuild)
 
-## 代码Demo
-[微调DF模型代码Demo](https://www.big-yellow-j.top/posts/2025/07/06/DFBaseModel.html#:~:text=%E9%87%8D%E4%B8%8B%E8%BD%BD%EF%BC%89%EF%BC%9A-,%E7%AE%80%E6%98%93Demo%E4%BB%A3%E7%A0%81,-%E9%80%9A%E8%BF%87%E6%80%BB%E7%BB%93%E4%B8%8A%E9%9D%A2)
-
-
 ## 参考
 [^1]: https://arxiv.org/abs/2105.05233
 [^2]: https://zhuanlan.zhihu.com/p/640631667

@@ -10,6 +10,7 @@ description: 单精度训练使用32位浮点数（FP32），精度高但显存�
   SCALING）等技术平衡性能与稳定，Apex框架实现可有效减少显存占用并加速训练。
 ---
 
+如果熟悉huggingface里面的accelerate库，可以直接使用这个库去实现混合精度训练，详细见：[深入浅出了解生成模型-5：diffuser/accelerate库学习及其数据合成](https://www.big-yellow-j.top/posts/2025/06/25/accelerate-diffusers.html)里面的介绍使用。
 ## 不同精度训练
 
 **单精度训练**（`single-precision`）指的是用32位浮点数（FP32）表示所有的参数、激活值和梯度
@@ -48,9 +49,7 @@ description: 单精度训练使用32位浮点数（FP32），精度高但显存�
 
 > 这里就会有一个问题，反向传播过程中要计算梯度，如果（梯度用FP16）**梯度很小**，不也还是会出现溢出问题，作者后续提到`LOSS SCALING`可以解决这种问题。如果**梯度很大**也会导致溢出问题，梯度计算使用FP16，但在权重更新之前，梯度会转换为 FP32 精度进行累积和存储，从而避免因溢出导致的权重更新错误。
 > 另外之所以要用FP32对权重进行保存这是因为，作者研究发现更新 FP16 权重会导致 80% 的相对准确度损失。
-> we match FP32 training results when updating an
-FP32 master copy of weights after FP16 forward and backward passes, while updating FP16 weights
-results in 80% relative accuracy loss
+> we match FP32 training results when updating an FP32 master copy of weights after FP16 forward and backward passes, while updating FP16 weights results in 80% relative accuracy loss
 
 > 另外一方面，如果拷贝权重，不也等同于把显存的占用拉大了？参考[知乎](https://zhuanlan.zhihu.com/p/103685761)上描述显存占用上主要是中间过程值
 

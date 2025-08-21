@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 深入浅出了解生成模型-6：常用基础模型与 Adapters等解析
+title: 深入浅出了解生成模型-6：常用基座模型与 Adapters等解析
 categories: 生成模型
 extMath: true
 images: true
@@ -18,7 +18,7 @@ description: 本文介绍基座扩散模型，涵盖基于Unet的SD1.5、SDXL、
 ---
 
 ## 基座扩散模型
-主要介绍基于Unet以及基于Dit框架的基座扩散模型，其中SD迭代版本挺多的（从1.2到3.5）因此本文主要重点介绍SD 1.5以及SDXL两个基座模型，以及两者之间的对比差异，除此之外还有许多闭源的扩散模型比如说Imagen、DALE等。对于Dit基座模型主要介绍：Hunyuan-DiT、FLUX.1等。对于各类模型评分网站（模型评分仁者见仁智者见智，特别是此类生成模型视觉图像生成是一个很主观的过程，同一张图片不同人视觉感官都是不同的）：[https://lmarena.ai/leaderboard](https://lmarena.ai/leaderboard)
+主要介绍基于Unet以及基于Dit框架的基座扩散模型以及部分GAN和VAE模型，其中SD迭代版本挺多的（从1.2到3.5）因此本文主要重点介绍SD 1.5以及SDXL两个基座模型，以及两者之间的对比差异，除此之外还有许多闭源的扩散模型比如说Imagen、DALE等。对于Dit基座模型主要介绍：Hunyuan-DiT、FLUX.1等。对于各类模型评分网站（模型评分仁者见仁智者见智，特别是此类生成模型视觉图像生成是一个很主观的过程，同一张图片不同人视觉感官都是不同的）：[https://lmarena.ai/leaderboard](https://lmarena.ai/leaderboard)
 
 ### SDv1.5 vs SDXL[^1]
 > **SDv1.5**: https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5
@@ -102,6 +102,43 @@ Dit[^11]模型结构上，1、**模型输入**，将输入的image/latent切分�
 1、**Cross-Attention layer**，在DiT block中加入了一个多头交叉注意力层，它位于自注意力层（上图中的Multi-Head Self
 -Attention）和前馈层（Pointwise Feedforward）之间，使模型能够灵活地引入文本嵌入条件。此外，为了利用预训练权重，将交叉注意力层中的输出投影层初始化为零，作为恒等映射，保留了输入以供后续层使用。
 2、AdaLN-single，在Dit中的adaptive normalization layers（adaLN）中部分参数（27%）没有起作用（在文生图任务中）将其替换为adaLN-single
+
+### SD3、FLUX.1、FLUX1.1
+> FLUX模型**商业不开源**并且模型的综合表现上一般而言flux会比较好（模型生成效果对比：[🔗](https://medium.com/@tanshaoyu160/15-photorealistic-ai-images-comparison-flux1-1-vs-sd3-5-6a49fbce05db)）
+> SD3的diffusers官方文档：[StableDiffusion3Pipeline](https://huggingface.co/docs/diffusers/en/api/pipelines/stable_diffusion/stable_diffusion_3#diffusers.StableDiffusion3Pipeline)
+> 
+
+- [ ] 1、介绍模型基础结构以及论文中的细节内容
+
+待完善。。。。。。
+参考：
+https://zhuanlan.zhihu.com/p/684068402
+https://zhouyifan.net/2024/09/03/20240809-flux1/
+https://zhouyifan.net/2024/07/14/20240703-SD3/
+https://stability.ai/news/stable-diffusion-3-research-paper
+
+SD3[^12]、FLUX对于这几组模型的前世今生不做介绍，主要了解其模型结构以及论文里面所涉及到到的一些知识点。首先介绍SD3模型在模型改进上[^16]：1、改变训练时噪声采样方法；2、将一维位置编码改成二维位置编码；3、提升 VAE 隐空间通道数（作者实验发现最开始VAE会将模型**下采样8倍数并且处理通道为4的空间**，也就是说 $512 \times 512 \times 3 \rightarrow 64\times 64 \times 3$，不过在 **SD3**中将通道数由**4改为16**）；4、对注意力 QK 做归一化以确保高分辨率下训练稳定。
+
+![](https://s2.loli.net/2025/08/14/FoaVTmLGxrU7b69.png)
+其中SD3模型的整体框架如上所述，[**1、文本编码器处理**](https://github.com/huggingface/diffusers/blob/0f252be0ed42006c125ef4429156cb13ae6c1d60/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L972)，在text encoder上SD3使用三个文本编码器：`clip-vit-large-patch14`、 `laion/CLIP-ViT-bigG-14-laion2B-39B-b160k` 、 `t5-v1_1-xxl` ，对于这3个文本编码器对于文本的处理过程为：就像SDXL中一样首先3个编码器分别都去对文本进行编码，首先对于两个[CLIP的文本编码](https://github.com/huggingface/diffusers/blob/0f252be0ed42006c125ef4429156cb13ae6c1d60/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L289)处理过程为直接通过CLIP进行 `prompt_embeds = text_encoder(text_input_ids.to(device)...)` 而后去选择 `prompt_embeds.hidden_states[-(clip_skip + 2)]`（默认条件下 `clip_skip=None`也就是**直接选择倒数第二层**）那么最后得到文本编码的维度为：#TODO 而[T5的encoder](https://github.com/huggingface/diffusers/blob/0f252be0ed42006c125ef4429156cb13ae6c1d60/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L233)就比较检查直接通过encoder进行编码，那么其编码维度为：#TODO ，这样一来就会得到3组的文编码对于CLIP的编码结果直接通过`clip_prompt_embeds=torch.cat([prompt_embed, prompt_2_embed], dim=-1)` 即可，在将得到后的 `clip_prompt_embeds`结果再去和T5的编码结果进行拼接之前会首先 `clip_prompt_embeds=torch.nn.functional.pad(clip_prompt_embeds, (0, t5_prompt_embed.shape[-1] - clip_prompt_embeds.shape[-1]))` 而后将T5的文本内容和 `clip_prompt_embeds`进行合并 `prompt_embeds = torch.cat([clip_prompt_embeds, t5_prompt_embed], dim=-2)`。由于使用T5模型导致模型的参数比较大进导致模型的显存占用过大（2080Ti等GPU上轻量化的部署推理SD 3模型，可以只使用CLIP ViT-L + OpenCLIP ViT-bigG的特征，此时需要**将T5-XXL的特征设置为zero**（不加载）[^14]），选择**不去使用T5模型会对模型对于文本的理解能力有所降低**。
+![image.png](https://s2.loli.net/2025/08/20/W3FaCb2Zyuqgo4N.png)
+
+* FLUX模型而言其结构如下
+
+![](https://s2.loli.net/2025/08/14/ZUmgbJs9fAXKPRW.png)
+
+### VAE基座模型
+
+
+### GAN基座模型
+- [ ] 1、介绍完成LaMa模型基本结构以及基本使用方式
+- [ ] 2、将LaMa官方的架构玻璃出来方便使用
+
+主要介绍用的比较多的lama[^13]模型
+![image.png](https://s2.loli.net/2025/08/15/DKUE4sGv3qkcOxH.png)
+
+### Qwen image
+
 
 ### 不同模型参数对生成的影响
 > https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Features#stable-diffusion-20
@@ -424,3 +461,9 @@ SDXL区别SD1.5其存在两个文本编码器因此在加载过程中需要加�
 [^9]:[https://arxiv.org/pdf/2506.15742](https://arxiv.org/pdf/2506.15742)
 [^10]:[https://arxiv.org/pdf/2310.00426](https://arxiv.org/pdf/2310.00426)
 [^11]:[Scalable Diffusion Models with Transformers](https://openaccess.thecvf.com/content/ICCV2023/papers/Peebles_Scalable_Diffusion_Models_with_Transformers_ICCV_2023_paper.pdf)
+[^12]: [https://arxiv.org/pdf/2403.03206](https://arxiv.org/pdf/2403.03206)
+[^13]: [https://arxiv.org/pdf/2109.07161](https://arxiv.org/pdf/2109.07161)
+[^14]: https://zhuanlan.zhihu.com/p/684068402
+[^15]: https://zhouyifan.net/2024/09/03/20240809-flux1/
+[^16]: https://zhouyifan.net/2024/07/14/20240703-SD3/
+[^17]: https://stability.ai/news/stable-diffusion-3-research-paper
