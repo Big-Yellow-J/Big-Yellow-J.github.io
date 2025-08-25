@@ -117,8 +117,116 @@ SD3[^12]、FLUX对于这几组模型的前世今生不做介绍，主要了解�
 > SD3使用T5-XXL模型。这使得以少于24GB的VRAM在GPU上运行模型，即使使用FP16精度。因此如果需要使用就需要：1、将部分模型[下放到CPU上](https://github.com/huggingface/diffusers/blob/0f252be0ed42006c125ef4429156cb13ae6c1d60/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L186)；2、直接取消T5的使用（`StableDiffusion3Pipeline.from_pretrained("stabilityai/stable-diffusion-3-medium-diffusers",text_encoder_3=None,tokenizer_3=None,torch_dtype=torch.float16)`）。
 > 文本编码过程：1、CLIP编码分别得到：[1, 77, 768]和[1, 77, 1280]；2、T5编码得到：[1, 256, 4096]；3、CLIP文本编码拼接：[1, 77, 2048]在去将其通过pad填充到和T5一致得到最后CLIP编码器维度为：**[1, 77, 4096]**；4、最后文本编码维度：`[1, 333, 4096]`
 
-[**2、Flow Matching模式**](https://www.big-yellow-j.top/posts/2025/07/06/DFscheduler.html)；
-**3、MM-Dit模型架构**：
+**2、Flow Matching模式**（[原理](https://www.big-yellow-j.top/posts/2025/07/06/DFscheduler.html)）；
+**3、MM-Dit模型架构**（[代码](https://github.com/huggingface/diffusers/blob/d03240801f2ac2b4d1f49584c1c5628b98583f6a/src/diffusers/models/transformers/transformer_sd3.py#L80)）：观察上面过程，扩散模型输入无法3个内容：1、时间步（$y$）；2、加噪处理的图像（$x$）；3、文本编码（$c$）。首先对于 **时间步**而言处理过程为：直接通过 Sin位置编码然后去和CLIP（两个合并的）进行组合即可对于另外两个部分直接通过[代码](https://github.com/huggingface/diffusers/blob/d03240801f2ac2b4d1f49584c1c5628b98583f6a/src/diffusers/models/transformers/transformer_sd3.py#L80)进行理解：
+```python
+def forward(
+    self,
+    hidden_states: torch.Tensor, # 加噪声的图片 (batch size, channel, height, width)
+    encoder_hidden_states: torch.Tensor = None, # 条件编码比如说：文本prompt (batch size, sequence_len, embed_dims)
+    pooled_projections: torch.Tensor = None, # 池化后的条件编码 (batch size, embed_dims)
+    timestep: torch.LongTensor = None, # 时间步编码
+    block_controlnet_hidden_states: List = None,
+    joint_attention_kwargs: Optional[Dict[str, Any]] = None,
+    return_dict: bool = True,
+    skip_layers: Optional[List[int]] = None,
+) -> Union[torch.Tensor, Transformer2DModelOutput]:
+    ...
+    height, width = hidden_states.shape[-2:]
+    # Step-1 
+    hidden_states = self.pos_embed(hidden_states) # 直接使用 2D的位置编码
+    temb = self.time_text_embed(timestep, pooled_projections)
+    encoder_hidden_states = self.context_embedder(encoder_hidden_states) # 一层线性映射
+    ...
+    # Step-2
+    for index_block, block in enumerate(self.transformer_blocks):
+        is_skip = True if skip_layers is not None and index_block in skip_layers else False
+        if torch.is_grad_enabled() and self.gradient_checkpointing and not is_skip:
+            ...
+        elif not is_skip:
+            encoder_hidden_states, hidden_states = block(
+                hidden_states=hidden_states,
+                encoder_hidden_states=encoder_hidden_states,
+                temb=temb,
+                joint_attention_kwargs=joint_attention_kwargs,
+            )
+        ...
+    # Step-3
+    hidden_states = self.norm_out(hidden_states, temb)
+    hidden_states = self.proj_out(hidden_states)
+    patch_size = self.config.patch_size
+    height = height // patch_size
+    width = width // patch_size
+
+    hidden_states = hidden_states.reshape(
+        shape=(hidden_states.shape[0], height, width, patch_size, patch_size, self.out_channels)
+    )
+    hidden_states = torch.einsum("nhwpqc->nchpwq", hidden_states)
+    output = hidden_states.reshape(
+        shape=(hidden_states.shape[0], self.out_channels, height * patch_size, width * patch_size)
+    )
+    ...
+    if not return_dict:
+        return (output,)
+    return Transformer2DModelOutput(sample=output)
+```
+**Step-1**：首先去将图像 $x$使用2D 正弦-余弦位置编码进行处理，对于时间步直接sin位置编码，对于条件（文本prompt等）直接通过一层线性编码处理。
+**Step-2**：然后就是直接去计算Attention：`encoder_hidden_states, hidden_states = block(hidden_states=hidden_states,encoder_hidden_states=encoder_hidden_states,temb=temb,joint_attention_kwargs=joint_attention_kwargs,)`，对于这个[block](https://github.com/huggingface/diffusers/blob/d03240801f2ac2b4d1f49584c1c5628b98583f6a/src/diffusers/models/attention.py#L570)的设计过程为：
+![](https://s2.loli.net/2025/08/22/sbG2HTRQtKm4nCV.png)
+
+```python
+def forward(
+    self,
+    hidden_states: torch.FloatTensor,
+    encoder_hidden_states: torch.FloatTensor,
+    temb: torch.FloatTensor,
+    joint_attention_kwargs: Optional[Dict[str, Any]] = None,
+):
+    joint_attention_kwargs = joint_attention_kwargs or {}
+    # Aeetntion Step-1
+    if self.use_dual_attention:
+        norm_hidden_states, gate_msa, shift_mlp, scale_mlp, gate_mlp, norm_hidden_states2, gate_msa2 = self.norm1(
+            hidden_states, emb=temb
+        )
+    else:
+        ...
+
+    if self.context_pre_only:
+        ...
+    else:
+        norm_encoder_hidden_states, c_gate_msa, c_shift_mlp, c_scale_mlp, c_gate_mlp = self.norm1_context(
+            encoder_hidden_states, emb=temb
+        )
+    # Attention Step-2
+    attn_output, context_attn_output = self.attn(
+        hidden_states=norm_hidden_states,
+        encoder_hidden_states=norm_encoder_hidden_states,
+        **joint_attention_kwargs,
+    )
+    attn_output = gate_msa.unsqueeze(1) * attn_output
+    hidden_states = hidden_states + attn_output
+    ...
+    norm_hidden_states = self.norm2(hidden_states)
+    norm_hidden_states = norm_hidden_states * (1 + scale_mlp[:, None]) + shift_mlp[:, None]
+    if self._chunk_size is not None:
+        ...
+    else:
+        ff_output = self.ff(norm_hidden_states)
+    ff_output = gate_mlp.unsqueeze(1) * ff_output
+    hidden_states = hidden_states + ff_output
+    if self.context_pre_only:
+        ...
+
+    return encoder_hidden_states, hidden_states
+```
+计算注意力过程中，首先 **Attention Step-1**：正则化处理（正如上面[Dit中](https://www.big-yellow-j.top/posts/2025/07/06/DFBaseModel.html#:~:text=%E5%9C%A8layernorm%E4%B8%AD%E4%B8%80%E8%88%AC%E5%BD%92%E4%B8%80%E5%8C%96%E5%A4%84%E7%90%86%E6%96%B9%E5%BC%8F%E4%B8%BA)的一样将条件拆分为几个参数，观察SD3图中的MMDit设计，会将 **加噪声处理的图片** 和 **条件编码**都去（处理方式相同）通过 “正则化”，在SD3中处理方式为，直接`shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp, shift_msa2, scale_msa2, gate_msa2 = emb.chunk(9, dim=1)` 拆分之后去通过 `LayerNorm`处理之后得到 `norm_hidden_states` 而后在去计算 `norm_hidden_states * (1 + scale_msa[:, None]) + shift_msa[:, None]`）然后后面处理过程就比较简单和上面的流程图是一样的。
+这样一来一个MMDit block就会返回两部分结果 `encoder_hidden_states`, `hidden_states`（区**别Dit之间在于，MMDit是将image和text两种模态之间的信息进行融合二Dit只是使用到imgae一种模态**）
+**Step-3**就比较简单就是一些norm等处理。
+**总的来说**MMDiT Block 的输入主要有三部分：**时间步嵌入** $y$：通过一个 MLP 投影，得到一组参数，用于调节 Block 内的 LayerNorm / Attention / MLP（类似 FiLM conditioning）。**图像 token** $x$：由加噪图像 latent patch embedding 得到，并加上 2D 正弦余弦位置编码。**文本 token** $c$：来自文本编码器的输出，一般带有 1D 位置编码。**Block 内部机制**：将 $x$ 和 $c$ 拼接在一起，作为 Transformer 的输入序列。在自注意力层中，$x$ token 能和 $c$ token 交互，从而实现 跨模态融合。$y$（timestep embedding）通过投影提供额外的条件控制。
+
+> **2D 正弦-余弦位置编码**
+> ![](https://s2.loli.net/2025/08/22/hcJMTeFfAiwXgr1.png)
+> 左侧为一般的位置编码方式，但是有一个缺点：生成的图像的分辨率是无法修改的。比如对于上图，假如采样时输入大小不是4x3，而是4x5，那么0号图块的下面就是5而不是4了，模型训练时学习到的图块之间的位置关系全部乱套，因此就通过2D位置去代表每一块的位置信息。
 
 * FLUX模型而言其结构如下
 
@@ -137,7 +245,7 @@ SD3[^12]、FLUX对于这几组模型的前世今生不做介绍，主要了解�
 | playground-v2.5            |   925  | 0.0096   |
 | stable-diffusion-3-medium  |    24  | 0.1027   |
 | FLUX.1                     |    18  | 0.0412   |
-| CogView4-6B                |     0  | 0.1265   |
+| **CogView4-6B**            | **0**  | **0.1265**  |
 | FLUX.1-Kontext             |    18  | 0.0098   |
 
 ### GAN基座模型
