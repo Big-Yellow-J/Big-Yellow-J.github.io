@@ -108,7 +108,7 @@ Dit[^11]模型结构上，1、**模型输入**，将输入的image/latent切分�
 > SD3的diffusers官方文档：[StableDiffusion3Pipeline](https://huggingface.co/docs/diffusers/en/api/pipelines/stable_diffusion/stable_diffusion_3#diffusers.StableDiffusion3Pipeline)
 
 https://zhouyifan.net/2024/09/03/20240809-flux1/
-SD3[^12]、FLUX对于这几组模型的前世今生不做介绍，主要了解其模型结构以及论文里面所涉及到到的一些知识点。首先介绍SD3模型在模型改进上[^16]：1、改变训练时噪声采样方法；2、将一维位置编码改成二维位置编码；3、提升 VAE 隐空间通道数（作者实验发现最开始VAE会将模型**下采样8倍数并且处理通道为4的空间**，也就是说 $512 \times 512 \times 3 \rightarrow 64\times 64 \times 3$，不过在 **SD3**中将通道数由**4改为16**）；4、对注意力 QK 做归一化以确保高分辨率下训练稳定。
+SD3[^12]、FLUX对于这几组模型的前世今生不做介绍，主要了解其模型结构以及论文里面所涉及到到的一些知识点。首先介绍SD3模型在模型改进上[^16]：1、改变训练时噪声采样方法；2、将一维位置编码改成二维位置编码；3、提升 VAE 隐空间通道数（作者实验发现最开始VAE会将模型**下采样8倍数并且处理通道为4的空间**，也就是说 $512 \times 512 \times 3 \rightarrow 64\times 64 \times 4$，不过在 **SD3**中将通道数由**4改为16**）；4、对注意力 QK 做归一化以确保高分辨率下训练稳定。
 ![](https://s2.loli.net/2025/08/14/FoaVTmLGxrU7b69.png)
 其中SD3模型的整体框架如上所述:
 **1、文本编码器处理**（[代码](https://github.com/huggingface/diffusers/blob/0f252be0ed42006c125ef4429156cb13ae6c1d60/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L972)），在text encoder上SD3使用三个文本编码器：`clip-vit-large-patch14`、 `laion/CLIP-ViT-bigG-14-laion2B-39B-b160k` 、 `t5-v1_1-xxl` ，对于这3个文本编码器对于文本的处理过程为：就像SDXL中一样首先3个编码器分别都去对文本进行编码，首先对于两个[CLIP的文本编码](https://github.com/huggingface/diffusers/blob/0f252be0ed42006c125ef4429156cb13ae6c1d60/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L289)处理过程为直接通过CLIP进行 `prompt_embeds = text_encoder(text_input_ids.to(device)...)` 而后去选择 `prompt_embeds.hidden_states[-(clip_skip + 2)]`（默认条件下 `clip_skip=None`也就是**直接选择倒数第二层**）那么最后得到文本编码的维度为：`torch.Size([1, 77, 768]) torch.Size([1, 77, 1280])` 而[T5的encoder](https://github.com/huggingface/diffusers/blob/0f252be0ed42006c125ef4429156cb13ae6c1d60/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L233)就比较检查直接通过encoder进行编码，那么其编码维度为：`torch.Size([1, 256, 4096])`，这样一来就会得到3组的文编码，对于CLIP的编码结果直接通过`clip_prompt_embeds=torch.cat([prompt_embed, prompt_2_embed], dim=-1)` 即可，在将得到后的 `clip_prompt_embeds`结果再去和T5的编码结果进行拼接之前会首先 `clip_prompt_embeds=torch.nn.functional.pad(clip_prompt_embeds, (0, t5_prompt_embed.shape[-1] - clip_prompt_embeds.shape[-1]))` 而后将T5的文本内容和 `clip_prompt_embeds`进行合并 `prompt_embeds = torch.cat([clip_prompt_embeds, t5_prompt_embed], dim=-2)`。由于使用T5模型导致模型的参数比较大进导致模型的显存占用过大（2080Ti等GPU上轻量化的部署推理SD 3模型，可以只使用CLIP ViT-L + OpenCLIP ViT-bigG的特征，此时需要**将T5-XXL的特征设置为zero**（不加载）[^14]），选择**不去使用T5模型会对模型对于文本的理解能力有所降低**。
@@ -231,6 +231,23 @@ def forward(
 * FLUX模型而言其结构如下
 
 ![](https://s2.loli.net/2025/08/14/ZUmgbJs9fAXKPRW.png)
+
+区别SD3模型在于，FLUX.1在文本编码器选择上**只使用了2个编码器**（CLIPTextModel、T5EncoderModel）并且FLUX.1 VAE架构依然继承了SD 3 VAE的**8倍下采样和输入通道数（16）**。在FLUX.1 VAE输出Latent特征，并在Latent特征输入扩散模型前，还进行了 `_pack_latents`操作，一下子将Latent**特征通道数提高到64（16 -> 64）**，换句话说，FLUX.1系列的扩散模型部分输入通道数为64，是SD 3的四倍。对于 `_pack_latents`做法是会将一个 $2\times 2$的像素去补充到通道中。
+```python
+def _pack_latents(latents, batch_size, num_channels_latents, height, width):
+    latents = latents.view(batch_size, num_channels_latents, height // 2, 2, width // 2, 2)
+    latents = latents.permute(0, 2, 4, 1, 3, 5)
+    latents = latents.reshape(batch_size, (height // 2) * (width // 2), num_channels_latents * 4)
+    return latents
+```
+除去改变text的编码器数量以及VAE的通道数量之外，FLUX.1还做了如下的改进：FLUX.1 没有做 Classifier-Free Guidance (CFG)（对于CFG一般做法就是直接去将“VAE压缩的图像信息变量复制两倍” `torch.cat([latents] * 2)`，文本就是直接将negative_prompt的编码补充到文本编码中 `torch.cat([negative_prompt_embeds, prompt_embeds], dim=0)`）而是把指引强度 guidance 当成了一个和时刻 t 一样的约束信息，传入去噪模型 transformer 中。在transformer模型结构设计中，SD3是**直接对图像做图块化，再设置2D位置编码** `PatchEmbed`，在FLUX.1中使用的是`FluxPosEmbed`（旋转位置编码）
+```python
+# SD3
+self.pos_embed = PatchEmbed(height=sample_size,width=sample_size,patch_size=patch_size,in_channels=in_channels,)
+embed_dim=self.inner_dim,pos_embed_max_size=pos_embed_max_size,  # hard-code for now.)
+# FLUX.1
+self.pos_embed = FluxPosEmbed(theta=10000, axes_dim=axes_dims_rope)
+```
 
 ### VAE基座模型
 对于VAE模型在之前的[博客](https://www.big-yellow-j.top/posts/2025/05/11/VAE.html)有介绍过具体的原理，这里主要就是介绍几个常见的VAE架构模型（使用过程中其实很少会去修改VAE架构，一般都是直接用SD自己使用的）所以就简单对比一下不同的VAE模型在图片重构上的表，主要是使用此[huggingface](https://huggingface.co/spaces/rizavelioglu/vae-comparison)上的进行比较（比较的数值越小越好，就数值而言 **CogView4-6B**效果最佳），下面结果为随便挑选的一个图片进行测试结果：
