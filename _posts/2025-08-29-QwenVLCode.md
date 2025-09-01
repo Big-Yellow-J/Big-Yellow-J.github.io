@@ -8,7 +8,7 @@ show_footer_image: true
 tags:
 - 多模态
 - QwenVL
-description: 
+description: 从代码角度解析QwenVL2.5模型处理流程，包括模板化输入（通过processor.apply_chat_template处理对话messages，data_loader预处理）、编码（smart_resize动态调整图像分辨率，Qwen2VLImageProcessor完成归一化及patch切割）、模型处理（VisionTransformer处理pixel_values，经Conv3d与window-attention计算），并介绍其SFT和强化学习微调方法。
 ---
 
 从代码角度去理解QwenVL2.5是如何处理，以及结合实际操作理解如何去对一个QwenVL2.5-3B进行SFT和强化学习处理，首先直接通过官方提供例子了解QwenVL是怎么使用的：

@@ -109,10 +109,10 @@ Dit[^11]模型结构上，1、**模型输入**，将输入的image/latent切分�
 
 https://zhouyifan.net/2024/09/03/20240809-flux1/
 SD3[^12]、FLUX对于这几组模型的前世今生不做介绍，主要了解其模型结构以及论文里面所涉及到到的一些知识点。首先介绍SD3模型在模型改进上[^16]：1、改变训练时噪声采样方法；2、将一维位置编码改成二维位置编码；3、提升 VAE 隐空间通道数（作者实验发现最开始VAE会将模型**下采样8倍数并且处理通道为4的空间**，也就是说 $512 \times 512 \times 3 \rightarrow 64\times 64 \times 4$，不过在 **SD3**中将通道数由**4改为16**）；4、对注意力 QK 做归一化以确保高分辨率下训练稳定。
-![](https://s2.loli.net/2025/08/14/FoaVTmLGxrU7b69.png)
+![](https://s2.loli.net/2025/09/01/R5HI3yLPXBEbtzQ.webp)
 其中SD3模型的整体框架如上所述:
 **1、文本编码器处理**（[代码](https://github.com/huggingface/diffusers/blob/0f252be0ed42006c125ef4429156cb13ae6c1d60/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L972)），在text encoder上SD3使用三个文本编码器：`clip-vit-large-patch14`、 `laion/CLIP-ViT-bigG-14-laion2B-39B-b160k` 、 `t5-v1_1-xxl` ，对于这3个文本编码器对于文本的处理过程为：就像SDXL中一样首先3个编码器分别都去对文本进行编码，首先对于两个[CLIP的文本编码](https://github.com/huggingface/diffusers/blob/0f252be0ed42006c125ef4429156cb13ae6c1d60/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L289)处理过程为直接通过CLIP进行 `prompt_embeds = text_encoder(text_input_ids.to(device)...)` 而后去选择 `prompt_embeds.hidden_states[-(clip_skip + 2)]`（默认条件下 `clip_skip=None`也就是**直接选择倒数第二层**）那么最后得到文本编码的维度为：`torch.Size([1, 77, 768]) torch.Size([1, 77, 1280])` 而[T5的encoder](https://github.com/huggingface/diffusers/blob/0f252be0ed42006c125ef4429156cb13ae6c1d60/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L233)就比较检查直接通过encoder进行编码，那么其编码维度为：`torch.Size([1, 256, 4096])`，这样一来就会得到3组的文编码，对于CLIP的编码结果直接通过`clip_prompt_embeds=torch.cat([prompt_embed, prompt_2_embed], dim=-1)` 即可，在将得到后的 `clip_prompt_embeds`结果再去和T5的编码结果进行拼接之前会首先 `clip_prompt_embeds=torch.nn.functional.pad(clip_prompt_embeds, (0, t5_prompt_embed.shape[-1] - clip_prompt_embeds.shape[-1]))` 而后将T5的文本内容和 `clip_prompt_embeds`进行合并 `prompt_embeds = torch.cat([clip_prompt_embeds, t5_prompt_embed], dim=-2)`。由于使用T5模型导致模型的参数比较大进导致模型的显存占用过大（2080Ti等GPU上轻量化的部署推理SD 3模型，可以只使用CLIP ViT-L + OpenCLIP ViT-bigG的特征，此时需要**将T5-XXL的特征设置为zero**（不加载）[^14]），选择**不去使用T5模型会对模型对于文本的理解能力有所降低**。
-![image.png](https://s2.loli.net/2025/08/20/W3FaCb2Zyuqgo4N.png)
+![image.png](https://s2.loli.net/2025/09/01/RdQCOmXeMfwUYsh.webp)
 
 > SD3使用T5-XXL模型。这使得以少于24GB的VRAM在GPU上运行模型，即使使用FP16精度。因此如果需要使用就需要：1、将部分模型[下放到CPU上](https://github.com/huggingface/diffusers/blob/0f252be0ed42006c125ef4429156cb13ae6c1d60/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L186)；2、直接取消T5的使用（`StableDiffusion3Pipeline.from_pretrained("stabilityai/stable-diffusion-3-medium-diffusers",text_encoder_3=None,tokenizer_3=None,torch_dtype=torch.float16)`）。
 > 文本编码过程：1、CLIP编码分别得到：[1, 77, 768]和[1, 77, 1280]；2、T5编码得到：[1, 256, 4096]；3、CLIP文本编码拼接：[1, 77, 2048]在去将其通过pad填充到和T5一致得到最后CLIP编码器维度为：**[1, 77, 4096]**；4、最后文本编码维度：`[1, 333, 4096]`
@@ -172,7 +172,7 @@ def forward(
 ```
 **Step-1**：首先去将图像 $x$使用2D 正弦-余弦位置编码进行处理，对于时间步直接sin位置编码，对于条件（文本prompt等）直接通过一层线性编码处理。
 **Step-2**：然后就是直接去计算Attention：`encoder_hidden_states, hidden_states = block(hidden_states=hidden_states,encoder_hidden_states=encoder_hidden_states,temb=temb,joint_attention_kwargs=joint_attention_kwargs,)`，对于这个[block](https://github.com/huggingface/diffusers/blob/d03240801f2ac2b4d1f49584c1c5628b98583f6a/src/diffusers/models/attention.py#L570)的设计过程为：
-![](https://s2.loli.net/2025/08/22/sbG2HTRQtKm4nCV.png)
+![](https://s2.loli.net/2025/09/01/gLkSbrt9vfyQ5uJ.webp)
 
 ```python
 def forward(
@@ -225,12 +225,12 @@ def forward(
 **总的来说**MMDiT Block 的输入主要有三部分：**时间步嵌入** $y$：通过一个 MLP 投影，得到一组参数，用于调节 Block 内的 LayerNorm / Attention / MLP（类似 FiLM conditioning）。**图像 token** $x$：由加噪图像 latent patch embedding 得到，并加上 2D 正弦余弦位置编码。**文本 token** $c$：来自文本编码器的输出，一般带有 1D 位置编码。**Block 内部机制**：将 $x$ 和 $c$ 拼接在一起，作为 Transformer 的输入序列。在自注意力层中，$x$ token 能和 $c$ token 交互，从而实现 跨模态融合。$y$（timestep embedding）通过投影提供额外的条件控制。
 
 > **2D 正弦-余弦位置编码**
-> ![](https://s2.loli.net/2025/08/22/hcJMTeFfAiwXgr1.png)
+> ![](https://s2.loli.net/2025/09/01/lwZns5H9vTpeOgU.webp)
 > 左侧为一般的位置编码方式，但是有一个缺点：生成的图像的分辨率是无法修改的。比如对于上图，假如采样时输入大小不是4x3，而是4x5，那么0号图块的下面就是5而不是4了，模型训练时学习到的图块之间的位置关系全部乱套，因此就通过2D位置去代表每一块的位置信息。
 
 * FLUX模型而言其结构如下
 
-![](https://s2.loli.net/2025/08/14/ZUmgbJs9fAXKPRW.png)
+![](https://s2.loli.net/2025/09/01/WTD97u3eFiQwr4d.webp)
 
 区别SD3模型在于，FLUX.1在文本编码器选择上**只使用了2个编码器**（CLIPTextModel、T5EncoderModel）并且FLUX.1 VAE架构依然继承了SD 3 VAE的**8倍下采样和输入通道数（16）**。在FLUX.1 VAE输出Latent特征，并在Latent特征输入扩散模型前，还进行了 `_pack_latents`操作，一下子将Latent**特征通道数提高到64（16 -> 64）**，换句话说，FLUX.1系列的扩散模型部分输入通道数为64，是SD 3的四倍。对于 `_pack_latents`做法是会将一个 $2\times 2$的像素去补充到通道中。
 ```python
@@ -270,7 +270,7 @@ self.pos_embed = FluxPosEmbed(theta=10000, axes_dim=axes_dims_rope)
 - [ ] 2、将LaMa官方的架构玻璃出来方便使用
 
 GAN模型个人在使用上用的不是特别多，因此主要介绍个人在实际使用过程中可能见到比较多的GAN模型。lama[^13]模型、StyleGAN1-3模型
-![image.png](https://s2.loli.net/2025/08/15/DKUE4sGv3qkcOxH.png)
+![image.png](https://s2.loli.net/2025/09/01/NQFt5gsrO4pJiS7.webp)
 
 ### Qwen image
 > 官方blog：[https://qwenlm.github.io/zh/blog/qwen-image/](https://qwenlm.github.io/zh/blog/qwen-image/)
@@ -280,11 +280,11 @@ GAN模型个人在使用上用的不是特别多，因此主要介绍个人在�
 > Qwen Image图片编辑int4量化版本：[https://huggingface.co/nunchaku-tech/nunchaku-qwen-image](https://huggingface.co/nunchaku-tech/nunchaku-qwen-image)，[代码](https://github.com/nunchaku-tech/nunchaku/blob/main/examples/v1/qwen-image.py)
 
 Qwen image[^18]无论是多行文字、段落布局，还是中英文等不同语种，Qwen-Image都能以极高的保真度进行渲染，尤其在处理复杂的中文（logographic languages）方面，表现远超现有模型（不过目前：2025.08.29模型全权重加载的话一般设备很难使用，不过又量化版本可以尝试）模型整体结构：
-![](https://s2.loli.net/2025/08/22/Ipa5ZC18KsMRBkF.png)
+![](https://s2.loli.net/2025/09/01/U7HqQcJxZ96SN3A.webp)
 整体框架上还是MMDit结构和上面的SD3都是一致的，不过模型的改进在于：1、区别之前的都是使用CLIP模型去对齐图片-文本之间信息，在Qwen Image中则是直接使用**Qwen2.5-VL**；2、对于VAE模型则是直接使用**Wan-2.1-VAE**（不过选择冻结encoder部分只去训练decoder部分）；3、模型的结构还是使用MMDit结构，知识将位置编码方式改为**Multimodal Scalable RoPE (MSRoPE)**，位置编码方式
-![](https://s2.loli.net/2025/08/22/l7sXqfOiAMzdtBK.png)
+![](https://s2.loli.net/2025/09/01/QuEY2gWZFzUMlCK.webp)
 大致框架了解之后细看他的数据是如何收集的以及后处理的：
-![](https://s2.loli.net/2025/08/22/I4vm57qzZ1QOR8D.png)
+![](https://s2.loli.net/2025/09/01/nzrOe2yaBpL5iwF.webp)
 对于收集到数据之后，论文里面通过如下操作进行后处理：**1、阶段一过滤数据**：模型预训练是在256x256的图片上进行训练的，因此，过滤掉256x256以外的图片还有一些低质量图片等；**2、阶段二图片质量强化**：主要还是过滤一些低质量图片如亮度纹理等；
 
 ### 不同模型参数对生成的影响
