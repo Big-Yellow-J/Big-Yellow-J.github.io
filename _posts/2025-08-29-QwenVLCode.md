@@ -396,8 +396,28 @@ Qwen2_5_VLForConditionalGeneration(
 * **首先**：对于视觉部分处理（`Qwen2_5_VisionTransformerPretrainedModel`）
 
 > 对于视觉模型主要需要处理的就是 `pixel_values`，假设输入的 `pixel_values`信息为：`[4872, 1176]`，image_grid_thw为： [1, 84, 58]（就是对应grid_t、grid_h、grid_w这三个数值）
+
 主要包括如下几个模块：
 1、[Qwen2_5_VisionPatchEmbed](https://github.com/huggingface/transformers/blob/41925e42135257361b7f02aa20e3bbdab3f7b923/src/transformers/models/qwen2_5_vl/modeling_qwen2_5_vl.py#L88)：主要进行处理通过一个 `Conv3d`处理，处理[过程](https://github.com/huggingface/transformers/blob/41925e42135257361b7f02aa20e3bbdab3f7b923/src/transformers/models/qwen2_5_vl/modeling_qwen2_5_vl.py#L105C4-L111C29)也就是说首先将输入的维度进行修改得到：`view(-1, self.in_channels, self.temporal_patch_size, self.patch_size, self.patch_size)` --> (4872,1176)-->(4872,3,2,14,14)而后再去通过卷积处理得到 (4872,1280,1,1,1)最后得到：**(4872,1280)**，也就对应着：`(grid_t*grid_h*grid_w, hiddend_size)`；
 2、Qwen2_5_VisionRotaryEmbedding；
-3、[Qwen2_5_VLVisionAttention](https://github.com/huggingface/transformers/blob/41925e42135257361b7f02aa20e3bbdab3f7b923/src/transformers/models/qwen2_5_vl/modeling_qwen2_5_vl.py#L233)：首先去划分[window_size](https://github.com/huggingface/transformers/blob/41925e42135257361b7f02aa20e3bbdab3f7b923/src/transformers/models/qwen2_5_vl/modeling_qwen2_5_vl.py#L465)
-4、Qwen2_5_VLPatchMerger
+3、[Qwen2_5_VLVisionAttention](https://github.com/huggingface/transformers/blob/41925e42135257361b7f02aa20e3bbdab3f7b923/src/transformers/models/qwen2_5_vl/modeling_qwen2_5_vl.py#L233)：首先去划分[window_size](https://github.com/huggingface/transformers/blob/41925e42135257361b7f02aa20e3bbdab3f7b923/src/transformers/models/qwen2_5_vl/modeling_qwen2_5_vl.py#L465)这一步直接根据计算得到的：`[grid_t, grid_h, grid_w]`去划分windows，比如说在上述例子中，得到的cu_seqlens = [0,64,128,...,4872]，而后再去通过如下处理：
+```python
+lengths = cu_seqlens[1:] - cu_seqlens[:-1]
+splits = [
+    torch.split(tensor, lengths.tolist(), dim=2) for tensor in (query_states, key_states, value_states)
+]
+```
+去划分q、k、v（形状都为：[1, 16, 4872, 80]）然后计算注意力，而后通过[Qwen2_5_VLPatchMerger](https://github.com/huggingface/transformers/blob/41925e42135257361b7f02aa20e3bbdab3f7b923/src/transformers/models/qwen2_5_vl/modeling_qwen2_5_vl.py#L146)将结果合并起来。
+**具体计算过程**，首先是如何得到cu_seqlens，因为我们得到的gird_thw=(1, 84, 58)也就是说总共有84*58=4872个token去计算全局注意力，那么这就会导致计算注意力的消耗过大，因此可以先去切分成小的window然后小块内部注意力计算。因此首先计算“块”的大小：`vit_merger_window_size = self.window_size // self.spatial_merge_size // self.patch_size`得到结果为: 4（112/2/14）也就是说每块大小为：4x4=16，但是不一定我的grid_h和grid_w可能整除4，因此就需要去计算填充数量 `vit_merger_window_size - llm_grid_h % vit_merger_window_size` 分别得到 4和2因此填充后的h和w为：88,60这样一来计算得到window数量为：88//4 * 60//4=330每个窗口的tokens数量：16
+
+### 4、图像处理过程总结
+**总结上述图像处理过程**：对于任意输入图像首先通过smart_resize（首先将图像改变到 factor的倍数，然后去判断和min_pixels和max_pixels之间大小，然后进行扩大，缩小）进行处理保证都可以整除patch_size（14）然后丢到 `processor`中进行处理主要是对图像归一化、正则化、改变维度（还会通过smart_resize在处理一次），处理之后再去确定他的 `grid_t, grid_h, grid_w`（对于这3个参数确定：直接通过 第二次smart_resize处理之后的结果除 patch_size即可）也就是tokens数量，而后将图像内容通过 conv3d处理得到：`(grid_t* grid_h* grid_w, hidden_size)`，最后就是计算window_attention（首先确定widow_size索引，通过索引进行切分，最后计算注意力）
+> 补充：对于window-attention可以用卷积的思路去理解，比如说我得到“图像”：`(grid_t, grid_h, grid_w)` 我提前计算我的“卷积核”大小（`vit_merger_window_size = self.window_size // self.spatial_merge_size // self.patch_size`）为了保证我的 “图像”可以被卷积核处理就需要做一部分填充，而后用这个“卷积核”去划分成不同“小块”在到这个小块里面计算注意力。
+
+### 5、位置编码
+
+## QwenVL的微调过程
+### SFT 处理
+https://www.f22labs.com/blogs/complete-guide-to-fine-tuning-qwen2-5-vl-model/
+
+### DL 处理
