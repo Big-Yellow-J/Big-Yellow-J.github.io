@@ -417,7 +417,287 @@ splits = [
 ### 5、位置编码
 
 ## QwenVL的微调过程
+所有的代码：[https://github.com/shangxiaaabb/Docparse-QwenVL](https://github.com/shangxiaaabb/Docparse-QwenVL)
+
+> **补充一：节约显存可以进行的操作**
+> 1、使用`gradient_checkpointing`：`model.gradient_checkpointing_enable()`
+> 2、使用 `qlora`进行优化
+> 3、使用 `AdamW8bit` 而不是 `AdamW` 
+> 4、使用 `xformers` （`model.enable_xformers_memory_efficient_attention()`），不过需要注意的是 QwenVL2.5不支持使用 `xformers`（除此之外安装也比较复杂）
+> 5、避免显存碎片（不要过度的去评估模型），可以使用 `gc.collect() torch.cuda.empty_cache()` 去适当的减小缓存压力，对于不需要的内容（中间值）直接通过 `del xx` 处理掉
+
 ### SFT 处理
 https://www.f22labs.com/blogs/complete-guide-to-fine-tuning-qwen2-5-vl-model/
 
-### DL 处理
+#### SFT数据处理过程
+首先假设数据（通过jsonl进行存储）输入格式为：
+```json
+{"image": 
+    "845c2f9b-0583-4127-82a6-47c4c1c3ceb7.jpg", 
+"prefix": 
+    "QwenVL HTML", 
+"suffix": 
+    "<body><h2 data-bbox=......"
+}
+```
+构建data_loader只需要注意如下几个流程即可：
+**首先构建我的输入模板**。这一步主要是将我的数据进行读取，然后去构建成QwenVL2.5（或者其他大模型的对话形式），比如说：
+```python
+def format_data(self, image, entry, text, prompt):
+    return [
+        {
+            "role": "system",
+            "content": [{"type": "text", "text": self.SYSTEM_MESSAGE}],
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "image": image,
+                },
+                {
+                    "type": "text",
+                    "text": (
+                        "Must output the layout of the image strictly in HTML format. "
+                        "Must follow the example below:\n"
+                        "<h2 data-bbox='x1 y1 x2 y2'>Text</h2>\n"
+                        "<p data-bbox='x1 y1 x2 y2'>Text</p>")
+                },
+            ],
+        },
+        {
+            "role": "assistant",
+            "content": [{"type": "text", "text": text}],
+        },
+    ]
+```
+然后就只需要将参数丢到这个函数里面就可以自动化的将数据处理好（补充一点，对于上面几个参数，一般来说其中`text`就是我的模型需要输出的label，而后其他的内容就是模型的输入），其次就只需要将**输入进行编码**即可也就是说直接通过：
+```python
+image_inputs, _ = process_vision_info(messages)
+encoding = self.processor(
+    text=[text],
+    images= image_inputs,
+    return_tensors="pt",
+    padding= False,
+    truncation=True,
+    max_length= self.max_length
+)
+```
+这样就会的得到模型的输入内容，一般来说得到的是：`input_ids`: 文本编码内容（一般来说会直接将 input_ids进行复制作为我们的 labels，当然也可以直接对与输入解析，只需要模型那部分作为labels），`attention_mask`，`pixel_values`: 图片像素编码结果`image_grid_thw`: 我的tokens数量（`grid_t*grid_h*grid_w`）。
+不过上面处理过程只是针对一张图片进行处理去构建对话信息，如果需要**处理多组图片同时进行输入**（比如说3张图片进行排序，让QwenVL输出）那么处理过程只需要修改 `content`即可（在content里面指定多个图片即可）
+```python
+"content": [
+            {
+                "type": "image",
+                "image": "./tmp/7.png",
+            },
+            {
+                "type": "image",
+                "image": "./tmp/1.png",
+            },
+            {"type": "text", "text": "..."},
+        ],
+```
+
+#### SFT模型处理
+一般来说如果直接使用lora去对模型进行微调，处理也比较简答：
+```python
+target_modules = ['q_proj', 'v_proj']
+lora_config = LoraConfig(
+    task_type= config.lora_task_type,
+    target_modules= target_modules,
+    r= config.lora_rank,
+    lora_alpha= config.lora_alpha,
+    lora_dropout= config.lora_dropout,
+)
+model = get_peft_model(model, lora_config)
+```
+这样一来模型就会被lora“包裹”，微调过程也就是优化lora的参数，不过如果需要使用`qlora`（lora量化版本）再模型加载过程中需要使用参数 `quantization_config`：
+```python
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_use_double_quant=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.float16
+)
+...
+if model_name == 'Qwen/Qwen2.5-VL-3B-Instruct':
+    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+        model_name, 
+        torch_dtype= torch.bfloat16, 
+        cache_dir= config.cache_dir,
+        quantization_config= bnb_config if config.lora_type== 'qlora' else None,
+    )
+```
+对于模型训练以及参数优化过程就比较简单：
+```python
+for step, batch in enumerate(train_loader):
+    outputs = model(**batch)
+    loss = outputs.loss
+```
+得到的所有的内容可以直接全部丢到model里面，他会自动计算loss值，对于`outputs = model(**batch)`模型[返回](https://github.com/huggingface/transformers/blob/41925e42135257361b7f02aa20e3bbdab3f7b923/src/transformers/models/qwen2_5_vl/modeling_qwen2_5_vl.py#L1397)得到结果为：
+`loss`: Optional[torch.FloatTensor]：模型计算得到的loss（直接计算交叉熵损失得到），如果输入内容中没有labels（就是模型输出那段文本）那么就不会去计算loss
+`logits`: Optional[torch.FloatTensor]：模型输出结果
+`past_key_values`: Optional[list[torch.FloatTensor]]：Transformer 解码器的 KV 缓存（每一层的注意力 key 和 value）
+`hidden_states`: Optional[tuple[torch.FloatTensor]]：每一层的 hidden state (batch_size, seq_len, hidden_size)
+`attentions`: Optional[tuple[torch.FloatTensor]]：每一层注意力权重 (batch_size, num_heads, seq_len, seq_len)
+`rope_deltas`: Optional[torch.LongTensor]：旋转位置编码 RoPE（Rotary Position Embedding）的偏移量
+
+### RL 处理
+> 强化学习框架很多，1、huggingface-trl: [https://github.com/huggingface/trl](https://github.com/huggingface/trl)；2、字节跳动-verl: [https://github.com/volcengine/verl](https://github.com/volcengine/verl)；3、OpenRLHF：[https://github.com/OpenRLHF/OpenRLHF](https://github.com/OpenRLHF/OpenRLHF)
+
+强化学习处理过程（直接使用 trl（**使用版本：0.22.1**）库，它里面提供了[多种脚本](https://github.com/huggingface/trl/blob/main/examples/scripts/dpo_vlm.py)）对于多模态/大语言模型使用RL中比较常见的的数据类型：一般就是抛出问题，而后给出选项让模型进行选择。此类数据集一般格式为：
+```python
+{"images": [], "prompt": [], "chosen": [], "rejected": []}
+# 当然这个 images 也可以替换为文本问题 "question"
+```
+比如说数据集：[HuggingFaceH4/rlaif-v_formatted](https://huggingface.co/datasets/HuggingFaceH4/rlaif-v_formatted/viewer/default/train?row=0&views%5B%5D=train)他的数据结构如下：
+![image.png](https://s2.loli.net/2025/09/02/dm175p2yUkIKuzj.png)
+直接看trl中如何实现[QwenVL-DPO](https://github.com/huggingface/trl/blob/main/examples/scripts/dpo_vlm.py)过程代码：
+```python
+from trl import (
+    DPOConfig,
+    DPOTrainer,
+    ModelConfig,
+    ScriptArguments,
+    TrlParser,
+    get_kbit_device_map,
+    get_peft_config,
+    get_quantization_config,
+)
+...
+dataset = load_dataset(
+    script_args.dataset_name,
+    name=script_args.dataset_config,
+    streaming=script_args.dataset_streaming,
+)
+...
+# ref_model 和 model 都是直接使用QwenVL
+trainer = DPOTrainer(
+    model,
+    ref_model,
+    args=training_args,
+    train_dataset=dataset[script_args.dataset_train_split],
+    eval_dataset=dataset[script_args.dataset_test_split] if training_args.eval_strategy != "no" else None,
+    processing_class=processor,
+    peft_config=peft_config,
+)
+```
+
+#### RL-DPO处理代码
+首先在代码（`DPOTrainer`）主要是通过继承 `Trainer`（[代码](https://huggingface.co/docs/transformers/en/main_classes/trainer)包裹好了各种处理过程比如数据加载模型评估等各项处理过程）直接看 `DPOTrainer`里面的 `get_batch_loss_metrics`（完整模型输入然后输出loss）：
+```python
+def get_batch_loss_metrics(self, model, batch, train_eval):
+    ...
+    if ...:
+        ...
+    else:
+        model_output = self.concatenated_forward(model, batch)
+        if "ref_chosen_logps" in batch and "ref_rejected_logps" in batch:
+            ref_chosen_logps = batch["ref_chosen_logps"]
+            ref_rejected_logps = batch["ref_rejected_logps"]
+        else:
+            ref_chosen_logps, ref_rejected_logps = self.compute_ref_log_probs(batch)
+
+        losses = 0
+        chosen_rewards = 0
+        rejected_rewards = 0
+
+        for idx, loss_type in enumerate(self.loss_type):
+            _losses, _chosen_rewards, _rejected_rewards = self.dpo_loss(
+                model_output["chosen_logps"],
+                model_output["rejected_logps"],
+                ref_chosen_logps,
+                ref_rejected_logps,
+                loss_type,
+                model_output,
+            )
+
+            weight = self.loss_weights[idx] if self.loss_weights else 1.0
+            losses = losses + _losses * weight
+            chosen_rewards = chosen_rewards + _chosen_rewards * weight
+            rejected_rewards = rejected_rewards + _rejected_rewards * weight
+    return losses.mean(), ...
+```
+对于DPOTrainer里面data_loader处理过程为，首先对于 `dataset`会通过 `processing_class`（一般来说也就是对于文本直接使用 tokenizer，亦或者直接使用 `AutoProcessor.from_pretrained(...)`）进行处理，也就是说会提前将数据processor处理（和SFT处理方式相同）那么就会得到 `self.train_dataset`，那么接下来就是直接去通过[代码](https://github.com/huggingface/trl/blob/8534f0edf8608ad6bcbea9beefae380fa60ded77/trl/trainer/dpo_trainer.py#L455)（加载train_loader数据），其中处理方式为：`ref_chosen_logp, ref_rejected_logp = self.compute_ref_log_probs(padded_batch)` 对于 [`compute_ref_log_probs`](https://github.com/huggingface/trl/blob/8534f0edf8608ad6bcbea9beefae380fa60ded77/trl/trainer/dpo_trainer.py#L758)里面处理过程为：直接去通过 model/ref_model去处理：`self.concatenated_forward`（[代码](https://github.com/huggingface/trl/blob/8534f0edf8608ad6bcbea9beefae380fa60ded77/trl/trainer/dpo_trainer.py#L961)）得到模型输出： `model_output`，而后再去使用 `self.dpo_loss`去计算损失。
+
+* `self.concatenated_forward`处理过程 [Github-代码](https://github.com/huggingface/trl/blob/8534f0edf8608ad6bcbea9beefae380fa60ded77/trl/trainer/dpo_trainer.py#L961)（实际解释使用 **trl:0.22.1版本代码**和github有差异）
+
+```python
+def concatenated_forward(model, batch, is_ref_model):
+    concatenated_batch = self.concatenated_inputs(batch, padding_value=self.padding_value)
+    prompt_input_ids = concatenated_batch["prompt_input_ids"]         # 问题文本
+    prompt_attention_mask = concatenated_batch["prompt_attention_mask"]
+    completion_input_ids = concatenated_batch["completion_input_ids"] # 回答文本 同时拼接了chosen_input_ids 和 rejected_input_ids
+    completion_attention_mask = concatenated_batch["completion_attention_mask"]
+    if self.is_encoder_decoder:
+        labels = completion_input_ids
+        labels[completion_attention_mask == 0] = self.label_pad_token_id
+        outputs = model(
+                    input_ids=prompt_input_ids,
+                    attention_mask=prompt_attention_mask,
+                    labels=labels,  # we need the labels for the logits to be returned
+                    **model_kwargs,
+                )
+        logits = outputs.logits
+        loss_mask = completion_attention_mask.bool()
+    else:
+        # Process-1
+        input_ids = torch.cat((prompt_input_ids, completion_input_ids), dim=1)
+        ...
+        outputs = model(input_ids, **model_kwargs)
+        logits = outputs.logits
+    # Process-2
+```
+**Process-1**：首先是将文本和回答进行拼接，而后去判断如果指定 `max_length`那么就去根据 `truncation_mode`（掐头/去尾：保留序列末尾，移除开头多余部分）去裁减输入以及移除填充和限制计算范围来优化内存和性能最后丢到模型中进行处理。
+> 掐头去尾过程
+> `keep_start`：保留序列开头。先调用 flush_left（**所有有效的token左移动去除中间padding**）。然后截断到 max_length（[:, :self.max_length]）。`[0, 0, x, x, x, x] → flush_left` 后 `[x, x, x, x]`，若 max_length=3，则截断为 `[x, x, x]`
+> keep_end：保留序列末尾。先调用 flush_right（**将所有有效token向右移动，前面填充padding**）。截断到最后 max_length 个 token（[:, -self.max_length:]）。再次调用 flush_left，确保左侧无填充。`[0, 0, x, x, x, x] → flush_right` 后 `[0, 0, x, x]`，截断后 `[x, x]`，flush_left 后保持不变。
+
+回顾一下`self.concatenated_forward`（模型处理）整个过程：首先是将`chosen_input_ids` 和 `rejected_input_ids`两部分进行**拼接**（`self.concatenated_inputs`做的，于此同时对于其他内容也都会拼接成两部分）作为**我们模型的回答**。而后丢到**模型中进行处理**（对于 `is_encoder_decoder` 可以直接给模型处理，如果不是那么就通过**截断裁剪等处理来节约存储在由模型处理**）得到 `logits`，去通过logits, label得到每个token的对数概率：`all_logps`，而后再去判断是否进行优化策略： `ipo` 或者 `ld_alpha`（长度去敏化）去优化得到的 `all_logps`（对其直接切分就可以得到：`chosen_logps` 和 `rejected_logps`）
+
+* `self.dpo_loss`计算损失过程 [Github-代码](https://github.com/huggingface/trl/blob/8534f0edf8608ad6bcbea9beefae380fa60ded77/trl/trainer/dpo_trainer.py#L844)（实际解释使用 **trl:0.22.1版本代码**和github有差异）
+  
+```python
+model_output = self.concatenated_forward(model, batch)
+if "ref_chosen_logps" in batch and "ref_rejected_logps" in batch:
+    # 直接使用数据里面的的结果
+    ref_chosen_logps = batch["ref_chosen_logps"]
+    ref_rejected_logps = batch["ref_rejected_logps"]
+else:
+    # 相对于直接在用模型处理一下得到结果
+    ref_chosen_logps, ref_rejected_logps = self.compute_ref_log_probs(batch)
+_losses, _chosen_rewards, _rejected_rewards = self.dpo_loss(
+    model_output["chosen_logps"],
+    model_output["rejected_logps"],
+    ref_chosen_logps,
+    ref_rejected_logps,
+    loss_type,
+    model_output,)
+```
+> `if "ref_chosen_logps" in batch and "ref_rejected_logps" in batch:` 直接使用数据里面的结果过程一样的还是通过模型 `self.compute_ref_log_probs(batch)`（这个还是调用了 `self.concatenated_forward`）去得到chosen_logps 和 rejected_logps结果。
+> 对于 dpo_loss 里面model_ 和 ref_ 这两部分理论上是两个不同的模型的输出结果，但是如果没有指定 ref_model 那么直接就都直接使用 model 即可
+
+对于DPO的loss处理过程就比较简单，在trl中提供3种计算方式：
+**1、Alpha散度计算**
+![image.png](https://s2.loli.net/2025/09/03/sCXnj78ISpoQkGH.png)
+
+**2、KL散度计算**
+![image.png](https://s2.loli.net/2025/09/03/TJlhn7aG83rFO4i.png)
+
+**3、JS散度计算**
+![image.png](https://s2.loli.net/2025/09/03/1yO8AUnKZRtB3Dz.png)
+
+在计算得到不同方式得到的结果：logits然后再去根据不同 `loss_type`去做处理（比如说：`loss_type == "sigmoid"` 处理过程为：`losses = (-F.logsigmoid(self.beta * logits) * (1 - self.label_smoothing)- F.logsigmoid(-self.beta * logits) * self.label_smoothing)`）
+#### RL-DPO处理过程总结
+**首先**对于我们的数据集（假设为3元组：[问题, 接受回答, 拒绝回答]）首先就是去通过 `processor`（比如Qwen2.5vl可以直接 load）去编码我的所有内容（这一步和SFT过程相似），**而后**就是去通过`self.concatenated_forward`这个函数将我们的3元组进行拼接得到：[问题,问题], [接受回答, 拒绝回答]而后得到模型的输入为：[问题+接受回答, 问题+拒绝回答]，将输入直接交给的模型（由于见内容直接拼接起来，可能会优化模型的输入/出长度过长导致爆显存，因此输入之前会由一些裁剪处理操作）去得到输出：`logits`，而后通过logits, label得到每个token的对数概率：`all_logps`，（通过对`all_logps`进行拆分）就可以得到接受回答的值（`chosen_logps`），以及拒绝回答的值（`rejected_logps`），**最后**在得到这两部分值之后就是直接去计算loss。
+对于loss计算过程（假设为KL散度）：$\mathrm{loss}=-\frac{1}{N}\sum_{i=1}^{N}\log\sigma\left(\beta\cdot((\log\pi_{\theta}(y_{w}|x)-\log\pi_{\theta}(y_{l}|x))-(\log\pi_{\mathrm{ref}}(y_{w}|x)-\log\pi_{\mathrm{ref}}(y_{l}|x)))\right)$。对于里面两项相减过程代码：
+```python
+chosen_logratios = chosen_logps.to(device) - (not self.reference_free) * ref_chosen_logps.to(device)
+rejected_logratios = rejected_logps.to(device) - (not self.reference_free) * ref_rejected_logps.to(device)
+```
+
+**反思**：如果需要手搓一个DPO训练过程代码（需要借鉴`concatenated_forward`代码来辅助实现）
+
+### RL-GRPO处理代码
