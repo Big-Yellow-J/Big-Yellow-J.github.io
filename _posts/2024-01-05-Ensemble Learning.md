@@ -7,7 +7,9 @@ images: true
 show: true
 address: changsha
 show_footer_image: true
-description: 集成学习通过组合弱学习机提升预测效果，改善统计、计算及表示性能，解决传统机器学习过拟合问题。对比Bagging（如Random Forest，基于决策树，通过随机采样构建，涉及香农熵、Gini不纯度、信息增益比分裂）与Boosting（如GBDT、XGBoost，调整样本权重，拟合负梯度/残差），是高效的机器学习集成方法。
+description: 集成学习通过组合多个弱学习机（如决策树、人工神经网络等）提升预测效果，在统计、计算及表示上较单一弱学习机有显著改善。Bagging和Boosting是两种主要集成方法。Bagging中，Random
+  Forest以决策树为弱学习机，常用ID3（基于香农熵分裂）、C4.5（基于信息增益比）、CART（基于Gini不纯度）等决策树算法，通过bootstrap sampling采样构建多棵树，可提高准确率（尤其随机特征选取时）并评估泛化误差、强度及相关性。Boosting则不同，每棵树基于先前树的信息构建，与Bagging的独立采样构建不同。Boosting代表算法包括GBDT和XGBoost，GBDT按顺序训练决策树，通过拟合负梯度（残差）优化，由Regression
+  Decision Tree、Gradient Boosting及Shrinkage构成；XGBoost是端到端tree Boosting方法，通过最小化含损失函数与正则化项的正则化目标实现高效预测。
 ---
 
 传统机器学习算法 (例如：决策树，人工神经网络，支持向量机，朴素贝叶斯等) 都是通过**弱学习机**（weak learners）来对目标进行预测（分类）。但是，以决策树算法为例，决策树算法在递归过程中，可能会过度分割样本空间，最终导致过拟合。集成学习 (Ensemble Learning) 算法的基本思想就是将多个弱学习机组合，从而实现一个预测效果更好的集成学习机[^1]。集成学习在**统计（Statistical）**、 **计算（computational）** 以及 **表示（representation）** 上相较之弱学习机有较大改善[^2]。```Bagging```和```Boosting```对比如下：

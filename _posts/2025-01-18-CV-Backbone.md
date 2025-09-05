@@ -13,8 +13,10 @@ tags:
 - vit
 - resnet
 - vit
-description: 本文介绍CV常用Backbone原理，涵盖基于卷积神经网络的ResNet（残差连接解决梯度消失/退化）、Unet系列，基于Transformer的ViT（Patch嵌入）、MAE（掩码重建）、Swin
-  Transformer（窗口注意力），以及多模态SAM/CLIP等模型，解析核心技术与应用场景。
+description: 本文详细介绍计算机视觉（CV）领域常用Backbone的原理与应用，涵盖基于卷积神经网络、Transformer及多模态三大类。基于卷积神经网络的Backbone包括Resnet系列与Unet系列：Resnet通过残差连接（skip
+  connection）引入恒等映射，有效缓解深层网络的梯度消失与退化问题，不同型号（Resnet18/34/50/101/152）的核心差异在于卷积层数，其Bottleneck结构通过1×1卷积降维、3×3卷积特征提取及1×1卷积升维实现高效计算；Unet系列（Unet1/Unet++/Unet3）主要用于图像分割，通过下采样（卷积+池化）与上采样（插值/亚像素上采样）结合特征融合（skip-connection拼接或相加）保留局部细节与全局信息，解决感受野随网络加深而局部细节丢失的问题。基于Transformer的Backbone包含Vit、MAE及Swin
+  Transformer：Vit将图像分块为Patch作为Token，经Patch Embedding与位置编码后输入Transformer编码器；MAE通过随机遮盖75%
+  Patch，仅编码器处理剩余25% Token以降低计算成本，解码器结合Mask Token重建完整图像；Swin Transformer采用窗口注意力（W-MSA）与移位窗口注意力（SW-MSA），避免全局注意力的高计算复杂度，适用于高分辨率图像与密集预测任务。多模态Backbone如SAM（用于图像分割）和CLIP（实现文本与图像对齐），拓展了Backbone在跨模态任务中的应用。内容涵盖残差连接、梯度传递、特征融合、注意力机制等核心技术，为CV任务中Backbone的选择与应用提供参考。
 ---
 
 主要介绍在CV中常用的Backbone**原理**简易[代码](https://www.big-yellow-j.top/code/cv_backbone.html)（*代码以及原理经常更新*），参考论文中的表格，对不同的任务所使用的backbone如下:

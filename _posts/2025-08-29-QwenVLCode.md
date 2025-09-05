@@ -8,7 +8,7 @@ show_footer_image: true
 tags:
 - 多模态
 - QwenVL
-description: 从代码角度解析QwenVL2.5模型处理流程，包括模板化输入（通过processor.apply_chat_template处理对话messages，data_loader预处理）、编码（smart_resize动态调整图像分辨率，Qwen2VLImageProcessor完成归一化及patch切割）、模型处理（VisionTransformer处理pixel_values，经Conv3d与window-attention计算），并介绍其SFT和强化学习微调方法。
+description: 本文详细解析QwenVL2.5模型的处理流程及微调方法，包括模板化输入（通过processor.apply_chat_template处理对话messages，含<|im_start|>等标记模拟用户/assistant对话）、编码输入（图像处理采用smart_resize动态调整分辨率确保可被patch_size整除，经归一化后转为Vit的patch序列；文本通过tokenizer编码）、模型处理（视觉Transformer对pixel_values进行Conv3d处理生成特征，结合window-attention计算）。同时，阐述了SFT微调流程：数据层面构建对话模板生成input_ids、pixel_values等输入，模型层面采用QLoRA优化并结合gradient_checkpointing等显存优化策略。强化学习部分涵盖DPO（处理三元组数据计算chosen/rejected_logps，通过KL散度等计算loss）和GRPO（无需ref_model，利用reward_function及高熵过滤优化loss），为QwenVL2.5-3B的实际应用与性能提升提供技术指导。
 ---
 
 从代码角度去理解QwenVL2.5是如何处理，以及结合实际操作理解如何去对一个QwenVL2.5-3B进行SFT和强化学习处理，首先直接通过官方提供例子了解QwenVL是怎么使用的：
@@ -553,7 +553,7 @@ for step, batch in enumerate(train_loader):
 # 当然这个 images 也可以替换为文本问题 "question"
 ```
 比如说数据集：[HuggingFaceH4/rlaif-v_formatted](https://huggingface.co/datasets/HuggingFaceH4/rlaif-v_formatted/viewer/default/train?row=0&views%5B%5D=train)他的数据结构如下：
-![image.png](https://s2.loli.net/2025/09/02/dm175p2yUkIKuzj.png)
+![image.png](https://s2.loli.net/2025/09/05/O8E94bqdysHGxV6.webp)
 直接看trl中如何实现[QwenVL-DPO](https://github.com/huggingface/trl/blob/main/examples/scripts/dpo_vlm.py)过程代码：
 ```python
 from trl import (
@@ -584,7 +584,7 @@ trainer = DPOTrainer(
     peft_config=peft_config,
 )
 ```
-
+初次之外，RL就和SFT一样需要让模型去按照我的数据进行输出，因此处理也就是直接`logits=model(**model_inputs).logits`得到模型最后输出（见相当于每个词的概率）
 #### RL-DPO处理代码
 首先在代码（`DPOTrainer`）主要是通过继承 `Trainer`（[代码](https://huggingface.co/docs/transformers/en/main_classes/trainer)包裹好了各种处理过程比如数据加载模型评估等各项处理过程）直接看 `DPOTrainer`里面的 `get_batch_loss_metrics`（完整模型输入然后输出loss）：
 ```python
@@ -681,13 +681,13 @@ _losses, _chosen_rewards, _rejected_rewards = self.dpo_loss(
 
 对于DPO的loss处理过程就比较简单，在trl中提供3种计算方式：
 **1、Alpha散度计算**
-![image.png](https://s2.loli.net/2025/09/03/sCXnj78ISpoQkGH.png)
+![image.png](https://s2.loli.net/2025/09/05/sonSkV1aNPZdD9H.webp)
 
 **2、KL散度计算**
-![image.png](https://s2.loli.net/2025/09/03/TJlhn7aG83rFO4i.png)
+![image.png](https://s2.loli.net/2025/09/05/UOpNRbKQcxa18dL.webp)
 
 **3、JS散度计算**
-![image.png](https://s2.loli.net/2025/09/03/1yO8AUnKZRtB3Dz.png)
+![image.png](https://s2.loli.net/2025/09/05/OhCBN8q7y4lzGtx.webp)
 
 在计算得到不同方式得到的结果：logits然后再去根据不同 `loss_type`去做处理（比如说：`loss_type == "sigmoid"` 处理过程为：`losses = (-F.logsigmoid(self.beta * logits) * (1 - self.label_smoothing)- F.logsigmoid(-self.beta * logits) * self.label_smoothing)`）
 #### RL-DPO处理过程总结
@@ -697,7 +697,81 @@ _losses, _chosen_rewards, _rejected_rewards = self.dpo_loss(
 chosen_logratios = chosen_logps.to(device) - (not self.reference_free) * ref_chosen_logps.to(device)
 rejected_logratios = rejected_logps.to(device) - (not self.reference_free) * ref_rejected_logps.to(device)
 ```
-
 **反思**：如果需要手搓一个DPO训练过程代码（需要借鉴`concatenated_forward`代码来辅助实现）
+#### RL-GRPO处理代码
+官方实现[代码](https://github.com/huggingface/trl/blob/main/examples/scripts/grpo_vlm.py)，对于DPO过程很容易发现一点在GRPO中直接不要`ref_model` 只是用一个model不过设计了一个`reward_function`。
+* **数据处理过程**
 
-### RL-GRPO处理代码
+以官方代码为例（训练一个具有思考过程的多模态模型），在数据处理层面使用类似如下数据集
+![image.png](https://s2.loli.net/2025/09/05/3xYD4jFp5VsyPeI.webp)
+以为需要设计一个“输出”思考过程的模型因此设计设计具有“思考”过程的prompt，最后输入模型数据格式为：
+```python
+# 原始文本
+{'image': <PIL.PngImagePlugin.PngImageFile image mode=RGB size=147x86 at 0x7FF65C5776D0>,
+ 'original_answer': ...,
+ 'original_question': ...,
+ 'problem': ...
+ 'prompt': [{'content': 'system-content',
+             'role': 'system'},
+            {'content': 'user-content',
+             'role': 'user'}],
+ 'solution': "<think>...</think>'
+             '<answer>...</answer>'}
+# 初步处理后文本
+{'The prompt Text: '
+'<|im_start|>system\n systen-content <|im_end|>\n'
+'<|im_start|>user\n user-content <|im_end|>\n'
+'<|im_start|>assistant\n'}
+# 模型最后得到的输出
+output = {
+            "prompt_ids": prompt_ids,
+            "prompt_mask": prompt_mask,
+            "completion_ids": completion_ids,
+            "completion_mask": completion_mask,
+            "advantages": advantages,
+            "num_items_in_batch": num_items_in_batch,
+        }
+```
+不过在得到类似上面数据集之后，不是直接丢到模型里面进行处理，在DPOTrainer中首先会去由`_prepare_inputs`（[代码](https://github.com/huggingface/trl/blob/67991605c0e6aaf1ef3c2bf64e11da914948c4a4/trl/trainer/grpo_trainer.py#L975)）函数进行处理，对于测试直接通过函数 ` self._generate_and_score_completions(...)`处理，对于训练数据集
+> `_generate_and_score_completions`：
+> **第一步、格式化数据**。（对于多模态/只有文本）这个过程主要是争对我上面数据中的`prompt`直接通过模板进行处理得到`prompts_text`，而后就是直接再去通过 `processing_claa`（直接调用QwenVL的processor）处理得到`prompt_inputs`，而后就是如果`self.max_prompt_length`那么就会去对多模态（文字 + 图像）输入时，对 `prompt_inputs["input_ids"]`还原文本然后去除类似`<pad>`和一些重复/错误的 <image>得到干净的 `prompts_text`。
+> **第二步、生成回答**。在`trl`中使用了3种生成方式：1、直接用模型生成；2、使用vllm方式生成；3、使用use_transformers_paged方式。对于生成（直接通过模型）过程而言就比较简单直接将`prompt_inputs["input_ids"]` 和 `prompt_inputs["attention_mask"]` 丢到模型里面得到`prompt_completion_ids`再去将 prompt内容和回答截取出来得到 `prompt_ids` 和 `completion_ids`
+> **第三步、计算奖励值**。这个过程就比较简单，直接将模型的回答进行解码再去通过奖励函数计算回答的奖励值，而后归一化成优势函数（`advantages`），按 group（一次生成多个样本）算均值，计算每个样本的 相对优势（比如说两个回答打分为 [0.8, 0.5]那么减去 group 内均值，假设为[+0.15, -0.15]）
+> **最后、返回输出**。
+> ![image.png](https://s2.loli.net/2025/09/05/f2loj6LEVUwr7Kg.webp)
+> 在最后返回的输出中 `old_per_token_logps` 和 `ref_per_token_logps`处理直接通过函数`_get_per_token_logps_and_entropies`（就相当于把 第二步得到的 `prompt_completion_ids`在交给模型里面去计算每个token的概率）
+
+
+* **奖励函数设计**
+
+GRPO没有使用ref_model转而使用奖励函数，对于奖励函数设计：`think_format_reward`， `accuracy_reward`。对于`accuracy_reward`很容易理解代码就是**直接对比模型输出和答案之间是否正确**（通过`parse` [`from math_verify import LatexExtractionConfig, parse, verify`] 去解析最后输出打答案然后对比两者之间是否正确）。对于`think_format_reward`：这个更加直接，直接去判断输出是不是有 `<think>...</think>` 包裹（有=1，无/缺失=0）
+当然不一定要使用自定义的（这么粗糙的）在DPOTrainer中对于`self.reward_funcs`（[代码](https://github.com/huggingface/trl/blob/18633dbb06ff6efc5099779592ba180d8ca767ea/trl/trainer/grpo_trainer.py#L290C9-L302C41)）也可以直接去加载训练好的模型 `AutoModelForSequenceClassification.from_pretrained(...)`
+* **模型处理过程**
+
+直接去看loss计算过程：
+```python
+def compute_loss(self, model, inputs, return_outputs, num_items_in_batch):
+    ...
+    if self.use_liger_loss:
+        unwrapped_model = self.accelerator.unwrap_model(model)
+        return self._forward_redirection(model, unwrapped_model, self.compute_liger_loss, unwrapped_model, inputs)
+    else:
+        return self._compute_loss(model, inputs)
+```
+其中使用了两种loss处理过程：`_forward_redirection` 以及 `_compute_loss`。
+* `self._compute_loss` 处理过程（[Github-代码](https://github.com/huggingface/trl/blob/67991605c0e6aaf1ef3c2bf64e11da914948c4a4/trl/trainer/grpo_trainer.py#L1626)）（实际解释使用 **trl:0.22.1版本代码**和github有差异）
+
+首先是将输入问题和回答拼接起来，然后直接丢到`self._get_per_token_logps_and_entropies`（直接将数据丢到模型中，而后去截取模型输出中“真正回答”的内容）中进行处理得到`per_token_logps`（每个token的概率），`entropies`（每个token的信息熵），而后就是通过高熵去过滤token只在**高熵位置计算 loss**，而后就是**计算KL散度**（`torch.exp(inputs["ref_per_token_logps"] - per_token_logps) - (inputs["ref_per_token_logps"] - per_token_logps) - 1)`），避免新策略漂移太远
+
+> `self._get_per_token_logps_and_entropies`处理过程（[Github-代码](https://github.com/huggingface/trl/blob/67991605c0e6aaf1ef3c2bf64e11da914948c4a4/trl/trainer/grpo_trainer.py#L786)）（实际解释使用 **trl:0.22.1版本代码**和github有差异）
+> 其处理过程比较简单，直接将所有的数据都处理成模型输入（GRPO不想DPO那样需要将3元组进行拆开拼接）如：input_ids、pixel_values等然后直接`logits = model(**model_inputs).logits`在得到模型的输出之后后续就是对输出做一些截断处理（如只需要模型回答部分的输出`logits[:, -logits_to_keep:, :]`）而后去计算 `logits / self.temperature`（通过温度系数来确定输出内容多样化）最后再去通过：`logps = selective_log_softmax(logits, completion_ids)`（selective_log_softmax只去计算completion_ids部分的log_softmax值）就可以得到最后的值。
+
+#### RL-GRPO处理过程总结
+简答总结一些GRPO代码处理过程，**首先**，对于数据处理，这块内容比较简单直接 **模板化**、**编码内容即可**
+#### RL-PPO处理代码
+借用huggingface中对于PPO过程描述图：
+![image.png](https://s2.loli.net/2025/09/05/AvLeinFOo5lPV6z.webp)
+
+#### RL-PPO处理过程总结
+
+#### RL算法对比

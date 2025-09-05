@@ -9,7 +9,7 @@ show_footer_image: true
 tags:
 - word2vec
 - tokenizer
-description: Word Embedding将文本转为计算机可理解的数字表示，解决one-hot编码丧失语义信息的问题。静态词向量预训练模型包括Word2vec（CBOW适用于小型数据库，Skip-gram适合大型语料）和基于共现矩阵的GloVe；动态词向量可解决一词多义，通过数据集微调优化。LLM处理文本时，先经tokenizer分词为数字ID，再通过embedding编码至所需维度。
+description: Word Embedding是将文本转化为计算机可理解的数字表示的技术。传统one-hot编码虽简单，但会丧失语义信息，无法体现如“喜欢”与“爱”的语义相似性。静态词向量预训练模型包括Word2vec和GloVe：Word2vec基于简化神经网络，分为CBOW与Skip-gram两种范式，CBOW以上下文词向量输入、目标词向量输出，适合小型数据库；Skip-gram则相反，在大型语料中表现更优。GloVe是基于统计的方法，通过词的共现矩阵（记录两词共同出现次数）生成词向量，但存在矩阵稀疏、维度高的问题。动态词向量为解决静态词向量无法处理一词多义的问题而提出，可根据数据集特点微调，如ELMo模型。当前LLM处理文本时，通常先经tokenizer将文本拆分为数字表示（生成input_ids、token_type_ids、attention_mask等），再通过embedding编码至所需维度，以适应不同任务需求。
 ---
 
 Word Embedding：将文本处理为计算机可以理解的数字表示。一种最简单的表示就是直接用one-hot，我建立一个字典，然后对每个字符都进行编码比如说：你好（表示为：10，01）。但是这种编码会有一个问题：**丧失语义信息**，比如说对于文本：喜欢和爱这两个词可能会被编码成：1000和0100，但是从语义上这两个词所表达的含义应该是相似的，但是用one-hot编码无法表示这种关系。

@@ -6,7 +6,9 @@ extMath: true
 images: true
 address: changsha
 show_footer_image: true
-description: 大语言模型微调分为全面微调和部分参数微调，部分参数微调包括Prompt-tuning（如Prefix-Tuning、P-Tuning）与参数高效微调（PEFT），PEFT含LoRA、QLoRA、Adapter等技术，通过优化少量参数减少计算资源，提升模型对下游任务的适应性。
+description: 大语言模型微调主要分为全面微调和部分参数微调，其中部分参数微调包括Prompt-tuning和Parameter-efficient fine-tuning（PEFT）等方法。Prompt-tuning分为hard
+  prompt和soft prompt，hard prompt是用户直接提供的自然语言文本，明确表达意图；soft prompt则是通过算法生成的潜在向量，在模型内部引导任务完成。其下有Prefix-Tuning（微调可学习前缀，保持模型参数不变）、P-Tuning（使用预训练词表中unused
+  token作为伪prompt，通过LSTM训练token参数）及P-Tuning v2等子方法。PEFT即参数高效微调，旨在减少参数和计算资源消耗，包括LoRA（将预训练权重表示为低秩矩阵，冻结原权重仅训练低秩矩阵）、QLoRA（结合量化与LoRA，量化参数至NF4精度并双重反量化）、Adapter（在Transformer模块添加适配器，微调适配器参数，参数量为原始模型的0.5%-8%）等，可有效使预训练语言模型适应特定下游任务。
 ---
 
 大语言模型微调，一般来说是指在一个预训练完成的LLM上去针对对应的下游任务进行微调，让其更加适应下游任务，一般来说可以：1、全面微调（对LLM中全部参数进行调整，如果模型参数量很大的时候这个花销是比较大的）；2、部分参数微调

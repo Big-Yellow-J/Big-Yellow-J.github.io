@@ -6,7 +6,11 @@ extMath: true
 images: true
 address: yueyang
 show_footer_image: true
-description: 位置编码用于标记序列中token位置，帮助模型捕捉长距离依赖与局部顺序，包括绝对、相对、RoPE等类型，适用于不同序列长度任务。Tokenizer通过切割文本为数字表示，常见subword方法如BPE、WordPiece、SentencePiece，主流LLM如GPT、BERT等采用相应分词器提升处理效率。
+description: '位置编码用于标记输入序列中单词或标记的位置，帮助Transformer模型理解相对位置与长距离依赖关系，通常与输入嵌入相加。主要类型包括：绝对位置编码（固定正弦余弦生成的编码，简单易实现但难以泛化至不同长度序列，适用于短文本、序列长度固定的任务）、相对位置编码（通过查询和键的相对位置差编码，动态建模位置关系以处理长距离依赖，计算复杂度较高，适用于长序列建模任务）、RoPE（旋转位置编码，改进的相对位置编码方法，通过旋转变换高效引入相对位置差，兼具长距离依赖捕捉能力与计算效率，适用于文本生成、机器翻译等长序列依赖建模）、Learned
+  Position Encoding（数据自适应学习的编码，表达能力强但依赖数据集，适用于大规模数据训练场景）。
+
+
+  Tokenizer通过切割文本为子单元（词、字符、子词）并映射为数字，是自然语言处理的基础。主要分词方式包括按词（word）、字符（character）及子词（subword）切割，其中子词分词（如BPE）通过合并高频n-gram对构建词汇表，平衡词汇量与未登录词问题。SentencePiece作为开源工具包，支持BPE、Unigram等方法，可直接处理原始文本（含无空格语言如汉语），避免跨语言分词障碍。常见LLM分词器包括GPT系列（BPE）、BERT（WordPiece）、T5（SentencePiece）等，适配不同模型的序列处理需求。'
 tags:
 - 位置编码
 - rope

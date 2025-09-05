@@ -12,7 +12,8 @@ tags:
 - scheduler
 show: true
 special_tag: 更新中
-description: 文章介绍了扩散模型中SDE与ODE调度器的差异，对比DDPM（马尔科夫链多步生成）和DDIM（跳步处理提速）的实现，详解diffusers库中调度器的初始化、加噪及生成过程的噪声预测方式（epsilon、sample、v_prediction），分析DPMSolver、UniPCMultistepScheduler等调度器的生成效果，并探讨LCM模型的处理要点。
+description: 本文介绍了SDE（随机微分方程）与ODE（常微分方程）在扩散模型中的应用差异，因调度器不同其实现方式有所区别，并重点解析了DDPM与DDIM两种扩散模型调度器。DDPM将加去噪视为马尔科夫链过程，需多步（通常1000步）生成图像导致速度较慢；DDIM则通过“跳步”优化，提升生成效率。文中还详细说明了diffusers库中调度器的处理流程：初始化参数时依据beta_schedule生成相关参数并计算累乘结果，加噪过程通过公式直接计算；生成过程涉及model_output（预测噪声）、timestep（时间步）、sample（初始噪声样本），包含epsilon（预测噪声）、sample（直接输出）、v_prediction（Stable
+  Diffusion 2.x常用）三种方式。对比DDPM与DDIM的差异：DDPM通过时间步直接获取上一步，DDIM需计算“跳步”时间步，两者在生成公式上也存在不同。此外，还对比了DPMSolver、UniPCMultistepScheduler等调度器的生成效果，指出在SDXL模型下20-30步生成一张图像约需0.2s（A100-80G、float16），同时提及LCM模型的相关处理要点。
 ---
 
 注意如下内容的描述：1、SDE以及ODE因为不同的调度器可能就是基于不同的方式出发的；2、可以了解一下flow-matching；3、注意LCM模型里面的处理

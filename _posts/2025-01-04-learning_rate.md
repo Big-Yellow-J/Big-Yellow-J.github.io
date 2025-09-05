@@ -5,7 +5,7 @@ categories: 深度学习基础理论
 address: changsha
 extMath: true
 show_footer_image: true
-description: 学习率是梯度下降等优化算法的关键参数，影响模型训练速度与稳定性。过大易导致震荡发散，过小则收敛缓慢。常用调整策略包括自适应算法（Adam、RMSprop、AdaGrad）及warm-up，助力模型有效收敛，提升训练效果。
+description: 学习率是梯度下降、SGD、小批量梯度下降、Adam、RMSprop等优化算法的关键参数，对模型训练速度与稳定性至关重要。其优化过程通过反向传播计算损失函数梯度，结合学习率更新参数，学习率过大会导致模型在最优解附近震荡甚至发散，过小则减慢训练速度或使其陷入局部最优。调整策略包括自适应学习率算法（AdaGrad累积梯度平方动态调整、RMSprop采用梯度平方指数加权移动平均、Adam结合动量与二阶矩估计优化）及warm-up策略（帮助模型适应数据集特征、减少训练震荡、提升效果），实践中可针对Vision-Model和Text-Model等不同模型设置差异化学习率以优化性能。
 tags:
 - 学习率优化
 - adam

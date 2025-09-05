@@ -6,8 +6,10 @@ extMath: true
 images: true
 show_footer_image: true
 address: changsha
-description: 单精度训练使用32位浮点数（FP32），精度高但显存占用大、速度慢；半精度（FP16/BF16）显存低、速度快但稳定性不足。混合精度训练结合二者优点，通过FP32主权重、损失缩放（LOSS
-  SCALING）等技术平衡性能与稳定，Apex框架实现可有效减少显存占用并加速训练。
+description: 不同精度训练包括单精度（FP32）、半精度（FP16/BF16）及混合精度训练。单精度以32位浮点数表示数据，精度高但显存占用大、训练速度慢，适用于小规模任务；半精度（FP16/BF16）显存占用低、速度快，但FP16易因数值问题（如溢出、下溢）导致稳定性差，适用于性能优先的大规模模型；混合精度则平衡性能与稳定，通过同时使用FP16/BF16（计算）和FP32（权重存储更新），精度中高、显存占用较低且训练速度快。混合精度训练解决半精度数值问题的核心方法包括：FP32主权重拷贝（维护精确权重用于更新，FP16用于前向/反向计算）和LOSS
+  SCALING（反向传播前放大loss避免梯度下溢）。测试显示，使用Apex或PyTorch原生amp在MNIST、CIFAR10数据集上，混合精度训练显存占用显著低于FP32（如CIFAR10中Apex显存13166
+  vs FP32的22818），训练时间缩短（16.51分钟 vs 22.27分钟），准确率接近单精度。适用场景为需要平衡性能与稳定性的大规模模型训练，需注意GPU需支持Tensor
+  Core，且CPU利用率对训练速度影响较大。
 ---
 
 如果熟悉huggingface里面的accelerate库，可以直接使用这个库去实现混合精度训练，详细见：[深入浅出了解生成模型-5：diffuser/accelerate库学习及其数据合成](https://www.big-yellow-j.top/posts/2025/06/25/accelerate-diffusers.html)里面的介绍使用。

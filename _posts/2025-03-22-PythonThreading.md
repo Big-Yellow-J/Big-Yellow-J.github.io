@@ -6,7 +6,8 @@ extMath: true
 images: true
 address: changsha
 show_footer_image: true
-description: 本文解析Python多进程、多线程、装饰器的基本概念、适用场景与使用方法，涵盖GIL影响、CPU/I/O密集型任务选择、线程安全及pickle序列化等技术要点，助于高效应用并发编程。
+description: 本文详细解释了Python中多进程、多线程、装饰器的核心概念、应用场景及使用方法。多进程拥有独立内存空间，适用于CPU密集型任务；多线程共享内存资源，适合I/O密集型任务；装饰器则能在不修改原函数代码的情况下添加额外功能，常用@语法实现。文章还介绍了全局解释器锁（GIL）的作用，其限制Python线程并行执行，导致多线程在CPU密集型任务中性能提升有限。通过将8000000个1相加的案例，对比了普通处理、串行分块、多线程（ThreadPoolExecutor）和多进程（ProcessPoolExecutor）的效率，分析得出：多线程受GIL影响适合I/O密集型任务，多进程虽能绕过GIL但需注意数据传输（pickle序列化）和进程通信开销。此外，文中详解了多线程的线程安全与原子操作、多进程在Windows系统需用`if
+  __name__ == "__main__":`的原因，以及装饰器的高阶函数特性与内置装饰器（如@staticmethod、@classmethod、@property）的使用。还涵盖Python特殊属性（如__dict__、__class__、__mro__），帮助开发者理解对象与类的底层机制，正确选择和应用多进程、多线程及装饰器提升代码效率。
 tags:
 - python
 - 多进程

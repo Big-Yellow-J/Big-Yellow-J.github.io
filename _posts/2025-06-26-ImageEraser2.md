@@ -8,8 +8,10 @@ show_footer_image: true
 tags:
 - diffusion model
 - 图像消除
-description: 图像消除是图像生成模型重要应用，本文介绍CVPR-2025相关的SmartEraser、Erase Diffusion、OmniEraser模型，涵盖数据集构建（实体过滤、混合高斯算法MOG）、关键技术（语义分割SAM、CLIP、IoU、alpha
-  blending、GroundDINO+SAM2）及模型优化（输入改进、mask处理、微调FLUX.1-dev）等内容。
+description: 图像消除是图像生成模型的重要应用领域，本文围绕Erase Diffusion、SmartEraser及OmniEraser等模型，阐述其核心技术与数据集构建方法。Erase
+  Diffusion通过动态图像组合（输入与目标图像随解噪过程动态调整）、改进预测过程（计算“图像链”间损失）及注意力机制（融入mask）优化图像消除效果；SmartEraser构建合成数据集，包括实体过滤（基于语义分割如SAM提取实体，CLIP评分筛选合适大小实体）、背景筛选（从COCONut和SAM-1B数据集选取）、图像组合（保持实体大小一致，计算IoU与位置约束，经alpha
+  blending合成），并改进模型输入与条件（图像编码嵌入文本编码），将规则mask处理为不规则；OmniEraser则利用视频数据构建数据集，通过混合高斯算法(MOG)分离背景与前景，计算MSE获取source-target图像对，结合GroundDINO+SAM2生成mask，微调FLUX.1-dev模型，测试采用prompt“'There
+  is nothing here.'”。各模型从动态调整、数据集构建及模型优化等方面推动图像消除技术发展。
 ---
 
 图像生成模型应用系列——图像消除：

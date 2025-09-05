@@ -6,8 +6,10 @@ extMath: true
 images: true
 address: changsha
 show_footer_image: true
-description: 本文介绍常用Attention操作（如多头注意力、因果注意力）及KV-cache内存优化方法，包括Flash Attention分块计算、MLA压缩缓存、Page
-  Attention（vLLM）内存管理等技术，提升Transformer模型效率与显存利用率。
+description: 本文详细介绍了常用的Attention操作及KV-cache内存优化技术。在Attention操作方面，重点解析了Multi Head Attention的核心原理：包括Q、K、V的作用机制，通过线性变换将token处理为特定维度表示，计算注意力权重时除以√d_k以防止内积值过大导致softmax梯度不稳定；采用多头设计可捕捉多层次语义信息，计算流程涉及线性变换、分块处理及结果拼接，并提及残差处理中的Post
+  Norm与Pre Norm模式。同时说明了Casual Attention通过屏蔽机制限制查询仅关注当前及之前位置，避免“窥视”未来信息。在KV-cache内存优化管理上，涵盖三大关键技术：Flash
+  Attention通过分块计算将数据加载至SRAM，减少HBM读写操作，提升长序列处理效率；Multi-head Latent Attention（MLA）通过低维矩阵压缩KV存储，降低显存占用，但存在与RoPE不兼容问题；Page
+  Attention（vLLM）采用内存分页管理，解决预留空间浪费及内存碎片化问题，优化内存分配。这些技术分别从计算效率、存储压缩及内存管理角度，提升Transformer模型在长序列任务中的性能与资源利用率。
 tags:
 - MHA
 - flash attention

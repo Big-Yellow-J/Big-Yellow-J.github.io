@@ -5,7 +5,7 @@ categories: 深度学习基础理论
 address: changsha
 extMath: true
 show_footer_image: true
-description: 本文介绍PyTorch分布式训练的核心并行策略，包括模型并行、数据并行（DDP）、流水线并行及张量并行的原理，解析DDP流程与实现方法，并提供简易Demo代码，助于理解分布式训练机制与优化。
+description: PyTorch分布式训练涵盖多种并行策略，包括数据并行、模型并行、流水线并行和张量并行。数据并行（如DDP）通过复制模型到多设备，拆分数据为小批次，各设备计算梯度后经all-reduce同步平均，适用于多数场景；模型并行将模型不同部分分配到不同设备，解决单设备无法存储大模型问题；流水线并行在模型并行基础上引入微批次（micro-batch），使多设备重叠处理数据提升效率，如GPipe通过拆分mini-batch为微批次减少设备闲置；张量并行精细拆分矩阵运算（行列并行等），实现单层多设备并行。DDP实现需初始化进程组、使用DistributedDataParallel和DistributedSampler处理模型与数据，流程包括数据加载、前向传播、损失计算、反向传播（含梯度all-reduce）及参数更新。流水线并行可结合梯度累计、gradient-checkpoint（用时间换内存）优化，GPipe和PipeDream为典型实现，前者需等所有微批次前向完成再反向，后者支持单微批次前向完即反向。张量并行通过行列拆分矩阵运算提升训练速度。混合并行可叠加多种策略，满足复杂训练需求。
 ---
 
 主要介绍`Pytorch`分布式训练代码以及原理以及一些简易的Demo代码

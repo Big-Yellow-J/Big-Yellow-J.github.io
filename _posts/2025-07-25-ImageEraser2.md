@@ -8,7 +8,8 @@ show_footer_image: true
 tags:
 - diffusion model
 - 图像消除
-description: 本文介绍图像擦除模型RORem与ObjectClear。RORem基于SDXL，通过视频帧变化物体构建数据集，人工筛选后训练判别器实现自动化，蒸馏LCM加速至0.5s；ObjectClear基于SDXL-Inpainting，分割小实体贴图构建数据集，引入attention-mask引导消除，提升擦除效果。
+description: 本文介绍RORem和ObjectClear两种图像擦除论文模型。RORem基于SDXL基座，通过视频帧前后变化物体构建mask数据集并结合开源数据，经人工筛选后训练判别器实现自动化数据筛选（判别器基于SDXL-Inpainting下采样和中间层，Lora微调，得分>0.9为合格），模型通过蒸馏得到LCM模型加速消除过程（从4s缩短至0.5s）。ObjectClear以SDXL-Inpainting为基座，重点在于数据集创建与引入注意力机制（attention-mask），数据集构建类似SmartEraser，先分割小实体（DINO/YOLO+SAM）再贴到图像中，包含2875张拍摄数据集（DIBO+SAM处理）和开源数据集（Mask2former+DepthAnythin保证质量），模型中图像与文本经Clip不同编码器处理后组合，添加mask
+  loss，通过Attention-Guided Fusion搜集down_blocks.0和1的attn2注意力分数并融合结果。两者均通过构建数据集训练模型，RORem采用循环方式获取高质量数据（人工筛选→训练→判别器判断→加入数据循环），ObjectClear则切割实体贴到背景中。
 ---
 
 本文主要介绍几篇图像擦除论文模型：RORem、ObjectClear

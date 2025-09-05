@@ -5,7 +5,7 @@ categories: 深度学习基础理论
 address: 武汉
 extMath: true
 show_footer_image: true
-description: PyTorch中warm-up策略使用指南，涵盖优化器基础类（如AdamW）参数设置，重点讲解学习率调度器lr_scheduler的各类方法，包括基于步数（CyclicLR、OneCycleLR）、指标（ReduceLROnPlateau）及epoch（CosineAnnealingLR）的学习率调整方式与使用套路。
+description: 本文介绍如何在PyTorch中使用warm-up策略，涵盖优化器与学习率调度器的应用方法。PyTorch优化器基础类torch.optim.Optimizer支持参数配置，如params可针对不同网络结构（如model.fc1、model.fc2）设置不同学习率（lr）、权重衰减（weight_decay）等，常见优化器如AdamW即继承此类。学习率优化可通过torch.optim.lr_scheduler实现，其方法多基于epoch调整，主要分为三类：基于步数的调度（如CyclicLR、OneCycleLR，需在每个batch后调用scheduler.step()）、基于指标的调度（如ReduceLROnPlateau，需传入验证指标）、基于epoch的调度（如CosineAnnealingLR，以指定epoch周期进行余弦退火）。使用时可通过scheduler.get_last_lr()[0]获取当前学习率，具体可参考PyTorch官方文档。
 ---
 
 warm-up具体原理以及为什么这么做在之前的博客有介绍，这里直接介绍如何直接使用pytorch中的warm-up策略，在pytorch中对于warm-up所有支持的方法都有描述，可以直接阅读[^1]。

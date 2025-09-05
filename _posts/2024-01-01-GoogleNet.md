@@ -7,7 +7,7 @@ images: true
 address: changsha
 show: false
 show_footer_image: true
-description: 本文介绍GoogLeNet深度学习模型的核心技术与架构特点，涵盖Inception模块设计、多尺度特征提取及网络深度优化等关键内容，分析其在图像分类任务中的性能优势与实现原理。
+description: 本文介绍GoogLeNet相关代码内容，GoogLeNet是经典的卷积神经网络（CNN）模型，由Google团队提出，以Inception模块为核心设计，在深度学习领域尤其是图像识别任务中具有重要应用价值。
 ---
 
 <iframe src="{{ site.baseurl }}/code/googlenet.html" width="100%" height="600px"></iframe>

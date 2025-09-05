@@ -8,8 +8,12 @@ show_footer_image: true
 tags:
 - diffusion model
 - 图像消除
-description: 本文介绍PixelHacker、PowerPanint、CATdiffusion、Attentive Eraser等图像擦除论文模型，基于Stable
-  Diffusion等框架，通过修改Condition、mask处理等方式优化，并实际测试各模型表现，分析分辨率、细节处理及图像替换、模糊等效果与问题。
+description: 本文介绍PixelHacker、PowerPanint、Attentive Eraser等图像擦除模型及其实际测试效果。PixelHacker框架类似Diffusion
+  Model，输入image、mask、mask image并经VAE编码，通过2D遗忘矩阵计算注意力，测试显示仅支持512x512低分辨率图像，复杂场景易丢失背景文字、人物细节或生成错误。PowerPanint基于SD
+  v1.5与CLIP，结构同DF模型，输入噪声潜在分布、mask图像及mask，组合四部分条件优化，可处理部分移除、全部移除及复杂布局场景，但输出分辨率会被修改（如输入2250x1500输出960x640），VAE对未完全覆盖的人脸边缘易重建多余内容，A100
+  GPU平均推理速度约20s。Attentive Eraser针对生成伪影与前景重绘问题，提出Attention Activation and Suppression
+  (AAS)机制强化背景关注并抑制相似物体注意，结合Self-Attention Redirection Guidance (SARG)引导扩散取样。各模型多基于Stable
+  Diffusion通过修改Condition实现，实践中需注意采用mask膨胀等非规则处理提升性能，同时规避图像替换（误生成新内容）、擦除区域模糊等常见问题。
 ---
 
 本文主要介绍几篇图像擦除论文模型：PixelHacker、PowerPanint、Attentive Eraser，并且实际测试模型的表现效果

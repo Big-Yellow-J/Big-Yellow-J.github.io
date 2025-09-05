@@ -7,7 +7,7 @@ extMath: true
 show_footer_image: true
 tags:
 - pytorch
-description: PyTorch计算图是记录张量运算关系的动态图，支持反向传播计算叶子节点梯度，显存占用包括数据本身及中间激活，可用.detach()减少。数据形状改变方法有reshape、view、transpose、permute等，需注意是否拷贝数据；model.train()/eval()控制Dropout与BatchNorm模式，torch.no_grad()关闭autograd记录以省显存加速前向。
+description: PyTorch计算图用于记录张量间运算关系，包含节点（张量/运算）、边（数据流依赖）、叶子节点（用户创建需梯度张量），作为动态图框架，每次forward即时构建，反向传播时沿图计算叶子节点梯度以更新参数。计算图显存占用包括数据本身及中间激活，可通过.detach()分离无需梯度的张量、改变精度等方式减少显存。torch中数据形状改变方法丰富，包括reshape()（视情况拷贝数据）、view()（共享内存，仅适用于连续张量）、unsqueeze()/squeeze()（增减维度1）、expand()/expand_as()（广播扩展维度）、transpose()/permute()（交换/重排维度）、contiguous()（确保内存连续）、clone()（拷贝数据）、detach()（分离计算图）等，需注意是否拷贝数据及内存连续性。此外，model.train()开启训练模式（如Dropout、BatchNorm更新统计），model.eval()设为评估模式（关闭Dropout、BatchNorm用累计统计），torch.no_grad()关闭autograd记录以省显存加速前向，三者分别控制模型行为与梯度计算。
 ---
 
 1、介绍torch基本知识，比如说：计算图等底层原理
