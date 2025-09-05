@@ -734,13 +734,12 @@ output = {
 ```
 不过在得到类似上面数据集之后，不是直接丢到模型里面进行处理，在DPOTrainer中首先会去由`_prepare_inputs`（[代码](https://github.com/huggingface/trl/blob/67991605c0e6aaf1ef3c2bf64e11da914948c4a4/trl/trainer/grpo_trainer.py#L975)）函数进行处理，对于测试直接通过函数 ` self._generate_and_score_completions(...)`处理，对于训练数据集
 > `_generate_and_score_completions`：
-> **第一步、格式化数据**。（对于多模态/只有文本）这个过程主要是争对我上面数据中的`prompt`直接通过模板进行处理得到`prompts_text`，而后就是直接再去通过 `processing_claa`（直接调用QwenVL的processor）处理得到`prompt_inputs`，而后就是如果`self.max_prompt_length`那么就会去对多模态（文字 + 图像）输入时，对 `prompt_inputs["input_ids"]`还原文本然后去除类似`<pad>`和一些重复/错误的 <image>得到干净的 `prompts_text`。
+> **第一步、格式化数据**。（对于多模态/只有文本）这个过程主要是争对我上面数据中的`prompt`直接通过模板进行处理得到`prompts_text`，而后就是直接再去通过 `processing_claa`（直接调用QwenVL的processor）处理得到`prompt_inputs`，而后就是如果`self.max_prompt_length`那么就会去对多模态（文字 + 图像）输入时，对 `prompt_inputs["input_ids"]`还原文本然后去除类似`<pad>`和一些重复/错误的 `<image>`得到干净的 `prompts_text`。
 > **第二步、生成回答**。在`trl`中使用了3种生成方式：1、直接用模型生成；2、使用vllm方式生成；3、使用use_transformers_paged方式。对于生成（直接通过模型）过程而言就比较简单直接将`prompt_inputs["input_ids"]` 和 `prompt_inputs["attention_mask"]` 丢到模型里面得到`prompt_completion_ids`再去将 prompt内容和回答截取出来得到 `prompt_ids` 和 `completion_ids`
 > **第三步、计算奖励值**。这个过程就比较简单，直接将模型的回答进行解码再去通过奖励函数计算回答的奖励值，而后归一化成优势函数（`advantages`），按 group（一次生成多个样本）算均值，计算每个样本的 相对优势（比如说两个回答打分为 [0.8, 0.5]那么减去 group 内均值，假设为[+0.15, -0.15]）
 > **最后、返回输出**。
 > ![image.png](https://s2.loli.net/2025/09/05/f2loj6LEVUwr7Kg.webp)
 > 在最后返回的输出中 `old_per_token_logps` 和 `ref_per_token_logps`处理直接通过函数`_get_per_token_logps_and_entropies`（就相当于把 第二步得到的 `prompt_completion_ids`在交给模型里面去计算每个token的概率）
-
 
 * **奖励函数设计**
 
@@ -767,7 +766,8 @@ def compute_loss(self, model, inputs, return_outputs, num_items_in_batch):
 > 其处理过程比较简单，直接将所有的数据都处理成模型输入（GRPO不想DPO那样需要将3元组进行拆开拼接）如：input_ids、pixel_values等然后直接`logits = model(**model_inputs).logits`在得到模型的输出之后后续就是对输出做一些截断处理（如只需要模型回答部分的输出`logits[:, -logits_to_keep:, :]`）而后去计算 `logits / self.temperature`（通过温度系数来确定输出内容多样化）最后再去通过：`logps = selective_log_softmax(logits, completion_ids)`（selective_log_softmax只去计算completion_ids部分的log_softmax值）就可以得到最后的值。
 
 #### RL-GRPO处理过程总结
-简答总结一些GRPO代码处理过程，**首先**，对于数据处理，这块内容比较简单直接 **模板化**、**编码内容即可**
+简答总结一些GRPO代码处理过程，**首先**，对于数据处理，这块内容比较简单直接 **模板化**、**编码内容即可**，因为GRPO是“一个问题抛出多组回答然后评估回答”，因此在数据处理过程中还会去补充一个使用模型生成回答过程 `prompt_completion_ids=model.generate(...)`而后需要做的就是将生成内容进行拆分得到`prompt_ids` 和 `completion_ids`，除此之外还会去计算 `old_per_token_logps` 和 `ref_per_token_logps`直接通过 `_get_per_token_logps_and_entropies`函数（相对于把问题和回答组合起来再让模型输出每个token概率）处理，这样一来得到一个完整的输出 `outputs`。**而后**，计算loss过程
+
 #### RL-PPO处理代码
 借用huggingface中对于PPO过程描述图：
 ![image.png](https://s2.loli.net/2025/09/05/AvLeinFOo5lPV6z.webp)
