@@ -766,7 +766,9 @@ def compute_loss(self, model, inputs, return_outputs, num_items_in_batch):
 > 其处理过程比较简单，直接将所有的数据都处理成模型输入（GRPO不想DPO那样需要将3元组进行拆开拼接）如：input_ids、pixel_values等然后直接`logits = model(**model_inputs).logits`在得到模型的输出之后后续就是对输出做一些截断处理（如只需要模型回答部分的输出`logits[:, -logits_to_keep:, :]`）而后去计算 `logits / self.temperature`（通过温度系数来确定输出内容多样化）最后再去通过：`logps = selective_log_softmax(logits, completion_ids)`（selective_log_softmax只去计算completion_ids部分的log_softmax值）就可以得到最后的值。
 
 #### RL-GRPO处理过程总结
-简答总结一些GRPO代码处理过程，**首先**，对于数据处理，这块内容比较简单直接 **模板化**、**编码内容即可**，因为GRPO是“一个问题抛出多组回答然后评估回答”，因此在数据处理过程中还会去补充一个使用模型生成回答过程 `prompt_completion_ids=model.generate(...)`而后需要做的就是将生成内容进行拆分得到`prompt_ids` 和 `completion_ids`，除此之外还会去计算 `old_per_token_logps` 和 `ref_per_token_logps`直接通过 `_get_per_token_logps_and_entropies`函数（相对于把问题和回答组合起来再让模型输出每个token概率）处理，这样一来得到一个完整的输出 `outputs`。**而后**，计算loss过程
+![1.png](https://s2.loli.net/2025/09/07/EQCG4znR2ZvUj8k.png)
+对于上面loss计算公式中主要就是如下几个值需要关注：1、advantage值；2、KL散度值。
+因此简单总结一些GRPO代码处理过程[^1]，**首先**，对于数据处理，这块内容比较简单直接 **模板化**、**编码内容即可**，因为GRPO是“一个问题抛出多组回答然后评估回答”，因此在数据处理过程中还会去补充一个使用模型生成回答过程 `prompt_completion_ids=model.generate(...)`而后需要做的就是将生成内容进行拆分得到`prompt_ids`（得到这一部分值之后就只需要在去还原成text文本然后再去通过reward函数去计算reward值以及计算最后需要的 `advantage`值） 和 `completion_ids`，除此之外还会去计算 `old_per_token_logps` 和 `ref_per_token_logps`直接通过 `_get_per_token_logps_and_entropies`函数（相对于把问题和回答组合起来再让模型输出每个token概率）处理，这样一来得到一个完整的输出 `outputs`。**而后**，计算loss过程直接去调用 `_get_per_token_logps_and_entropies`处理问题+回答得到每个token概率以及熵的值：`per_token_logps`，`entropies`，而后就是：**选择出高熵值的token**（`entropy_mask`），以及**计算KL散度**（`per_token_kl`直接通过计算上面`outputs`中的`ref_per_token_logps` 以及 `per_token_logps`），**重要性采样权重**：比较当前 log 概率和旧策略（`per_token_logps - old_per_token_logps`），得到 importance weight，做 clipping 限制。构造两个候选 loss（不裁剪和裁剪），取最小值，形成 `per_token_loss`再去乘上 entropy_mask和加上 KL 惩罚项就可以得到最后的loss值。
 
 #### RL-PPO处理代码
 借用huggingface中对于PPO过程描述图：
@@ -775,3 +777,9 @@ def compute_loss(self, model, inputs, return_outputs, num_items_in_batch):
 #### RL-PPO处理过程总结
 
 #### RL算法对比
+**对比一下GRPO和DPO的处理过程**
+**DPO纯数据驱动过程**，数据驱动：训练时需要标注好的偏好对：$[q, y^+], [q, y^-]$。计算流程：1. 输入同一个问题 $q$，分别拼接上正样本回答 $y^+$ 和负样本回答 $y^-$。2. 用当前模型和参考模型分别计算 $\log \pi_\theta(y^+|q), \log \pi_\theta(y^-|q), \log \pi_{\text{ref}}(y^+|q), \log \pi_{\text{ref}}(y^-|q)$。3. 基于这 4 个 log-prob，直接计算一个 logistic 回归式的 loss，强制模型在正样本上比分数更高，在负样本上比分数更低。
+**GRPO生成驱动过程**，生成驱动：训练时只给定问题 prompt，模型自己 roll-out 多个回答。计算流程：1. 对每个问题生成 $G$ 个回答。2. 通过奖励函数（或打分器）给每个回答打分 $r_i$。3. 组内归一化奖励 → 得到 advantage 值 $A_i$（比组内平均好/差多少）。4. 用参考模型计算 ref_per_token_logps（使用ref_model生成没有的话直接用model代替ref_model）。5. 用旧策略（冻结一帧的当前模型）得到 old_per_token_logps（直接通过model生成）。6. 用当前模型得到 per_token_logps。7. 计算重要性比率和 KL 散度（使用per_token_logps和ref_per_token_logps计算）近似，再套 PPO 风格的剪切目标（使用old_per_token_logps和per_token_logp） → 最终 loss。
+
+## 参考
+[^1]: https://huggingface.co/docs/trl/main/en/grpo_trainer
