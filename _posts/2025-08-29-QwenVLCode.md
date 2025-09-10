@@ -769,10 +769,18 @@ def compute_loss(self, model, inputs, return_outputs, num_items_in_batch):
 ![1.png](https://s2.loli.net/2025/09/07/EQCG4znR2ZvUj8k.png)
 对于上面loss计算公式中主要就是如下几个值需要关注：1、advantage值；2、KL散度值。
 因此简单总结一些GRPO代码处理过程[^1]，**首先**，对于数据处理，这块内容比较简单直接 **模板化**、**编码内容即可**，因为GRPO是“一个问题抛出多组回答然后评估回答”，因此在数据处理过程中还会去补充一个使用模型生成回答过程 `prompt_completion_ids=model.generate(...)`而后需要做的就是将生成内容进行拆分得到`prompt_ids`（得到这一部分值之后就只需要在去还原成text文本然后再去通过reward函数去计算reward值以及计算最后需要的 `advantage`值） 和 `completion_ids`，除此之外还会去计算 `old_per_token_logps` 和 `ref_per_token_logps`直接通过 `_get_per_token_logps_and_entropies`函数（相对于把问题和回答组合起来再让模型输出每个token概率）处理，这样一来得到一个完整的输出 `outputs`。**而后**，计算loss过程直接去调用 `_get_per_token_logps_and_entropies`处理问题+回答得到每个token概率以及熵的值：`per_token_logps`，`entropies`，而后就是：**选择出高熵值的token**（`entropy_mask`），以及**计算KL散度**（`per_token_kl`直接通过计算上面`outputs`中的`ref_per_token_logps` 以及 `per_token_logps`），**重要性采样权重**：比较当前 log 概率和旧策略（`per_token_logps - old_per_token_logps`），得到 importance weight，做 clipping 限制。构造两个候选 loss（不裁剪和裁剪），取最小值，形成 `per_token_loss`再去乘上 entropy_mask和加上 KL 惩罚项就可以得到最后的loss值。
-
 #### RL-PPO处理代码
 借用huggingface中对于PPO过程描述图：
 ![image.png](https://s2.loli.net/2025/09/05/AvLeinFOo5lPV6z.webp)
+对于[代码](https://github.com/huggingface/trl/blob/1d06757e57723e85048ab7b061b12aac8895ca89/trl/trainer/ppo_trainer.py#L100)使用，相比较GRPO和DPO要简单很多（不过在使用模型上，DPO和PPO都需要加载model和ref_model而GRPO只需要加载一个model），按照上面的处理过程：
+**首先**计算rollout输出，直接通过加载的模型去得到`query_responses`（完**整的模型生成内容**：prompt+模型的回答），`logitss`，接下来（[代码](https://github.com/huggingface/trl/blob/1d06757e57723e85048ab7b061b12aac8895ca89/trl/trainer/ppo_trainer.py#L436C17-L491C29)）去计算model和ref_model中每个token的log概率值（这个过程和GRPO处理是一样的，将问题+回答拼接起来而后丢到模型中计算每个token的log概率值）
+> 回顾一下，对于加载的**llm在使用generate**时一般返回如下4个值：
+> `sequences`：生成的 token ids（跟默认返回一样）；
+> `scores`：每一步的 logits（如果 output_scores=True）
+> `attentions`：注意力矩阵（如果 output_attentions=True）
+> `hidden_states`：隐藏层表示（如果 output_hidden_states=True）
+> 一般而言使用到的主要是上面两项，对于**第一项**`sequences`一般得到的完整的回答（prompt+模型生成的内容），所以一般会有一个截取处理（只需要记录`inputs['input_ids'].shape[1]`然后去截取即可）；对于**第二项**`scores`一般得到的是通常是logits（需要去通过softmax计算才能得到token概率）；因此在GRPO和PPO中为了**得到每一个token的log概率值**，`logprob = selective_log_softmax(logits, response)`直接通过这种方式去计算来节约显存。
+> 除此之外也有直接通过 `model(**model_inputs)`这样处理一般得到的是
 
 #### RL-PPO处理过程总结
 
