@@ -11,58 +11,12 @@ tags:
 description: 本文详细解析QwenVL2.5模型的处理流程及微调方法，包括模板化输入（通过processor.apply_chat_template处理对话messages，含<|im_start|>等标记模拟用户/assistant对话）、编码输入（图像处理采用smart_resize动态调整分辨率确保可被patch_size整除，经归一化后转为Vit的patch序列；文本通过tokenizer编码）、模型处理（视觉Transformer对pixel_values进行Conv3d处理生成特征，结合window-attention计算）。同时，阐述了SFT微调流程：数据层面构建对话模板生成input_ids、pixel_values等输入，模型层面采用QLoRA优化并结合gradient_checkpointing等显存优化策略。强化学习部分涵盖DPO（处理三元组数据计算chosen/rejected_logps，通过KL散度等计算loss）和GRPO（无需ref_model，利用reward_function及高熵过滤优化loss），为QwenVL2.5-3B的实际应用与性能提升提供技术指导。
 ---
 
-从代码角度去理解QwenVL2.5是如何处理，以及结合实际操作理解如何去对一个QwenVL2.5-3B进行SFT和强化学习处理，首先直接通过官方提供例子了解QwenVL是怎么使用的：
-```python
-from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
-from qwen_vl_utils import process_vision_info
-
-model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-    "Qwen/Qwen2.5-VL-3B-Instruct", torch_dtype="auto", device_map="auto"
-)
-
-min_pixels = 256*28*28
-max_pixels = 1280*28*28
-processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-3B-Instruct", min_pixels=min_pixels, max_pixels=max_pixels)
-
-messages = [
-    {
-        "role": "user",
-        "content": [
-            {
-                "type": "image",
-                "image": "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg",
-            },
-            {"type": "text", "text": "Describe this image."},
-        ],
-    }
-]
-
-# Preparation for inference
-text = processor.apply_chat_template(
-    messages, tokenize=False, add_generation_prompt=True
-)
-image_inputs, video_inputs = process_vision_info(messages)
-inputs = processor(
-    text=[text],
-    images=image_inputs,
-    videos=video_inputs,
-    padding=True,
-    return_tensors="pt",
-)
-inputs = inputs.to(model.device)
-
-# Inference: Generation of the output
-generated_ids = model.generate(**inputs, max_new_tokens=128)
-generated_ids_trimmed = [
-    out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
-]
-output_text = processor.batch_decode(
-    generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
-)
-print(output_text)
-```
-
-逐一了解一下QwenVL2.5模型的整个处理过程，模型整体过程大致为：1、首先是通过模板化处理我的模型的输入（image+text）；2、将输入转化为编码形式（比如文本tokenizer处理等）；3、出入模型处理输入然后模型输出；4、解码输出内容。整体主要是上述4个过程，因此下面逐一了解一下模型到底在做什么。
+从代码角度去理解QwenVL2.5是如何处理，以及结合实际操作理解如何去对一个QwenVL2.5-3B进行SFT和强化学习处理。
+简单了解一下QwenVL2.5模型的整个处理过程，模型整体过程大致为：1、首先是通过模板化处理我的模型的输入（image+text）；2、将输入转化为编码形式（比如文本tokenizer处理等）；3、出入模型处理输入然后模型输出；4、解码输出内容。整体主要是上述4个过程，因此下面逐一了解一下模型到底在做什么。
+内容较多对于强化学习部分之间看最后的总结部分即可：
+1、[trl框架下PPO代码总结](https://www.big-yellow-j.top/posts/2025/08/29/QwenVLCode.html#:~:text=%E4%B8%80%E8%88%AC%E5%BE%97%E5%88%B0%E7%9A%84%E6%98%AF-,RL%2DPPO%E5%A4%84%E7%90%86%E8%BF%87%E7%A8%8B%E6%80%BB%E7%BB%93,-RL%E7%AE%97%E6%B3%95%E5%AF%B9%E6%AF%94)；
+2、[trl框架下DPO代码总结](https://www.big-yellow-j.top/posts/2025/08/29/QwenVLCode.html#:~:text=self.label_smoothing)%EF%BC%89-,RL%2DDPO%E5%A4%84%E7%90%86%E8%BF%87%E7%A8%8B%E6%80%BB%E7%BB%93,-%E9%A6%96%E5%85%88%E5%AF%B9%E4%BA%8E%E6%88%91%E4%BB%AC)；
+3、[trl框架下GRPO代码总结](https://www.big-yellow-j.top/posts/2025/08/29/QwenVLCode.html#:~:text=%E6%9C%80%E5%90%8E%E7%9A%84%E5%80%BC%E3%80%82-,RL%2DGRPO%E5%A4%84%E7%90%86%E8%BF%87%E7%A8%8B%E6%80%BB%E7%BB%93,-%E5%AF%B9%E4%BA%8E%E4%B8%8A%E9%9D%A2loss)
 ## QwenVL的基本使用
 ### 1、模板化模型输入
 ```python
@@ -773,7 +727,10 @@ def compute_loss(self, model, inputs, return_outputs, num_items_in_batch):
 借用huggingface中对于PPO过程描述图：
 ![image.png](https://s2.loli.net/2025/09/05/AvLeinFOo5lPV6z.webp)
 对于[代码](https://github.com/huggingface/trl/blob/1d06757e57723e85048ab7b061b12aac8895ca89/trl/trainer/ppo_trainer.py#L100)使用，相比较GRPO和DPO要简单很多（不过在使用模型上，DPO和PPO都需要加载model和ref_model而GRPO只需要加载一个model），按照上面的处理过程：
-**首先**计算rollout输出，直接通过加载的模型去得到`query_responses`（完**整的模型生成内容**：prompt+模型的回答），`logitss`，接下来（[代码](https://github.com/huggingface/trl/blob/1d06757e57723e85048ab7b061b12aac8895ca89/trl/trainer/ppo_trainer.py#L436C17-L491C29)）去计算model和ref_model中每个token的log概率值（这个过程和GRPO处理是一样的，将问题+回答拼接起来而后丢到模型中计算每个token的log概率值）
+**首先**计算rollout输出，直接通过加载的模型然后模型对于“问题”去得到“回答”`query_responses`（**完整的模型生成内容**：prompt+模型的回答），`logitss`，接下来（[代码](https://github.com/huggingface/trl/blob/9955ee7eaa7e361ef46f7ac26b5ddc79199811f8/trl/trainer/ppo_trainer.py#L473C21-L490C34)）去计算model和ref_model中每个token的log概率值（这个过程和GRPO处理是一样的，将问题+回答拼接起来而后丢到模型中计算每个token的log概率值）最后分别得到模型的输出结果：`logprob` `response`（截取model回答内容） 和 `ref_logprob`。后面部分（[代码](https://github.com/huggingface/trl/blob/9955ee7eaa7e361ef46f7ac26b5ddc79199811f8/trl/trainer/ppo_trainer.py#L492C21-L509C22)）就是直接根据 `response`（model的回答） 以及 `query`（就是我们的问题）去计算reward的值`scores`。
+接下来处理过程：1、处理 EOS 缺失惩罚：将socres中如果生成内容不含结束标记就从`scores`中减去数值；2、计算kl以及最后的rewards值，对kl直接首先通过mask去掩盖部分logprobs（ref_logprobs）然后直接通过 `kl = -(ref_logprobs - logprobs) if args.kl_estimator == "k1" else ((ref_logprobs - logprobs).exp() - 1) - logr`得到kl值；3、计算advantage值（[代码](https://github.com/huggingface/trl/blob/9955ee7eaa7e361ef46f7ac26b5ddc79199811f8/trl/trainer/ppo_trainer.py#L561)）
+最后就是迭代优化模型参数（[代码](https://github.com/huggingface/trl/blob/9955ee7eaa7e361ef46f7ac26b5ddc79199811f8/trl/trainer/ppo_trainer.py#L576C13-L654C34)）这个过程（对采样得到的一批序列数据做多轮（num_ppo_epochs）小批次更新，通过 ratio = πθ/π_old 和裁剪（clip）来构造策略损失，同时对价值函数做裁剪的 value loss）主要是进行如下处理流程：首先是直接将最上面得到的`query_responses`中选择部分例子丢到模型中去计算每一个token的logits（ `new_logprobs = selective_log_softmax(logits, mb_responses)
+`） 而后计算策略损失值（`pg_loss`）以及vf_loss 
 > 回顾一下，对于加载的**llm在使用generate**时一般返回如下4个值：
 > `sequences`：生成的 token ids（跟默认返回一样）；
 > `scores`：每一步的 logits（如果 output_scores=True）
@@ -783,8 +740,12 @@ def compute_loss(self, model, inputs, return_outputs, num_items_in_batch):
 > 除此之外也有直接通过 `model(**model_inputs)`这样处理一般得到的是
 
 #### RL-PPO处理过程总结
+**第一阶段**：首先是对于问题（`query`）通过丢到模型`batch_generation`中处理得到`query_responses`（完整问题+模型回答） 和`logitss`（每个token对应的概率），进一步将其得到回答token的概率值`logprob`（`selective_log_softmax`）同样的处理过程通过policy_model将`query_response`（从 `query_responses`挑选的）输入到模型进行处理同样的处理得到`ref_logprob`，最后就是通过`reward_model`去计算（`torch.cat((query, postprocessed_response), 1)`）得到奖励值。
+**第二阶段**：**kl值**：直接计算`ref_logprobs - logprobs`（也就是计算上面阶段的ref_logprob和 logprob之间差值）；**rewards值**：直接copy计算的kl结果然后再序列的结尾补充上scores；**advantage值**：根据 reward 和 value，用 GAE 算 advantage。GAE计算过程：$\delta_t = r_t + \gamma V(s_{t+1}) - V(s_t)$  和$A_t = \delta_t + \gamma \lambda A_{t+1}$最后计算`advantages + values`也就是 $R_t=A_t+V(s_t)$
+**第三阶段**：进行迭代优化模型参数过程，优化过程首先是直接将小批次的`query_responses` 输入到模型中计算得到`output, vpred_temp`然后就是老操纵得到每个token的logits值`new_logprobs`，然后计算去计算`vf_loss`：计算loss1（`torch.square(vpred - mb_return)`）和loss2（`torch.square(vpredclipped - mb_return)`）的最大值。`pg_loss`：计算loss1（`-mb_advantage * ratio`）和loss2（`-mb_advantage * torch.clamp(ratio, 1.0 - args.cliprange, 1.0 + args.cliprange)`）的最大值然后取mean。最后得到loss为`pg_loss + args.vf_coef * vf_loss`
+> vpred、vpredclipped、mb_return分别通过从vpred_temp选择回答token、对vpred进行clamp裁剪、advantages + values
 
-#### RL算法对比
+### RL算法对比
 **对比一下GRPO和DPO的处理过程**
 **DPO纯数据驱动过程**，数据驱动：训练时需要标注好的偏好对：$[q, y^+], [q, y^-]$。计算流程：1. 输入同一个问题 $q$，分别拼接上正样本回答 $y^+$ 和负样本回答 $y^-$。2. 用当前模型和参考模型分别计算 $\log \pi_\theta(y^+|q), \log \pi_\theta(y^-|q), \log \pi_{\text{ref}}(y^+|q), \log \pi_{\text{ref}}(y^-|q)$。3. 基于这 4 个 log-prob，直接计算一个 logistic 回归式的 loss，强制模型在正样本上比分数更高，在负样本上比分数更低。
 **GRPO生成驱动过程**，生成驱动：训练时只给定问题 prompt，模型自己 roll-out 多个回答。计算流程：1. 对每个问题生成 $G$ 个回答。2. 通过奖励函数（或打分器）给每个回答打分 $r_i$。3. 组内归一化奖励 → 得到 advantage 值 $A_i$（比组内平均好/差多少）。4. 用参考模型计算 ref_per_token_logps（使用ref_model生成没有的话直接用model代替ref_model）。5. 用旧策略（冻结一帧的当前模型）得到 old_per_token_logps（直接通过model生成）。6. 用当前模型得到 per_token_logps。7. 计算重要性比率和 KL 散度（使用per_token_logps和ref_per_token_logps计算）近似，再套 PPO 风格的剪切目标（使用old_per_token_logps和per_token_logp） → 最终 loss。
