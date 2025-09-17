@@ -15,7 +15,7 @@ description: 本文详细解析QwenVL2.5模型的处理流程及微调方法，�
 简单了解一下QwenVL2.5模型的整个处理过程，模型整体过程大致为：1、首先是通过模板化处理我的模型的输入（image+text）；2、将输入转化为编码形式（比如文本tokenizer处理等）；3、出入模型处理输入然后模型输出；4、解码输出内容。整体主要是上述4个过程，因此下面逐一了解一下模型到底在做什么。
 内容较多对于强化学习部分之间看最后的总结部分即可：
 1、[trl框架下PPO代码总结](https://www.big-yellow-j.top/posts/2025/08/29/QwenVLCode.html#:~:text=%E4%B8%80%E8%88%AC%E5%BE%97%E5%88%B0%E7%9A%84%E6%98%AF-,RL%2DPPO%E5%A4%84%E7%90%86%E8%BF%87%E7%A8%8B%E6%80%BB%E7%BB%93,-RL%E7%AE%97%E6%B3%95%E5%AF%B9%E6%AF%94)；
-2、[trl框架下DPO代码总结](https://www.big-yellow-j.top/posts/2025/08/29/QwenVLCode.html#:~:text=self.label_smoothing)%EF%BC%89-,RL%2DDPO%E5%A4%84%E7%90%86%E8%BF%87%E7%A8%8B%E6%80%BB%E7%BB%93,-%E9%A6%96%E5%85%88%E5%AF%B9%E4%BA%8E%E6%88%91%E4%BB%AC)；
+2、[trl框架下DPO代码总结](https://www.big-yellow-j.top/posts/2025/08/29/QwenVLCode.html#:~:text=%E5%A4%84%E7%90%86%E8%BF%87%E7%A8%8B%E6%80%BB%E7%BB%93-,%E9%A6%96%E5%85%88,-%E5%AF%B9%E4%BA%8E%E6%88%91%E4%BB%AC%E7%9A%84)；
 3、[trl框架下GRPO代码总结](https://www.big-yellow-j.top/posts/2025/08/29/QwenVLCode.html#:~:text=%E6%9C%80%E5%90%8E%E7%9A%84%E5%80%BC%E3%80%82-,RL%2DGRPO%E5%A4%84%E7%90%86%E8%BF%87%E7%A8%8B%E6%80%BB%E7%BB%93,-%E5%AF%B9%E4%BA%8E%E4%B8%8A%E9%9D%A2loss)
 ## QwenVL的基本使用
 ### 1、模板化模型输入
@@ -722,8 +722,30 @@ def compute_loss(self, model, inputs, return_outputs, num_items_in_batch):
 #### RL-GRPO处理过程总结
 ![1.png](https://s2.loli.net/2025/09/07/EQCG4znR2ZvUj8k.png)
 对于上面loss计算公式中主要就是如下几个值需要关注：1、advantage值；2、KL散度值。
-因此简单总结一些GRPO代码处理过程[^1]，**首先**，对于数据处理，这块内容比较简单直接 **模板化**、**编码内容即可**，因为GRPO是“一个问题抛出多组回答然后评估回答”，因此在数据处理过程中还会去补充一个使用模型生成回答过程 `prompt_completion_ids=model.generate(...)`而后需要做的就是将生成内容进行拆分得到`prompt_ids`（得到这一部分值之后就只需要在去还原成text文本然后再去通过reward函数去计算reward值以及计算最后需要的 `advantage`值） 和 `completion_ids`，除此之外还会去计算 `old_per_token_logps` 和 `ref_per_token_logps`直接通过 `_get_per_token_logps_and_entropies`函数（相对于**把问题和回答组合起来再让模型输出每个token概率**）处理，这样一来得到一个完整的输出 `outputs`。
-**而后**，计算loss过程直接去调用 `_get_per_token_logps_and_entropies`处理问题+回答得到每个token概率以及熵的值：`per_token_logps`，`entropies`，而后就是：**选择出高熵值的token**（`entropy_mask`），以及**计算KL散度**（`per_token_kl`直接通过计算上面`outputs`中的`ref_per_token_logps` 以及 `per_token_logps`），**重要性采样权重**：比较当前 log 概率和旧策略（`per_token_logps - old_per_token_logps`），得到 importance weight，做 clipping 限制。构造两个候选 loss（不裁剪和裁剪），取最小值，形成 `per_token_loss`再去乘上 entropy_mask和加上 KL 惩罚项就可以得到最后的loss值。
+因此简单总结一些GRPO代码处理过程[^1]，**首先**，对于数据处理，这块内容比较简单直接 **模板化**、**编码内容即可**，因为GRPO是“一个问题抛出多组回答然后评估回答”，因此在数据处理过程中通过模型生成回答 `prompt_completion_ids=model.generate(...)`而后需要做的就是将生成内容进行拆分得到`prompt_ids`和 `completion_ids`（得到这一部分值之后就只需要在去还原成text文本然后再去通过reward函数去计算reward值以及计算最后需要的 `advantage`值），除此之外还会去通过model和model_ref分别计算回答中每个token的logits值：`old_per_token_logps` 和 `ref_per_token_logps`
+> 这个过程直接通过函数 [_get_per_token_logps_and_entropies](https://github.com/huggingface/trl/blob/67991605c0e6aaf1ef3c2bf64e11da914948c4a4/trl/trainer/grpo_trainer.py#L786)处理，他的处理思路简单直接将 model需要的内容再丢到model里面得到每个token的logits然后再去计算softmax值
+
+最后得到一个完整的output如下：
+```python
+output = {
+    "prompt_ids": prompt_ids,    # 问题token
+    "prompt_mask": prompt_mask,
+    "completion_ids": completion_ids,    # 问题的回答token
+    "completion_mask": completion_mask,
+    "advantages": advantages,
+    "num_items_in_batch": num_items_in_batch,
+    "old_per_token_logps": old_per_token_logps  
+    "importance_sampling_ratio": importance_sampling_ratio  
+    "ref_per_token_logps": ref_per_token_logps   
+    "pixel_values": prompt_inputs["pixel_values"]   
+    "image_grid_thw": prompt_inputs["image_grid_thw"]   
+    "pixel_attention_mask": prompt_inputs["pixel_attention_mask"]   
+    "image_sizes": prompt_inputs["image_sizes"]   
+}
+
+```
+
+**而后**，对于loss计算过程首先将上面output中的 问题+回答进行组合再丢到`_get_per_token_logps_and_entropies`中得到每个token概率以及熵的值：`per_token_logps`，`entropies`，而后就是：1、**选择出高熵值的token**（`entropy_mask`）；2、**计算KL散度**（`torch.exp(ref_per_token_logps - per_token_logps) - (ref_per_token_logps - per_token_logps) - 1`）；3、**重要性采样权重**：比较当前 log 概率和旧策略（`per_token_logps - old_per_token_logps`），得到 importance weight，做 clipping 限制。构造两个候选 loss（不裁剪和裁剪），取最小值，形成 `per_token_loss`再去乘上 entropy_mask和加上 KL 惩罚项就可以得到最后的loss值。
 #### RL-PPO处理代码
 借用huggingface中对于PPO过程描述图：
 ![image.png](https://s2.loli.net/2025/09/05/AvLeinFOo5lPV6z.webp)
@@ -751,6 +773,23 @@ def compute_loss(self, model, inputs, return_outputs, num_items_in_batch):
 **DPO纯数据驱动过程**，数据驱动：训练时需要标注好的偏好对：$[q, y^+], [q, y^-]$。计算流程：1. 输入同一个问题 $q$，分别拼接上正样本回答 $y^+$ 和负样本回答 $y^-$。2. 用当前模型和参考模型分别计算 $\log \pi_\theta(y^+|q), \log \pi_\theta(y^-|q), \log \pi_{\text{ref}}(y^+|q), \log \pi_{\text{ref}}(y^-|q)$。3. 基于这 4 个 log-prob，直接计算一个 logistic 回归式的 loss，强制模型在正样本上比分数更高，在负样本上比分数更低。
 **GRPO生成驱动过程**，生成驱动：训练时只给定问题 prompt，模型自己 roll-out 多个回答。计算流程：1. 对每个问题生成 $G$ 个回答。2. 通过奖励函数（或打分器）给每个回答打分 $r_i$。3. 组内归一化奖励 → 得到 advantage 值 $A_i$（比组内平均好/差多少）。4. 用参考模型计算 ref_per_token_logps（使用ref_model生成没有的话直接用model代替ref_model）。5. 用旧策略（冻结一帧的当前模型）得到 old_per_token_logps（直接通过model生成）。6. 用当前模型得到 per_token_logps。7. 计算重要性比率和 KL 散度（使用per_token_logps和ref_per_token_logps计算）近似，再套 PPO 风格的剪切目标（使用old_per_token_logps和per_token_logp） → 最终 loss。
 **对于上面三类算法都有KL不同RL算法KL散度之间使用和区别在于**
+> $KL(p||q)=\sum_x p(x)\log\frac{p(x)}{q(x)}=H(p,q)-H(q)$，交叉熵-熵
+> 计算交叉熵的目的在于**约束新策略不要偏离参考策略太多**，类似的对于交叉熵损失（$H(p,q)=-\sum_x p(x)\log q(x)$）两者之间差异是交叉熵是让“q去拟合p”，而KL则是度量“q和p之间距离”
+> 
+
+DPO的loss计算：
+$$
+\mathcal{L}_{\text{DPO}} = -\frac{1}{N} \sum_{i=1}^{N} \log \sigma\left( \beta \underbrace{\left[ \log \pi_\theta(y_w|x) - \log \pi_\theta(y_l|x) \right]}_{\text{model 之间差异}} - \underbrace{\left( \log \pi_{\text{ref}}(y_w|x) - \log \pi_{\text{ref}}(y_l|x) \right)}_{\text{隐含 KL 基准}} \right)
+$$
+GRPO的loss计算：
+$$
+\mathcal{L}_{\text{GRPO}} = -\mathbb{E}\left[ \frac{\pi_\theta(y|x)}{\pi_{\text{ref}}(y|x)} A(y) \right] + \lambda \, \mathrm{KL}\left( \pi_\theta \parallel \pi_{\text{ref}} \right)
+$$
+PPO的loss计算：
+$$
+r_t(\theta) = \exp\left( \log \pi_\theta(a_t|s_t) - \log \pi_{\text{ref}}(a_t|s_t) \right)\\
+\mathcal{L}_{\text{PPO}} = -\mathbb{E}\left[ \min\left( r_t(\theta) A_t, \, \mathrm{clip}\left(r_t(\theta), \, 1 - \epsilon, \, 1 + \epsilon\right) A_t \right) \right] + \lambda \, \mathrm{KL}\left( \pi_\theta \parallel \pi_{\text{ref}} \right)
+$$
 **1、DPO中计算KL**：在model_ref以及model分别输入“3元组”数据之后会去计算不同token的概率值，也就是model和ref都会生成 reject和choose的概率值，然后去计算：$\mathrm{loss}=-\frac{1}{N}\sum_{i=1}^{N}\log\sigma\left(\beta\cdot((\log\pi_{\theta}(y_{w}|x)-\log\pi_{\theta}(y_{l}|x))-(\log\pi_{\mathrm{ref}}(y_{w}|x)-\log\pi_{\mathrm{ref}}(y_{l}|x)))\right)$ 的sigmoid 损失优化相对偏好
 **2、GRPO中计算KL**：通过model_ref对于问题Q以及模型生成的多组回答进而可以得到每组回答的token概率：`ref_per_token_logps` 而后我又通过model去生成多组回答以及token概率：`per_token_logps`接下来就是直接他们之间KL散度即可。
 **3、PPO中计算KL**：通过model得到回答中的每一个token的概率`logprobs`，同样的再去通过model_rf也去计算每一个token的概率`ref_logprobs`然后去计算KL
