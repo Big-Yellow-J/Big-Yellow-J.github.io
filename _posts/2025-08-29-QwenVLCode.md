@@ -769,14 +769,26 @@ output = {
 > vpred、vpredclipped、mb_return分别通过从vpred_temp选择回答token、对vpred进行clamp裁剪、advantages + values
 
 ### RL算法对比
-**对比一下GRPO和DPO的处理过程**
+#### 对比一下GRPO和DPO的处理过程
 **DPO纯数据驱动过程**，数据驱动：训练时需要标注好的偏好对：$[q, y^+], [q, y^-]$。计算流程：1. 输入同一个问题 $q$，分别拼接上正样本回答 $y^+$ 和负样本回答 $y^-$。2. 用当前模型和参考模型分别计算 $\log \pi_\theta(y^+|q), \log \pi_\theta(y^-|q), \log \pi_{\text{ref}}(y^+|q), \log \pi_{\text{ref}}(y^-|q)$。3. 基于这 4 个 log-prob，直接计算一个 logistic 回归式的 loss，强制模型在正样本上比分数更高，在负样本上比分数更低。
 **GRPO生成驱动过程**，生成驱动：训练时只给定问题 prompt，模型自己 roll-out 多个回答。计算流程：1. 对每个问题生成 $G$ 个回答。2. 通过奖励函数（或打分器）给每个回答打分 $r_i$。3. 组内归一化奖励 → 得到 advantage 值 $A_i$（比组内平均好/差多少）。4. 用参考模型计算 ref_per_token_logps（使用ref_model生成没有的话直接用model代替ref_model）。5. 用旧策略（冻结一帧的当前模型）得到 old_per_token_logps（直接通过model生成）。6. 用当前模型得到 per_token_logps。7. 计算重要性比率和 KL 散度（使用per_token_logps和ref_per_token_logps计算）近似，再套 PPO 风格的剪切目标（使用old_per_token_logps和per_token_logp） → 最终 loss。
-**对于上面三类算法都有KL不同RL算法KL散度之间使用和区别在于**
+#### 对于DPO、GRPO、PPO中KL计算差异
 > $KL(p||q)=\sum_x p(x)\log\frac{p(x)}{q(x)}=H(p,q)-H(q)$，交叉熵-熵
 > 计算交叉熵的目的在于**约束新策略不要偏离参考策略太多**，类似的对于交叉熵损失（$H(p,q)=-\sum_x p(x)\log q(x)$）两者之间差异是交叉熵是让“q去拟合p”，而KL则是度量“q和p之间距离”
-> 
 
+**1、DPO中计算KL**：在model_ref以及model分别输入“3元组”数据之后会去计算不同token的概率值，也就是model和ref都会生成 reject和choose的概率值，然后去计算：$\mathrm{loss}=-\frac{1}{N}\sum_{i=1}^{N}\log\sigma\left(\beta\cdot((\log\pi_{\theta}(y_{w}|x)-\log\pi_{\theta}(y_{l}|x))-(\log\pi_{\mathrm{ref}}(y_{w}|x)-\log\pi_{\mathrm{ref}}(y_{l}|x)))\right)$ 的sigmoid 损失优化相对偏好
+**2、GRPO中计算KL**：通过model_ref对于问题Q以及模型生成的多组回答进而可以得到每组回答的token概率：`ref_per_token_logps` 而后我又通过model去生成多组回答以及token概率：`per_token_logps`接下来就是直接他们之间KL散度：
+![](https://s2.loli.net/2025/09/18/4Dc3r1XnPfZvouk.png)
+**3、PPO中计算KL**：通过model得到回答中的每一个token的概率`logprobs`，同样的再去通过model_rf也去计算每一个token的概率`ref_logprobs`然后去计算KL
+![](https://s2.loli.net/2025/09/18/z4lqjtQrybEUhX5.png)
+DPO：通过“偏好差值”间接引入 KL 约束，偏重于 对比学习。
+GRPO：显式计算 生成候选组的 token 级 KL，作为正则项，保证模型不偏离参考策略。
+PPO：基于当前策略与参考策略（或旧策略）的 KL，常作为 正则或 early stopping 信号
+#### 对于GRPO以及PPO中优势值计算过程
+**GRPO优势值计算过程**：对于给出多组回答直接通过奖励函数去计算每组回答的奖励值而后去上计算：$A_i = \frac{r_i- mean(r)}{std(r)}$
+**PPO优势值计算过程**：一般直接通过广义优势估计方法GAE来计算优势值，首先通过奖[励函数评估模型输出](https://github.com/huggingface/trl/blob/9955ee7eaa7e361ef46f7ac26b5ddc79199811f8/trl/trainer/ppo_trainer.py#L503)（问题+回答），而后[计算GAE](https://github.com/huggingface/trl/blob/9955ee7eaa7e361ef46f7ac26b5ddc79199811f8/trl/trainer/ppo_trainer.py#L561C17-L569C76)
+
+#### 对比DPO、GRPO、PPO中loss计算差异
 DPO的loss计算：
 $$
 \mathcal{L}_{\text{DPO}} = -\frac{1}{N} \sum_{i=1}^{N} \log \sigma\left( \beta \underbrace{\left[ \log \pi_\theta(y_w|x) - \log \pi_\theta(y_l|x) \right]}_{\text{model 之间差异}} - \underbrace{\left( \log \pi_{\text{ref}}(y_w|x) - \log \pi_{\text{ref}}(y_l|x) \right)}_{\text{隐含 KL 基准}} \right)
@@ -787,12 +799,13 @@ $$
 $$
 PPO的loss计算：
 $$
-r_t(\theta) = \exp\left( \log \pi_\theta(a_t|s_t) - \log \pi_{\text{ref}}(a_t|s_t) \right)\\
+r_t(\theta) = \exp\left( \log \pi_\theta(a_t|s_t) - \log \pi_{\text{ref}}(a_t|s_t) \right)
+$$
+
+
+$$
 \mathcal{L}_{\text{PPO}} = -\mathbb{E}\left[ \min\left( r_t(\theta) A_t, \, \mathrm{clip}\left(r_t(\theta), \, 1 - \epsilon, \, 1 + \epsilon\right) A_t \right) \right] + \lambda \, \mathrm{KL}\left( \pi_\theta \parallel \pi_{\text{ref}} \right)
 $$
-**1、DPO中计算KL**：在model_ref以及model分别输入“3元组”数据之后会去计算不同token的概率值，也就是model和ref都会生成 reject和choose的概率值，然后去计算：$\mathrm{loss}=-\frac{1}{N}\sum_{i=1}^{N}\log\sigma\left(\beta\cdot((\log\pi_{\theta}(y_{w}|x)-\log\pi_{\theta}(y_{l}|x))-(\log\pi_{\mathrm{ref}}(y_{w}|x)-\log\pi_{\mathrm{ref}}(y_{l}|x)))\right)$ 的sigmoid 损失优化相对偏好
-**2、GRPO中计算KL**：通过model_ref对于问题Q以及模型生成的多组回答进而可以得到每组回答的token概率：`ref_per_token_logps` 而后我又通过model去生成多组回答以及token概率：`per_token_logps`接下来就是直接他们之间KL散度即可。
-**3、PPO中计算KL**：通过model得到回答中的每一个token的概率`logprobs`，同样的再去通过model_rf也去计算每一个token的概率`ref_logprobs`然后去计算KL
 
 ## 参考
 [^1]: https://huggingface.co/docs/trl/main/en/grpo_trainer
