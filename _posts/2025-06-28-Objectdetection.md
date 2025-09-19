@@ -27,7 +27,33 @@ description:
 整体过程如上面描述一下，通过预训练的神经网络（AlexNet）等去获取CNN特征，然后再去通过**选择性搜索算法**（Selective Search）获取所有的可能的“目标”
 > 对于选择性搜索算法的一个大致思路：大概的意思就是首先根据图像分割的算法来初始化划分区域，然后根据不同颜色模式、目标颜色、纹理、大小、形状等特征来计算相似度合并子区域。
 
-在经过分类以及SVM分类之后直接再去收缩边界框，这个过程主要是通过**非极大值抑制**去剔除重叠的建议框。比如对于同一个目标会生成大量的、重叠的候选框，而非极大值抑制原理就是：对于每一个框都会有一个置信度，首选按照置信度进行排列得到最大的置信度框，然后去计算其他框和这个最大框的IoU，如果某个框与选取框的IoU大于我们设定的阈值（比如0.5），说明它们和选取框检测的是同一个目标，所以需要被抑制（删除）。如果某个框与选取框的IoU小于阈值，说明它们和框A检测的可能是另一个目标（或者只是重叠不多），予以保留。
+在经过分类以及SVM分类之后直接再去收缩边界框，这个过程主要是通过**非极大值抑制**去剔除重叠的建议框。
+> **非极大值抑制**：对于每一个框都会有一个置信度，首选按照置信度进行排列得到最大的置信度框，然后去计算其他框和这个最大框的IoU，如果某个框与选取框的IoU大于我们设定的阈值（比如0.5），说明它们和选取框检测的是同一个目标，所以需要被抑制（删除）。如果某个框与选取框的IoU小于阈值，说明它们和框A检测的可能是另一个目标（或者只是重叠不多），予以保留。
+> $\text{IoU}=\frac{\text{Area}(A\cap B)}{\text{Area}(A\cup B)}$ 具体的代码实现如下
+```python
+def bbox_iou(box1, box2):
+    inter_x1 = max(box1[0], box2[0])
+    inter_y1 = max(box1[1], box2[1])
+    inter_x2 = min(box1[2], box2[2])
+    inter_y2 = min(box1[3], box2[3])
+
+    # 交集的宽高（注意要 clamp 为 >=0）
+    inter_w = max(0, inter_x2 - inter_x1)
+    inter_h = max(0, inter_y2 - inter_y1)
+    inter_area = inter_w * inter_h
+
+    # 各自面积
+    area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
+    area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
+
+    # 并集面积
+    union_area = area1 + area2 - inter_area
+
+    # IoU
+    iou = inter_area / union_area if union_area > 0 else 0.0
+    return iou
+```
+
 ### Fast RCNN以及Faster RCNN目标检测
 Fast RCNN[^2]主要是依次解决上面模型存在的问题，其主要的原理如下：
 ![](https://s2.loli.net/2025/09/18/DQVWpxv5Mu7EclR.png)
@@ -39,9 +65,14 @@ Fast RCNN[^2]主要是依次解决上面模型存在的问题，其主要的原�
 **2、RoI Pooling以及RoI Align**[^4]：两个RoI算法主要是将bbox映射到特征图上获取bbox中特征，后者是为了解决前者纯在的数据舍入问题。
 
 ### YoLo算法
-
+在Yolov1中其网络结构如下所示：
+![](https://s2.loli.net/2025/09/19/GfDtuy43IwP9pR2.png)
+主要解决的是上面提到哪些检测算法需要用卷积核去“扫描”图像问题，在Yolo中直接将图像提前切割为 $S\times S$个格子而后就是按照上面的网络结构进行处理最后输出的张量为 $7\times 7\times 30$，可以理解为每一块都有30个特征值对于这30个特征值分别表示的含义是：$B\times 5+ C$ 其中B代表候选框数量（论文中选择2，具体的bbox坐标是直接通过模型训练得到），C代表类别，之所以用5表示的是 $(x,y,w,h,conf)$ 前面4个不解释后面一个指标代表的的是该框的 **置信度水平**，这样一来可以直接通过**计算每个框属于哪个类别**也就是计算执行都和类别C的乘积结果： $C\times \text{conf}$得到结果为 $20\times 1$这样一来每一个框都会这样计算那么最后得到 $7\times 7\times 2=98$，借鉴[^5]中的PPT，那么我最后得到结果如下所述：
+![](https://s2.loli.net/2025/09/19/upqZvDJWjLIa4xG.png)
+假设我的第一行是判断“狗”这个类别，那么第一行行都会有关于狗这个类别一个置信度，那么后续就可以直接去计算NMS来得到最后的bbox了。
 ## 参考
 [^1]: [https://arxiv.org/pdf/1311.2524](https://arxiv.org/pdf/1311.2524)
 [^2]: [https://arxiv.org/pdf/1504.08083](https://arxiv.org/pdf/1504.08083)
 [^3]: [https://arxiv.org/pdf/1506.01497](https://arxiv.org/pdf/1506.01497)
 [^4]: [https://cloud.tencent.com/developer/article/1829792](https://cloud.tencent.com/developer/article/1829792)
+[^5]: [Yolo-PPT-GoogleDrive](https://docs.google.com/presentation/d/1aeRvtKG21KHdD5lg6Hgyhx5rPq_ZOsGjG5rJ1HP7BbA/pub?start=false&loop=false&delayms=3000&slide=id.p)

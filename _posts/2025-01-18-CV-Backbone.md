@@ -164,25 +164,21 @@ torch.Size([1, 1, 9, 9])
 1、https://www.big-yellow-j.top/code/AlexNet.html
 2、https://www.big-yellow-j.top/code/LeNet.html
 3、https://www.big-yellow-j.top/code/googlenet.html
-
 ## 二、基于Transformer的CV Backbone
 
 主要介绍两种：`Vit`和`MAE`。`Vit`:核心思想是将图像划分为小块（`Patch`），将每个小块视为一个 "单词"（类似 NLP 中的 Token），然后通过标准的 Transformer 架构对这些 Patch 进行处理。
-
 ![2](https://s2.loli.net/2025/06/22/vEGOWdy1fkgh2JT.webp)
-
 `Vit`主要操作流程：
-- 1、`patch embedding`和`position embeeding`：将图片进行切分为固定大小的patch，比如说输入一张224x224RGB图像，path=16x16。那么的话就会生成：$\frac{224\times224}{16\times16}=196$个patch，那么输入模型的序列数量：**196**，经过拉长处理之后得到的序列长度为：$16\times 16\times 3=768$。通过线性投射层处理之后维度为：$196\times 768$一共为 **196**个token，然后补充一个位置编码，对于位置编码最简单的就是直接对每一个patch都生成一个1维的向量（类似one-hot，但是对于位置编码的方式有很多）然后去拼接起来（同时还需要补充一个`CLS`），最后维度就是：$197\times768$
+1、`patch embedding`和`position embeeding`：将图片进行切分为固定大小的patch，比如说输入一张224x224RGB图像，path=16x16。那么的话就会生成：$\frac{224\times224}{16\times16}=196$个patch，那么输入模型的序列数量：**196**，经过拉长处理之后得到的序列长度为：$16\times 16\times 3=768$。通过线性投射层处理之后维度为：$196\times 768$一共为 **196**个token，然后补充一个位置编码，对于位置编码最简单的就是直接对每一个patch都生成一个1维的向量（类似one-hot，但是对于位置编码的方式有很多）然后去拼接起来（同时还需要补充一个`CLS`），最后维度就是：$197\times768$
 > **值得注意的是**：正如上提到的**亚像素上采样 (Pixel Shuffle)**可以通过他的逆操作将token数量减少（其实就是将尺寸改变，比如[b,c,w,h]-->[b,c/r^2,w/2,h/2]）
+> `patch embedding`阶段处理，是直接通过一个16x16的**卷积去处理**（不是物理上的切割）图片维度变化：1x3x224x224 而后通过卷积核处理得到 1x768x14x14最后进行拉平处理（`x.flatten(2).transpose(1, 2`）得到 1x196x768
+> 对于cls_token的添加过程直接通过初始化一个参数（`nn.Parameter(torch.zeros(1, 1, num_features))`）然后拼接到上面的视觉特征上
 
-- 2、`transformer encoder`：就是一个正常的transformer的encoder处理输入多少维度输出多少维度，依旧是$197\times768$
-
+2、`transformer encoder`：就是一个正常的transformer的encoder处理输入多少维度输出多少维度，依旧是$197\times768$
 `MAE` 主要操作流程
-
-- 1、`patch embedding` 和 `position embedding`：前面操作和`Vit`操作差异不大，区别在于`MAE`进行 **随机遮盖（Masking）**，例如遮盖 75% 的 Patch，只保留 **25%** 的 Token，用于后续的编码器输入。最终，编码器的输入维度变为：$49 \times 768$（假设保留的 Token 为 49）。与此同时，补充位置编码，最简单的方式是为每个 Patch Token 添加一个唯一的向量（类似于 One-Hot），拼接后维度保持不变。
-- 2、`masked token reconstruction`：将编码器的输出输入到解码器中，同时将被遮盖的 Token 填充为一个固定的嵌入（称为 Mask Token）。解码器的输入维度恢复为：$196 \times 768$解码器通过 Transformer 操作，将未遮盖的 Token 特征与 Mask Token 结合，并尝试重建完整图像。重建的目标是尽可能接近原始图像像素值。
+1、`patch embedding` 和 `position embedding`：前面操作和`Vit`操作差异不大，区别在于`MAE`进行 **随机遮盖（Masking）**，例如遮盖 75% 的 Patch，只保留 **25%** 的 Token，用于后续的编码器输入。最终，编码器的输入维度变为：$49 \times 768$（假设保留的 Token 为 49）。与此同时，补充位置编码，最简单的方式是为每个 Patch Token 添加一个唯一的向量（类似于 One-Hot），拼接后维度保持不变。
+2、`masked token reconstruction`：将编码器的输出输入到解码器中，同时将被遮盖的 Token 填充为一个固定的嵌入（称为 Mask Token）。解码器的输入维度恢复为：$196 \times 768$解码器通过 Transformer 操作，将未遮盖的 Token 特征与 Mask Token 结合，并尝试重建完整图像。重建的目标是尽可能接近原始图像像素值。
 > **值得注意的是**：MAE 的优势在于编码器仅处理未遮盖的部分 Token，大大减少了计算成本。同时，解码器可以设计得更轻量，仅用于重建任务，最终可以通过重建损失（如 L2 损失）优化模型。
-
 > 在`MAE`中是分与训练和微调的，与训练就是去预测mask内容，微调就是直接根据不同任务进行微调即可（换输出头/微调里面参数）
 
 ```python
@@ -259,7 +255,6 @@ else:
 ```
 
 > 上面操作很容易理解：对于**注意力计算**：计算$QK^T$之后，得到各个点的**权重**，然后把这个权重加权到$V$上，上面操作通过加$-100$然后通过softmax处理，那么不属于分区内的“点”（比如53组合）权重就会被处理为0
-
 ## 三、多模态backbone
 
 这部分内容主要介绍在多模态算法中常用的几类`backbone`，主要为代码（SAM/Clip等）
@@ -298,7 +293,6 @@ class ClipBackbone(nn.Module):
         return image_embeddings
 ```
 输出为维度`config.json`中参数`"projection_dim": 768`
-
 ## 参考:
 1、https://arxiv.org/pdf/2206.08016
 2、https://arxiv.org/pdf/1512.03385
