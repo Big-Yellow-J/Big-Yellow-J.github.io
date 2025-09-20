@@ -50,13 +50,13 @@ loss = (loss_i + loss_t)/2
 ## ALBEF
 Albef[^1]模型基本结构如下：
 ![](https://s2.loli.net/2025/09/19/wCK5MxvBQITkuhE.png)
-**模型结构**：1、图像编码器（12层的Vit-B/16）；2、文本编码器（6层 $\text{BERT}_{\text{base}}$）；3、多模态编码器（6层 $\text{BERT}_{\text{base}}$）。对于文本和图像都会编码为带前缀的向量，图像：${v_{cls},v_1,...,v_N}$，文本：${w_{cls},w_1,...,w_N}$。
+**模型结构**：1、图像编码器（12层的Vit-B/16）；2、文本编码器（6层 $\text{BERT}_{\text{base}}$ ）；3、多模态编码器（6层 $\text{BERT}_{\text{base}}$）。对于文本和图像都会编码为带前缀的向量，图像：${v_{cls},v_1,...,v_N}$，文本：${w_{cls},w_1,...,w_N}$。
 **训练过程**：**1、模态对齐（ITC）**：这个过程主要是计算image-to-text以及text-to-image相似性计算过程如下：
 ![](https://s2.loli.net/2025/09/19/SqxarzjPtbegiQZ.png)
 其中 $s(I, T_m)=g_v(v_{cls})^Tg^′(w^′_{cls})$，相似性计算公式中 $g$主要是将 `[CLS]`通过线性处理处理到256维，而 $g^′$则是通过动量编码器的规范化特征表示。$y$代表GT。
 > 对于这个loss计算过程再Albef中会改写为：
 > ![](https://s2.loli.net/2025/09/19/X9I8ZEzxOyeg3GS.png)
-> 其中$s$代表score function（比如说直接计算点乘）
+> 其中$s$代表score function（比如说直接计算点乘），$\tau$温度稀疏
 
 **2、遮蔽语言模型( MLM )**：直接预测被MASK掉的词；**3、图文匹配（ITM）**：主要是判断图文之间匹配，对于这两个过程数据处理为：
 ![](https://s2.loli.net/2025/09/19/eVdW7hRcSwn3Ial.png)
@@ -68,17 +68,88 @@ BLIP-1[^3]模型结构如下
 ![](https://s2.loli.net/2025/09/19/kvuBxLI18JtEjAC.png)
 论文中数据合成方法，其实还是基于BLIP自身的encoder-decoder结构，首先是通过标注的数据（$I_h,T_h$）进行训练模型在得到很好的效果之后，将未标注的图片 $I_w$直接输入到模型中生成图-文对（$I_w,T_s$）以及从网络上搜索得到的图-文对（$I_w,T_w$）此时这两部分图文对不是很“恰当的”通过filter去过滤掉不合适的配对这样一来最后就可以得到相对干净的图-文对。
 > 其中`filter`设计就是直接使用 image-ground text encoder通过直接微调来让模型知道 图-文匹配效果
+
 ### BLIPv2
 **BLIP-2**[^4]模型结构如下：
-![](https://s2.loli.net/2025/06/22/LejUt6HI5XRYZcr.webp)
-在 BLIP-2中**同时冻结了Image Encoder以及LLM**因此为了弥补不同模态之间的差异，就需要设计一个“模块”来进行表示（在论文中做法是：**将Image/Text上的信息都”反映“到一个Learned-Queries上**）。具体操作为：
-1、**图文对比损失ITC**：优化目标是对齐图像特征和文本特征，也就是对齐image transformer输出的query representation与来自text transformer输出的text representation。为了避免信息泄漏，ITC采用了单模态自注意掩码，不允许query和text看到对方。计算时先计算每个query与文本embedding之间的相似度，然后选择最高的作为图文相似度
-2、**ITG**(Image-grounded Text Generation)：优化目标是给定输入图像作为条件，训练 Q-Former 生成文本，迫使query提取包含所有文本信息的视觉特征。由于 Q-Former 的架构不允许冻结的图像编码器和文本标记之间的直接交互，因此生成文本所需的信息必须首先由query提取，然后通过自注意力层传给text token。ITG采用多模态causal attention mask来控制query和text的交互，query可以相互感知，但不能看见text token，每个text token都可以感知所有query及其前面的text标记【半矩阵，生成式任务的常见做法】。这里将 [CLS] 标记替换为新的 [DEC] 标记，作为第一个文本标记来指示解码任务。
-3、**ITM**( Image-Text Matching)：优化目标是进行图像和文本表示之间的细粒度对齐，学一个二分类任务，即图像-文本对是正匹配还是负匹配。这里将image transformer输出的每个query嵌入输入到一个二类线性分类器中以获得对应的logit，然后将所有的logit平均，再计算匹配分数。ITM使用双向自注意掩码，所有query和text都可以相互感知。
-## 总结
+![](https://s2.loli.net/2025/09/20/MidSCm4Ioev3ULT.png)
+在 BLIP-2中**同时冻结了Image Encoder以及LLM**因此为了弥补不同模态之间的差异，就需要设计一个“模块”来进行表示（在论文中做法是：通过设计一个[Q-Former](https://github.com/salesforce/LAVIS/blob/main/lavis/models/blip2_models/blip2_qformer.py)**将Image/Text上的信息都”反映“到一个Learned-Queries上**）。
+> **Q-Former**通过初始化的query然后将图片和文本特征都反映到query上，其结构就是直接使用BERT作为主体结构，通过改变BERT的输入数据来保证对于图片和文本的特征“反映”
 
+具体操作分为两个阶段：
+![](https://s2.loli.net/2025/09/20/CXk69glF2qhIrRK.png)
+**第一阶段**：结构图如上所述通过冻结image-encoder，模型对于输出首先进行处理[过程](https://github.com/salesforce/LAVIS/blob/506965b9c4a18c1e565bd32acaccabe0198433f7/lavis/models/blip2_models/blip2_qformer.py#L91C9-L127C10)：
+```python
+image_embeds = self.ln_vision(self.visual_encoder(image))
+query_tokens = self.query_tokens.expand(image_embeds.shape[0], -1, -1)
+query_output = self.Qformer.bert(query_embeds=query_tokens,encoder_hidden_states=image_embeds,encoder_attention_mask=image_atts,...)
+image_feats = F.normalize(self.vision_proj(query_output.last_hidden_state), dim=-1)
+text_tokens = self.tokenizer(text,...)
+text_output = self.Qformer.bert(text_tokens.input_ids,...)
+```
+
+对于`self.query_tokens`初始化直接通过[生成全0的向量](https://github.com/salesforce/LAVIS/blob/506965b9c4a18c1e565bd32acaccabe0198433f7/lavis/models/blip2_models/blip2.py#L57)。除此之外对于初始化后的 `query_tokens`之后会通过 `self.Qformer.bert`（**Qformer采用的还是BERT结构**，因此所有的上面结构图中涉及到的各种attention mask操作也都是再bert中计算只是通过参数：`attention_mask`控制）将其核图像特征进行“交互”最后得到 `image_feats`，而对于文本处理过程就比较简单直接tokenizer处理之后再去有bert编码即可得到`text_feat`
+在得到3部分输入之后再Qformer中而后进行3个训练任务：
+**1、图片对比损失ITC**（[代码](https://github.com/salesforce/LAVIS/blob/506965b9c4a18c1e565bd32acaccabe0198433f7/lavis/models/blip2_models/blip2_qformer.py#L129C9-L174C1)）：
+```python
+sim_q2t = torch.matmul(image_feats.unsqueeze(1), text_feat_all.unsqueeze(-1)).squeeze()
+sim_i2t, _ = sim_q2t.max(-1)
+sim_i2t = sim_i2t / self.temp
+sim_t2q = torch.matmul(text_feat.unsqueeze(1).unsqueeze(1), image_feats_all.permute(0, 2, 1)).squeeze()
+sim_t2i, _ = sim_t2q.max(-1)
+sim_t2i = sim_t2i / self.temp
+...
+loss_itc = (
+  F.cross_entropy(sim_i2t, targets, label_smoothing=0.1)+ 
+  F.cross_entropy(sim_t2i, targets, label_smoothing=0.1)) / 2
+```
+对于ITC中计算 **InfoNCE**
+**2、图片文本配对ITM**（[代码](https://github.com/salesforce/LAVIS/blob/506965b9c4a18c1e565bd32acaccabe0198433f7/lavis/models/blip2_models/blip2_qformer.py#L176C9-L247C55)）：这个过程首先再ITC中会得到 `sim_t2i` 和 `sim_i2t`这两个矩阵（分别代表图片文本相似度矩阵），这样一来就可以直接更具这个相似度矩阵去不匹配的图文对和文图对。最终，**作为正样本的图文对就是原始输入的图文对，而作为负样本的图文对和文图对就是通过相似矩阵采样出来的**。
+```python
+image_embeds_all = torch.cat([image_embeds, image_embeds_neg, image_embeds], dim=0)  # pos, neg, pos
+image_atts_all = torch.ones(image_embeds_all.size()[:-1], dtype=torch.long).to(image.device)
+...
+text_ids_all = torch.cat([text_tokens.input_ids, text_tokens.input_ids, text_ids_neg], dim=0)  # pos, pos, neg
+query_tokens_itm = self.query_tokens.expand(text_ids_all.shape[0], -1, -1)
+...
+output_itm = self.Qformer.bert(
+  text_ids_all,
+  query_embeds=query_tokens_itm,
+  attention_mask=attention_mask_all,
+  encoder_hidden_states=image_embeds_all,
+  encoder_attention_mask=image_atts_all,...)
+
+vl_embeddings = output_itm.last_hidden_state[:, : query_tokens_itm.size(1), :]
+vl_output = self.itm_head(vl_embeddings)
+logits = vl_output.mean(dim=1)
+
+itm_labels = torch.cat([torch.ones(bs, dtype=torch.long), torch.zeros(2 * bs, dtype=torch.long)],dim=0,).to(image.device)
+loss_itm = F.cross_entropy(logits, itm_labels)
+```
+**3、图片生成文本ITG**：
+```python
+lm_output = self.Qformer(
+            decoder_input_ids,
+            attention_mask=attention_mask,
+            past_key_values=query_output.past_key_values,
+            return_dict=True,
+            labels=labels,
+        )
+
+loss_lm = lm_output.loss
+```
+通过上面三个任务，训练好的query tokens和Q-Former就能够将image encoder提取的原始图像特征和文本特征进行拉近。**理论上，这个阶段的模型，就是一个训练完成的图文多模态模型。该模型能够完成图文retrieval、图文匹配、图生文的任务**[^5]。为了进一步利用LLMs的生成能力和zero-shot能力，训练进入第二阶段。
+**第二阶段**
+![](https://s2.loli.net/2025/09/20/bnY4dVvi2I1Cf6O.png)
+LLMs是一个生成式模型，整个流程是：冻结的Image Encoder生成原始的图像特征，而query tokens和Q-Former从原始图像特征中生成转化好的图像特征，然后该图像特征经过全连接层映射到LLMs的文本embedding空间中。然后这些映射后的图像特征，就相当于视觉prompts，和文本embedding一起，输入到冻结的LLMs中，最后生成目标文本。
+## 总结
+上面提到几个模型Clip、Albef、Blipv1、Blipv2首先再文本以及图片编码上差异不大，特征对齐上也都是选择 **对比学习方式**去对齐图片和文本之间的模态信息，后面3个模型在模态对齐上选择计算方式都是 **InfoNCE**
+$$
+\mathcal{L}_{\text{itc}} = -\frac{1}{2} \mathbb{E}_{p(I,T)} \left[ \log \frac{\exp(s(I,T)/\tau)}{\sum_{m=1}^M \exp(s(I,T_m)/\tau)} + \log \frac{\exp(s(T,I)/\tau)}{\sum_{m=1}^M \exp(s(T,I_m)/\tau)} \right]
+$$
+不过在Blipv2中是将文本，图片信息都反映到一个初始化的query上。
 ## 参考
 [^1]: [https://arxiv.org/pdf/2107.07651](https://arxiv.org/pdf/2107.07651)
 [^2]: [https://arxiv.org/pdf/2103.00020](https://arxiv.org/pdf/2103.00020)
 [^3]: [https://arxiv.org/pdf/2201.12086](https://arxiv.org/pdf/2201.12086)
 [^4]: [https://arxiv.org/pdf/2301.12597](https://arxiv.org/pdf/2301.12597)
+[^5]: [https://zhuanlan.zhihu.com/p/664601983](https://zhuanlan.zhihu.com/p/664601983)
