@@ -4,24 +4,83 @@ import io
 import json
 import yaml
 import requests
-from pathlib import Path
+from time import time
 from PIL import Image
 from io import BytesIO
-from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 from openai import OpenAI
 from dotenv import load_dotenv
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 load_dotenv('./API_KEY.env')
-def format_image(md_content, image_store_dir):
+
+def formad_markdown(md_content, 
+                        format_way=['yaml_head', 'image', 'table', 'code', 'math', 'link']):
+    '''格式化 Markdown 内容'''
+    def format_yaml_head(md_content):
+        '''去除头部 YAML 标记'''
+        yaml_pattern = r'^---\n.*?\n---\n'
+        match = re.match(yaml_pattern, md_content, re.DOTALL)
+        if match:
+            yaml_str = md_content[match.start():match.end()].strip()
+            yaml_dict = yaml.safe_load(yaml_str.replace('---', ''))
+            md_content = md_content[match.end():].strip()
+            return md_content, yaml_dict
+        return md_content, None
+    
+    def format_image(md_content):
+        '''替换图片标记为 <image>'''
+        image_pattern = r'!\[[^\]]*\]\([^\)]+\)'
+        return re.sub(image_pattern, '<图片>', md_content)
+    
+    def format_table(md_content):
+        '''替换 Markdown 表格为 <table>（简单示例）'''
+        table_pattern = r'\|.*?\|\n\|[-:\s]+\|\n(?:\|.*?\|\n)*'
+        return re.sub(table_pattern, '<表格>', md_content, flags=re.MULTILINE)
+    
+    def format_code(md_content):
+        '''替换代码块（行内和多行）为 <code>'''
+        multiline_code_pattern = r'^```.*?\n.*?\n```'
+        md_content = re.sub(multiline_code_pattern, '<代码>', md_content, flags=re.DOTALL | re.MULTILINE)
+        # inline_code_pattern = r'`[^`]+`'
+        # md_content = re.sub(inline_code_pattern, '<code>', md_content)
+        return md_content
+    
+    def format_math(md_content):
+        '''替换公式为 <math>'''
+        block_math_pattern = r'\$\$.*?\$\$'
+        md_content = re.sub(block_math_pattern, '<公式>', md_content, flags=re.DOTALL)
+        inline_math_pattern = r'(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)'
+        md_content = re.sub(inline_math_pattern, '<公式>', md_content)
+        return md_content
+    
+    def format_link(md_content):
+        '''替换链接标记为 <link>'''
+        link_pattern = r'(?<!!)\[[^\]]*\]\([^\)]+\)'
+        return re.sub(link_pattern, '<link>', md_content)
+    
+    yaml_dict = None
+    for way in format_way:
+        if way == 'yaml_head':
+            md_content, yaml_dict = format_yaml_head(md_content)
+        elif way == 'image':
+            md_content = format_image(md_content)
+        elif way == 'table':
+            md_content = format_table(md_content)
+        elif way == 'code':
+            md_content = format_code(md_content)
+        elif way == 'math':
+            md_content = format_math(md_content)
+        elif way == 'link':
+            md_content = format_link(md_content)
+    
+    return md_content, yaml_dict
+def format_image(md_content, image_store_dir, max_threads):
     '''格式化图像'''
     def upload_webp_file(webp_path: Path, image_bed='sm.ms'):
         '''上传图片'''
         if image_bed == 'sm.ms':
-            # SMMS_API_LIST = [
-            #     'pD4YFo4fKRJDXBntin6qKYlhKIaWimoC',
-            #     'I5xpE8qRQYPr1opUOJVfqavZgFpC78Lr'
-            # ]
             SMMS_API_LIST = os.getenv("SMMS_API_LIST", "").split(",")
             url = 'https://sm.ms/api/v2/upload'
 
@@ -56,7 +115,6 @@ def format_image(md_content, image_store_dir):
 
             temp_buffer = io.BytesIO()
             image.save(temp_buffer, format='JPEG', quality=quality)
-            size = temp_buffer.tell()
 
             output_path.parent.mkdir(parents=True, exist_ok=True)
             image.save(output_path, format="webp", quality=quality)
@@ -72,82 +130,39 @@ def format_image(md_content, image_store_dir):
         re.IGNORECASE
     )
     matches = image_pattern.findall(md_content)
-    for image_url in matches:
-        image_url, url_path = download_convert(image_url, image_store_dir)
-        if url_path:
-            md_content = md_content.replace(image_url, url_path)
+    # for image_url in matches:
+    #     image_url, url_path = download_convert(image_url, image_store_dir)
+    #     if url_path:
+    #         md_content = md_content.replace(image_url, url_path)
+    # return md_content
+    future_to_url = {}
+    with ThreadPoolExecutor(max_workers=max_threads) as executor:
+        for image_url in matches:
+            future = executor.submit(download_convert, image_url, image_store_dir)
+            future_to_url[future] = image_url
+
+        for future in as_completed(future_to_url):
+            image_url, url_path = future.result()
+            if url_path:
+                md_content = md_content.replace(image_url, url_path)
+
     return md_content
 
-def format_description(md_content, description, md_path):
+def format_description(md_content, yaml_dict, description, md_path):
     '''生成摘要'''
-    def formad_markdown(md_content, 
-                        format_way=['yaml_head', 'image', 'table', 'code', 'math', 'link']):
-        '''格式化 Markdown 内容'''
-        def format_yaml_head(md_content):
-            '''去除头部 YAML 标记'''
-            yaml_pattern = r'^---\n.*?\n---\n'
-            match = re.match(yaml_pattern, md_content, re.DOTALL)
-            if match:
-                yaml_str = md_content[match.start():match.end()].strip()
-                yaml_dict = yaml.safe_load(yaml_str.replace('---', ''))
-                md_content = md_content[match.end():].strip()
-                return md_content, yaml_dict
-            return md_content, None
-        
-        def format_image(md_content):
-            '''替换图片标记为 <image>'''
-            image_pattern = r'!\[[^\]]*\]\([^\)]+\)'
-            return re.sub(image_pattern, '<图片>', md_content)
-        
-        def format_table(md_content):
-            '''替换 Markdown 表格为 <table>（简单示例）'''
-            table_pattern = r'\|.*?\|\n\|[-:\s]+\|\n(?:\|.*?\|\n)*'
-            return re.sub(table_pattern, '<表格>', md_content, flags=re.MULTILINE)
-        
-        def format_code(md_content):
-            '''替换代码块（行内和多行）为 <code>'''
-            multiline_code_pattern = r'^```.*?\n.*?\n```'
-            md_content = re.sub(multiline_code_pattern, '<代码>', md_content, flags=re.DOTALL | re.MULTILINE)
-            # inline_code_pattern = r'`[^`]+`'
-            # md_content = re.sub(inline_code_pattern, '<code>', md_content)
-            return md_content
-        
-        def format_math(md_content):
-            '''替换公式为 <math>'''
-            block_math_pattern = r'\$\$.*?\$\$'
-            md_content = re.sub(block_math_pattern, '<公式>', md_content, flags=re.DOTALL)
-            inline_math_pattern = r'(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)'
-            md_content = re.sub(inline_math_pattern, '<公式>', md_content)
-            return md_content
-        
-        def format_link(md_content):
-            '''替换链接标记为 <link>'''
-            link_pattern = r'(?<!!)\[[^\]]*\]\([^\)]+\)'
-            return re.sub(link_pattern, '<link>', md_content)
-        
-        yaml_dict = None
-        for way in format_way:
-            if way == 'yaml_head':
-                md_content, yaml_dict = format_yaml_head(md_content)
-            elif way == 'image':
-                md_content = format_image(md_content)
-            elif way == 'table':
-                md_content = format_table(md_content)
-            elif way == 'code':
-                md_content = format_code(md_content)
-            elif way == 'math':
-                md_content = format_math(md_content)
-            elif way == 'link':
-                md_content = format_link(md_content)
-        
-        return md_content, yaml_dict
-    
+    def format_yaml_head(md_content):
+        '''去除头部 YAML 标记'''
+        yaml_pattern = r'^---\n.*?\n---\n'
+        match = re.match(yaml_pattern, md_content, re.DOTALL)
+        if match:
+            yaml_str = md_content[match.start():match.end()].strip()
+            yaml_dict = yaml.safe_load(yaml_str.replace('---', ''))
+            md_content = md_content[match.end():].strip()
+            return md_content, yaml_dict
+        return md_content, None
+
     def llm_generate(md_content):
         '''通过llm生成描述'''
-        # client = OpenAI(
-        #     base_url="https://ark.cn-beijing.volces.com/api/v3", # https://console.volcengine.com/ark/region:ark+cn-beijing/overview?briefPage=0&briefType=introduce&type=new
-        #     api_key= '636b7b0b-2fe5-477d-9caf-ede47e5ab26e'
-        # )
         client = OpenAI(
             base_url= os.getenv("LLM_URL"),
             api_key= os.getenv("API_KEY")
@@ -179,29 +194,31 @@ def format_description(md_content, description, md_path):
                     messages = messages
                 )
                 return completion.choices[0].message.content
-            except Exception:
+            except Exception as e:
+                print(f"❌ LLM生成摘要上传出错：{e}")
                 re_connrct+=1
         return None
-    
-    old_md_content, yaml_dict = formad_markdown(md_content)
-    if md_path not in description:
-        llm_description = llm_generate(md_content)
+
+    if yaml_dict.get('description', None) is None:
+        old_md_content, yaml_dict = formad_markdown(md_content)
+        md_content, _ = format_yaml_head(md_content)
+        llm_description = llm_generate(old_md_content)
         if llm_description:
-            description[md_path] = [('old_description', yaml_dict.get('description', None)),
-                                ('new_description', llm_description)]
+            description[md_path] = [
+                ('old_description', yaml_dict.get('description', None)),
+                ('new_description', llm_description)]
             
             # 更新markdown的 yaml头标记
             yaml_dict['description'] = llm_description
             new_yaml_str = yaml.dump(yaml_dict, allow_unicode=True, sort_keys=False).strip()
-            new_md_content = f"---\n{new_yaml_str}\n---\n\n{old_md_content.lstrip()}"
+            new_md_content = f"---\n{new_yaml_str}\n---\n\n{md_content.lstrip()}"
             return new_md_content, description
     return md_content, description
 
 def process_file(file_path_list, 
                  max_threads= 3,
                  store_base= './images/post_image/',
-                 description_path = './DEAL-MD.json',
-                 API_KEY= './API_KEY.yml'):
+                 description_path = './DEAL-MD.json'):
     '''处理单个文件'''
     def mkdir_image_dir(md_path):
         md_path = Path(md_path)
@@ -223,14 +240,29 @@ def process_file(file_path_list,
         if md_path.endswith('md'):
             image_store_dir = mkdir_image_dir(md_path)
             md_content = open_file(md_path)
-            md_content = format_image(md_content, 
-                                      image_store_dir)
-            md_content, description = format_description(md_content, 
-                                                        description,
-                                                        md_path)
-            with open(md_path, 'w', encoding='utf-8') as f:
-                f.write(md_content)
+            # md_content = format_image(md_content, 
+            #                           image_store_dir,
+            #                           max_threads)
+            _, yaml_dict = formad_markdown(md_content)
+            file_description_dict[md_path] = (md_content, yaml_dict)
+
+    with ThreadPoolExecutor(max_workers=max_threads) as executor:
+        futures = {
+            executor.submit(format_description, md_info[0], md_info[1], 
+                            {}, md_path): md_path
+            for md_path, md_info in file_description_dict.items()
+        }
+
+        for future in as_completed(futures):
+            md_path = futures[future]
+            try:
+                new_md_content, desc_update = future.result()
+                description.update(desc_update)
+                with open(md_path, 'w', encoding='utf-8') as f:
+                    f.write(new_md_content)
                 print(f"✏️  Markdown 文件已更新：{md_path}")
+            except Exception as e:
+                print(f"❌ 处理文件 {md_path} 出错: {e}")
 
     with open(description_path, 'w', encoding= 'utf-8') as f:
         json.dump(description, f, indent= 2, ensure_ascii= False)

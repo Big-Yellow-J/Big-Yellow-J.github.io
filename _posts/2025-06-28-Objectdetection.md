@@ -11,7 +11,9 @@ tags:
 - 目标检测
 - multimodal
 show: true
-description: 
+description: 本文介绍常用目标检测算法，包括R-CNN、Fast RCNN、Faster RCNN及Yolo等。R-CNN通过区域候选框生成器（如Selective
+  Search）产生候选框，经CNN特征提取和非极大值抑制剔除重叠框；Fast RCNN采用ROI pooling实现单图一次CNN推理提升效率；Faster RCNN引入RPN网络，其分类分支判断目标/背景、回归分支预测偏移量，并通过RoI
+  Align解决RoI pooling的数据舍入问题；Yolo直接切割图像避免卷积扫描，优化检测流程。
 ---
 
 前面已经介绍了简单的视觉编码器，这里主要介绍常用的目标检测算法

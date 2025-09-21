@@ -10,10 +10,9 @@ tags:
 - 多模态
 - multimodal
 show_footer_image: true
-description: 视觉多模态模型通常通过视觉编码器（如ViT/ResNet）处理图像信息，结合文本输入LLM，核心挑战在于不同模态信息的对齐。本文重点介绍模态对齐方法，包括对比学习范式（如CLIP）通过对比学习和嵌入空间对齐，将图像与文本映射到共享语义空间，学习跨模态相似度表示，展现强大通用性和零样本学习能力；以及BLIP、BLIP-2等模型，通过Learned-Queries弥补模态差异，结合ITC（Image-Text
-  Contrastive Learning）优化图文特征相似度、ITG（Image-grounded Text Generation）训练生成文本所需视觉特征提取、ITM（Image-Text
-  Matching）实现细粒度对齐与匹配分类，有效解决多模态信息结合问题，为图文检索、零样本分类等任务提供基础。
+description: 视觉多模态模型（如CLIP、ALBEF、BLIPv1/v2）核心挑战在于模态信息结合，通常采用Vit/Resnet等视觉编码器与文本编码器处理图像和文本，通过对比学习（如InfoNCE损失）实现跨模态对齐。CLIP侧重学习跨模态相似度表示，具备零样本能力；ALBEF和BLIP系列通过模态对齐（ITC）、图文匹配（ITM）等任务优化，BLIPv2更引入Q-Former将图像特征映射至LLM空间，结合冻结LLM提升生成与零样本性能，适用于图文检索、分类等多任务。
 ---
+
 视觉多模态模型在结构上比较统一，一个视觉编码器（较多使用的是Vit/Resnet等）对图像信息进行处理，然后将其和文本信息一起结合然后输入到LLM模型中得到最后的结果，因此在此过程中一个最大的挑战就是：**如果将不同模态信息进行结合**（当然有些可能还需要考虑如何将图像进行压缩，这里主要是考虑有些图像的分辨率比较高）。
 
 ## Clip
