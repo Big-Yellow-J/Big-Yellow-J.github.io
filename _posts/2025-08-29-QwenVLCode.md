@@ -720,7 +720,7 @@ def compute_loss(self, model, inputs, return_outputs, num_items_in_batch):
 > 其处理过程比较简单，直接将所有的数据都处理成模型输入（GRPO不想DPO那样需要将3元组进行拆开拼接）如：input_ids、pixel_values等然后直接`logits = model(**model_inputs).logits`在得到模型的输出之后后续就是对输出做一些截断处理（如只需要模型回答部分的输出`logits[:, -logits_to_keep:, :]`）而后去计算 `logits / self.temperature`（通过温度系数来确定输出内容多样化）最后再去通过：`logps = selective_log_softmax(logits, completion_ids)`（selective_log_softmax只去计算completion_ids部分的log_softmax值）就可以得到最后的值。
 
 #### RL-GRPO处理过程总结
-![1.png](https://s2.loli.net/2025/09/07/EQCG4znR2ZvUj8k.png)
+![1.png](https://s2.loli.net/2025/09/21/x45DlMb6QVPuh7r.webp)
 对于上面loss计算公式中主要就是如下几个值需要关注：1、advantage值；2、KL散度值。
 因此简单总结一些GRPO代码处理过程[^1]，**首先**，对于数据处理，这块内容比较简单直接 **模板化**、**编码内容即可**，因为GRPO是“一个问题抛出多组回答然后评估回答”，因此在数据处理过程中通过模型生成回答 `prompt_completion_ids=model.generate(...)`而后需要做的就是将生成内容进行拆分得到`prompt_ids`和 `completion_ids`（得到这一部分值之后就只需要在去还原成text文本然后再去通过reward函数去计算reward值以及计算最后需要的 `advantage`值），除此之外还会去通过model和model_ref分别计算回答中每个token的logits值：`old_per_token_logps` 和 `ref_per_token_logps`
 > 这个过程直接通过函数 [_get_per_token_logps_and_entropies](https://github.com/huggingface/trl/blob/67991605c0e6aaf1ef3c2bf64e11da914948c4a4/trl/trainer/grpo_trainer.py#L786)处理，他的处理思路简单直接将 model需要的内容再丢到model里面得到每个token的logits然后再去计算softmax值
@@ -778,9 +778,9 @@ output = {
 
 **1、DPO中计算KL**：在model_ref以及model分别输入“3元组”数据之后会去计算不同token的概率值，也就是model和ref都会生成 reject和choose的概率值，然后去计算：$\mathrm{loss}=-\frac{1}{N}\sum_{i=1}^{N}\log\sigma\left(\beta\cdot((\log\pi_{\theta}(y_{w}|x)-\log\pi_{\theta}(y_{l}|x))-(\log\pi_{\mathrm{ref}}(y_{w}|x)-\log\pi_{\mathrm{ref}}(y_{l}|x)))\right)$ 的sigmoid 损失优化相对偏好
 **2、GRPO中计算KL**：通过model_ref对于问题Q以及模型生成的多组回答进而可以得到每组回答的token概率：`ref_per_token_logps` 而后我又通过model去生成多组回答以及token概率：`per_token_logps`接下来就是直接他们之间KL散度：
-![](https://s2.loli.net/2025/09/18/4Dc3r1XnPfZvouk.png)
+![](https://s2.loli.net/2025/09/21/UwmkqNA42lgvzWy.webp)
 **3、PPO中计算KL**：通过model得到回答中的每一个token的概率`logprobs`，同样的再去通过model_rf也去计算每一个token的概率`ref_logprobs`然后去计算KL
-![](https://s2.loli.net/2025/09/18/z4lqjtQrybEUhX5.png)
+![](https://s2.loli.net/2025/09/21/EsyjUOIolMTDJHm.webp)
 DPO：通过“偏好差值”间接引入 KL 约束，偏重于 对比学习。
 GRPO：显式计算 生成候选组的 token 级 KL，作为正则项，保证模型不偏离参考策略。
 PPO：基于当前策略与参考策略（或旧策略）的 KL，常作为 正则或 early stopping 信号

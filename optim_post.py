@@ -4,12 +4,12 @@ import io
 import json
 import yaml
 import requests
-from time import time
 from PIL import Image
 from io import BytesIO
 from pathlib import Path
 from openai import OpenAI
 from dotenv import load_dotenv
+from urllib.parse import urlparse
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -101,7 +101,6 @@ def format_image(md_content, image_store_dir, max_threads):
                             print(f"❌ 上传失败（token: {token[:4]}***）：{webp_path.name} - {result.get('message')}")
                 except Exception as e:
                     print(f"❌ 上传出错（token: {token[:4]}***）：{webp_path} - {e}")
-            print("❌ 所有 API Token 均上传失败")
             return None
         else:
             print("❌ 未支持的图床类型")
@@ -117,10 +116,13 @@ def format_image(md_content, image_store_dir, max_threads):
             image.save(temp_buffer, format='JPEG', quality=quality)
 
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            image.save(output_path, format="webp", quality=quality)
+            file_name_with_ext = Path(urlparse(image_url).path).name
+            file_name = Path(file_name_with_ext).stem
+            save_path = output_path / f"{file_name}.webp"  
+            image.save(save_path, format="webp", quality=quality)
 
-            url_path = upload_webp_file(output_path, image_bed=image_bed)
-            print(f"✅ 处理完成：{image_url} → {output_path.name} → {url_path}")
+            url_path = upload_webp_file(save_path, image_bed=image_bed)
+            print(f"✅ 处理完成：{image_url} → {save_path.name} → {url_path}")
             return image_url, url_path
         except Exception as e:
             print(f"❌ 下载/转换失败：{image_url} - {e}")
@@ -240,9 +242,9 @@ def process_file(file_path_list,
         if md_path.endswith('md'):
             image_store_dir = mkdir_image_dir(md_path)
             md_content = open_file(md_path)
-            # md_content = format_image(md_content, 
-            #                           image_store_dir,
-            #                           max_threads)
+            md_content = format_image(md_content, 
+                                      image_store_dir,
+                                      max_threads)
             _, yaml_dict = formad_markdown(md_content)
             file_description_dict[md_path] = (md_content, yaml_dict)
 
