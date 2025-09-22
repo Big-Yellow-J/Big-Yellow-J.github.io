@@ -251,7 +251,7 @@ class Qwen2VLImageProcessor(BaseImageProcessor):
 
         return flatten_patches, (grid_t, grid_h, grid_w)
 ```
-对于上面处理过程中，**首先**对于 `_preprocess`主要是对图像进行一些预处理：1、do_resize：改变图片大小（直接通过`smrt_resize`进行处理）2、do_rescale：像素缩减到0-1之间；3、do_normalize：对图片进行归一化处理（通道维度）；**而后**直接对于预处理后的图像直接进行切割处理为不同的patch输入到Vit中，比如假设我们的 `patches=(1,3,1024,1024)` 那么首先计算不同 patch网格大小（temporal_patch_size=2，patch_size=16，merge_size=2，resized_height=1024 值得注意的是temporal_patch_size=2会将图片处理为 2 3 1024 1024）那么计算得到网络patch大小为（grid_h= grid_w= 64）：1x64x64，而后分别将不同维度信息（t h w）进行划分，也就是将 （2，3，1024，1024）-->（1，2，3，32（64//2），2，16，32（64//2），2，16）最后再去交换维度并且进行合并即可。
+对于上面处理过程中，**首先**对于 `_preprocess`主要是对图像进行一些预处理：1、do_resize：改变图片大小（直接通过`smrt_resize`进行处理）2、do_rescale：像素缩减到0-1之间；3、do_normalize：对图片进行归一化处理（通道维度）；**而后**直接对于预处理后的图像直接进行切割处理为不同的patch输入到Vit中。
 **回顾一下QwenVL2.5的图片处理过程**：首先是去对图片进行改变尺寸（保证图片最后可以整除patch_size）/缩放/归一化。而后就是直接将图片处理为vit能够处理的“序列输入”得到的维度为：`[grid_t * grid_h * grid_w, channel * temporal_patch_size(2) * patch_size(14) * patch_size(14)]`。
 > **补充一**：图片输入具体例子说明
 > 假设默认参数为：patch_size= 14, temporal_patch_size= 2, merge_size= 2
