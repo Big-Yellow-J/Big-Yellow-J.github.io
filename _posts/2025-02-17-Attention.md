@@ -11,8 +11,9 @@ tags:
 - flash attention
 - page attention
 - kv-cache
-description: 本文介绍常用Attention操作（多头、因果、滑动窗口注意力）及KV-cache节约方法。详解多头注意力计算原理、softmax归一化及残差处理；探讨因果注意力屏蔽机制与滑动窗口局部交互。内存优化方面，解析Flash
-  Attention分块计算提升效率，MLA压缩KV降低显存占用，Page Attention（vLLM）优化内存分配，助力解决Transformer长序列计算与显存问题。
+description: 本文详细介绍常用Attention操作及KV-cache内存优化方法。涵盖多头注意力（Multi Head Attention）的QKV计算原理、softmax归一化作用，因果注意力（Casual
+  Attention）的屏蔽机制，滑动窗口注意力（Sliding Window Attention）的局部交互逻辑；同时讲解KV-cache优化技术，包括Flash
+  Attention的分块计算（利用HBM与SRAM提升效率）、Multi-head Latent Attention（MLA）的低维压缩存储，以及Page Attention的内存分页管理（解决预留浪费与碎片化问题），有效降低显存占用并提升模型性能。
 ---
 
 本文主要介绍常用的Attention操作（多头注意力等）以及在KV-cahce中如何节约内容的操作
@@ -33,6 +34,10 @@ $$
 ![](https://s2.loli.net/2025/06/21/lwJKWxc2oXaFfGS.webp)
 假设输入为：`batch_size, seq_length`（值得注意的是：一般来说在`data_loader`中我们会去定义一个`collate_fn`函数用来弥补文本长度不统一的问题（这里是因为，对于输入输入文本在长度上必然不一致，通过`tokenizer`进行处理之后，回去额外补充一个填充量，比如说`PAD`））输入模型首先通过一个`nn.embedding`进行处理（这个`nn.embedding`是可学习的）假设输出为`512`（也就是我们定义的变量`d_model`）这样一来我们输入就会变成：`batch_size,seq_length,d_model`然后就是直接输入到`attention`中进行计算了。有些代码是将单头和多头分开计算，但是结合起来更加便捷。这样就需要首先计算**WQ**等，可以直接用`nn.linear(d_model, 3*d_model)`然后后续就可以直接再去将其进行拆分拆分到q、k、v中去。因为我是要进行多头计算，因此就会`qkv = qkv.reshape(B, T, 3, self.n_heads, self.head_dim).permute(2, 0, 3, 1, 4)`然后再去分配到q、k、v中`q, k, v = qkv[0], qkv[1], qkv[2]`这样每个就会变成：`batch_size, n_heads, seq_length, head_dim`再去对这个计算attention（里面的`head_dim＝d_model/n_heada`）计算完成之后再去将所有头的结果拼接起来` y = y.transpose(1, 2).contiguous().view(B, T, C)`
 这样就是一个比较完整的计算过程。
+**补充Attention复杂度计算**：假设输入数据是 $(bs,n,d)$，那么：
+1、proj计算过程：$3\cdot (bs\cdot n\cdot d \cdot d)=O(bs\cdot n\cdot d^2)$
+2、Attention计算过程：$O(bs\cdot n^2\cdot d)$
+3、输出投影：$O(bs\cdot n\cdot d^2)$，最后得到总计算量（第1和3都是常熟量）为：$O(bs\cdot n^2\cdot d+ bs\cdot n\cdot d^2)$
 ### 2、Casual Attention
 因果注意力的主要目的是限制注意力的计算，使得**每个位置的查询只能与当前和之前的位置计算注意力得分，而不能“窥视”未来的位置**。具体来说：对于位置$𝑖$，模型只能考虑位置 $1,2,...,𝑖$的信息，而不能考虑位置$𝑖+1,𝑖+2,...,𝑛$。因此，当计算每个位置的注意力时，键（key）和值（value）的位置会被限制在当前的位置及其之前的位置。实现方式也很简单直接最注意力矩阵进行**屏蔽**即可，比如说注意力矩阵为：
 ![](https://s2.loli.net/2025/06/21/thMSJybzu1d395W.webp)
@@ -246,14 +251,14 @@ for output in outputs:
 ## 参考
 1、[https://mloasisblog.com/blog/ML/AttentionOptimization](https://mloasisblog.com/blog/ML/AttentionOptimization)
 2、[https://github.com/vllm-project/vllm](https://github.com/vllm-project/vllm)
-3、https://arxiv.org/pdf/2205.14135
-4、https://zhuanlan.zhihu.com/p/676655352
-5、https://arxiv.org/pdf/2405.04434
-6、https://spaces.ac.cn/archives/10091
-7、https://zhuanlan.zhihu.com/p/696380978
-8、https://dl.acm.org/doi/pdf/10.1145/3600006.3613165
-9、https://zhuanlan.zhihu.com/p/638468472
-10、https://docs.vllm.ai/en/latest/index.html
-11、https://arxiv.org/pdf/2103.03493
-12、https://www.cnblogs.com/gongqk/p/14772297.html
-13、https://spaces.ac.cn/archives/8620
+3、[https://arxiv.org/pdf/2205.14135](https://arxiv.org/pdf/2205.14135)
+4、[https://zhuanlan.zhihu.com/p/676655352](https://zhuanlan.zhihu.com/p/676655352)
+5、[https://arxiv.org/pdf/2405.04434](https://arxiv.org/pdf/2405.04434)
+6、[https://spaces.ac.cn/archives/10091](https://spaces.ac.cn/archives/10091)
+7、[https://zhuanlan.zhihu.com/p/696380978](https://zhuanlan.zhihu.com/p/696380978)
+8、[https://dl.acm.org/doi/pdf/10.1145/3600006.3613165](https://dl.acm.org/doi/pdf/10.1145/3600006.3613165)
+9、[https://zhuanlan.zhihu.com/p/638468472](https://zhuanlan.zhihu.com/p/638468472)
+10、[https://docs.vllm.ai/en/latest/index.html](https://docs.vllm.ai/en/latest/index.html)
+11、[https://arxiv.org/pdf/2103.03493](https://arxiv.org/pdf/2103.03493)
+12、[https://www.cnblogs.com/gongqk/p/14772297.html](https://www.cnblogs.com/gongqk/p/14772297.html)
+13、[https://spaces.ac.cn/archives/8620](https://spaces.ac.cn/archives/8620)

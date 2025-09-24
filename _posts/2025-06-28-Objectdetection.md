@@ -32,6 +32,7 @@ description: 本文介绍常用目标检测算法，包括R-CNN、Fast RCNN、Fa
 在经过分类以及SVM分类之后直接再去收缩边界框，这个过程主要是通过**非极大值抑制**去剔除重叠的建议框。
 > **非极大值抑制**：对于每一个框都会有一个置信度，首选按照置信度进行排列得到最大的置信度框，然后去计算其他框和这个最大框的IoU，如果某个框与选取框的IoU大于我们设定的阈值（比如0.5），说明它们和选取框检测的是同一个目标，所以需要被抑制（删除）。如果某个框与选取框的IoU小于阈值，说明它们和框A检测的可能是另一个目标（或者只是重叠不多），予以保留。
 > $\text{IoU}=\frac{\text{Area}(A\cap B)}{\text{Area}(A\cup B)}$ 具体的代码实现如下
+
 ```python
 def bbox_iou(box1, box2):
     inter_x1 = max(box1[0], box2[0])
@@ -55,7 +56,6 @@ def bbox_iou(box1, box2):
     iou = inter_area / union_area if union_area > 0 else 0.0
     return iou
 ```
-
 ### Fast RCNN以及Faster RCNN目标检测
 Fast RCNN[^2]主要是依次解决上面模型存在的问题，其主要的原理如下：
 ![](https://s2.loli.net/2025/09/21/YecT6b9jipBIqH4.webp)
@@ -65,13 +65,12 @@ Fast RCNN[^2]主要是依次解决上面模型存在的问题，其主要的原�
 对于上面两个模型主要是需要关注两点：
 **1、RPN网络结构设计**：在原图尺度上，设置了密密麻麻的候选Anchor。然后用cnn去判断哪些Anchor是里面有目标的positive anchor，哪些是没目标的negative anchor。算法思路为：在得到特征图之后再特征图上每个像素点都预设9个anchor（基本就覆盖需要识别的目标），但是对于这些anchor肯定有很多多余的，因此再RPN中就有两个分支：**1、分类分支**（上面流程图中*上面部分*）：直接通过`(1, 1, 2k)`（k=9）卷积去计算得到Objectness Score（标记框是目标还是背景）；**2、回归分支**（上面流程图中*下面部分*）：微调锚点框的位置和大小，使其更贴合真实目标。它不是直接预测坐标，而是预测偏移量（offsets）
 **2、RoI Pooling以及RoI Align**[^4]：两个RoI算法主要是将bbox映射到特征图上获取bbox中特征，后者是为了解决前者纯在的数据舍入问题。
-
 ### YoLo算法
 在Yolov1中其网络结构如下所示：
 ![](https://s2.loli.net/2025/09/21/aetD2mQShxCbnAZ.webp)
 主要解决的是上面提到哪些检测算法需要用卷积核去“扫描”图像问题，在Yolo中直接将图像提前切割为 $S\times S$个格子而后就是按照上面的网络结构进行处理最后输出的张量为 $7\times 7\times 30$，可以理解为每一块都有30个特征值对于这30个特征值分别表示的含义是：$B\times 5+ C$ 其中B代表候选框数量（论文中选择2，具体的bbox坐标是直接通过模型训练得到），C代表类别，之所以用5表示的是 $(x,y,w,h,conf)$ 前面4个不解释后面一个指标代表的的是该框的 **置信度水平**，这样一来可以直接通过**计算每个框属于哪个类别**也就是计算执行都和类别C的乘积结果： $C\times \text{conf}$得到结果为 $20\times 1$这样一来每一个框都会这样计算那么最后得到 $7\times 7\times 2=98$，借鉴[^5]中的PPT，那么我最后得到结果如下所述：
 ![](https://s2.loli.net/2025/09/21/QmGCguZBn8SwtpA.webp)
-假设我的第一行是判断“狗”这个类别，那么第一行行都会有关于狗这个类别一个置信度，那么后续就可以直接去计算NMS来得到最后的bbox了。
+假设我的第一行是判断“狗”这个类别，那么第一行行都会有关于狗这个类别一个置信度，那么后续就可以直接去计算NMS来得到最后的bbox了。对于Yolo使用可以直接使用`ultralytics`来使用Yolo权重（[Yolo11-SAM代码](https://github.com/shangxiaaabb/ProjectCode/blob/43bb45d5c02d03cff08b557447cb348e75c346a5/code/Python/DFDataBuild/instance_background.py#L92C1-L92C34)）
 ## 参考
 [^1]: [https://arxiv.org/pdf/1311.2524](https://arxiv.org/pdf/1311.2524)
 [^2]: [https://arxiv.org/pdf/1504.08083](https://arxiv.org/pdf/1504.08083)
