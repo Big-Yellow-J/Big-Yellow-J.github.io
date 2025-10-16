@@ -426,7 +426,10 @@ def pseudo_quantize_tensor(w, n_bit=8, zero_point=True, q_group_size=-1, inplace
 GPTQ量化技术总结：核心流程其实就是**量化-补偿-量化-补偿的迭代**，首先通过对模型权重$W$首先去对$W$进行**分块拆分**得到不同的block再去到每一个block里面去按照每i列进行量化（`quantize`）处理（`q = quantize(...)`），而后去计算loss并且去对其他的列（`i:`）计算`W1[:, i:] -= err1.unsqueeze(1).matmul(Hinv1[i, i:].unsqueeze(0))`，在处理完毕第1块之后再去将后面块的列进行误差补偿（`W[:, i2:] -= Err1.matmul(Hinv[i1:i2, i2:])`），这样就得到了scales, zeros这信息，在去使用这些信息去对模型权重进行转化`intweight = torch.round((linear.weight.data + self.zeros) / self.scales).to(torch.int)`，最后就是用32 个intweight的行使用 3 个 uint32 行来存储，推理过程的话：$y = Wx + b\rightarrow y≈x(s_j(q-z_j))+b$
 AWQ量化技术总结：核心流程就是**对所有权重均进行低比特量化，但是，在量化时，对于显著权重乘以较大的scale，相当于降低其量化误差；同时，对于非显著权重，乘以较小的scale，相当于给予更少的关注**，对于这个scale值的寻找直接计算每一层的输入“激活值”（`x.abs().view(-1, x.shape[-1]).mean(0)`）而后对这个激活值不断进行scale处理将其通过`w_quantize_func`操作应用到模型的层上进而得到量化后的模型权重，然后去计算和没有量化的权重loss得到最佳scale
 ## 代码操作
-https://github.com/vllm-project/llm-compressor/blob/main/examples/multimodal_vision/qwen_2_5_vl_example.py
+> [Github-code](https://github.com/shangxiaaabb/Docparse-QwenVL)
+
+直接使用`llmcompressor`来量化模型（具体地址：[llmcompressor](https://docs.vllm.ai/projects/llm-compressor/en/latest/getting-started/install/#prerequisites)）支持量化类型：
+![](https://s2.loli.net/2025/10/15/nVUl63kASpCLqdr.png)
 
 ## 参考
 [^1]: [https://github.com/IST-DASLab/gptq](https://github.com/IST-DASLab/gptq)
