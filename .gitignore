@@ -14,3 +14,7 @@
 .idea/*
 tmp/*
 *.env
+*.onnx
+
+/code/Python/ONNX_TensoRT/models--openai--clip-vit-base-patch32/*
+*.lock
