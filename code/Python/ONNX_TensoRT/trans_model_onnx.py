@@ -162,6 +162,8 @@ def classify_image_and_compare(
 
     image = Image.open(image_path).convert("RGB")
     inputs = processor(text=candidate_labels, images=image, return_tensors="pt", padding=True)
+    for _ in inputs:
+        print(f"{_} shape: {inputs[_].shape}")
 
     # ---------------- PyTorch 推理 ----------------
     # 如果是 FP16，只转换浮点张量
@@ -202,8 +204,8 @@ def classify_image_and_compare(
     ]
     for providers in providers_list:
         try:
-            ort_img_sess = ort.InferenceSession("clip_img.onnx", providers=providers)
-            ort_txt_sess = ort.InferenceSession("clip_txt.onnx", providers=providers)
+            ort_img_sess = ort.InferenceSession("./onnx/clip_img.onnx", providers=providers)
+            ort_txt_sess = ort.InferenceSession("./onnx/clip_txt.onnx", providers=providers)
 
             ort_inputs_img = {
                 "pixel_values": inputs.pixel_values.cpu().numpy().astype(
@@ -241,10 +243,12 @@ def classify_image_and_compare(
 
 
 if __name__ == '__main__':
+    precision = 'fp16'
     clip_model = "openai/clip-vit-base-patch32"
     image_path = "./test_1.jpg"
 
-    # trans_clip_onnx(clip_model, image_path, precision= 'fp16')
+    trans_clip_onnx(clip_model, image_path, precision= precision,
+                    img_onnx_name= './onnx/clip_img.onnx', text_onnx_name= './onnx/clip_txt.onnx')
     candidate_labels = [
         "a photo of a cat",
         "a photo of a dog",
@@ -253,4 +257,4 @@ if __name__ == '__main__':
         "a photo of a person"
     ]
     classify_image_and_compare(clip_model, image_path, 
-                               candidate_labels, precision= 'fp16')
+                               candidate_labels, precision= precision)
