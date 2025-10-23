@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 多模态算法QwenVL、KimiVL等算法原理
+title: 多模态算法QwenVL、KimiVL、DeepSeek等算法原理
 categories: 多模态
 extMath: true
 images: true
@@ -10,8 +10,7 @@ tags:
 - 多模态
 - multimodal
 show_footer_image: true
-description: 多模态大语言模型通用框架通过视觉编码器（如ViT）、文本编码器及映射层对齐维度输入LLM。QwenVL系列（QwenVL、QwenVL2、QwenVL2.5）为典型实现，QwenVL采用ViT-bigG视觉编码器，经可学习query的Cross-Attention压缩视觉token至256长度，融合二维绝对位置编码；QwenVL2改进为动态分辨率（无需固定尺寸，2x2
-  token拼接+MLP）及多模态旋转位置编码（M-RoPE，含时序、高度、宽度信息），提升处理性能。
+stickie: true
 ---
 
 对于多模态系列模型大致的多模态大语言模型的通用模型框架和每个模块的一些实现方法[^1]：
@@ -213,6 +212,22 @@ def forward(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor, **kwargs)
 **QwenVL2**：首先使用**动态分辨率**（将图像**除以固定的factor而后保持横纵比**将其缩减到 `[mix_pixels, max_pixels]`中）去处理图像而后将其输入到视觉编码器中，而后将**2x2的的相邻的token进行拼接**（也就是将图像补充一个时间帧得到TCHW，而后再去在THW三个维度划分得到不同的patch：grid_t,grid_h,grid_w）到一个token而后通过MLP层进行处理。
 **QwenVL2.5**：整体框架上和QwenVL2差异不大，区别在于使用了window-attention以及2D-RoPE
 ## KimiVL系列
+## DeepSeek系列
+### DeepSeek OCR
+DeepSeek OCR[^8]主要内容就是尝试**使用视觉的方式去压缩长文本上下文**，按照论文里面的描述就是：
+$f_{dec}:R^{n\times d_{latent}}\rightarrow R^{N\times d_{text}}, \hat{X}=f_{dec}(X)$
+前面部分代表压缩的视觉tokens后面代表重构的文本表述。其实从上面公式就可以了解在DeepSeek OCR中做的就是：对于原始文本输入需要较长的tokens数量（比如说1w个字），但是如果这1w个文本都在图片上可能就是512个tokens。
+> 但是作者只是在OCR邻域做测试，正如论文里面说的：
+> It is reasonable to conjecture that LLMs, through specialized pretraining optimization, would demonstrate more natural integration of such capabilities.
+
+![](https://s2.loli.net/2025/10/23/CAb5p4HEGlW1MXY.png)
+对于传统多模态中的视觉结构：第一种使用多个视觉编码器进行编码处理，第二种：将图片切割为不同的patch而后进行处理，第三种：使用动态分辨率而后将图片去切割为不同patch进行编码。论文中使用的模型结构（为了实现：1、处理高分辨率；2、高分辨率小低激活；3、较少的视觉tokens；4、支持多分辨率输入；5、计算参数少）为：**SAM-base**（patch-size：16）+**Conv**（2层，kernel_size=3,strid=2, paddingg=1去对视觉token进行16倍下采样）+**CLIP-large**（去掉patch-embedding因为我的输入就是patch了），那么对于1024x1024首先划分为1024/16 × 1024/16 = 4096个patch token，在对4096个token进行压缩，数量变为4096/16 = 256。
+![](https://s2.loli.net/2025/10/23/ot6epVB52NahkDC.png)
+在许多论文里面也用到了压缩技术（*截至到：2025.10.23*部分论文），比如说Glyph（Zhipu-清华）[^10]和另外一篇论文[^11]
+![](https://s2.loli.net/2025/10/23/ADJHyzkuP5x7Lvw.png)
+对于这些内容核心的思路都是将文本转化为image来进行压缩tokens比如在论文[^11]中直接将text转化为latex格式的图片而后通过模型进行处理。
+
+
 ## 参考
 [^1]: [https://arxiv.org/abs/2504.07491](https://arxiv.org/abs/2504.07491)
 [^2]: [https://zhuanlan.zhihu.com/p/25267823390](https://zhuanlan.zhihu.com/p/25267823390)
@@ -221,3 +236,6 @@ def forward(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor, **kwargs)
 [^5]: [https://www.big-yellow-j.top/posts/2025/08/29/QwenVLCode.html](https://www.big-yellow-j.top/posts/2025/08/29/QwenVLCode.html)
 [^6]: [https://arxiv.org/abs/2502.13923](https://arxiv.org/abs/2502.13923)
 [^7]: [QwenVL-3-Blog](https://qwen.ai/blog?id=99f0335c4ad9ff6153e517418d48535ab6d8afef&from=research.latest-advancements-list)
+[^8]: [https://www.arxiv.org/pdf/2510.18234](https://www.arxiv.org/pdf/2510.18234)
+[^10]: [https://arxiv.org/pdf/2510.17800](https://arxiv.org/pdf/2510.17800)
+[^11]: [https://arxiv.org/pdf/2510.18279](https://arxiv.org/pdf/2510.18279)

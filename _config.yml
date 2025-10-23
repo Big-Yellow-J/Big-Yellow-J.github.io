@@ -80,8 +80,8 @@ menu:
     url: /pages/categories.html
   - title: 🔎搜索
     url: /pages/search.html
-  - title: 😁关于
-    url: /pages/about.html
+  # - title: 😁关于
+  #   url: /pages/about.html
   - title: 🦄生活
     url: /pages/life.html
   - title: 📃CV
