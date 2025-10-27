@@ -427,6 +427,7 @@ GPTQ量化技术总结：核心流程其实就是**量化-补偿-量化-补偿�
 AWQ量化技术总结：核心流程就是**对所有权重均进行低比特量化，但是，在量化时，对于显著权重乘以较大的scale，相当于降低其量化误差；同时，对于非显著权重，乘以较小的scale，相当于给予更少的关注**，对于这个scale值的寻找直接计算每一层的输入“激活值”（`x.abs().view(-1, x.shape[-1]).mean(0)`）而后对这个激活值不断进行scale处理将其通过`w_quantize_func`操作应用到模型的层上进而得到量化后的模型权重，然后去计算和没有量化的权重loss得到最佳scale
 ## 代码操作
 > [Github-code](https://github.com/shangxiaaabb/Docparse-QwenVL)
+> [模型ONNX部署技术](https://github.com/shangxiaaabb/ProjectCode/blob/main/code/Python/ONNX_TensoRT/ModelDeployment.ipynb)
 
 直接使用`llmcompressor`来量化模型（具体地址：[llmcompressor](https://docs.vllm.ai/projects/llm-compressor/en/latest/getting-started/install/#prerequisites)）支持量化类型：
 ![](https://s2.loli.net/2025/10/15/nVUl63kASpCLqdr.png)

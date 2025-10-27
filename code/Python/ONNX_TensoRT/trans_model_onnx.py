@@ -204,8 +204,8 @@ def classify_image_and_compare(
     ]
     for providers in providers_list:
         try:
-            ort_img_sess = ort.InferenceSession("./onnx/clip_img.onnx", providers=providers)
-            ort_txt_sess = ort.InferenceSession("./onnx/clip_txt.onnx", providers=providers)
+            ort_img_sess = ort.InferenceSession("clip_img.onnx", providers=providers)
+            ort_txt_sess = ort.InferenceSession("clip_txt.onnx", providers=providers)
 
             ort_inputs_img = {
                 "pixel_values": inputs.pixel_values.cpu().numpy().astype(
@@ -248,7 +248,7 @@ if __name__ == '__main__':
     image_path = "./test_1.jpg"
 
     trans_clip_onnx(clip_model, image_path, precision= precision,
-                    img_onnx_name= './onnx/clip_img.onnx', text_onnx_name= './onnx/clip_txt.onnx')
+                    img_onnx_name= 'clip_img.onnx', text_onnx_name= 'clip_txt.onnx')
     candidate_labels = [
         "a photo of a cat",
         "a photo of a dog",
