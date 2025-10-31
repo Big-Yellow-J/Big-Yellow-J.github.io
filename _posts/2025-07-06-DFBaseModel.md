@@ -119,7 +119,7 @@ SD3[^12]、FLUX对于这几组模型的前世今生不做介绍，主要了解�
 > 文本编码过程：1、CLIP编码分别得到：[1, 77, 768]和[1, 77, 1280]；2、T5编码得到：[1, 256, 4096]；3、CLIP文本编码拼接：[1, 77, 2048]在去将其通过pad填充到和T5一致得到最后CLIP编码器维度为：**[1, 77, 4096]**；4、最后文本编码维度：`[1, 333, 4096]`
 
 **2、Flow Matching模式**（[原理](https://www.big-yellow-j.top/posts/2025/07/06/DFscheduler.html)）；
-**3、MM-Dit模型架构**（[代码](https://github.com/huggingface/diffusers/blob/d03240801f2ac2b4d1f49584c1c5628b98583f6a/src/diffusers/models/transformers/transformer_sd3.py#L80)）：观察上面过程，扩散模型输入无法3个内容：1、时间步（$y$）；2、加噪处理的图像（$x$）；3、文本编码（$c$）。首先对于 **时间步**而言处理过程为：直接通过 Sin位置编码然后去和CLIP（两个合并的）进行组合即可对于另外两个部分直接通过[代码](https://github.com/huggingface/diffusers/blob/d03240801f2ac2b4d1f49584c1c5628b98583f6a/src/diffusers/models/transformers/transformer_sd3.py#L80)进行理解：
+**3、MM-Dit模型架构**（[代码](https://github.com/huggingface/diffusers/blob/d03240801f2ac2b4d1f49584c1c5628b98583f6a/src/diffusers/models/transformers/transformer_sd3.py#L80)）：观察上面过程，扩散模型输入无非就是3个内容：1、时间步（$y$）；2、加噪处理的图像（$x$）；3、文本编码（$c$）。首先对于 **时间步**而言处理过程为：直接通过 Sin位置编码然后去和CLIP（两个合并的）进行组合即可对于另外两个部分直接通过[代码](https://github.com/huggingface/diffusers/blob/d03240801f2ac2b4d1f49584c1c5628b98583f6a/src/diffusers/models/transformers/transformer_sd3.py#L80)进行理解：
 ```python
 def forward(
     self,
@@ -453,20 +453,20 @@ T2I[^3]的处理思路也比较简单（T2I-Adap 4 ter Details里面其实就写
 ### DreamBooth
 > https://huggingface.co/docs/diffusers/v0.34.0/using-diffusers/dreambooth
 
-论文[^4]里面主要出发点就是：1、解决**language drif**（语言偏离问题）：指的是模型通过后训练（微调等处理之后）模型丧失了对某些语义特征的感知，就比如说扩散模型里面，模型通过不断微调可能就不知道“狗”是什么从而导致模型生成错误。2、高效的生成需要的对象，不会产生：生成错误、细节丢失问题，比如说下面图像中的问题：
+DreamBooth 针对的使用场景是，期望生成同一个主体的多张不同图像， 就像照相馆一样，可以为同一个人或者物体照多张不同背景、不同姿态、不同服装的照片（和ControlNet不同去添加模型结构，仅仅是在文本 Prompt）。在论文[^4]里面主要出发点就是：1、解决**language drif**（语言偏离问题）：指的是模型通过后训练（微调等处理之后）模型丧失了对某些语义特征的感知，就比如说扩散模型里面，模型通过不断微调可能就不知道“狗”是什么从而导致模型生成错误。2、高效的生成需要的对象，不会产生：生成错误、细节丢失问题，比如说下面图像中的问题：
 ![](https://s2.loli.net/2025/07/12/mRaHPOtC23li9Fn.webp)
 
-为了实现图像的“高效迁移”，作者直接将图像（比如说我们需要风格化的图片）作为一个特殊的标记，也就是论文里面提到的 `a [identifier] [class noun]`（其中class noun为类别比如所狗，identifier就是一个特殊的标记），在prompt中加入类别，通过利用预训练模型中关于该类别物品的先验知识，并将先验知识与特殊标记符相关信息进行融合，这样就可以在不同场景下生成不同姿势的目标物体。就比如下面的 `fine-tuning`过程通过几张图片让模型学习到 *特殊的狗*，然后再推理阶段模型可以利用这个 *特殊的狗*去生成新的动作。
+为了实现图像的“高效迁移”，作者直接将图像（比如说我们需要风格化的图片）作为一个特殊的标记，也就是论文里面提到的 `a [identifier] [class noun]`（其中class noun为类别比如所狗，identifier就是一个特殊的标记），在prompt中加入类别，通过利用预训练模型中关于该类别物品的先验知识，并将先验知识与特殊标记符相关信息进行融合，这样就可以在不同场景下生成不同姿势的目标物体。就比如下面的 `fine-tuning`过程通过几张图片让模型学习到 *特殊的狗*，然后再推理阶段模型可以利用这个 *特殊的狗*去生成新的动作。**换言之**就是（以下面实际DreamBooth代码为例）：首先通过几张 *狮子狗* 图片让模型知道 *狮子狗*张什么样子，然后再去生成 *狮子狗*的不同的动作。
 
 ![](https://s2.loli.net/2025/07/12/hYM1VdykDxALrGo.webp)
 
-再论文里面作者设计如下的Class-specific Prior Preservation Loss（参考stackexchange）[^5]：
+在论文里面作者设计如下的Class-specific Prior Preservation Loss（参考stackexchange）[^5]：
 
 $$\begin{aligned}
  & \mathbb{E}_{x,c,\epsilon,t}\left[\|\epsilon-\varepsilon_{\theta}(z_{t},t,c)\|_{2}^{2}+\lambda\|\epsilon^{\prime}-\epsilon_{pr}(z_{t^{\prime}}^{\prime},t^{\prime},c_{pr})\|_{2}^{2}\right]
 \end{aligned}$$
 
-上面损失函数中后面一部分就是我们的先验损失，比如说$c+{pr}$就是对 "a dog"进行编码然后计算生成损失。在代码中：
+上面损失函数中后面一部分就是我们的先验损失，比如说$c_{pr}$就是对 "a dog"进行编码然后计算生成损失。在代码中：
 
 ```python
 if args.with_prior_preservation:
@@ -486,8 +486,17 @@ else:
 > 代码：[https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_dreambooth_lora/](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_dreambooth_lora/)
 > 权重：[https://www.modelscope.cn/models/bigyellowjie/SDXL-DreamBooth-LOL/files](https://www.modelscope.cn/models/bigyellowjie/SDXL-DreamBooth-LOL/files)
 
-在介绍DreamBooth代码之前，简单回顾DreamBooth原理，我希望我的模型去学习一种画风那么我就需要准备**样本图片**（如3-5）这几张图片就是专门的模型需要学习的，但是为了防止模型过拟合（模型只学习了我的图片内容，但是对一些细节丢掉了，比如说我提供的5张油画，模型就学会了我的油画画风但是为了防止模型对更加多的油画细节忘记了，那么我就准备`num_epochs * num_samples` 张油画类型图片然后通过计算 `Class-specific Prior Preservation Loss`）需要准备 **类型图片**来计算Class-specific Prior Preservation Loss。代码处理（SDXL+Lora）：
-**首先是lora处理模型**：在基于transformer里面的模型很容易使用lora，比如说下面代码使用lora包裹模型并且对模型权重进行保存：
+在介绍DreamBooth代码之前，简单回顾DreamBooth原理，我希望我的模型去学习一种画风那么我就需要准备**样本图片**（如3-5张图片）这几张图片就是专门的模型需要学习的，但是为了防止模型过拟合（模型只学习了我的图片内容，但是对一些细节丢掉了，比如说我提供的5张油画，模型就学会了我的油画画风但是为了防止模型对更加多的油画细节忘记了，那么我就准备`num_epochs * num_samples` 张油画**类型图片**然后通过计算 `Class-specific Prior Preservation Loss`）需要准备 **类型图片**来计算Class-specific Prior Preservation Loss。代码处理（SDXL+Lora）：
+DreamBooth中**数据处理过程**：结合上面描述我需要准备两部分数据集（如果需要计算`Class-specific Prior Preservation Loss`）分别为：`instance_data_dir`（与之对应的`instance_prompt`）以及 `class_data_dir`（与之对应的 `class_prompt`）而后需要做的就是将两部分数据组合起来构成：
+```python
+batch = {
+    "pixel_values": pixel_values,
+    "prompts": prompts,
+    "original_sizes": original_sizes,
+    "crop_top_lefts": crop_top_lefts,
+}
+```
+模型训练过程**首先是lora处理模型**：在基于transformer里面的模型很容易使用lora，比如说下面代码使用lora包裹模型并且对模型权重进行保存：
 ```python
 from peft import LoraConfig
 def get_lora_config(rank, dropout, use_dora, target_modules):
@@ -510,8 +519,7 @@ unet_lora_config = get_lora_config(
 )
 unet.add_adapter(unet_lora_config)
 ```
-
-一般的话考虑SD模型权重都比较大，而且我们使用lora微调模型没必要对所有的模型权重进行存储，那么一般都会定义一个`hook`来告诉模型那些参数需要保存、加载比如：
+一般的话考虑SD模型权重都比较大，而且我们使用lora微调模型没必要对所有的模型权重进行存储，那么一般都会定义一个`hook`来告诉模型那些参数需要保存、加载，这样一来使用 `accelerator.save_state(save_path)` 就会先去使用 `hook`处理参数然后进行保存。：
 ```python
 def save_model_hook(models, weights, output_dir):
     if accelerator.is_main_process:
@@ -546,8 +554,6 @@ def load_model_hook(models, input_dir):
 accelerator.register_save_state_pre_hook(save_model_hook)
 accelerator.register_load_state_pre_hook(load_model_hook)
 ```
-
-这样一来使用 `accelerator.save_state(save_path)` 就会先去使用 `hook`处理参数然后进行保存。
 **其次模型训练**：就是常规的模型训练（直接在样本图片：`instance_data_dir`以及样本的prompt：`instance_prompt`上进行微调）然后计算loss即可，如果涉及到`Class-specific Prior Preservation Loss`（除了上面两个组合还需要：`class_data_dir`以及 `class_prompt`）那么处理过程为（以SDXL为例），不过需要事先了解的是在计算这个loss之前会将两个数据集以及prompt都**组合到一起成为一个数据集**（`instance-image-prompt` 以及 `class-image-prompt`之间是匹配的）：
 ```python
 # 样本内容编码
@@ -574,16 +580,7 @@ loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
 loss = loss + config.prior_loss_weight * prior_loss
 accelerator.backward(loss)
 ```
-
-在这个里面之所以用 `chunk`是因为在数据集构件中：
-```python
-pixel_values = [example["instance_images"] for example in examples]
-...    
-if with_prior_preservation:
-    pixel_values += [example["class_images"] for example in examples]
-pixel_values = torch.stack(pixel_values)
-...
-```
+在这个里面之所以用 `chunk`是因为如果计算`Class-specific Prior Preservation Loss`里面的文本prompt是由两部分拼接构成的`torch.cat([prompt_embeds, class_prompt_hidden_states], dim=0)`那么可以直接通过chunk来分
 那么这样一来数据中一半来自样本图片一部分来自类型图片，在模型处理之后在`model_pred`就有一部分是样本图片的预测，另外一部分为类型图片预测。最后测试的结果为（`prompt: "A photo of Rengar the Pridestalker in a bucket"`，模型[代码](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_dreambooth_lora/)以及[权重下载](https://www.modelscope.cn/models/bigyellowjie/SDXL-DreamBooth-LOL/files)）：
 
 ![image.png](https://s2.loli.net/2025/07/15/7xIPMW6SJ1degZj.webp)
