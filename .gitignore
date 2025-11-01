@@ -18,3 +18,37 @@ tmp/*
 
 /code/Python/ONNX_TensoRT/models--openai--clip-vit-base-patch32/*
 *.lock
+
+# ---- CMake build directories ----
+build/
+cmake-build-debug/
+cmake-build-release/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# ---- Binary / Executable files ----
+*.exe
+*.out
+*.o
+*.obj
+*.a
+*.so
+*.dll
+*.lib
+*.dylib
+
+# ---- IDE specific ----
+# VSCode
+.vscode/
+# CLion / JetBrains
+.idea/
+# Visual Studio
+*.vcxproj
+*.vcxproj.filters
+*.sln
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
