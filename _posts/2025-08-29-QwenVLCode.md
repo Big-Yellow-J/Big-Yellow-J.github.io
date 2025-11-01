@@ -369,7 +369,6 @@ splits = [
 
 ## QwenVL的微调过程
 所有的代码：[https://github.com/shangxiaaabb/Docparse-QwenVL](https://github.com/shangxiaaabb/Docparse-QwenVL)
-
 > **补充一：节约显存可以进行的操作**
 > 1、使用`gradient_checkpointing`：`model.gradient_checkpointing_enable()`
 > 2、使用 `qlora`进行优化

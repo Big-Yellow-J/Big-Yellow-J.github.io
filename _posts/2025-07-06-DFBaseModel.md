@@ -17,15 +17,13 @@ show: true
 stickie: true
 description: 本文主要介绍基于Unet和Dit框架的基座扩散模型，重点对比SD1.5与SDXL的核心差异，包括CLIP编码器（SDXL采用双编码器拼接提升文本理解能力）、图像输出维度（SDXL默认1024x1024优于SD1.5的512x512）及技术优化策略。还涵盖Imagen的多阶段生成与动态调整方法，Dit模型的patch切分与adaLN模块，Hunyuan-DiT的双文本编码器与旋转位置编码，FLUX.1的VAE通道优化与旋转位置编码，以及SD3的三文本编码器与MM-Dit架构。同时涉及VAE模型重构表现对比、guidance_rescale参数对生成效果的影响，和Adapters技术如ControlNet（零卷积层条件控制）、DreamBooth（样本微调与类别先验损失）等插件式模型调整方法，旨在全面解析不同扩散模型的结构特性与应用技术。
 ---
-
 ## 基座扩散模型
 主要介绍基于Unet以及基于Dit框架的基座扩散模型以及部分GAN和VAE模型，其中SD迭代版本挺多的（从1.2到3.5）因此本文主要重点介绍SD 1.5以及SDXL两个基座模型，以及两者之间的对比差异，除此之外还有许多闭源的扩散模型比如说Imagen、DALE等。对于Dit基座模型主要介绍：Hunyuan-DiT、FLUX.1等。对于各类模型评分网站（模型评分仁者见仁智者见智，特别是此类生成模型视觉图像生成是一个很主观的过程，同一张图片不同人视觉感官都是不同的）：[https://lmarena.ai/leaderboard](https://lmarena.ai/leaderboard)
-
 ### SDv1.5 vs SDXL[^1]
 > **SDv1.5**: https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5
 > **SDXL**:https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0
 
-两者模型详细的模型结构：[SDv1.5--SDXL模型结构图](https://1drv.ms/u/c/667854cf645e8766/ESgZEHNEn3RJsKY0t1KQAgABYKHDhQtutJztw6OhEt9DPg?e=5SqEro)，其中具体模型参数的对比如下：
+两者模型详细的模型结构：[SDv1.5--SDXL模型结构图](https://drive.google.com/file/d/1-fiJKHVANsghaviyIha8MbbC2Yz4ld6L/view?usp=sharing)，其中具体模型参数的对比如下：
 **1、CLIP编码器区别**：
 在SD1.5中选择的是**CLIP-ViT/L**（得到的维度为：768）而在SDXL中选择的是两个CLIP文本编码器：**OpenCLIP-ViT/G**（得到的维度为：1280）以及**CLIP-ViT/L**（得到维度为：768）在代码中对于两个文本通过编码器处理之后SDXL直接通过cat方式拼接：`prompt_embeds = torch.concat(prompt_embeds_list, dim=-1)` 也就是说最后得到的维度为：[..,..,1280+768]。最后效果很明显：**SDXL对于文本的理解能力大于SD1.5**
 **2、图像输出维度区别**：
@@ -53,7 +51,6 @@ def _get_add_time_ids(
     add_time_ids = torch.tensor([add_time_ids], dtype=dtype)
     return add_time_ids
 ```
-
 > **推荐阅读**：
 > 1、[SDv1.5-SDXL-SD3生成效果对比](https://www.magicflow.ai/showcase/sd3-sdxl-sd1.5)
 
@@ -65,10 +62,8 @@ def _get_add_time_ids(
 
 Imagen[^6]论文中主要提出：1、纯文本语料库上预训练的通用大型语言模型（例如[T5](https://huggingface.co/collections/google/t5-release-65005e7c520f8d7b4d037918)、CLIP、BERT等）在编码图像合成的文本方面非常有效：在Imagen中增加语言模型的大小比增加图像扩散模型的大小更能提高样本保真度和Imagetext对齐。
 ![](https://s2.loli.net/2025/07/12/lCFNWwDmgGnZueE.webp)
-
 2、通过提高classifier-free guidance weight（$\epsilon(z,c)=w\epsilon(z,c)+ (1-w)\epsilon(z)$ 也就是其中的参数 $w$）可以提高image-text之间的对齐，但会损害图像逼真度，产生高度饱和不自然的图像（论文里面给出的分析是：每个时间步中预测和正式的x都会限定在 $[-1,1]$这个范围但是较大的 $w$可能导致超出这个范围），论文里面做法就是提出 **动态调整方法**：在每个采样步骤中，我们将s设置为 $x_0^t$中的某个百分位绝对像素值，如果s>1，则我们将 $x_0^t$阈值设置为范围 $[-s,s]$，然后除以s。
 ![](https://s2.loli.net/2025/07/12/jAEBS7I1Ob6DPal.webp)
-
 3、和上面SD模型差异比较大的一点就是，在imagen中直接使用多阶段生成策略，模型先生成64x64图像再去通过超分辨率扩散模型去生成256x256以及1024x1024的图像，在此过程中作者提到使用noise conditioning augmentation（NCA）策略（**对输入的文本编码后再去添加随机噪声**）
 ![](https://s2.loli.net/2025/07/12/HJm96oPr2AlXICs.webp)
 
@@ -76,29 +71,23 @@ Imagen[^6]论文中主要提出：1、纯文本语料库上预训练的通用大
 > https://github.com/facebookresearch/DiT
 
 ![](https://s2.loli.net/2025/07/15/CUisy5TPE24kKaH.webp)
-
 Dit[^11]模型结构上，1、**模型输入**，将输入的image/latent切分为不同patch而后去对不同编码后的patch上去添加位置编码（直接使用的sin-cos位置编码），2、**时间步以及条件编码**，对于时间步t以及条件c的编码而后将两部分编码后的内容进行相加，在`TimestepEmbedder`上处理方式是：直接通过**正弦时间步嵌入**方式而后将编码后的内容通过两层liner处理；在`LabelEmbedder`处理方式上就比较简单直接通过`nn.Embedding`进行编码处理。3、使用Adaptive layer norm（adaLN）block以及adaZero-Block（对有些参数初始化为0，就和lora中一样初始化AB为0，为了保证后续模型训练过程中的稳定）
-> 在[layernorm](https://docs.pytorch.org/docs/stable/generated/torch.nn.LayerNorm.html)中一般归一化处理方式为：$\text{Norm}(x)=\gamma \frac{x-\mu}{\sqrt{\sigma^2+ \epsilon}}+\beta$ 其中有两个参数 $\gamma$ 和 $\beta$ 是固定的可学习参数（比如说直接通过 `nn.Parameter` 进行创建），在模型初始化时创建，并在训练过程中通过梯度下降优化。但是在 adaLN中则是直接通过 $\text{Norm}(x)=\gamma(c) \frac{x-\mu}{\sqrt{\sigma^2+ \epsilon}}+\beta(c)$ 通过输入的条件c进行学习的，
+> 在[layernorm](https://docs.pytorch.org/docs/stable/generated/torch.nn.LayerNorm.html)中一般归一化处理方式为：$\text{Norm}(x)=\gamma \frac{x-\mu}{\sqrt{\sigma^2+ \epsilon}}+\beta$ 其中有两个参数 $\gamma$ 和 $\beta$ 是固定的可学习参数（比如说直接通过 `nn.Parameter` 进行创建），在模型初始化时创建，并在训练过程中通过梯度下降优化。但是在 adaLN中则是直接通过 $\text{Norm}(x)=\gamma(c) \frac{x-\mu}{\sqrt{\sigma^2+ \epsilon}}+\beta(c)$ 通过输入的条件c进行学习的
+> 总结Dit训练过程：首先将图片通过VAE进行编码，而后将编码后的内容patch化然后输入到Ditblock（就是通过一些Attention结构进行堆叠）中去预测模型的噪声
 
 ### Hunyuan-DiT
 > https://huggingface.co/Tencent-Hunyuan/HunyuanDiT
 
 腾讯的Hunyuan-DiT[^8]模型整体结构
-
 ![](https://s2.loli.net/2025/07/15/Hum9FCtPbV7do1B.webp)
-
 整体框架不是很复杂，1、文本编码上直接通过结合两个编码器：CLIP、T5；2、VAE则是直接使用的SD1.5的；3、引入2维的旋转位置编码；4、在Dit结构上（图片VAE压缩而后去切分成不同patch），使用的是堆叠的注意力模块（在SD1.5中也是这种结构）self-attention+cross-attention（此部分输入文本）。论文里面做了改进措施：1、借鉴之前处理，计算attention之前首先进行norm处理（也就是将norm拿到attention前面）。
-
 简短了解一下模型是如何做数据的：
 ![](https://s2.loli.net/2025/07/15/dJZETbyHB6SQPKI.webp)
-
-
 ### PixArt
 > https://pixart-alpha.github.io/
 
 华为诺亚方舟实验室提出的 $\text{PixArt}-\alpha$模型整体框架如下：
 ![](https://s2.loli.net/2025/07/15/cWTtLdONRPC9fnz.webp)
-
 相比较Dit模型论文里面主要进行的改进如下：
 1、**Cross-Attention layer**，在DiT block中加入了一个多头交叉注意力层，它位于自注意力层（上图中的Multi-Head Self
 -Attention）和前馈层（Pointwise Feedforward）之间，使模型能够灵活地引入文本嵌入条件。此外，为了利用预训练权重，将交叉注意力层中的输出投影层初始化为零，作为恒等映射，保留了输入以供后续层使用。
@@ -321,15 +310,10 @@ prompt_embeds = prompt_embeds.to(device)
 > 建议直接阅读：[https://github.com/lllyasviel/ControlNet/discussions/categories/announcements](https://github.com/lllyasviel/ControlNet/discussions/categories/announcements) 来了解更加多细节
 
 ![](https://s2.loli.net/2025/07/09/Tfji2LMv15tgr6d.webp)
-
 ControlNet[^2]的处理思路就很简单，再左图中模型的处理过程就是直接通过：$y=f(x;\theta)$来生成图像，但是在ControlNet里面会 **将我们最开始的网络结构复制** 然后通过在其前后引入一个 **zero-convolution** 层来“指导”（ $Z$ ）模型的输出也就是说将上面的生成过程变为：$y=f(x;\theta)+Z(f(x+Z(c;\theta_{z_1});\theta);\theta_{Z_2})$。通过冻结最初的模型的权重保持不变，保留了Stable Diffusion模型原本的能力；与此同时，使用额外数据对“可训练”副本进行微调，学习我们想要添加的条件。因此在最后我们的SD模型中就是如下一个结构：
-
 ![](https://s2.loli.net/2025/07/09/uVNAEnleRMJ6p4v.webp)
-
 在论文里面作者给出一个实际的测试效果可以很容易理解里面条件c（条件 𝑐就是提供给模型的显式结构引导信息，**用于在生成过程中精确控制图像的空间结构或布局**，一般来说可以是草图、分割图等）到底是一个什么东西，比如说就是直接给出一个“线稿”然后模型来输出图像。
-
 ![](https://s2.loli.net/2025/07/09/rkWH3o1MOaNs6pg.webp)
-
 > **补充-1**：为什么使用上面这种结构
 > 在[github](https://github.com/lllyasviel/ControlNet/discussions/188)上作者讨论了为什么要使用上面这种结构而非直接使用mlp等（作者给出了很多测试图像），最后总结就是：**这种结构好**
 > **补充-2**：使用0卷积层会不会导致模型无法优化问题？
@@ -337,13 +321,10 @@ ControlNet[^2]的处理思路就很简单，再左图中模型的处理过程就
 
 #### ControlNet代码操作
 > Code: [https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_controlnet](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_controlnet)
-> 模型权重：
 
 **首先**，简单了解一个ControlNet数据集格式，一般来说数据主要是三部分组成：1、image（可以理解为生成的图像）；2、condiction_image（可以理解为输入ControlNet里面的条件 $c$）；3、text。比如说以[raulc0399/open_pose_controlnet](https://huggingface.co/datasets/raulc0399/open_pose_controlnet)为例
 ![](https://s2.loli.net/2025/07/12/nphNm3OIebFGazr.webp)
-
 **模型加载**，一般来说扩散模型就只需要加载如下几个：`DDPMScheduler`、`AutoencoderKL`（vae模型）、`UNet2DConditionModel`（不一定加载条件Unet模型），除此之外在ControlNet中还需要加载一个`ControlNetModel`。对于`ControlNetModel`中代码大致结构为，代码中通过`self.controlnet_down_blocks`来存储ControlNet的下采样模块（**初始化为0的卷积层**）。`self.down_blocks`用来存储ControlNet中复制的Unet的下采样层。在`forward`中对于输入的样本（`sample`）首先通过 `self.down_blocks`逐层处理叠加到 `down_block_res_samples`中，而后就是直接将得到结果再去通过 `self.controlnet_down_blocks`每层进行处理，最后返回下采样的每层结果以及中间层处理结果：`down_block_res_samples`，`mid_block_res_sample`
-
 ```python
 class ControlNetModel(ModelMixin, ConfigMixin, FromOriginalModelMixin):
     @register_to_config
@@ -423,7 +404,6 @@ class ControlNetModel(ModelMixin, ConfigMixin, FromOriginalModelMixin):
             return (down_block_res_samples, mid_block_res_sample)
         ...
 ```
-
 **模型训练**，训练过程和DF训练差异不大。将图像通过VAE处理、产生噪声、时间步、将噪声添加到（VAE处理之后的）图像中，而后通过 `controlnet`得到每层下采样的结果以及中间层结果：`down_block_res_samples, mid_block_res_sample = controlnet(...)`而后将这两部分结果再去通过unet处理
 ```python
 model_pred = unet(
@@ -437,10 +417,7 @@ model_pred = unet(
     return_dict=False,
 )[0]
 ```
-
-后续就是计算loss等处理
-
-**模型验证**，直接就是使用`StableDiffusionControlNetPipeline`来处理了。最后随机测试的部分例子（controlnet微调效果不是很好）：
+后续就是计算loss等处理。**模型验证**，直接就是使用`StableDiffusionControlNetPipeline`来处理了。最后随机测试的部分例子（controlnet微调效果不是很好）：
 ![output.jpg](https://s2.loli.net/2025/07/22/SNfEiTVXpeZgOIP.webp)
 
 ### T2I-Adapter
@@ -580,8 +557,8 @@ loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
 loss = loss + config.prior_loss_weight * prior_loss
 accelerator.backward(loss)
 ```
-在这个里面之所以用 `chunk`是因为如果计算`Class-specific Prior Preservation Loss`里面的文本prompt是由两部分拼接构成的`torch.cat([prompt_embeds, class_prompt_hidden_states], dim=0)`那么可以直接通过chunk来分
-那么这样一来数据中一半来自样本图片一部分来自类型图片，在模型处理之后在`model_pred`就有一部分是样本图片的预测，另外一部分为类型图片预测。最后测试的结果为（`prompt: "A photo of Rengar the Pridestalker in a bucket"`，模型[代码](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_dreambooth_lora/)以及[权重下载](https://www.modelscope.cn/models/bigyellowjie/SDXL-DreamBooth-LOL/files)）：
+在这个里面之所以用 `chunk`是因为如果计算`Class-specific Prior Preservation Loss`里面的文本prompt是由两部分拼接构成的`torch.cat([prompt_embeds, class_prompt_hidden_states], dim=0)`那么可以直接通过chunk来分离出两部分（这个过程和使用参数`guidance_rescale`很相似）
+最后测试的结果为（`prompt: "A photo of Rengar the Pridestalker in a bucket"`，模型[代码](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/DFModelCode/training_dreambooth_lora/)以及[权重下载](https://www.modelscope.cn/models/bigyellowjie/SDXL-DreamBooth-LOL/files)）：
 
 ![image.png](https://s2.loli.net/2025/07/15/7xIPMW6SJ1degZj.webp)
 
