@@ -11,3 +11,8 @@ add_executable(cmake_run
     sort_numlist.cpp
     find_numlist.cpp
 )
+
+# 因为使用了头文件 要使用下面代码
+target_include_directories(cmake_run PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/algo
+)

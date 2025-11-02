@@ -3,13 +3,13 @@
 #include <vector>     // 数组
 using namespace std;
 
-void vector_print(vector<int> num_list, auto way){
+void vector_print(vector<int>& num_list, auto way){
     cout<< "通过方式 "<< way<< " 得到结果为：\t";
     for (auto x : num_list) cout << x << " ";
     cout<< "\n";
 }
 
-vector<int> insert_sort_function(vector<int> num_list) {
+vector<int> insert_sort_function(vector<int>& num_list) {
     for (size_t i = 1; i < num_list.size(); i++) {
         auto index = num_list[i];
         size_t j = i;
@@ -23,7 +23,7 @@ vector<int> insert_sort_function(vector<int> num_list) {
     return num_list;
 }
 
-vector<int> bubble_sort_function(vector<int> num_list) {
+vector<int> bubble_sort_function(vector<int>& num_list) {
     auto n = num_list.size();
     for (size_t i = 0; i < n; ++i) {
         bool swapped = false;
@@ -40,7 +40,7 @@ vector<int> bubble_sort_function(vector<int> num_list) {
     return num_list;
 }
 
-vector<int> quick_sort_function(vector<int> num_list){
+vector<int> quick_sort_function(vector<int>& num_list){
     if (num_list.size() <= 1) return num_list;
 
     auto pivot = num_list[0];

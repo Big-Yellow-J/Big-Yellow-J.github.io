@@ -1,6 +1,6 @@
-// #include "numlist_function.h"
 #include <iostream>
 #include <vector>
+#include <span>
 #include <unordered_map>
 using namespace std;
 
@@ -13,7 +13,7 @@ void search_print(int value){
     }
 }
 
-int sequence_search(vector<int> num_list, int target){
+int sequence_search(vector<int>& num_list, int target){
     // 暴力查找
     for (size_t i = 0; i < num_list.size(); i++)
     {
@@ -25,7 +25,7 @@ int sequence_search(vector<int> num_list, int target){
     return -1;    
 }
 
-int binary_search(vector<int> num_list, int target){
+int binary_search(vector<int>& num_list, int target){
     // 二分查找算法
     int left= 0, right= num_list.size()-1;
     while (left<= right)
@@ -44,7 +44,7 @@ int binary_search(vector<int> num_list, int target){
     return -1;
 }
 
-int hash_search(vector<int> num_list, int target){
+int hash_search(vector<int>& num_list, int target){
     unordered_map<int, int> dic;
     for (int i = 0; i < num_list.size(); i++) {
         int complement = target - num_list[i];
@@ -55,3 +55,4 @@ int hash_search(vector<int> num_list, int target){
     }
     return -1;
 }
+
