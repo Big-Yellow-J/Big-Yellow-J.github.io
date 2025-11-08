@@ -39,6 +39,7 @@ int main(){
     cout<< "圆的面积值为："<< geometry_com2.CircleArea()
         << "\t圆的周长值为："<< geometry_com2.CirclePerimeter()
         << "\t圆柱体积为："<< geometry_com2.CylinderVolume()
+        << "\t圆的半径为："<< geometry_com2.radius
         << "\t类的使用次数："<< geometry_com1.com_num<< endl;
 
     double cylinder_volume = geometry_com1.CylinderVolume();

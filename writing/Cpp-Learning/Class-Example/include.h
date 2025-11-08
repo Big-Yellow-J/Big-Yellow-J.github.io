@@ -13,12 +13,15 @@ class BaseNum{
         double length=2, width=2, height=2;
         double radius=10;
 };
+class NormalNum{
+    public:
+        double PI=3.14;
+};
 
-class Geometry: public BaseNum{
+class Geometry: public BaseNum, public NormalNum{
     public:
         // 定义 静态成员 数据 只要使用这个类就会 彼此之间各项这个 静态成员
         static int com_num; // 静态成员 统计计算次数
-        double PI=3.14;
         // 使用和类相同的名称的函数 ==> 构造函数
         Geometry(double l, double w, double h, double r){
             length= l; width= w; height= h; radius= r;
@@ -29,6 +32,7 @@ class Geometry: public BaseNum{
             length= other.length; height= other.height;
             width= other.width; radius= other.radius;}
         ~Geometry();                                  // 析构函数
+        static void cout_fun();
         void setRadius(double r);                     // 修改 private 的值
         double CircleArea(double r= -1);              // 计算圆的面积
         double CirclePerimeter(double r= -1);         // 计算圆的周长

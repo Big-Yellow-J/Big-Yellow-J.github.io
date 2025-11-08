@@ -23,3 +23,4 @@ void Geometry::print_normal(){
          << "\t计算次数："<< com_num
          << endl;
 }
+void Geometry::cout_fun(){cout<< "\n随便输出！\n"<< endl;}
