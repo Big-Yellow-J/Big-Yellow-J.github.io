@@ -237,7 +237,9 @@ def insert_batches(client, collection_name, data, max_bytes=60 * 1024 * 1024):
 
 if __name__ == '__main__':
     import pprint
-    host = '117.72.80.63'
+    from dotenv import load_dotenv
+    load_dotenv('./HOST.env')
+    host = os.getenv('host')
     collection_name = 'FourGreatClassics'
     user_name_password = 'root:Milvus'
     model_name = 'moka-ai/m3e-base' #1024:'Qwen/Qwen3-Embedding-0.6B' 768:'sentence-transformers/paraphrase-albert-small-v2'
@@ -264,10 +266,11 @@ if __name__ == '__main__':
                        params_idnexs= params_idnex)
 
     # 插入数据
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    embedding_fn = embedding_model(model_name, cache_dir= None)
+    device = 'cpu' if torch.cuda.is_available() else 'cpu'
+    embedding_fn = embedding_model(model_name)
     embedding_fn.to(device)
 
+    # 直接编码
     # paths = './data/'
     # docs = {}
     # data = []
@@ -284,7 +287,8 @@ if __name__ == '__main__':
     #             "tag": filename
     #         })
     #         global_id += 1
-    data = load_embedding(cache_dir= './cache/')
+    # 加载处理过的
+    # data = load_embedding(cache_dir= './cache/')
     # res = client.insert(collection_name= collection_name, data= data)
     # insert_batches(client, collection_name, data)
 
@@ -292,13 +296,13 @@ if __name__ == '__main__':
     client.load_collection(collection_name)
     res = client.search(
         collection_name= collection_name,
-        data= embedding_fn.encode(['水浒传作者']),
+        data= embedding_fn.encode(['武松']),
         limit=2,
-        # filter= "tag == 'AllMenAreBrothers'",
+        filter= "tag == 'AllMenAreBrothers'",
         output_fields=["text", "tag"],
     )
     pprint.pprint(res)
 
-    # # 删除实体
-    # # res = client.delete(collection_name= collection_name, ids=[0, 2])
-    # # res = client.delete(collection_name= collection_name, filter="subject == 'People'",)
+    # 删除实体
+    # res = client.delete(collection_name= collection_name, ids=[0, 2])
+    # res = client.delete(collection_name= collection_name, filter="subject == 'People'",)

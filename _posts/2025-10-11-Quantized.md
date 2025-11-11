@@ -429,7 +429,7 @@ AWQ量化技术总结：核心流程就是**对所有权重均进行低比特量
 > [模型ONNX部署技术](https://github.com/shangxiaaabb/ProjectCode/blob/main/code/Python/ONNX_TensoRT/ModelDeployment.ipynb)
 
 直接使用`llmcompressor`来量化模型（具体地址：[llmcompressor](https://docs.vllm.ai/projects/llm-compressor/en/latest/getting-started/install/#prerequisites)）支持量化类型：
-![](https://s2.loli.net/2025/10/15/nVUl63kASpCLqdr.png)
+![](https://s2.loli.net/2025/11/11/KUrHF4IiLC7WaXf.webp)
 
 ## 参考
 [^1]: [https://github.com/IST-DASLab/gptq](https://github.com/IST-DASLab/gptq)
