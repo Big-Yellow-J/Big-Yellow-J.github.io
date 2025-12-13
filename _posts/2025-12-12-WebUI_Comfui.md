@@ -8,8 +8,10 @@ show_footer_image: true
 tags:
 - AIGC
 - 工具
-description: 
+description: Stable Diffusion WebUI基础使用指南：包含Linux环境安装流程，如克隆仓库、修改patches.py避免本地存储、配置webui.sh虚拟环境路径，运行脚本完成部署；详解模型安装方法，可下载dreamshaperXL等权重至指定目录；介绍插件安装，包括汉化插件启用步骤（设置界面语言）与ControlNet插件及对应模型权重配置；支持API调用，通过bash
+  webui.sh -f --api启用后，可用requests方式访问。涵盖目录结构说明、安装避坑技巧，助用户快速上手图像生成与扩展功能。
 ---
+
 ## Stable Diffusion WebUI 基础使用
 ### SD WebUI 安装使用
 SD WebUI官方地址：[https://github.com/AUTOMATIC1111/stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui)里面关于安装的介绍不多，这里直接介绍在Linux上直接安装并且基础使用。
@@ -96,12 +98,12 @@ hf download stabilityai/sdxl-vae sdxl_vae.safetensors --local-dir ~/autodl-tmp/S
 > 项目地址：[https://github.com/hanamizuki-ai/stable-diffusion-webui-localization-zh_Hans](https://github.com/hanamizuki-ai/stable-diffusion-webui-localization-zh_Hans)
 
 操作步骤：**第一步：安装插件**
-![](https://s2.loli.net/2025/12/13/COkD5BtnpurgqYS.png)
+![](https://s2.loli.net/2025/12/13/mEPsjkRGoqH4UK2.webp)
 当下面出现：`AssertionError: Extension directory already exists: /root/autodl-tmp/SDWebUIFile/data/extensions/stable-diffusion-webui-localization-zh_Hans`时候就代表安装完毕，然后就可以直接去进行下面步骤
 ![](https://s2.loli.net/2025/12/13/312mbLCSUX57MYz.png)
 **第二步：启用插件**
 然后就可以正常安装了，然后就需要去`seeting`-->`User interface`，然后在这个界面选择中文即可（**一定要先点击Apply**）
-![](https://s2.loli.net/2025/12/13/rAdczQEw5GTBI8a.png)
+![](https://s2.loli.net/2025/12/13/rdDkIGc7jfvhp3U.webp)
 最后`Reload UI`即可，这样界面就变成中文了。
 **ControlNet 插件安装**
 基本安装步骤和上面的一样，只是不需要进行第二步：启用插件了。安装`ControNet`插件之后就只需要去安装对应的模型权重即可使用插件。如果按照上面步骤修改了地址那么：
@@ -110,7 +112,7 @@ hf download stabilityai/sdxl-vae sdxl_vae.safetensors --local-dir ~/autodl-tmp/S
 Codeformer  ControlNet  GFPGAN  Lora  Stable-diffusion  hypernetworks
 ```
 然后对于`ControlNet`权重就可以直接下载然后放到`ControlNet`中即可，比如说下载
-![](https://s2.loli.net/2025/12/13/GwaWkC4UlcZRMJL.png)
+![](https://s2.loli.net/2025/12/13/ZlzmYJv192Pi57o.webp)
 就只需要：
 ```bash
 hf download lllyasviel/sd_control_collection diffusers_xl_canny_full.safetensors --local-dir /root/autodl-tmp/SDWebUIFile/models/ControlNet
@@ -119,9 +121,9 @@ hf download lllyasviel/sd_control_collection diffusers_xl_depth_full.safetensors
 具体使用可以见：[https://zhuanlan.zhihu.com/p/692537570](https://zhuanlan.zhihu.com/p/692537570)
 ### SD WebUI API调用
 执行完毕上面操作之后既可以直接调用API进行处理了（`bash webui.sh -f --api`启用API访问）然后可以直接使用 `requests`方式进行访问，具体例子比如说：用上面下面的`control_v11e_sd15_ip2p.pth`和 `control_v11f1p_sd15_depth.pth`进行测试实验，具体代码：[code](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/SDWebUI-Comfui/webui_comfui.ipynb)，值得注意的是：
-![](https://s2.loli.net/2025/12/13/uen4gIQJNVr5AWF.png)
+![](https://s2.loli.net/2025/12/13/FjRUOs6DXqeKwJL.webp)
 最终得到效果如下
-![](https://s2.loli.net/2025/12/13/X2A5L3KketaUYxC.png)
+![](https://s2.loli.net/2025/12/13/iYSXdl91w657u2q.webp)
 
 ## 参考
 [^1]: [https://blog.csdn.net/weixin_47420447/article/details/135663351](https://blog.csdn.net/weixin_47420447/article/details/135663351)
