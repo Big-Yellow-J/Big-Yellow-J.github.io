@@ -124,6 +124,14 @@ hf download lllyasviel/sd_control_collection diffusers_xl_depth_full.safetensors
 ![](https://s2.loli.net/2025/12/13/FjRUOs6DXqeKwJL.webp)
 最终得到效果如下
 ![](https://s2.loli.net/2025/12/13/iYSXdl91w657u2q.webp)
+## ComfyUI 基础使用
+教程：[https://www.bilibili.com/video/BV14w41167eZ/?vd_source=881c4826193cfb648b5cdd0bad9f19f0](https://www.bilibili.com/video/BV14w41167eZ/?vd_source=881c4826193cfb648b5cdd0bad9f19f0)对于ComfyUI只需要了解如下几个点：1、如何API调用；2、如何自定义节点；3、工作流搭建（这个直接多看几个别人的就会了）
+> 对于ComfyUI不需要看太多视频，简单总结使用就是：在ComfyUI中所有的运行过程都是在 **工作流** 上进行运行，而工作流中每一个“方框”就是我们的 **节点**（可以意见为一个函数有与输入和输出），不同节点之间输入接输出。
+
+### ComfyUI 自定义节点
+自定义节点之前，先了解安装节点，直接进入ComfyUI里面的节点目录`/root/autodl-tmp/ComfyUI/custom_nodes`，然后找到你需要安装的节点 clone到这个文件夹里面，然后安装依赖，就可以完成一个节点的安装了。自定义节点过程[^2]。
+
 
 ## 参考
 [^1]: [https://blog.csdn.net/weixin_47420447/article/details/135663351](https://blog.csdn.net/weixin_47420447/article/details/135663351)
+[^2]: [comfyui自定义节点](https://waytoagi.feishu.cn/wiki/Mhj5wl6v1i0j6ZkpevycPIlYnAg)
