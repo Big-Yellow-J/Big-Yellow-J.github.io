@@ -16,11 +16,45 @@ stickie: true
 description: 
 ---
 ## 扩散模型生成加速策略
-
+最开始的SD模型中一般都需要使用50+步才能生成高质量图像，但是随着后续不断研究，LCM、速度场模型等都极大的加速了模型的生成，下面两部分主要介绍：1、通过加速框架进行加速生成；2、通过量化进行生成加速。
 ### 加速框架进行加速
-https://huggingface.co/docs/diffusers/main/en/optimization/cache_dit
+在[huggingface](https://huggingface.co/docs/diffusers/main/en/optimization/cache_dit)上就提供了多种加速方式。
+#### 1、xFormers加速
+> 项目地址：https://github.com/facebookresearch/xformers
 
+在SD模型中对于xformers基本使用方式如下所示：
+```python
+import torch
+from diffusers import StableDiffusionXLPipeline
+
+pipeline = StableDiffusionXLPipeline.from_pretrained(
+    "stabilityai/stable-diffusion-xl-base-1.0",
+    torch_dtype=torch.float16,
+).to("cuda")
+# 使用xformer加速
+pipeline.enable_xformers_memory_efficient_attention()
+# 关闭xformer加速
+pipeline.disable_xformers_memory_efficient_attention()
+```
+xformers作用在于**加速attention计算并降低显存**，除此之外还提供了多种注意力实现方式，如casual attention等。根据[官方文档](https://facebookresearch.github.io/xformers/components/ops.html#xformers.ops.fmha.cutlass.FwOp)中的描述，对于对于`xformers.ops.memory_efficient_attention`在使用上参数主要是：1、输入数据也就是QKV的格式上必须满足为：`[B, M, H, K]`分别表示的是其中B 为batch size, N为序列长度, num_heads为多头注意力头的个数, dim_head则为每个头对应的embeding size；2、attn_bias实际上充当为在使用mask attention时的mask；3、p也就是dropout对应值；4、op为Tuple，用于指定优化self-attention计算所采用的算子。基本使用方式如下：
+```python
+import xformers.ops as xops
+y = xops.memory_efficient_attention(q, k, v)
+y = xops.memory_efficient_attention(q, k, v, p=0.2) # 使用dropout
+y = xops.memory_efficient_attention(
+    q, k, v,
+    attn_bias=xops.LowerTriangularMask()
+)# 使用casual 注意力
+```
+值得着重了解的就是其中`attn_bias`参数，简单直观的理解：用于控制注意力可见性和结构的统一接口，**既可以表示 mask，也可以表示稀疏/局部/因果等高级注意力模式**，并且以高性能方式融入 attention 内核。比如说：
+1、`xops.LowerTriangularMask()`：常规的causal注意力也就是下三角mask
+2、`xops.LocalAttentionFromBottomRightMask`：局部注意力，每个token只能看最近的window_size个token
+#### 2、cache策略
+cache指的是：缓存通过存储和重用不同层（例如注意力层和前馈层）的中间输出来加速推理，而不是在每个推理步骤执行整个计算。它以更多内存为代价显着提高了生成速度，并且不需要额外的训练。对于各类cache的描述可以看[知乎](https://zhuanlan.zhihu.com/p/711223667)
+可以直接使用[cache-dit](https://github.com/vipshop/cache-dit)来实现各类cache的使用，这个框架主要是适用于Dit结构的扩散模型使用，
 ### 模型量化进行加速生成
+这部分内容主要是对模型进行量化比如说4bit量化
+#### SVDQuant量化
 https://github.com/nunchaku-ai/nunchaku
 
 
