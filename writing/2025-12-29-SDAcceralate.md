@@ -117,3 +117,6 @@ optimizer_class = bnb.optim.AdamW8bit
 > https://github.com/nunchaku-ai/nunchaku
 
 #TODO: 量化侯模型如何进行后训练可以直接使用 flux1-dev-kontext_fp8_scaled.safetensors 进行介绍
+<!--stackedit_data:
+eyJoaXN0b3J5IjpbLTg3NDMyNDk4XX0=
+-->
