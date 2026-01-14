@@ -155,8 +155,3 @@ optimizer_class = bnb.optim.AdamW8bit
 
 ## 参考
 [^1]: [https://github.com/chengzeyi/ParaAttention/blob/main/doc/fastest_flux.md](https://github.com/chengzeyi/ParaAttention/blob/main/doc/fastest_flux.md)
-=======
-<!--stackedit_data:
-eyJoaXN0b3J5IjpbLTg3NDMyNDk4XX0=
--->
->>>>>>> aae1c479fcd9da4bf82dcac628ed8ffd45004776
