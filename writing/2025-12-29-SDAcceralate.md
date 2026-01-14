@@ -142,6 +142,7 @@ optimizer_class = bnb.optim.AdamW8bit
 > https://github.com/nunchaku-ai/nunchaku
 
 #TODO: 量化侯模型如何进行后训练可以直接使用 flux1-dev-kontext_fp8_scaled.safetensors 进行介绍
+<<<<<<< HEAD
 ## 总结
 本文主要是介绍一些在SD模型中加快生图的策略，1、直接使用加速框架进行优化，比如说指定attention计算后端方式、通过`torch.compile`进行编译、使用`torch.channels_last`去优化内存访问方式等；2、cache策略，发现在生成过程中在某些层/时间布之间图像的特征比较相似，因此就可以考虑将这些计算结果进行缓存在后续n步中直接加载缓存好的特征来实现生成加速，主要介绍框架是`cache-dit`；3、量化技术概述，
 最后简单对比一下生成加速时间
@@ -154,3 +155,8 @@ optimizer_class = bnb.optim.AdamW8bit
 
 ## 参考
 [^1]: [https://github.com/chengzeyi/ParaAttention/blob/main/doc/fastest_flux.md](https://github.com/chengzeyi/ParaAttention/blob/main/doc/fastest_flux.md)
+=======
+<!--stackedit_data:
+eyJoaXN0b3J5IjpbLTg3NDMyNDk4XX0=
+-->
+>>>>>>> aae1c479fcd9da4bf82dcac628ed8ffd45004776
