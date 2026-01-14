@@ -124,7 +124,7 @@ hf download stabilityai/sdxl-vae sdxl_vae.safetensors --local-dir ~/autodl-tmp/S
 操作步骤：**第一步：安装插件**
 ![](https://s2.loli.net/2025/12/13/mEPsjkRGoqH4UK2.webp)
 当下面出现：`AssertionError: Extension directory already exists: /root/autodl-tmp/SDWebUIFile/data/extensions/stable-diffusion-webui-localization-zh_Hans`时候就代表安装完毕，然后就可以直接去进行下面步骤
-![](https://s2.loli.net/2025/12/13/312mbLCSUX57MYz.png)
+![](https://s2.loli.net/2026/01/14/L46qsUEPurB8xwf.webp)
 **第二步：启用插件**
 然后就可以正常安装了，然后就需要去`seeting`-->`User interface`，然后在这个界面选择中文即可（**一定要先点击Apply**）
 ![](https://s2.loli.net/2025/12/13/rdDkIGc7jfvhp3U.webp)

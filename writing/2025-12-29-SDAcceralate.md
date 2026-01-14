@@ -12,8 +12,9 @@ tags:
 - 量化技术
 show: true
 stickie: true
-description: 
+description: 扩散模型生成加速策略涵盖加速框架、Cache策略与量化技术。加速框架包括flash_attn后端、torch.compile编译、torch.channels_last优化及xFormers（加速attention计算并降低显存）；Cache策略含DeepCache（UNet时间冗余缓存高层特征）、FORA（DiT架构Attn/MLP特征复用）、FBCache（L1误差判断缓存）及CacheDit（DiT前n层缓存与差异检测）；量化技术有PTQ/QAT，如Bitsandbytes（int8/int4量化），实现显存降低与生成加速。
 ---
+
 ## 扩散模型生成加速策略
 Diffusion推理加速的方案，主要包括Cache、量化、分布式推理、采样器优化和蒸馏等。下面内容主要是去对Cache、计算加速框架以及量化技术进行介绍
 > SD模型加速方式：[https://github.com/xlite-dev/Awesome-DiT-Inference?tab=readme-ov-file#Quantization](https://github.com/xlite-dev/Awesome-DiT-Inference?tab=readme-ov-file#Quantization)
@@ -72,16 +73,16 @@ cache指的是：**缓存通过存储和重用不同层（例如注意力层和�
 > Code:[https://link.zhihu.com/?target=https%3A//github.com/horseee/DeepCache](https://link.zhihu.com/?target=https%3A//github.com/horseee/DeepCache)
 
 **主要针对UNet架构**的Diffusion模型进行推理加速。DeepCache 是一种Training-free的扩散模型加速算法，核心思想是**利用扩散模型序列去噪步骤中固有的时间冗余来减少计算开销**。
-![](https://s2.loli.net/2026/01/13/7fSrYDnbHFLu6iG.png)
+![](https://s2.loli.net/2026/01/14/27yEAxsmGB53rLI.webp)
 基于 U-Net 结构特性，发现相邻去噪步骤的高层特征具有显著时间一致性（Adjacent steps in the denoising process exhibit significant temporal similarity in high-level features.），比如说上图中作者在测试上采用block $U_2$的特征和其它所有的采样步之间相似性计算（图b），因此缓存这些高层特征并仅以低成本更新低层特征，从而避免重复计算。具体方法为：
-![](https://s2.loli.net/2026/01/13/eXRHCFcdxLi2z7K.png)
+![](https://s2.loli.net/2026/01/14/H1TMdUPVFN7QtAa.webp)
 比如说在官方的使用中有参数：`helper.set_params(cache_interval=3,cache_branch_id=0,)`表示是每3个时间步进行一次完成forward然后刷新cache，而其中参数cache_branch_id值得是一般而言在UNet中会定义`branch 0 → early / down blocks`等就是选择哪些层的输出。具体过程如下：t=1进行计算缓存，t=2,3都直接使用缓存，t=4完整计算得到缓存。
 #### FORA
 > Paper: [https://arxiv.org/pdf/2407.01425](https://arxiv.org/pdf/2407.01425)
 > Code: [https://github.com/prathebaselva/FORA](https://github.com/prathebaselva/FORA)
 
 **主要是争对Dit架构**的Diffusion模型进行推理加速。利用 Diffusion Transformer 扩散过程的重复特性实现了可用于DiT的Training-free的Cache加速算法。
-![](https://s2.loli.net/2026/01/13/UCOEAJDLZNHXFW5.png)
+![](https://s2.loli.net/2026/01/14/S1UFewKTnOLhDV4.webp)
 FORA的核心在于发现Dit在去噪过程中，**相邻时间步的Attn和MLP层特征存在显著重复性**（如上图所示:在layer0、9、18、27这些层以及250步采样中，随后采样步约往后特征之间相似性也就越高。）。通过Caching特征，FORA 将这些重复计算的中间特征保存并在后续时间步直接复用，避免逐步重新计算。
 ![](https://s2.loli.net/2026/01/13/dSp5Zy9zua3gjw4.png)
 具体而言，模型以固定间隔 N 重新计算并缓存特征：当时间步 t 满足 t mod N=0 时，更新所有层的缓存；在后续 N-1 步中，直接检索cached的 Attn 和 MLP 特征，跳过重复计算。这种策略利用了 DiT 架构在邻近时间时间步的特征相似性，在不修改DiT模型结构的前提下实现加速。例如，在 250 步 DDIM 采样中，当 N=3 时，模型仅需在第 3、6、9... 步重新计算特征，其余步骤复用Cache，使计算量减少约 2/3。实验表明，FORA对后期去噪阶段的特征相似性利用更为高效，此时特征变化缓慢，缓存复用的性价比最高。
@@ -90,11 +91,11 @@ FORA的核心在于发现Dit在去噪过程中，**相邻时间步的Attn和MLP�
 
 通过缓存变换器模型中变换器块的输出，并在下一步推理中重新使用它们，可以降低计算成本，加快推理速度。然而，很难决定何时重新使用缓存以确保生成图像的质量。最近，TeaCache 提出，可以使用时间步嵌入来近似模型输出之间的差异。AdaCache 也表明，在多个图像和视频 DiT 基线中，**缓存可以在不牺牲生成质量的情况下显著提高推理速度**。不过，TeaCache 仍然有点复杂，因为它需要重新缩放策略来确保缓存的准确性。在 ParaAttention 中，**发现可以直接使用第一个transformer输出的残差来近似模型输出之间的差异。当差值足够小时，我们可以重复使用之前推理步骤的残差**，这意味着我们实际上跳过了去噪步骤。我们的实验证明了这一方法的有效性，我们可以在 FLUX.1-dev 推理上实现高达 1.5 倍的速度，而且质量非常好[^1]。
 简单来说就是上面提到的DeepCache/FORA在使用上太粗糙直接通过固定时间步去cache缓存这样忽视输出差异的非均匀性，因此后续的TeaCache发现模型输入与输出的强相关性，通过Timestep Emebdding（输入）来估计输出差异。而后FBCache又做了新的改进：
-![](https://s2.loli.net/2026/01/14/raG4jTspv1DAZzB.png)
+![](https://s2.loli.net/2026/01/14/EJNoQIHsiRjTyW4.webp)
 利用residual cache实现了一个基于First Block L1误差的Cache方案，误差小于指定阈值，就跳过当前步计算，复用residual cache，对当前步的输出进行估计。
 #### CacheDit
 [cache-dit](https://github.com/vipshop/cache-dit)这个框架主要是适用于Dit结构的扩散模型使用，其具体[模型框架](https://cache-dit.readthedocs.io/en/latest/user_guide/DBCACHE_DESIGN/)如下：
-![](https://s2.loli.net/2026/01/14/vw8AFh1cbpjdP2E.png)
+![](https://s2.loli.net/2026/01/14/mU9YHvENodt8Z1B.webp)
 对于上述框架首先了解CacheDit中几个概念：1、`Fn`：表示需要计算前n层transformer block在时间步t并且详细解释一下CacheDit原理；2、`Bn`:表示进一步的融合后n层transformer block的信息去强化预测准确性。其中n=1时候就是FBCache。
 因此对于CacheDit具体过程为：**在t-1步时候**，前n块block去计算他们的结果得到输出结果hidden state并且写入缓存中$C_{t-1}$，而后后几层进行完整结算。**在t步时候**，前n块block不完整计算，而是直接复用/近似 t-1 步的缓存$C_{t-1}$得到近似的结果，计算近似结果和缓存结果中差异（L1 范数），如果差异小于阈值直接复用缓存输入到后续的块中计算，反之就重新计算这n块结果。
 其中具体使用如下：[df_acceralate.ipynb](code/Python/DFModelCode/DF_acceralate/df_acceralate.ipynb)
@@ -150,7 +151,7 @@ optimizer_class = bnb.optim.AdamW8bit
 
 | 正常生图 | +使用channel+ flash_attn| +使用cachedit |
 |:--:|:--:|:--:|
-|![](https://s2.loli.net/2026/01/14/DJYyBdQAEqK9hg2.png) |![](https://s2.loli.net/2026/01/14/z9NApexJEwfagqm.png)| ![](https://s2.loli.net/2026/01/14/3J1pKEb4GaMRlIe.png)|
+|![](https://s2.loli.net/2026/01/14/Rdyl2sOowVTaNH3.webp) |![](https://s2.loli.net/2026/01/14/aryogiJQOuW5FIZ.webp)| ![](https://s2.loli.net/2026/01/14/8lwizF6ZVvn45sW.webp)|
 | `5.97` | `5.67` | `5.48` |
 
 ## 参考

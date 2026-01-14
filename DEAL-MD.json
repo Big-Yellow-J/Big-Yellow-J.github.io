@@ -1,0 +1,602 @@
+{
+  "./_posts/2025-05-08-GAN.md": [
+    [
+      "old_description",
+      "本文介绍生成图像模型中GAN的基本原理，涉及生成器捕获数据分布、判别器判断样本来源的核心概念，阐述算法推导与训练过程，提及GAN训练不稳定、模型坍塌等缺点及相关测试情况，含GAN与其他模型在MNIST数据集上的测试对比等内容"
+    ],
+    [
+      "new_description",
+      "本文介绍GAN作为图像生成基础模型，讲解其核心原理——生成模型G捕获数据分布与判别模型D的零和博弈，包括数学推导、训练不稳定及模型坍塌问题，以及WGAN等改进方法，为生成模型入门知识。"
+    ]
+  ],
+  "./_posts/2024-01-06-featureengine.md": [
+    [
+      "old_description",
+      "本文介绍特征选择相关内容，涵盖传统特征选择算法（包装法、过滤法、嵌入法），还有拉普拉斯分数、Fisher Score等方法，以及数据降维中主成分分析（PCA）的原理与流程，涉及特征选择目标及降维相关内容"
+    ],
+    [
+      "new_description",
+      "特征选择与数据降维是机器学习高维数据预处理的关键策略，可构建简单模型并提升性能。常用特征选择方法包括包装法、过滤法、嵌入法，以及拉普拉斯分数、Fisher Score等；数据降维以PCA为主，通过线性投影降低维度。两者均为降低数据维度的重要手段，助力优化数据挖掘效果。"
+    ]
+  ],
+  "./_posts/2025-01-04-learning_rate.md": [
+    [
+      "old_description",
+      "学习率是优化算法关键参数，影响模型训练速度与稳定性。涉及梯度计算、梯度下降等优化算法，含AdaGrad、RMSprop、Adam等自适应学习率策略，还有warm-up等调整方式，对模型性能至关重要"
+    ],
+    [
+      "new_description",
+      "学习率是梯度下降等优化算法的关键参数，影响模型训练速度与稳定性。过大易导致震荡发散，过小则收敛缓慢。常用调整策略包括自适应算法（Adam、RMSprop、AdaGrad）及warm-up，助力模型有效收敛，提升训练效果。"
+    ]
+  ],
+  "./_posts/2025-03-23-DPO-PPO.md": [
+    [
+      "old_description",
+      "介绍LLM训练的预训练、后训练（含监督微调SFT、人类反馈强化学习RLHF），阐述RL基本概念如Agent、State等，讲解GRPO、PPO、DPO模型原理，包括策略优化、奖励模型等，涉及相关论文参考，涵盖强化学习在LLM中的应用关键内容。"
+    ],
+    [
+      "new_description",
+      "本文详细解析大语言模型(LLM)训练中的强化学习方法，包括PPO、GRPO、DPO等模型原理，结合预训练、监督微调(SFT)及人类反馈强化学习(RLHF)阶段，探讨Policy Model、Reward Model优化，优势函数与KL散度限制，助于理解LLM推理能力的技术实现与实践操作。"
+    ]
+  ],
+  "./_posts/2025-04-22-OpenRLHF-1.md": [
+    [
+      "old_description",
+      "介绍OpenRLHF模型框架设计，actor.py加载并处理模型，generate输出内容、forward算对数概率；model.py里reward model评文本质量、critic model算动作值；loss.py含PPO的PolicyLoss与ValueLoss，清晰呈现各模型功能及相关技术要点"
+    ],
+    [
+      "new_description",
+      "本文解读强化学习框架OpenRLHF的模型处理，涵盖Actor model生成Response、Critic model输出动作token评分（action_values）、Reward model返回整句评分，涉及PPO/DPO中的PolicyLoss和ValueLoss等模块，解析其源码中的模型设计范式。"
+    ]
+  ],
+  "./_posts/2025-02-21-Kimi-DS-Paper.md": [
+    [
+      "old_description",
+      "DeepSeek与Kimi最新论文围绕长上下文压缩，长上下文带来平方级运算存储影响。涉及稀疏注意力，MOBA通过分块、筛选子集计算，DeepSeek用动态层次稀疏结合token压缩与选择，还提及Token Dropping等长上下文问题解决大类。"
+    ],
+    [
+      "new_description",
+      "长上下文带来的平方级运算/存储复杂度是大模型推理优化的重要问题，DeepSeek的NSA与Kimi的MOBA等论文聚焦稀疏注意力（Sparse Attention）解决方案，包括分块压缩、筛选Token、Router机制选top-k块及滑动窗口等策略，通过减少关联性计算实现高效处理，是长上下文压缩的关键研究方向。"
+    ]
+  ],
+  "./_posts/2024-01-04-shapvalue.md": [
+    [
+      "old_description",
+      "机器学习可解释性关乎理解模型决策为何，解释器需具可解释性等特征，Shapley值、LIME、Kernel SHAP等是揭开黑盒的工具，用于分析特征对预测的贡献，助力理解问题、数据及模型可能失效原因"
+    ],
+    [
+      "new_description",
+      "机器学习模型仅靠预测性能不足以满足需求，可解释性帮助理解决策原因及模型失败风险。其关键特征包括可解释模型与特征、局部保真度及与复杂模型无关，主要通过Shapley Value、SHAP、LIME等方法实现，助力揭开黑盒模型决策机制。"
+    ]
+  ],
+  "./_posts/2025-02-12-finetuning.md": [
+    [
+      "old_description",
+      "大语言模型微调包括全面与部分微调，涉及Prompt-tuning的硬软提示，还有参数高效微调（PEFT）中的LoRA、QLoRA、Adapter等技术，通过不同方式优化模型适应下游任务，减少参数与计算资源消耗"
+    ],
+    [
+      "new_description",
+      "大语言模型微调分为全面微调和部分参数微调，部分参数微调包括Prompt-tuning（如Prefix-Tuning、P-Tuning）与参数高效微调（PEFT），PEFT含LoRA、QLoRA、Adapter等技术，通过优化少量参数减少计算资源，提升模型对下游任务的适应性。"
+    ]
+  ],
+  "./_posts/2025-01-01-mixed-precision.md": [
+    [
+      "old_description",
+      "介绍单精度、半精度训练，混合精度结合FP32与FP16/BF16优势，解决单精度显存高、半精度精度问题，提及Apex混合精度参数，含测试集与训练集准确率等变化及显存优化相关情况"
+    ],
+    [
+      "new_description",
+      "单精度训练使用32位浮点数（FP32），精度高但显存占用大、速度慢；半精度（FP16/BF16）显存低、速度快但稳定性不足。混合精度训练结合二者优点，通过FP32主权重、损失缩放（LOSS SCALING）等技术平衡性能与稳定，Apex框架实现可有效减少显存占用并加速训练。"
+    ]
+  ],
+  "./_posts/2024-01-01-GoogleNet.md": [
+    [
+      "old_description",
+      "展示googlenet相关内容，通过嵌入的googlenet.html页面呈现，聚焦于googlenet技术相关展示，简洁涵盖核心相关信息"
+    ],
+    [
+      "new_description",
+      "本文介绍GoogLeNet深度学习模型的核心技术与架构特点，涵盖Inception模块设计、多尺度特征提取及网络深度优化等关键内容，分析其在图像分类任务中的性能优势与实现原理。"
+    ]
+  ],
+  "./_posts/2025-06-05-WarmUP-Torch.md": [
+    [
+      "old_description",
+      "讲解pytorch中优化器相关内容，包括torch.optim基础类、AdamW使用，以及torch.optim.lr_scheduler的学习率优化方法，涉及基于步数、指标、epoch的调度方式，可参考相关链接深入了解。"
+    ],
+    [
+      "new_description",
+      "PyTorch中warm-up策略使用指南，涵盖优化器基础类（如AdamW）参数设置，重点讲解学习率调度器lr_scheduler的各类方法，包括基于步数（CyclicLR、OneCycleLR）、指标（ReduceLROnPlateau）及epoch（CosineAnnealingLR）的学习率调整方式与使用套路。"
+    ]
+  ],
+  "./_posts/2025-02-19-DocAI-HR.md": [
+    [
+      "old_description",
+      "DocKylin可去除冗余像素处理高分辨率图像，用聚类算法降维token；AdaptVision动态处理图像分辨率，区别固定方式；DC²分三步处理高分辨率图，含切割合并、生成描述提取实体并合并相关内容"
+    ],
+    [
+      "new_description",
+      "高分辨率图像处理方法包括DocKylin冗余内容处理（去除冗余像素、聚类算法降token维度并聚合）、AdaptVision动态分辨率（固定patch尺寸，按横纵比范围调整切割）及DC²（文本融合补偿信息损失，经Divide-Conquer-Combine三步，含分层聚合与LLM抽取实体）。"
+    ]
+  ],
+  "./_posts/2025-04-28-QwenVL.md": [
+    [
+      "old_description",
+      "Qwen-vl系列包含Qwen2-vl与Qwen2.5-vl，Qwen2-vl用动态分辨率、多模态旋转位置编码；Qwen2.5-vl改进视觉编码器（window-attention+full-attention、2D-RoPE）与MLP处理，涉及图像文本等数据预训练、监督微调等，含数据过滤等训练优化"
+    ],
+    [
+      "new_description",
+      "本文介绍Qwen-vl系列模型，包括Qwen2-vl与Qwen2.5-vl的核心改进。Qwen2-vl采用动态分辨率、2x2视觉token拼接及多模态旋转位置编码（M-RoPE）；Qwen2.5-vl优化视觉编码器（改进ViT、window-attention+full-attention、2D-RoPE）与MLP处理，并通过预训练数据（图文、视频等）、监督微调（SFT）及直接偏好优化（DPO）提升性能，引入动态FPS与绝对时间编码优化位置编码。"
+    ]
+  ],
+  "./_posts/2025-02-24-deepspeed.md": [
+    [
+      "old_description",
+      "DeepSpeed是微软开发的深度学习优化库，专为大规模模型训练推理设计，通过ZeRO技术优化显存，含ZeRO-DP切分模型状态、ZeRO-R优化激活值等，还涉及安装、使用及参数设置，助力高效利用硬件资源进行高性能训练与推理。"
+    ],
+    [
+      "new_description",
+      "DeepSpeed是微软开发的深度学习优化库，专为大规模模型（如GPT、BERT）高性能训练与推理设计。通过ZeRO技术切分模型状态（优化器、梯度、参数）及优化激活值、临时缓冲区、显存碎片等，有效减少显存占用，提升硬件资源利用率，支持高效训练与推理。"
+    ]
+  ],
+  "./_posts/2025-05-11-VAE.md": [
+    [
+      "old_description",
+      "本文介绍变分自编码器（VAE）基本原理与代码实战，VAE结合概率模型，通过编码器将输入映射为概率分布用于生成。还提及VQ - VAE，其用离散码本解决VAE生成模糊问题，涵盖模型框架、损失函数构建及代码操作等内容，涉及MNIST等数据集生成效果相关情况"
+    ],
+    [
+      "new_description",
+      "本文介绍VAE（变分自编码器）基本原理、数学框架及损失函数构建，对比AE（自编码器），VAE通过潜在空间概率分布实现数据生成；还讲解VQ-VAE原理，以离散码本优化生成质量，附代码实战及MNIST、CIFAR10数据集效果展示。"
+    ]
+  ],
+  "./_posts/2025-04-19-MultiVisEncoding.md": [
+    [
+      "old_description",
+      "本文介绍多模态中多视觉编码器特征融合，含纵向、横向等拼接操作，涉及LEO、EAGLE等模型对视觉编码器组合及特征融合策略研究，还包括LLaVA-HR的混合分辨率处理、Mini-Gemini的高/低分辨率输入及注意力融合等多视觉内容处理相关情况"
+    ],
+    [
+      "new_description",
+      "本文介绍多模态中多视觉编码器的特征融合方法，包括同图像多编码器的纵向、横向、融合及注意力拼接，以及高/低分辨率图像融合策略，如LEO的Sequence Concatenation、EAGLE的Channel Concat、LLaVA-HR的混合分辨率操作和Mini-Gemini的注意力融合，提升模型信息捕捉能力。"
+    ]
+  ],
+  "./_posts/2025-02-27-LLM-OUT.md": [
+    [
+      "old_description",
+      "本文介绍LLM生成策略，包括区别于Greedy search的Beam search（选束宽结合多步输出）、影响概率分布多样性的温度调节，还有Lookahead Search（前瞻评估平衡生成连贯与多样）等相关内容"
+    ],
+    [
+      "new_description",
+      "本文介绍LLM生成策略，包括Beam search（通过束宽选择候选输出）、Greedy search（选最优输出）、温度调节（影响概率分布及输出多样性与确定性）和Lookahead Search（前瞻评估多步结果以平衡连贯性与多样性），解决直接取最大概率在文本生成中的合理性问题。"
+    ]
+  ],
+  "./_posts/2025-01-06-TextEmbedding.md": [
+    [
+      "old_description",
+      "介绍Word Embedding，提及one-hot编码存语义缺陷，涵盖Word2vec的CBOW、Skip-Gram模型，GloVe基于统计的共现矩阵，动态词向量如ELMo，还有tokenizer、embedding等文本处理相关技术要点"
+    ],
+    [
+      "new_description",
+      "Word Embedding将文本转为计算机可理解的数字表示，解决one-hot编码丧失语义信息的问题。静态词向量预训练模型包括Word2vec（CBOW适用于小型数据库，Skip-gram适合大型语料）和基于共现矩阵的GloVe；动态词向量可解决一词多义，通过数据集微调优化。LLM处理文本时，先经tokenizer分词为数字ID，再通过embedding编码至所需维度。"
+    ]
+  ],
+  "./_posts/2025-03-4-Muon.md": [
+    [
+      "old_description",
+      "目前主流应用AdamW优化器，新优化器Muon比AdamW效果优异，Muon通过获取SGD - momentum生成的更新并经Newton - Schulz迭代优化参数，还增加了Weight Decay与RMS控制，且有参数适用要求，如不用于embedding等层，可测试其在相关模型上效果"
+    ],
+    [
+      "new_description",
+      "Muon是一种新的自适应学习率优化器，相比主流AdamW，通过仅存储动量减少显存占用，需注意不对embedding层及最后全连接层使用，4D卷积滤波器建议展平后三维。Kimi论文中通过增加Weight Decay和RMS控制改进为Moonlight，在Transformer模型上效果优异，适用于低秩矩阵参数优化。"
+    ]
+  ],
+  "./_posts/2025-02-15-LLM.md": [
+    [
+      "old_description",
+      "汇总各类LLM模型技术，包括GPT系列的无监督预训练与监督微调、DeepSeek的混合专家及思维链技术、LLama的结构改进、BERT的Masked LM和Next Sentence Prediction预训练任务，涉及位置编码、归一化、分布式训练等技术细节"
+    ],
+    [
+      "new_description",
+      "本文汇总GPT、DeepSeek、LLama、BERT等主流LLM模型技术，涵盖无监督预训练、监督微调、混合专家模型、KV-cache优化、思维链（CoT）、GRPO策略、RMSNorm、SwiGLU、RoP、GQA及Masked LM等核心技术细节。"
+    ]
+  ],
+  "./_posts/2025-01-27-MoE-KV-cache.md": [
+    [
+      "old_description",
+      "介绍混合专家模型（MoE），其由稀疏MoE层和门控网络构成，通过路由确定令牌到专家；同时讲解KV cache，利用缓存KV优化自回归计算，结合代码分析MoE的门控原理、FFN层及负载均衡损失，还有KV cache的缓存优化等相关技术要点"
+    ],
+    [
+      "new_description",
+      "混合专家模型（MoE）通过稀疏MoE层替代Transformer的FFN层，由门控网络路由令牌至不同专家处理，结合负载均衡损失解决负载不均衡问题；KV cache在Transformer推理中缓存历史K和V值，减少重复计算，是用内存换速度的优化方法，本文结合代码解释其原理与应用。"
+    ]
+  ],
+  "./_posts/2024-01-05-Ensemble Learning.md": [
+    [
+      "old_description",
+      "传统机器学习算法易过拟合，集成学习通过组合弱学习机改善。Bagging如Random Forest用bootstrap采样建树，Boosting通过调整权重迭代，GBDT按序拟合负梯度，XGBoost是端到端树提升方法，涉及多种决策树及相关算法关键技术"
+    ],
+    [
+      "new_description",
+      "集成学习通过组合弱学习机提升预测效果，改善统计、计算及表示性能，解决传统机器学习过拟合问题。对比Bagging（如Random Forest，基于决策树，通过随机采样构建，涉及香农熵、Gini不纯度、信息增益比分裂）与Boosting（如GBDT、XGBoost，调整样本权重，拟合负梯度/残差），是高效的机器学习集成方法。"
+    ]
+  ],
+  "./_posts/2025-04-24-OpenRLHF-2.md": [
+    [
+      "old_description",
+      "介绍OpenRLHF中PPO训练范式，涉及DeepSpeed与vLLM配置，包括vLLM资源调度、构建，以及experience_maker、ppo_actor、launcher等模块相关内容，聚焦训练前初始化及相关技术应用"
+    ],
+    [
+      "new_description",
+      "本文解读强化学习框架OpenRLHF的源码与模型训练，聚焦PPO范式训练前的初始化配置，包括DeepSpeed与vLLM配置，以及ray分布式架构的应用，涉及experience_maker、ppo_actor等模块的核心实现。"
+    ]
+  ],
+  "./_posts/2025-03-10-Data-Distillation.md": [
+    [
+      "old_description",
+      "数据蒸馏是提取大量数据关键信息生成小规模合成数据集的技术，涉及Performance Matching、Parameter Matching等方法，CVPR - 2025上海交大论文《Dataset Distillation with Neural Characteristic Function: A Minmax Perspective》探讨数据蒸馏相关优化与分布等问题，聚焦从数据中提取关键特征与分布的优化过程"
+    ],
+    [
+      "new_description",
+      "本文介绍数据蒸馏技术，其通过从大量数据中提取关键特征与分布信息，生成小规模高质量合成数据集，以替代原始数据提升训练效率、降低成本。涵盖Performance Matching、Parameter Matching（单步/多步）及分布式匹配等优化思路，并重点解析CVPR-2025上海交大满分论文对分布式匹配中分布差异获取问题的研究。"
+    ]
+  ],
+  "./_posts/2025-03-22-PythonThreading.md": [
+    [
+      "old_description",
+      "本文介绍Python中多进程、多线程、装饰器相关内容，包括多进程（独立内存空间，用于CPU密集型）、多线程（共享内存，适I/O密集型，受GIL限制）、装饰器（不修改原函数加功能），还涉及实际任务中使用的情况及注意事项，如多进程IPC开销、多线程线程安全等。"
+    ],
+    [
+      "new_description",
+      "本文解析Python多进程、多线程、装饰器的基本概念、适用场景与使用方法，涵盖GIL影响、CPU/I/O密集型任务选择、线程安全及pickle序列化等技术要点，助于高效应用并发编程。"
+    ]
+  ],
+  "./_posts/2024-01-03-lime.md": [
+    [
+      "old_description",
+      "机器学习可解释性涉及信任预测与模型的权衡，需解释黑盒模型。LIME是局部可解释、与模型无关的方法，通过局部代理模型解释，具通用性但速度慢，可应用于多场景，介绍其原理、步骤、特点及优缺点，助力理解模型预测缘由"
+    ],
+    [
+      "new_description",
+      "机器学习模型仅靠准确率不足，可解释性对理解决策原因至关重要。LIME作为模型无关的局部可解释方法，通过生成扰动样本、训练局部代理模型实现解释，适用于分类、图像识别等场景，虽通用性强但存在速度慢、稳定性不足问题。"
+    ]
+  ],
+  "./_posts/2025-01-03-DistributeTraining.md": [
+    [
+      "old_description",
+      "介绍Pytorch分布式训练，包括数据并行（如DDP的流程、与DP对比）、模型并行（模型部分放不同设备）、流水线并行（拆分模型与微批次提升效率）、张量并行（张量按行列切分并行），涉及相关原理与简易代码相关内容，助力理解Pytorch分布式训练多种并行策略及实现。"
+    ],
+    [
+      "new_description",
+      "本文介绍PyTorch分布式训练的核心并行策略，包括模型并行、数据并行（DDP）、流水线并行及张量并行的原理，解析DDP流程与实现方法，并提供简易Demo代码，助于理解分布式训练机制与优化。"
+    ]
+  ],
+  "./_posts/2025-05-19-DiffusionModel.md": [
+    [
+      "old_description",
+      "介绍扩散模型原理，涵盖前向加噪与反向去噪过程，涉及条件扩散模型、潜在扩散模型，提及DDPM、DDIM等，训练通过预测噪声优化模型，强调生成需大量迭代完善细节，包含相关模型结构与训练要点"
+    ],
+    [
+      "new_description",
+      "扩散模型通过前向加噪与反向去噪过程实现图像生成，核心为噪声调度控制加噪权重，反向过程用神经网络近似分布。介绍条件扩散模型（文本等条件指导生成）、潜在扩散模型（低维潜在空间建模）及DDPM、DDIM等变体，涉及Unet、Dit等模型结构，训练目标为预测噪声以优化去噪生成效果。"
+    ]
+  ],
+  "./_posts/2025-02-28-MultiModal.md": [
+    [
+      "old_description",
+      "聚焦视觉多模态模型模态对齐，对比学习范式的CLIP通过计算图文相似度实现跨模态对齐，BLIP - 2利用ITC、ITG、ITM等模块处理视觉与文本信息，达成不同模态间的对齐操作，涉及跨模态相似度学习与多模块交互等关键内容"
+    ],
+    [
+      "new_description",
+      "视觉多模态模型的核心挑战是不同模态信息的结合，本文介绍模态对齐方法。对比学习范式如CLIP通过计算图文相似度，将图像与文本映射到共享语义空间，具备零样本学习能力；BLIP-2则通过Learned-Queries模块，结合ITC（图像-文本对比学习）、ITG（图像引导文本生成）、ITM（图像-文本匹配）实现模态对齐，优化特征对齐与细粒度匹配。"
+    ]
+  ],
+  "./_posts/2025-01-01-evaluation-lossfunction.md": [
+    [
+      "old_description",
+      "涵盖准确率、精确率、召回率等评价指标，介绍BLEU的N - gram匹配原理，阐述交叉熵、均方误差、Focal Loss等损失函数的公式及应用，如交叉熵用于分类，均方误差用于回归，Focal Loss处理样本失衡等，助力理解机器学习相关评价与损失计算。"
+    ],
+    [
+      "new_description",
+      "本文介绍模型评估常用评价指标与损失函数，涵盖准确率、精确率、召回率、F1分数及译文评估指标BLEU，详解交叉熵损失、均方误差、Focal Loss（处理样本失衡）、L1 loss和Huber Loss的原理与应用，助力模型性能分析与优化。"
+    ]
+  ],
+  "./_posts/2024-01-01-LeNet.md": [
+    [
+      "old_description",
+      "展示LeNet相关代码的页面，呈现LeNet架构相关代码内容，可查看LeNet代码实现情况"
+    ],
+    [
+      "new_description",
+      "LeNet是经典卷积神经网络（CNN）模型，由Yann LeCun提出，主要用于手写数字识别等图像分类任务，其包含卷积层、池化层和全连接层结构，为现代深度学习图像识别技术的发展奠定重要基础。"
+    ]
+  ],
+  "./_posts/2025-02-03-pos-embedding.md": [
+    [
+      "old_description",
+      "位置编码用于标记序列位置助模型理解依赖，含绝对、相对等类型及特点；tokenizer是将文本切割用数字代表，有word、character、subword等分词方式，各LLM使用不同分词器，如GPT-3用BPE等"
+    ],
+    [
+      "new_description",
+      "位置编码用于标记序列中token位置，帮助模型捕捉长距离依赖与局部顺序，包括绝对、相对、RoPE等类型，适用于不同序列长度任务。Tokenizer通过切割文本为数字表示，常见subword方法如BPE、WordPiece、SentencePiece，主流LLM如GPT、BERT等采用相应分词器提升处理效率。"
+    ]
+  ],
+  "./_posts/2025-06-26-ImageEraser2.md": [
+    [
+      "old_description",
+      "图像擦除模型相关内容，含SmartEraser、Erase Diffusion（涉及合成数据集构建步骤：实体过滤、背景筛选与组合）、OmniEraser（通过视频获取数据集并微调FLUX.1-dev），展示各模型结构测试效果，围绕图像擦除数据集构建与模型优化展开"
+    ],
+    [
+      "new_description",
+      "图像擦除是图像生成模型重要应用，本文介绍CVPR-2025相关的SmartEraser、Erase Diffusion、OmniEraser模型，涵盖数据集构建（实体过滤、混合高斯算法MOG）、关键技术（语义分割SAM、CLIP、IoU、alpha blending、GroundDINO+SAM2）及模型优化（输入改进、mask处理、微调FLUX.1-dev）等内容。"
+    ]
+  ],
+  "./_posts/2025-05-18-Clip-sam.md": [
+    [
+      "old_description",
+      "介绍多模态中常用的backbone，包括SAM的v1与v2，SAM v1结构简单，涉及图像等编码器等，v2是视频领域泛化含Memory Attention；Clip通过对比学习与嵌入空间对齐，有预训练及使用流程，涵盖核心技术要点"
+    ],
+    [
+      "new_description",
+      "多模态常用backbone介绍：SAM和CLIP。SAM含v1（Image Encoder、Prompt Encoder处理文本/点/框/掩码，Mask decoder输出多掩码及置信分数）和v2（视频泛化，Memory Attention通过记忆库存储帧与提示信息）；CLIP核心为对比学习与嵌入空间对齐，实现图像文本特征映射与对齐。"
+    ]
+  ],
+  "./_posts/2025-02-23-dl-norm.md": [
+    [
+      "old_description",
+      "神经网络训练稳定性机制涉及归一化（如BatchNorm、LayerNorm等加速收敛、稳输入分布）、Dropout（随机屏蔽神经元防过拟合）、梯度裁剪（防梯度爆炸，分范数与值裁剪），各技术针对不同场景保障训练稳定高效，助力模型良好性能。"
+    ],
+    [
+      "new_description",
+      "神经网络训练中常用归一化（BatchNorm/LayerNorm/GroupNorm）、Dropout正则化和梯度裁剪三种稳定性机制。归一化加速收敛并缓解梯度消失，Dropout随机屏蔽神经元防止过拟合以提升泛化能力，梯度裁剪控制梯度范数避免爆炸，尤其适用于长序列和深层网络。"
+    ]
+  ],
+  "./_posts/2024-01-02-BayesianOptimization.md": [
+    [
+      "old_description",
+      "本文介绍贝叶斯优化，通过代理模型（如高斯过程）与采集函数（如PI、EI等）实现黑盒优化，用于解决机器学习等领域超参数优化问题，结合代码复现，可通过有限步骤进行全局优化，涉及常用代理函数与采集函数相关内容"
+    ],
+    [
+      "new_description",
+      "本文全面介绍贝叶斯优化，一种通过有限步骤实现全局优化的方法，适用于机器学习超参数优化等黑盒优化问题。核心包括代理模型（如高斯过程、TPE）和采集函数（如EI、LCB、GP-UCB），可高效寻找目标函数最优解。"
+    ]
+  ],
+  "./_posts/2025-06-17-CM.md": [
+    [
+      "old_description",
+      "一致性模型是扩散模型的加速方式，将随机生成过程变为确定过程，LCM/LCM-Lora基于其改进，含跳步、改进ODE solver等，代码中涉及时间步处理、加噪模型处理及CFG计算，实现少步高效生成图像，介绍其原理与代码实践相关内容"
+    ],
+    [
+      "new_description",
+      "一致性模型（consistency model）是扩散模型（Diffusion Models）的图像生成加速方法，通过将随机过程转化为常微分方程（ODE），引入Consistency Regularization实现一步或少数几步生成。LCM/LCM-Lora进一步通过Skipping-Step和Classifier-free guidance（CFG）优化，代码可参考diffusers库实践。"
+    ]
+  ],
+  "./_posts/2025-04-30-ConvNeXt.md": [
+    [
+      "old_description",
+      "介绍ConvNeXt模型，其v1通过修改堆叠数量、卷积核、采用反瓶颈结构等改进，v2结合Masked Autoencoder（MAE）与Global Response Normalization（GRN），展现卷积借鉴Transformer技巧提升性能，证明卷积可借相关操作取得良好效果。"
+    ],
+    [
+      "new_description",
+      "ConvNeXt是Meta提出的卷积神经网络Backbone，v1借鉴ViT设计改进ResNet，含宏观结构调整（堆叠数量、4x4卷积核、通道数）、倒瓶颈、7x7大卷积核及微观优化（GELU激活、LN归一化、拆分采样层）；v2引入Masked Autoencoder（MAE）和Global Response Normalization（GRN）解决特征冗余，证明卷积网络用ViT的trick可媲美Transformer性能。"
+    ]
+  ],
+  "./_posts/2025-02-17-Attention.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "本文详细介绍常用Attention操作及KV-cache内存优化方法。涵盖多头注意力（Multi Head Attention）的QKV计算原理、softmax归一化作用，因果注意力（Casual Attention）的屏蔽机制，滑动窗口注意力（Sliding Window Attention）的局部交互逻辑；同时讲解KV-cache优化技术，包括Flash Attention的分块计算（利用HBM与SRAM提升效率）、Multi-head Latent Attention（MLA）的低维压缩存储，以及Page Attention的内存分页管理（解决预留浪费与碎片化问题），有效降低显存占用并提升模型性能。"
+    ]
+  ],
+  "./_posts/2025-06-11-ImageEraser1.md": [
+    [
+      "old_description",
+      "介绍PixelHacker、PowerPanint等图像擦除论文模型，PixelHacker输入分三部分经处理，PowerPanint结构类似DF模型有多种改进，涉及图像擦除中易现的替换、模糊等问题，涵盖各模型核心技术与测试相关情况"
+    ],
+    [
+      "new_description",
+      "本文介绍PixelHacker、PowerPanint、CATdiffusion、Attentive Eraser等图像擦除论文模型，基于Stable Diffusion等框架，通过修改Condition、mask处理等方式优化，并实际测试各模型表现，分析分辨率、细节处理及图像替换、模糊等效果与问题。"
+    ]
+  ],
+  "./_posts/2025-04-27-OpenRLHF-3.md": [
+    [
+      "old_description",
+      "介绍OpenRLHF强化学习框架的模型训练，涉及train.sh脚本及其中模型脚本openrlhf.cli.train_ppo_ray等参数，回顾train_ppo_ray.py代码相关内容，包含与Ray、vLLM结合等训练相关关键信息，聚焦模型训练核心要点"
+    ],
+    [
+      "new_description",
+      "本文主要介绍强化学习框架OpenRLHF的源码解读与模型训练，涉及train.sh脚本、train_ppo_ray.py代码，解析Ray与vLLM的结合应用及相关训练参数，包含代码测试与总结。"
+    ]
+  ],
+  "./_posts/2025-04-21-DistributeTraining-2.md": [
+    [
+      "old_description",
+      "补充并行训练方式，详述张量并行的列并行（权重矩阵按列分割，反向传播用all-reduce）、行并行（权重矩阵按行分割，反向传播用all-gather），还涉及专家并行，最后对各类并行训练方式进行总结"
+    ],
+    [
+      "new_description",
+      "本文补充并行训练方式并总结，详细介绍张量并行（解决参数矩阵过大拆分至设备，含行并行、列并行及forward/backward操作，涉及all-reduce、all-gather通信），还涵盖专家并行等，完善并行训练知识体系。"
+    ]
+  ],
+  "./_posts/2025-01-18-CV-Backbone.md": [
+    [
+      "old_description",
+      "介绍CV中常用Backbone，包括基于卷积的Resnet系列、Unet系列，基于Transformer的Vit、MAE及Swin Transformer，还有多模态的SAM、Clip等，涉及各Backbone结构原理、操作流程及相关改进要点"
+    ],
+    [
+      "new_description",
+      "本文介绍CV常用Backbone原理，涵盖基于卷积神经网络的ResNet（残差连接解决梯度消失/退化）、Unet系列，基于Transformer的ViT（Patch嵌入）、MAE（掩码重建）、Swin Transformer（窗口注意力），以及多模态SAM/CLIP等模型，解析核心技术与应用场景。"
+    ]
+  ],
+  "./_posts/2024-01-01-alexnet.md": [
+    [
+      "old_description",
+      "由于提供的文章内容仅包含一个iframe嵌入代码，无实际可用于生成摘要的核心文本信息，无法按照要求生成符合规范的100到200个字符的纯文本摘要，请补充具体的文章核心内容以便生成。"
+    ],
+    [
+      "new_description",
+      "AlexNet是深度学习领域经典的卷积神经网络模型，主要用于图像分类任务，曾在ImageNet竞赛中取得突破性成果，对卷积神经网络的发展和实际应用具有重要推动作用。"
+    ]
+  ],
+  "./_posts/2025-06-25-accelerate-diffusers.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "本文介绍生成模型开发常用Python库，重点讲解Diffusers和Accelerate的基本使用。Accelerate支持分布式训练、混合精度训练、梯度累计等加速方法，简化多显卡训练流程；Diffusers包含Scheduler（加噪处理、逐步解噪）、Stable Diffusion Pipeline等，辅助实现生成模型的训练与推理，为算法工程师提供高效工具支持。"
+    ]
+  ],
+  "./_posts/2025-07-06-life-1.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "请提供具体的Markdown文章内容，以便我根据内容生成符合要求的SEO描述摘要。"
+    ]
+  ],
+  "./_posts/2025-07-06-DFscheduler.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "文章介绍了扩散模型中SDE与ODE调度器的差异，对比DDPM（马尔科夫链多步生成）和DDIM（跳步处理提速）的实现，详解diffusers库中调度器的初始化、加噪及生成过程的噪声预测方式（epsilon、sample、v_prediction），分析DPMSolver、UniPCMultistepScheduler等调度器的生成效果，并探讨LCM模型的处理要点。"
+    ]
+  ],
+  "./_posts/2025-07-25-ImageEraser2.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "本文介绍图像擦除模型RORem与ObjectClear。RORem基于SDXL，通过视频帧变化物体构建数据集，人工筛选后训练判别器实现自动化，蒸馏LCM加速至0.5s；ObjectClear基于SDXL-Inpainting，分割小实体贴图构建数据集，引入attention-mask引导消除，提升擦除效果。"
+    ]
+  ],
+  "./_posts/2025-07-06-DFBaseModel.md": [
+    [
+      "old_description",
+      "本文介绍基座扩散模型，涵盖基于Unet的SD1.5、SDXL（CLIP编码器差异、1024x1024输出）及DiT框架的Hunyuan-DiT等，对比模型结构与技术细节，还包括Imagen多阶段生成及ControlNet、DreamBooth等适配器技术，助力图像生成与风格控制。"
+    ],
+    [
+      "new_description",
+      "本文介绍基座扩散模型，涵盖基于Unet的SD1.5、SDXL、Imagen及基于DiT框架的Hunyuan-DiT等。对比SD1.5与SDXL差异：SDXL采用双CLIP编码器（OpenCLIP-ViT/G+CLIP-ViT/L）提升文本理解，默认输出1024x1024图像；解析Imagen多阶段生成策略、DiT的patch分割与adaLN结构，以及ControlNet、DreamBooth等Adapter技术在图像生成控制中的应用。"
+    ]
+  ],
+  "./_posts/2025-07-01-torch_basic.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "PyTorch计算图是记录张量运算关系的动态图，支持反向传播计算叶子节点梯度，显存占用包括数据本身及中间激活，可用.detach()减少。数据形状改变方法有reshape、view、transpose、permute等，需注意是否拷贝数据；model.train()/eval()控制Dropout与BatchNorm模式，torch.no_grad()关闭autograd记录以省显存加速前向。"
+    ]
+  ],
+  "./_posts/2025-08-29-QwenVLCode.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "本文从代码角度解析QwenVL2.5模型处理流程，包括模板化输入（对话消息转prompt）、编码处理（smart_resize动态调整图像分辨率、Conv3d卷积提取视觉特征）、模型输入处理（window-attention计算），并详细介绍SFT（数据加载预处理、LoRA/QLoRA微调）及强化学习（DPO需ref_model计算偏好损失、GRPO单模型+奖励函数、PPO双模型迭代优化）的实现方法，涵盖KL散度、logprob计算等关键技术。"
+    ]
+  ],
+  "./_posts/2025-05-28-MultiModal.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "视觉多模态模型（如CLIP、ALBEF、BLIPv1/v2）核心挑战在于模态信息结合，通常采用Vit/Resnet等视觉编码器与文本编码器处理图像和文本，通过对比学习（如InfoNCE损失）实现跨模态对齐。CLIP侧重学习跨模态相似度表示，具备零样本能力；ALBEF和BLIP系列通过模态对齐（ITC）、图文匹配（ITM）等任务优化，BLIPv2更引入Q-Former将图像特征映射至LLM空间，结合冻结LLM提升生成与零样本性能，适用于图文检索、分类等多任务。"
+    ]
+  ],
+  "./_posts/2025-06-28-Objectdetection.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "本文介绍常用目标检测算法，包括R-CNN、Fast RCNN、Faster RCNN及Yolo等。R-CNN通过区域候选框生成器（如Selective Search）产生候选框，经CNN特征提取和非极大值抑制剔除重叠框；Fast RCNN采用ROI pooling实现单图一次CNN推理提升效率；Faster RCNN引入RPN网络，其分类分支判断目标/背景、回归分支预测偏移量，并通过RoI Align解决RoI pooling的数据舍入问题；Yolo直接切割图像避免卷积扫描，优化检测流程。"
+    ]
+  ],
+  "./_posts/2025-08-28-MultiModal2.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "多模态大语言模型通用框架通过视觉编码器（如ViT）、文本编码器及映射层对齐维度输入LLM。QwenVL系列（QwenVL、QwenVL2、QwenVL2.5）为典型实现，QwenVL采用ViT-bigG视觉编码器，经可学习query的Cross-Attention压缩视觉token至256长度，融合二维绝对位置编码；QwenVL2改进为动态分辨率（无需固定尺寸，2x2 token拼接+MLP）及多模态旋转位置编码（M-RoPE，含时序、高度、宽度信息），提升处理性能。"
+    ]
+  ],
+  "./writing/2025-10-11-Quantized-Deployment.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "模型量化是将高精度权重转为低比特的模型压缩技术，分后量化（PTQ）和量化感知训练（QAT）。GPTQ作为PTQ技术，适用于大型语言模型（LLM），可将权重压缩至3-4位，减少模型大小与内存占用，同时保持高推理准确性。其核心流程为量化-补偿迭代，通过计算Hessian矩阵（利用校准数据激活）、分块逐列量化及误差补偿，实现逐层Linear层量化处理。"
+    ]
+  ],
+  "./_posts/2025-10-11-Quantized.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "模型量化是将高精度权重压缩为低比特的模型压缩方法，分为后量化（PTQ）与量化感知训练（QAT），核心为数值精度校准与转化。GPTQ作为LLM后训练量化技术，通过量化-补偿迭代流程分块处理权重矩阵，保持高推理准确性；AWQ基于激活值分布挑选显著权重，调整scale减少量化误差实现低比特量化。两者有效减少模型大小、内存占用，提升推理速度。"
+    ]
+  ],
+  "./writing/2025-12-27-vllm-2.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "本文承接前文对vllm初始化显存分配过程的介绍，重点阐述基于vllm 0.11.0版本的调度器运行机制，深入解析其核心运行流程与关键技术细节。"
+    ]
+  ],
+  "./writing/2025-12-29-SDAcceralate.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "扩散模型生成加速策略涵盖加速框架、Cache策略与量化技术。加速框架包括flash_attn后端、torch.compile编译、torch.channels_last优化及xFormers（加速attention计算并降低显存）；Cache策略含DeepCache（UNet时间冗余缓存高层特征）、FORA（DiT架构Attn/MLP特征复用）、FBCache（L1误差判断缓存）及CacheDit（DiT前n层缓存与差异检测）；量化技术有PTQ/QAT，如Bitsandbytes（int8/int4量化），实现显存降低与生成加速。"
+    ]
+  ],
+  "./writing/2025-12-29-Flow-Matching.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "Flow Matching是一种高效的生成模型技术，通过学习连续时间流场将简单源分布（如高斯分布）转换为复杂目标数据分布。其核心原理是利用神经网络参数化流场，最小化流场与目标分布的匹配损失，实现数据生成。相比传统扩散模型，具有训练目标更简洁、无需噪声调度、采样速度快等优势，广泛应用于图像生成、概率建模等领域，为生成式AI提供了稳定高效的解决方案。"
+    ]
+  ],
+  "./_posts/2025-12-27-vllm-1.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "Page Attention是优化KV-cache内存管理的方法，可解决预留浪费、内部及外部内存碎片化问题，通过将KV-cache划分为固定大小Block，利用Block Table维护逻辑与物理映射，有效管理非连续内存；同时处理Softmax计算中的数值溢出与全局信息问题。vllm框架支持离线与在线调用，初始化过程包括模型加载、KV Cache显存预分配（计算可用内存、num_blocks及总token数）并加载到GPU，提升内存使用效率。"
+    ]
+  ]
+}
