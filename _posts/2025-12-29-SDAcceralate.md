@@ -10,8 +10,6 @@ tags:
 - 生成模型
 - diffusion model
 - 量化技术
-show: true
-stickie: true
 description: 扩散模型生成加速策略涵盖加速框架、Cache策略与量化技术。加速框架通过flash_attn、torch.compile、xFormers等优化attention计算与内存访问；Cache策略如DeepCache（UNet架构）、FORA（DiT架构）利用时间冗余缓存高层特征，FBCache和CacheDit动态复用特征减少重复计算；量化技术采用PTQ/QAT（如GPTQ、AWQ、Bitsandbytes）将权重量化为INT8/INT4降低显存。这些方法在保证生成质量的同时显著提升推理速度，适用于Stable Diffusion等扩散模型。
 ---
 ## 扩散模型生成加速策略
@@ -139,7 +137,7 @@ FORA的核心在于发现Dit在去噪过程中，**相邻时间步的Attn和MLP�
 > 补充一个小知识，一般量化看到比较多就是W4A4这个一般指的就是权重和激活的4bit量化，其中权重一般就是**对应该层的模型权重**，激活就是**对应该层的输入**
 
 #### Bitsandbytes 量化
-通过使用bitsandbytes量化来实现8-bit（int8）或者4-bit（int4、Qlora中一般就会使用）量化，不过区别上面提到的AWQ以及GPTQ量化，bitsandbytes属于量化感知训练，前者需要通过数据来保证量化精度（量化过程是离线、一次性过程），后者量化过程是即时的可逆的。其技术原理如下：$w≈s q$其中w表示原始的FP16权重，q代表int4/int8权重，s缩放因子，其量化过程为对每一个block权重计算：$\max(\text{abs}(w))$而后去计算scale：$s=\frac{amx(\| w\|)}{2^{b-1}-1}$而后代入公式就可以得到量化后权重，推理过程中进行：反量化 + 矩阵乘法融合在一个 CUDA kernel 中完成：$Y=X(sq)$。因此对于其使用也很简单，比如说在代码中：[cache_acceralate.py](code/Python/DFModelCode/DF_acceralate/cache_acceralate.py)
+通过使用bitsandbytes量化来实现8-bit（int8）或者4-bit（int4、Qlora中一般就会使用）量化，不过区别上面提到的AWQ以及GPTQ量化，bitsandbytes不需要对模型进行训练（AWQ、GPTQ可能需要输入数据然后计算误差进行量化），前者需要通过数据来保证量化精度（量化过程是离线、一次性过程），后者量化过程是即时的可逆的。其技术原理如下：$w≈s q$其中w表示原始的FP16权重，q代表int4/int8权重，s缩放因子，其量化过程为对每一个block权重计算：$\max(\text{abs}(w))$而后去计算scale：$s=\frac{amx(\| w\|)}{2^{b-1}-1}$而后代入公式就可以得到量化后权重，推理过程中进行：反量化 + 矩阵乘法融合在一个 CUDA kernel 中完成：$Y=X(sq)$。因此对于其使用也很简单，比如说在代码中：[cache_acceralate.py](code/Python/DFModelCode/DF_acceralate/cache_acceralate.py)
 ```python
 # 在ZImagePipeline中参数为：
 class ZImagePipeline(DiffusionPipeline, ZImageLoraLoaderMixin, FromSingleFileMixin):
@@ -185,9 +183,13 @@ $$
 
 第一项是16-bit低秩分解，第二项为4-bit残差分支。整个过程对应：
 ![](https://s2.loli.net/2026/01/15/ou7nqDyeBPlakV2.webp)
-
-#TODO: 1、ggufs
 #TODO: 2、可以了解一下SVDQuant量化代码
+#### GGUF
+> HF文档：[https://huggingface.co/docs/hub/en/gguf](https://huggingface.co/docs/hub/en/gguf)
+> [https://unsloth.ai/docs/basics/inference-and-deployment/saving-to-gguf](https://unsloth.ai/docs/basics/inference-and-deployment/saving-to-gguf)
+
+GGUF格式是用于存储大型模型预训练结果的，相较于Hugging Face和torch的bin文件，它采用了紧凑的二进制编码格式、优化的数据结构以及内存映射等技术，提供了更高效的数据存储和访问方式。GGUF 本身支持多种量化级别（Q2_K ~ Q8_0、IQ2 ~ IQ4 等），这些量化方式属于后训练量化（PTQ），和 AWQ、GPTQ、bitsandbytes 4bit 一样，都是在预训练模型上直接执行量化（不需要重新训练）。不过需要区别的是AWQ、GPTQ、SVDQuant都需要一小批数据而bitsandbytes以及GGUF不需要。
+#TODO: 1、ggufs
 #TODO: 量化侯模型如何进行后训练可以直接使用 flux1-dev-kontext_fp8_scaled.safetensors 进行介绍
 ## 总结
 本文主要是介绍一些在SD模型中加快生图的策略，1、直接使用加速框架进行优化，比如说指定attention计算后端方式、通过`torch.compile`进行编译、使用`torch.channels_last`去优化内存访问方式等；2、cache策略，发现在生成过程中在某些层/时间布之间图像的特征比较相似，因此就可以考虑将这些计算结果进行缓存在后续n步中直接加载缓存好的特征来实现生成加速，主要介绍框架是`cache-dit`；3、量化技术概述，
