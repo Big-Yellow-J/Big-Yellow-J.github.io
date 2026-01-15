@@ -228,12 +228,25 @@ def process_file(file_path_list,
         store_dir.mkdir(parents=True, exist_ok=True)
         return store_dir
     def open_file(path: str):
+        if not os.path.exists(path):
+            print(f"[WARN] 文件不存在: {path}")
+            return None
+        if os.path.getsize(path) == 0:
+            print(f"[WARN] 文件为空: {path}")
+            return "" if path.endswith(".md") else {}
+
         with open(path, 'r', encoding='utf-8') as f:
-            if path.endswith('md'):
+            if path.endswith(".md"):
                 return f.read()
-            elif path.endswith('json'):
-                return json.load(f)
-        
+
+            elif path.endswith(".json"):
+                try:
+                    return json.load(f)
+                except json.JSONDecodeError as e:
+                    print(f"[ERROR] JSON 解析失败: {path}")
+                    print(e)
+                    return {}
+            
     max_threads = max(1, os.cpu_count() * 2) if os.cpu_count() is not None else max_threads
     file_description_dict = defaultdict(list)
     description = open_file(description_path)

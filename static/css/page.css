@@ -1,6 +1,6 @@
 body {
-  /* font-family: "Helvetica Neue", Arial, "Noto Sans SC", "Noto Serif SC", "Microsoft YaHei", "WenQuanYi Micro Hei", SimSun, sans-serif; */
-  font-family:  "NSimSun", "Microsoft YaHei", sans-serif;
+  font-family: "Helvetica Neue", Arial, "Noto Sans SC", "Noto Serif SC", "Microsoft YaHei", "WenQuanYi Micro Hei", SimSun, sans-serif;
+  /* font-family:  "NSimSun", "Microsoft YaHei", sans-serif; */
   margin: 0 auto;
   padding: 0;
   max-width: 800px; /* 增大页面最大宽度 */

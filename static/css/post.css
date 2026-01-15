@@ -22,11 +22,11 @@ body {
 .page-post .title {
   font-size: 23px;
   font-weight: bold;
-  color: #666666;
+  color: #000000;
 }
 .page-post .subtitle {
   font-size: 12px;
-  color: #999999;
+  color: #000000;
 }
 .page-post .post > * {
   margin: 0px 0;
@@ -37,6 +37,7 @@ body {
 }
 .page-post .post p {
   font-family: "Noto Serif SC", "Georgia", serif;
+  color: #000000;
   margin: 18px 0; /* Add this rule for consistent paragraph spacing */
 }
 .page-post .post h1,
@@ -47,6 +48,7 @@ body {
   position: relative;
   font-weight: bold;
   cursor: pointer;
+  color: #000000;
 }
 .page-post .post h1::before,
 .page-post .post h2::before {
@@ -54,6 +56,7 @@ body {
   top: 0;
   font-weight: bold;
   padding-right: 6px;
+  color: #000000;
 }
 /* .page-post h3,
  */
@@ -64,6 +67,7 @@ body {
   position: relative;
   font-weight: bold;
   cursor: pointer;
+  color: #000000;
 }
 .page-post h4,
 .page-post h5,

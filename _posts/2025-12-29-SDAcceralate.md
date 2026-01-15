@@ -12,15 +12,14 @@ tags:
 - 量化技术
 show: true
 stickie: true
-description: 扩散模型生成加速策略涵盖加速框架、Cache策略与量化技术。加速框架包括flash_attn后端、torch.compile编译、torch.channels_last优化及xFormers（加速attention计算并降低显存）；Cache策略含DeepCache（UNet时间冗余缓存高层特征）、FORA（DiT架构Attn/MLP特征复用）、FBCache（L1误差判断缓存）及CacheDit（DiT前n层缓存与差异检测）；量化技术有PTQ/QAT，如Bitsandbytes（int8/int4量化），实现显存降低与生成加速。
+description: 扩散模型生成加速策略涵盖加速框架、Cache策略与量化技术。加速框架通过flash_attn、torch.compile、xFormers等优化attention计算与内存访问；Cache策略如DeepCache（UNet架构）、FORA（DiT架构）利用时间冗余缓存高层特征，FBCache和CacheDit动态复用特征减少重复计算；量化技术采用PTQ/QAT（如GPTQ、AWQ、Bitsandbytes）将权重量化为INT8/INT4降低显存。这些方法在保证生成质量的同时显著提升推理速度，适用于Stable Diffusion等扩散模型。
 ---
-
 ## 扩散模型生成加速策略
 Diffusion推理加速的方案，主要包括Cache、量化、分布式推理、采样器优化和蒸馏等。下面内容主要是去对Cache、计算加速框架以及量化技术进行介绍
 > SD模型加速方式：[https://github.com/xlite-dev/Awesome-DiT-Inference?tab=readme-ov-file#Quantization](https://github.com/xlite-dev/Awesome-DiT-Inference?tab=readme-ov-file#Quantization)
 
 不过值得注意的是对于下面内容，首先介绍加速框架（这部分内容主要是介绍进行加速的一些小trick，主要是直接通过api去加速）、cache以及量化一般就会涉及到一些算法的基本原理。所有的测试代码：
-### 一般加速框架
+### 一般加速框架以及显存优化措施
 这部分内容的话比较杂（直接总结[huggingface](https://huggingface.co/docs/diffusers/optimization/fp16#scaled-dot-product-attention)内容），1、**直接使用attn计算加速后端**，比如说一般就是直接使用比如说`flash_attn`进行attention计算加速，比如说：
 ```python
 pipeline.transformer.set_attention_backend("_flash_3_hub") # 启用flash attn计算加速
@@ -66,7 +65,41 @@ y = xops.memory_efficient_attention(
 值得着重了解的就是其中`attn_bias`参数，简单直观的理解：用于控制注意力可见性和结构的统一接口，**既可以表示 mask，也可以表示稀疏/局部/因果等高级注意力模式**，并且以高性能方式融入 attention 内核。比如说：
 1、`xops.LowerTriangularMask()`：常规的causal注意力也就是下三角mask
 2、`xops.LocalAttentionFromBottomRightMask`：局部注意力，每个token只能看最近的window_size个token
-### cache策略
+#### 2、显存优化
+> 这部分内容直接总结：[https://huggingface.co/docs/diffusers/en/optimization/memory?device-map=pipeline+level#reduce-memory-usage](https://huggingface.co/docs/diffusers/en/optimization/memory?device-map=pipeline+level#reduce-memory-usage)
+
+对于模型的显存过大可以考虑根据自身的设备进行分配，比如说将模型卸载到CPU或者将VAE等放到其它显卡上，在diffusers就提供了这些方法（这块内容直接问AI进行总结）：
+**1、CPU卸载**
+它启用了一种极致级别的逐层（leaf-level / sequential）CPU offloading机制，核心思路是：把模型的计算图中**最底层的参数（leaf modules，即最细粒度的子模块、层或权重块）默认放在 CPU 内存里存储**。在前向传播（forward pass）过程中，只在真正需要计算某个具体层的时候，才把那一小块参数临时从 CPU 拷贝（onload）到 GPU。计算完这层之后，立刻把这块参数再 offload 回 CPU，释放 GPU 显存。然后再加载下一层，以此类推，一层一层顺序执行（sequential）。
+![](https://s2.loli.net/2026/01/15/UWczbBg9x41OI7G.webp)
+**2、设备分配**
+这部分主要是将生成模型中不同模型结构如VAE、CLIP去分配到其它显卡上：
+```python
+import torch
+from diffusers import AutoModel, StableDiffusionXLPipeline
+pipeline = StableDiffusionXLPipeline.from_pretrained(
+    "stabilityai/stable-diffusion-xl-base-1.0",
+    torch_dtype=torch.float16,
+    device_map="balanced" # 使用balance就可以实现不同设备分配
+)
+print(pipeline.hf_device_map)
+{'unet': 1, 'vae': 1, 'safety_checker': 0, 'text_encoder': 0}
+```
+亦或者直接自己定分配：
+```python
+import torch
+from diffusers import AutoModel
+device_map = {
+    'pos_embed': 0, 'time_text_embed': 0, 'context_embedder': 0, 'x_embedder': 0, 'transformer_blocks': 0, 'single_transformer_blocks.0': 0, 'single_transformer_blocks.1': 0, 'single_transformer_blocks.2': 0, 'single_transformer_blocks.3': 0, 'single_transformer_blocks.4': 0, 'single_transformer_blocks.5': 0, 'single_transformer_blocks.6': 0, 'single_transformer_blocks.7': 0, 'single_transformer_blocks.8': 0, 'single_transformer_blocks.9': 0, 'single_transformer_blocks.10': 1, 'single_transformer_blocks.11': 1, 'single_transformer_blocks.12': 1, 'single_transformer_blocks.13': 1, 'single_transformer_blocks.14': 1, 'single_transformer_blocks.15': 1, 'single_transformer_blocks.16': 1, 'single_transformer_blocks.17': 1, 'single_transformer_blocks.18': 1, 'single_transformer_blocks.19': 1, 'single_transformer_blocks.20': 1, 'single_transformer_blocks.21': 'cpu', 'single_transformer_blocks.22': 'cpu', 'single_transformer_blocks.23': 'cpu', 'single_transformer_blocks.24': 'cpu', 'single_transformer_blocks.25': 'cpu', 'single_transformer_blocks.26': 'cpu', 'single_transformer_blocks.27': 'cpu', 'single_transformer_blocks.28': 'cpu', 'single_transformer_blocks.29': 'cpu', 'single_transformer_blocks.30': 'cpu', 'single_transformer_blocks.31': 'cpu', 'single_transformer_blocks.32': 'cpu', 'single_transformer_blocks.33': 'cpu', 'single_transformer_blocks.34': 'cpu', 'single_transformer_blocks.35': 'cpu', 'single_transformer_blocks.36': 'cpu', 'single_transformer_blocks.37': 'cpu', 'norm_out': 'cpu', 'proj_out': 'cpu'
+}
+transformer = AutoModel.from_pretrained(
+    "black-forest-labs/FLUX.1-dev", 
+    subfolder="transformer",
+    device_map=device_map,
+    torch_dtype=torch.bfloat16
+)
+```
+### cache策略概述
 cache指的是：**缓存通过存储和重用不同层（例如注意力层和前馈层）的中间输出来加速推理，而不是在每个推理步骤执行整个计算**。它以更多内存为代价显着提高了生成速度，并且不需要额外的训练。主要详细介绍两种：1、DeepCache；2、FORA。对于更加多的cache策略可以看[知乎](https://zhuanlan.zhihu.com/p/711223667)，**推荐直接使用**[CacheDit](#cachedit)来进行加速。
 #### DeepCache策略
 > Paper:[https://arxiv.org/pdf/2312.00858](https://arxiv.org/pdf/2312.00858)
@@ -84,7 +117,7 @@ cache指的是：**缓存通过存储和重用不同层（例如注意力层和�
 **主要是争对Dit架构**的Diffusion模型进行推理加速。利用 Diffusion Transformer 扩散过程的重复特性实现了可用于DiT的Training-free的Cache加速算法。
 ![](https://s2.loli.net/2026/01/14/S1UFewKTnOLhDV4.webp)
 FORA的核心在于发现Dit在去噪过程中，**相邻时间步的Attn和MLP层特征存在显著重复性**（如上图所示:在layer0、9、18、27这些层以及250步采样中，随后采样步约往后特征之间相似性也就越高。）。通过Caching特征，FORA 将这些重复计算的中间特征保存并在后续时间步直接复用，避免逐步重新计算。
-![](https://s2.loli.net/2026/01/13/dSp5Zy9zua3gjw4.png)
+![](https://s2.loli.net/2026/01/15/pmEKdAQchbPrnxH.webp)
 具体而言，模型以固定间隔 N 重新计算并缓存特征：当时间步 t 满足 t mod N=0 时，更新所有层的缓存；在后续 N-1 步中，直接检索cached的 Attn 和 MLP 特征，跳过重复计算。这种策略利用了 DiT 架构在邻近时间时间步的特征相似性，在不修改DiT模型结构的前提下实现加速。例如，在 250 步 DDIM 采样中，当 N=3 时，模型仅需在第 3、6、9... 步重新计算特征，其余步骤复用Cache，使计算量减少约 2/3。实验表明，FORA对后期去噪阶段的特征相似性利用更为高效，此时特征变化缓慢，缓存复用的性价比最高。
 #### FBCache
 > 项目地址：[https://github.com/chengzeyi/ParaAttention/blob/main/doc/fastest_flux.md](https://github.com/chengzeyi/ParaAttention/blob/main/doc/fastest_flux.md)
@@ -100,12 +133,11 @@ FORA的核心在于发现Dit在去噪过程中，**相邻时间步的Attn和MLP�
 因此对于CacheDit具体过程为：**在t-1步时候**，前n块block去计算他们的结果得到输出结果hidden state并且写入缓存中$C_{t-1}$，而后后几层进行完整结算。**在t步时候**，前n块block不完整计算，而是直接复用/近似 t-1 步的缓存$C_{t-1}$得到近似的结果，计算近似结果和缓存结果中差异（L1 范数），如果差异小于阈值直接复用缓存输入到后续的块中计算，反之就重新计算这n块结果。
 其中具体使用如下：[df_acceralate.ipynb](code/Python/DFModelCode/DF_acceralate/df_acceralate.ipynb)
 ### 量化技术概述
-#TODO: 1、ggufs
 [量化技术](https://www.big-yellow-j.top/posts/2025/10/11/Quantized.html)是一种模型压缩的常见方法，将模型权重从高精度（如FP16或FP32）量化为低比特位（如INT8、INT4）去实现**降低显存+生成加速**。
-> TODO: cpu卸载
-
 常见的量化策略可以分为PTQ和QAT两大类。量化感知训练（Quantization-Aware Training）：在**模型训练过程中进行量化**，一般效果会更好一些，但需要额外训练数据和大量计算资源。后量化（Post-Training Quantization, PTQ）：在**模型训练完成后，对模型进行量化**，无需重新训练。对于线性量化下，浮点数与定点数之间的转换公式如下：$Q=\frac{R}{S}+Z;R=(Q-Z)*S$，其中R 表示量化前的浮点数、Q 表示量化后的定点数、S（Scale）表示缩放因子的数值、Z（Zero）表示零点的数值。
 比如说在LLM中常用的两种**后量化技术**：1、**GPTQ量化技术**：通过量化——补偿——量化迭代方法，首先量化$W_{:,j}$，而后去计算误差并且补充到 $W_{:,j:(i+B)}$而后进行迭代实现所有参数的量化；2、**AWQ量化技术**：模型计算过程中只有关键参数起作用因此对于关键参数保持原来的精度(FP16)，对其他权重进行低比特量化，但是这样不同进度参数会导致硬件问题，因此在AWQ中**对所有权重均进行低比特量化，但是，在量化时，对于显著权重乘以较大的scale，相当于降低其量化误差；同时，对于非显著权重，乘以较小的scale，相当于给予更少的关注。**
+> 补充一个小知识，一般量化看到比较多就是W4A4这个一般指的就是权重和激活的4bit量化，其中权重一般就是**对应该层的模型权重**，激活就是**对应该层的输入**
+
 #### Bitsandbytes 量化
 通过使用bitsandbytes量化来实现8-bit（int8）或者4-bit（int4、Qlora中一般就会使用）量化，不过区别上面提到的AWQ以及GPTQ量化，bitsandbytes属于量化感知训练，前者需要通过数据来保证量化精度（量化过程是离线、一次性过程），后者量化过程是即时的可逆的。其技术原理如下：$w≈s q$其中w表示原始的FP16权重，q代表int4/int8权重，s缩放因子，其量化过程为对每一个block权重计算：$\max(\text{abs}(w))$而后去计算scale：$s=\frac{amx(\| w\|)}{2^{b-1}-1}$而后代入公式就可以得到量化后权重，推理过程中进行：反量化 + 矩阵乘法融合在一个 CUDA kernel 中完成：$Y=X(sq)$。因此对于其使用也很简单，比如说在代码中：[cache_acceralate.py](code/Python/DFModelCode/DF_acceralate/cache_acceralate.py)
 ```python
@@ -140,14 +172,28 @@ import bitsandbytes as bnb
 optimizer_class = bnb.optim.AdamW8bit
 ```
 #### SVDQuant量化
-> https://github.com/nunchaku-ai/nunchaku
+> [https://github.com/nunchaku-ai/nunchaku](https://github.com/nunchaku-ai/nunchaku)
 
+在扩散模型中，权重（Weights）和激活（Activations）往往包含大量异常值（极端大或小的值），这些值在低位量化（如4-bit INT4）时会引起严重误差，导致生成的图像失真或噪声增多。
+![](https://s2.loli.net/2026/01/15/IGADqfWUCstnc1k.webp)
+> a：权重和激活值中都存在异常值，b：将激活值的异常值移动到权重中，c：将权重进行分解低秩的$L_1L_2$以及残差
+
+因此对于SVDQuant过程描述如下，对于权重和激活值：$\mathbf{X}$ 以及 $\mathbf{X}$，在最初这两部分值都是存在大量异常值，因此首先通过平滑操作将激活$\mathbf{X}$中的异常值迁移到权重 $\mathbf{X}$中得到更新后权重 $\hat{\mathbf{W}}$，这部分数据表述为：$\hat{\mathbf{W}}=\mathbf{W}\odot S$其中S是平滑因子，用于转移异常（⊙表示逐元素乘法）。这部分操作主要是因为：**将异常值集中到权重侧，因为权重是静态的，更容易后续处理。激活侧的异常值减少后，量化难度降低**。而后，进行SVD分解与低秩吸收，对更新后权重进行奇异值分解：$  \hat{𝑾} = 𝑼 \Sigma 𝑽^T  $, 其中𝑼和𝑽是正交矩阵，$\Sigma$是奇异值对角矩阵。保留前k个最大奇异值（低秩r，通常r << min(m,n)，其中m,n是权重矩阵维度），形成低秩近似：$  𝑳_1 𝑳_2 = 𝑼[:,:r] \cdot \Sigma[:r,:r] \cdot 𝑽^T[:r,:]  $。然后，计算残差：$  𝑹 = \hat{𝑾} - 𝑳_1 𝑳_2$，其中只对残差$𝑹$进行量化（$Q(𝑹)=\text{round}(\frac{𝑹}{S_𝑹})S_𝑹$，其中$S_𝑹$为缩放因子）处理。低秩分支$  𝑳_1 𝑳_2  $使用高精度（16-bit float）运行，专门“吸收”异常值和主要信息，而残差𝑹中的异常值和幅度显著减少，只需量化到4-bit。量化误差界限分析（从论文中）：量化误差上界可通过F范数和奇异值控制，证明低秩吸收后残差的量化难度降低（误差 ≤ $  \frac{\sqrt{\log(\text{size}(𝑹)\pi)}}{q_{\max}} \mathbb{E}[\|𝑹\|_F]  $，其中q_max是量化最大值），**最后的整体近似计算**：
+
+$$\hat{\mathbf{X}}\hat{\mathbf{W}}=\hat{\mathbf{X}}(R+L_1L_2)≈\hat{\mathbf{X}}(L_1L_2)+Q(\hat{\mathbf{X}})Q(R)
+$$
+
+第一项是16-bit低秩分解，第二项为4-bit残差分支。整个过程对应：
+![](https://s2.loli.net/2026/01/15/ou7nqDyeBPlakV2.webp)
+
+#TODO: 1、ggufs
+#TODO: 2、可以了解一下SVDQuant量化代码
 #TODO: 量化侯模型如何进行后训练可以直接使用 flux1-dev-kontext_fp8_scaled.safetensors 进行介绍
-<<<<<<< HEAD
 ## 总结
 本文主要是介绍一些在SD模型中加快生图的策略，1、直接使用加速框架进行优化，比如说指定attention计算后端方式、通过`torch.compile`进行编译、使用`torch.channels_last`去优化内存访问方式等；2、cache策略，发现在生成过程中在某些层/时间布之间图像的特征比较相似，因此就可以考虑将这些计算结果进行缓存在后续n步中直接加载缓存好的特征来实现生成加速，主要介绍框架是`cache-dit`；3、量化技术概述，
 最后简单对比一下生成加速时间
 > 测试prompt: `超写实亚洲中年男性，年龄约45-55岁。面容坚毅、憔悴，带有生活阅历的痕迹（如眼角的细纹）。他穿着质感柔软的深灰色高领毛衣，外搭一件经典的卡其色风衣，站在寒风中周围是高楼大厦`
+> 从测试结果上图像的差异还是不大，时间的话从5.97-->5.48（**不一定严谨！**）还是有效的
 
 | 正常生图 | +使用channel+ flash_attn| +使用cachedit |
 |:--:|:--:|:--:|
@@ -156,3 +202,4 @@ optimizer_class = bnb.optim.AdamW8bit
 
 ## 参考
 [^1]: [https://github.com/chengzeyi/ParaAttention/blob/main/doc/fastest_flux.md](https://github.com/chengzeyi/ParaAttention/blob/main/doc/fastest_flux.md)
+[^2]: [https://zhuanlan.zhihu.com/p/8487841492](https://zhuanlan.zhihu.com/p/8487841492)

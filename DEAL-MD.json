@@ -569,16 +569,6 @@
       "本文承接前文对vllm初始化显存分配过程的介绍，重点阐述基于vllm 0.11.0版本的调度器运行机制，深入解析其核心运行流程与关键技术细节。"
     ]
   ],
-  "./writing/2025-12-29-SDAcceralate.md": [
-    [
-      "old_description",
-      null
-    ],
-    [
-      "new_description",
-      "扩散模型生成加速策略涵盖加速框架、Cache策略与量化技术。加速框架包括flash_attn后端、torch.compile编译、torch.channels_last优化及xFormers（加速attention计算并降低显存）；Cache策略含DeepCache（UNet时间冗余缓存高层特征）、FORA（DiT架构Attn/MLP特征复用）、FBCache（L1误差判断缓存）及CacheDit（DiT前n层缓存与差异检测）；量化技术有PTQ/QAT，如Bitsandbytes（int8/int4量化），实现显存降低与生成加速。"
-    ]
-  ],
   "./writing/2025-12-29-Flow-Matching.md": [
     [
       "old_description",
@@ -589,14 +579,14 @@
       "Flow Matching是一种高效的生成模型技术，通过学习连续时间流场将简单源分布（如高斯分布）转换为复杂目标数据分布。其核心原理是利用神经网络参数化流场，最小化流场与目标分布的匹配损失，实现数据生成。相比传统扩散模型，具有训练目标更简洁、无需噪声调度、采样速度快等优势，广泛应用于图像生成、概率建模等领域，为生成式AI提供了稳定高效的解决方案。"
     ]
   ],
-  "./_posts/2025-12-27-vllm-1.md": [
+  "./writing/2025-12-29-SDAcceralate.md": [
     [
       "old_description",
       null
     ],
     [
       "new_description",
-      "Page Attention是优化KV-cache内存管理的方法，可解决预留浪费、内部及外部内存碎片化问题，通过将KV-cache划分为固定大小Block，利用Block Table维护逻辑与物理映射，有效管理非连续内存；同时处理Softmax计算中的数值溢出与全局信息问题。vllm框架支持离线与在线调用，初始化过程包括模型加载、KV Cache显存预分配（计算可用内存、num_blocks及总token数）并加载到GPU，提升内存使用效率。"
+      "扩散模型生成加速策略涵盖加速框架、Cache策略与量化技术。加速框架通过flash_attn、torch.compile、xFormers等优化attention计算与内存访问；Cache策略如DeepCache（UNet架构）、FORA（DiT架构）利用时间冗余缓存高层特征，FBCache和CacheDit动态复用特征减少重复计算；量化技术采用PTQ/QAT（如GPTQ、AWQ、Bitsandbytes）将权重量化为INT8/INT4降低显存。这些方法在保证生成质量的同时显著提升推理速度，适用于Stable Diffusion等扩散模型。"
     ]
   ]
 }
