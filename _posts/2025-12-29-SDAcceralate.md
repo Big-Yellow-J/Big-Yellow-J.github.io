@@ -24,7 +24,7 @@ Diffusion推理加速的方案，主要包括Cache、量化、分布式推理、
 pipeline.transformer.set_attention_backend("_flash_3_hub") # 启用flash attn计算加速
 pipeline.transformer.reset_attention_backend()             # 关闭flash attn计算加速
 ```
-不过值得注意的是`_flash_3_hub` 只支持非hopper架构，因此可以直接就使用`set_attention_backend("flash")`。2、**直接使用**`torch.compile`进行加速，不过值得注意的是**在开始使用过程中会比较慢**，因为在执行时，它会将模型编译为优化的内核，所以相对会比较慢，但是如果对编译后模型进行批量测试在时间上就会有所提升比如说在代码[df_acceralate.ipynb](code/Python/DFModelCode/DF_acceralate/df_acceralate.ipynb)中测试结果使用compile在z-image上生成5张图片耗时：86.49s（**平均生图时间**4s）不使用compile：29.92（**平均生图时间**5s）；3、使用`torch.channels_last`去优化数据结构（[torch文档](https://docs.pytorch.org/tutorials/intermediate/memory_format_tutorial.html#performance-gains)）：最主要的一点是通过channel_last让 GPU 在计算卷积 / attention 时，内存访问更连续，比如说一般数据的输入是NCHW那么在内存访问中格式是：`N0C0H0W0, N0C0H0W1, ..., N0C0H1W0, ...`这个里面通道C变化最慢，使用channel_list数据格式变为NHWC在内存中访问顺序是：`N0H0W0C0, N0H0W0C1, N0H0W0C2, ...`值得注意的是两部分数据在shape上是一致的只是strid不一致。使用方式也比较简单：
+不过值得注意的是`_flash_3_hub` 只支持非hopper架构，因此可以直接就使用`set_attention_backend("flash")`。2、**直接使用**`torch.compile`进行加速，不过值得注意的是**在开始使用过程中会比较慢**，因为在执行时，它会将模型编译为优化的内核，所以相对会比较慢，但是如果对编译后模型进行批量测试在时间上就会有所提升比如说在代码[df_acceralate.ipynb](https://github.com/shangxiaaabb/ProjectCode/blob/main/code/Python/DFModelCode/DF_acceralate/df_acceralate.ipynb)中测试结果使用compile在z-image上生成5张图片耗时：86.49s（**平均生图时间**4s）不使用compile：29.92（**平均生图时间**5s）；3、使用`torch.channels_last`去优化数据结构（[torch文档](https://docs.pytorch.org/tutorials/intermediate/memory_format_tutorial.html#performance-gains)）：最主要的一点是通过channel_last让 GPU 在计算卷积 / attention 时，内存访问更连续，比如说一般数据的输入是NCHW那么在内存访问中格式是：`N0C0H0W0, N0C0H0W1, ..., N0C0H1W0, ...`这个里面通道C变化最慢，使用channel_list数据格式变为NHWC在内存中访问顺序是：`N0H0W0C0, N0H0W0C1, N0H0W0C2, ...`值得注意的是两部分数据在shape上是一致的只是strid不一致。使用方式也比较简单：
 ```python
 # 修改模型
 model = model.to(memory_format=torch.channels_last)
@@ -130,15 +130,15 @@ FORA的核心在于发现Dit在去噪过程中，**相邻时间步的Attn和MLP�
 ![](https://s2.loli.net/2026/01/14/mU9YHvENodt8Z1B.webp)
 对于上述框架首先了解CacheDit中几个概念：1、`Fn`：表示需要计算前n层transformer block在时间步t并且详细解释一下CacheDit原理；2、`Bn`:表示进一步的融合后n层transformer block的信息去强化预测准确性。其中n=1时候就是FBCache。
 因此对于CacheDit具体过程为：**在t-1步时候**，前n块block去计算他们的结果得到输出结果hidden state并且写入缓存中$C_{t-1}$，而后后几层进行完整结算。**在t步时候**，前n块block不完整计算，而是直接复用/近似 t-1 步的缓存$C_{t-1}$得到近似的结果，计算近似结果和缓存结果中差异（L1 范数），如果差异小于阈值直接复用缓存输入到后续的块中计算，反之就重新计算这n块结果。
-其中具体使用如下：[df_acceralate.ipynb](code/Python/DFModelCode/DF_acceralate/df_acceralate.ipynb)
+其中具体使用如下：[df_acceralate.ipynb](https://github.com/shangxiaaabb/ProjectCode/blob/main/code/Python/DFModelCode/DF_acceralate/df_acceralate.ipynb)
 ### 量化技术概述
-[量化技术](https://www.big-yellow-j.top/posts/2025/10/11/Quantized.html)是一种模型压缩的常见方法，将模型权重从高精度（如FP16或FP32）量化为低比特位（如INT8、INT4）去实现**降低显存+生成加速**。
-常见的量化策略可以分为PTQ和QAT两大类。量化感知训练（Quantization-Aware Training）：在**模型训练过程中进行量化**，一般效果会更好一些，但需要额外训练数据和大量计算资源。后量化（Post-Training Quantization, PTQ）：在**模型训练完成后，对模型进行量化**，无需重新训练。对于线性量化下，浮点数与定点数之间的转换公式如下：$Q=\frac{R}{S}+Z;R=(Q-Z)*S$，其中R 表示量化前的浮点数、Q 表示量化后的定点数、S（Scale）表示缩放因子的数值、Z（Zero）表示零点的数值。
+[量化技术](https://www.big-yellow-j.top/posts/2025/10/11/Quantized.html)是一种模型压缩的常见方法，将模型权重从高精度（如FP16或FP32）量化为低比特位（如INT8、INT4）去实现**降低显存+生成加速**。量化过程的基本范式，量化过程：$Q=\frac{W}{S}$其中 $S$表示scale，反量化过程：$\hat{w}=QS$，因此对于量化只需要保存：1、量化后权重；2、scale值（不同量化模型计算方式不同）。比如说（对称量化过程）对于：`1.21, -1.13, 0.22, 0.83, 2.11, -1.53, 0.79	-0.54, 0.84`其中最大值为2.11那么可以计算出缩放系数为：$\frac{2.11}{127}=0.01661417$（127代表int8数值范围-127，127）那么可以对数据缩放（量化）得到：`72, -69, 13, 49, 127, -93, 47, -33, 50`反量化可以得到：`1.19622024,....`（直接乘scale即可）具体计算数字之间差异，都是存在误差的。
+常见的量化策略可以分为PTQ和QAT两大类。量化感知训练（Quantization-Aware Training）：在**模型训练过程中进行量化**，一般效果会更好一些，但需要额外训练数据和大量计算资源比如说qlora。后量化（PTQ）：在**模型训练完成后，对模型进行量化**，无需重新训练。对于线性量化下，浮点数与定点数之间的转换公式如下：$Q=\frac{R}{S}+Z;R=(Q-Z)*S$，其中R 表示量化前的浮点数、Q 表示量化后的定点数、S（Scale）表示缩放因子的数值、Z（Zero）表示零点的数值。除此之外还会听到几个概念：**1、对称量化**：对称量化的核心思想是将浮点数量化为整数，且量化后的分布是关于零对称的；**2、非对称量化**：是一种用于将浮点数转换为整数表示的量化方法。与对称量化不同的是，这种方法在数据具有偏移（即非对称分布）时更有效，因为它可以减少量化误差。非对称量化会分别找出浮点数的最小值和最大值，分别量化到目标整数范围的最小值和最大值，充分利用量化后的整数范围。这可以使用一个缩放因子（scale）和偏移量（zero-point）来实现[^3]。
 比如说在LLM中常用的两种**后量化技术**：1、**GPTQ量化技术**：通过量化——补偿——量化迭代方法，首先量化$W_{:,j}$，而后去计算误差并且补充到 $W_{:,j:(i+B)}$而后进行迭代实现所有参数的量化；2、**AWQ量化技术**：模型计算过程中只有关键参数起作用因此对于关键参数保持原来的精度(FP16)，对其他权重进行低比特量化，但是这样不同进度参数会导致硬件问题，因此在AWQ中**对所有权重均进行低比特量化，但是，在量化时，对于显著权重乘以较大的scale，相当于降低其量化误差；同时，对于非显著权重，乘以较小的scale，相当于给予更少的关注。**
 > 补充一个小知识，一般量化看到比较多就是W4A4这个一般指的就是权重和激活的4bit量化，其中权重一般就是**对应该层的模型权重**，激活就是**对应该层的输入**
 
 #### Bitsandbytes 量化
-通过使用bitsandbytes量化来实现8-bit（int8）或者4-bit（int4、Qlora中一般就会使用）量化，不过区别上面提到的AWQ以及GPTQ量化，bitsandbytes不需要对模型进行训练（AWQ、GPTQ可能需要输入数据然后计算误差进行量化），前者需要通过数据来保证量化精度（量化过程是离线、一次性过程），后者量化过程是即时的可逆的。其技术原理如下：$w≈s q$其中w表示原始的FP16权重，q代表int4/int8权重，s缩放因子，其量化过程为对每一个block权重计算：$\max(\text{abs}(w))$而后去计算scale：$s=\frac{amx(\| w\|)}{2^{b-1}-1}$而后代入公式就可以得到量化后权重，推理过程中进行：反量化 + 矩阵乘法融合在一个 CUDA kernel 中完成：$Y=X(sq)$。因此对于其使用也很简单，比如说在代码中：[cache_acceralate.py](code/Python/DFModelCode/DF_acceralate/cache_acceralate.py)
+通过使用bitsandbytes量化来实现8-bit（int8）或者4-bit（int4、Qlora中一般就会使用）量化，不过区别上面提到的AWQ以及GPTQ量化，bitsandbytes不需要对模型进行训练（AWQ、GPTQ可能需要输入数据然后计算误差进行量化），前者需要通过数据来保证量化精度（量化过程是离线、一次性过程），后者量化过程是即时的可逆的。其技术原理如下：$w≈s q$其中w表示原始的FP16权重，q代表int4/int8权重，s缩放因子，其量化过程为对每一个block权重计算：$\max(\text{abs}(w))$而后去计算scale：$s=\frac{amx(\| w\|)}{2^{b-1}-1}$而后代入公式就可以得到量化后权重，推理过程中进行：反量化 + 矩阵乘法融合在一个 CUDA kernel 中完成：$Y=X(sq)$。因此对于其使用也很简单，比如说在代码中：[cache_acceralate.py](https://github.com/shangxiaaabb/ProjectCode/blob/main/code/Python/DFModelCode/DF_acceralate/cache_acceralate.py)
 ```python
 # 在ZImagePipeline中参数为：
 class ZImagePipeline(DiffusionPipeline, ZImageLoraLoaderMixin, FromSingleFileMixin):
@@ -189,8 +189,13 @@ $$
 > HF文档：[https://huggingface.co/docs/hub/en/gguf](https://huggingface.co/docs/hub/en/gguf)
 > [https://unsloth.ai/docs/basics/inference-and-deployment/saving-to-gguf](https://unsloth.ai/docs/basics/inference-and-deployment/saving-to-gguf)
 
-GGUF格式是用于存储大型模型预训练结果的，相较于Hugging Face和torch的bin文件，它采用了紧凑的二进制编码格式、优化的数据结构以及内存映射等技术，提供了更高效的数据存储和访问方式。GGUF 本身支持多种量化级别（Q2_K ~ Q8_0、IQ2 ~ IQ4 等），这些量化方式属于后训练量化（PTQ），和 AWQ、GPTQ、bitsandbytes 4bit 一样，都是在预训练模型上直接执行量化（不需要重新训练）。不过需要区别的是AWQ、GPTQ、SVDQuant都需要一小批数据而bitsandbytes以及GGUF不需要。
-#TODO: 1、ggufs
+GGUF格式是用于存储大型模型预训练结果的，相较于Hugging Face和torch的bin文件，它采用了紧凑的二进制编码格式、优化的数据结构以及内存映射等技术，提供了更高效的数据存储和访问方式。GGUF 本身支持多种量化级别（Q2_K ~ Q8_0、IQ2 ~ IQ4 等），这些量化方式属于后训练量化（PTQ），和 AWQ、GPTQ、bitsandbytes 4bit 一样，都是在预训练模型上直接执行量化（不需要重新训练）。不过需要区别的是AWQ、GPTQ、SVDQuant都需要一小批数据而bitsandbytes以及GGUF不需要，在GGUF中可以实现量化方式有两类：
+
+| **传统Q系列**（按照权重逐层量化） | **K-Quant系列**（通过 block-wise + scale 优化）|
+|:--:|:--:|
+|![](https://s2.loli.net/2026/01/16/rNKS8R6Z3mhidX1.webp)|![](https://s2.loli.net/2026/01/16/dLECSrbH51Mozuh.webp)|
+
+其中**传统Q系列**主要是一整块权重共享一个 scale（缩放因子），每个权重用低 bit 整数表示，容易受到极端值的影响。 **K-Quant系列**一个 block 内，再分“子块”，每个子块有自己的 scale，其中S代表子块少、scale少；M代表子块多、scale多。使用方式：
 #TODO: 量化侯模型如何进行后训练可以直接使用 flux1-dev-kontext_fp8_scaled.safetensors 进行介绍
 ## 总结
 本文主要是介绍一些在SD模型中加快生图的策略，1、直接使用加速框架进行优化，比如说指定attention计算后端方式、通过`torch.compile`进行编译、使用`torch.channels_last`去优化内存访问方式等；2、cache策略，发现在生成过程中在某些层/时间布之间图像的特征比较相似，因此就可以考虑将这些计算结果进行缓存在后续n步中直接加载缓存好的特征来实现生成加速，主要介绍框架是`cache-dit`；3、量化技术概述，
@@ -206,3 +211,5 @@ GGUF格式是用于存储大型模型预训练结果的，相较于Hugging Face�
 ## 参考
 [^1]: [https://github.com/chengzeyi/ParaAttention/blob/main/doc/fastest_flux.md](https://github.com/chengzeyi/ParaAttention/blob/main/doc/fastest_flux.md)
 [^2]: [https://zhuanlan.zhihu.com/p/8487841492](https://zhuanlan.zhihu.com/p/8487841492)
+[^3]: [https://juejin.cn/post/7436976221068148786](https://juejin.cn/post/7436976221068148786)
+[^4]: [https://zhuanlan.zhihu.com/p/996110863](https://zhuanlan.zhihu.com/p/996110863)
