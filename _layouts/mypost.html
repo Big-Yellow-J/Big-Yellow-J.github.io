@@ -26,36 +26,61 @@
   {% endif %}
 
   {% if page.description %}
-    <div id="description-llm" style="font-family: 'Noto Serif SC', Courier, monospace; white-space: pre-wrap; font-size: 1rem; padding: 16px; border-left: 4px solid #4a90e2; background: #f8fafc; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); line-height: 1.6; color: #333;"></div>
+    <div
+      id="description-llm"
+      style="font-family: 'Noto Serif SC', Courier, monospace;
+            white-space: pre-wrap;
+            font-size: 1rem;
+            padding: 16px;
+            border-left: 4px solid #4a90e2;
+            background: #f8fafc;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            line-height: 1.6;
+            color: #333;
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;">
+      
+      <!-- OpenAI 图标 -->
+      <i class="fa-brands fa-openai" style="color:#4a90e2; margin-top:2px;"></i>
+
+      <!-- 打字机文本 -->
+      <span id="llm-text"></span>
+    </div>
+
     <script>
-      const descriptionText = `🤖:` + `{{ page.description | strip_newlines | escape }}`;
-      const descriptionEl = document.getElementById('description-llm');
+      const descriptionText = `{{ page.description | strip_newlines | escape }}`;
+      const textEl = document.getElementById('llm-text');
+      const containerEl = document.getElementById('description-llm');
+
       let index = 0;
       let isTyping = true;
 
       function typeWriter() {
         if (isTyping && index < descriptionText.length) {
-          descriptionEl.textContent += descriptionText.charAt(index);
+          textEl.textContent += descriptionText.charAt(index);
           index++;
           setTimeout(typeWriter, 10);
         } else {
-          descriptionEl.style.borderLeftColor = '#2ecc71';
+          containerEl.style.borderLeftColor = '#2ecc71';
         }
       }
 
       function handleVisibilityChange() {
         if (document.visibilityState === 'hidden' && isTyping) {
           isTyping = false;
-          descriptionEl.textContent = descriptionText; // Render full text immediately
-          descriptionEl.style.borderLeftColor = '#2ecc71';
+          textEl.textContent = descriptionText;
+          containerEl.style.borderLeftColor = '#2ecc71';
         }
       }
 
       document.addEventListener("DOMContentLoaded", () => {
-        descriptionEl.style.opacity = '0';
-        descriptionEl.style.transition = 'opacity 0.5s ease-in';
+        containerEl.style.opacity = '0';
+        containerEl.style.transition = 'opacity 0.5s ease-in';
         setTimeout(() => {
-          descriptionEl.style.opacity = '1';
+          containerEl.style.opacity = '1';
           typeWriter();
         }, 200);
       });
@@ -63,6 +88,7 @@
       document.addEventListener("visibilitychange", handleVisibilityChange);
     </script>
   {% endif %}
+
 
     
   <!-- Lightbox CSS -->
@@ -98,8 +124,8 @@
     });
   </script>
   
-  <!-- 在文章内容下方添加图片 -->
-  {% unless page.categories contains "life" %}
+  <!-- 在文章内容下方添加微信公众号 -->
+  <!-- {% unless page.categories contains "life" %}
     {% if page.show_footer_image %}
       <div style="text-align: center; margin-top: 20px;">
         <img 
@@ -109,7 +135,7 @@
         >
       </div>
       {% endif %}
-  {% endunless %}
+  {% endunless %} -->
   
 
   <!-- 添加分享按钮 -->
