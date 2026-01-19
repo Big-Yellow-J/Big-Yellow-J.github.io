@@ -17,7 +17,7 @@ description: 扩散模型生成加速策略主要包括加速框架优化、Cach
 Diffusion推理加速的方案，主要包括Cache、量化、分布式推理、采样器优化和蒸馏等。下面内容主要是去对Cache、计算加速框架以及量化技术进行介绍
 > SD模型加速方式：[https://github.com/xlite-dev/Awesome-DiT-Inference?tab=readme-ov-file#Quantization](https://github.com/xlite-dev/Awesome-DiT-Inference?tab=readme-ov-file#Quantization)
 
-不过值得注意的是对于下面内容，首先介绍加速框架（这部分内容主要是介绍进行加速的一些小trick，主要是直接通过api去加速）、cache以及量化一般就会涉及到一些算法的基本原理。所有的测试代码：
+不过值得注意的是对于下面内容，首先介绍加速框架（这部分内容主要是介绍进行加速的一些小trick，主要是直接通过api去加速）、cache以及量化一般就会涉及到一些算法的基本原理。所有的测试代码：[df_acceralate.ipynb](https://github.com/shangxiaaabb/ProjectCode/blob/main/code/Python/DFModelCode/DF_acceralate/df_acceralate.ipynb)
 ### 一般加速框架以及显存优化措施
 这部分内容的话比较杂（直接总结[huggingface](https://huggingface.co/docs/diffusers/optimization/fp16#scaled-dot-product-attention)内容），1、**直接使用attn计算加速后端**，比如说一般就是直接使用比如说`flash_attn`进行attention计算加速，比如说：
 ```python
