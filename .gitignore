@@ -19,7 +19,7 @@ tmp/*
 *.safetensors
 code/Python/DFModelCode/DF_acceralate/llama.cpp
 *.whl
-
+/code/Python/DFModelCode/DF_acceralate/tmp/*
 /code/Python/ONNX_TensoRT/models--openai--clip-vit-base-patch32/*
 *.lock
 
