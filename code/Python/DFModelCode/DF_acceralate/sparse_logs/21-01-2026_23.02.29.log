@@ -1,0 +1,4 @@
+2026-01-21 23:02:29.993 | INFO     | llmcompressor.metrics.logger:_create_default_logger:356 - Logging all LLM Compressor modifier-level logs to sparse_logs/21-01-2026_23.02.29.log
+2026-01-21 23:02:29.993 | DEBUG    | llmcompressor.core.lifecycle:initialize:92 - Initializing compression lifecycle
+2026-01-21 23:02:29.993 | INFO     | llmcompressor.recipe.recipe:from_modifiers:68 - Creating recipe from modifiers
+2026-01-21 23:02:29.994 | INFO     | llmcompressor.modifiers.smoothquant.base:_infer_mappings_from_model:188 - No SmoothQuantModifier.mappings provided, inferring from model...

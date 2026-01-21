@@ -1,0 +1,61 @@
+2026-01-21 23:06:07.071 | INFO     | llmcompressor.metrics.logger:_create_default_logger:356 - Logging all LLM Compressor modifier-level logs to sparse_logs/21-01-2026_23.06.07.log
+2026-01-21 23:06:07.072 | DEBUG    | llmcompressor.core.lifecycle:initialize:92 - Initializing compression lifecycle
+2026-01-21 23:06:07.072 | INFO     | llmcompressor.recipe.recipe:from_modifiers:68 - Creating recipe from modifiers
+2026-01-21 23:06:07.072 | INFO     | llmcompressor.modifiers.smoothquant.base:_infer_mappings_from_model:188 - No SmoothQuantModifier.mappings provided, inferring from model...
+2026-01-21 23:06:08.364 | DEBUG    | llmcompressor.core.lifecycle:initialize:105 - Initialized modifier: index=None group=None start=None end=None update=None initialized_=True finalized_=False started_=False ended_=False smoothing_strength=0.8 mappings=[LayerMap(balance_layers=['re:.*q_proj', 're:.*k_proj', 're:.*v_proj'], smooth_layers='re:.*input_layernorm'), LayerMap(balance_layers=['re:.*gate_proj', 're:.*up_proj'], smooth_layers='re:.*post_attention_layernorm')] ignore=[] num_calibration_steps=None calibration_function=None
+2026-01-21 23:06:08.410 | DEBUG    | llmcompressor.core.lifecycle:initialize:105 - Initialized modifier: config_groups=None targets=['Linear'] ignore=['lm_head'] scheme='W8A8' kv_cache_scheme=None index=None group=None start=None end=None update=None initialized_=True finalized_=False started_=False ended_=False sequential_update=True sequential_targets=None block_size=128 dampening_frac=0.01 actorder=None offload_hessians=False
+2026-01-21 23:06:08.411 | INFO     | llmcompressor.core.lifecycle:initialize:110 - Compression lifecycle initialized for 2 modifiers
+2026-01-21 23:06:08.411 | INFO     | llmcompressor.pipelines.independent.pipeline:IndependentPipeline:43 - Inferred `SequentialPipeline` for `SmoothQuantModifier`
+2026-01-21 23:06:08.825 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:267 - ---- Autowrapper ----
+2026-01-21 23:06:08.825 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:268 - @torch.fx.wrap
+def wrapped_0(input_ids, inputs_embeds):
+    if (input_ids is None) ^ (inputs_embeds is not None):
+        raise ValueError('You must specify exactly one of input_ids or inputs_embeds')
+    return ()
+2026-01-21 23:06:08.825 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:269 - ---------------------
+2026-01-21 23:06:08.826 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:267 - ---- Autowrapper ----
+2026-01-21 23:06:08.826 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:268 - @torch.fx.wrap
+def wrapped_1(input_ids, inputs_embeds):
+    if inputs_embeds is None:
+        inputs_embeds = self.embed_tokens(input_ids)
+    return (inputs_embeds,)
+2026-01-21 23:06:08.826 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:269 - ---------------------
+2026-01-21 23:06:08.826 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:267 - ---- Autowrapper ----
+2026-01-21 23:06:08.827 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:268 - @torch.fx.wrap
+def wrapped_2(past_key_values, use_cache):
+    if use_cache and past_key_values is None:
+        past_key_values = DynamicCache()
+    return (past_key_values,)
+2026-01-21 23:06:08.827 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:269 - ---------------------
+2026-01-21 23:06:08.827 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:267 - ---- Autowrapper ----
+2026-01-21 23:06:08.828 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:268 - @torch.fx.wrap
+def wrapped_3(cache_position, inputs_embeds, past_key_values, *, past_seen_tokens=None):
+    if cache_position is None:
+        past_seen_tokens = past_key_values.get_seq_length() if past_key_values is not None else 0
+        cache_position = torch.arange(past_seen_tokens, past_seen_tokens + inputs_embeds.shape[1], device=inputs_embeds.device)
+    return (cache_position, past_seen_tokens)
+2026-01-21 23:06:08.828 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:269 - ---------------------
+2026-01-21 23:06:08.828 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:267 - ---- Autowrapper ----
+2026-01-21 23:06:08.828 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:268 - @torch.fx.wrap
+def wrapped_4(cache_position, position_ids):
+    if position_ids is None:
+        position_ids = cache_position.unsqueeze(0)
+    return (position_ids,)
+2026-01-21 23:06:08.828 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:269 - ---------------------
+2026-01-21 23:06:08.829 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:267 - ---- Autowrapper ----
+2026-01-21 23:06:08.829 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:268 - @torch.fx.wrap
+def wrapped_5(attention_mask, cache_position, inputs_embeds, past_key_values, position_ids, *, causal_mask_mapping=None, mask_kwargs=None):
+    if not isinstance((causal_mask_mapping := attention_mask), dict):
+        mask_kwargs = {'config': self.config, 'input_embeds': inputs_embeds, 'attention_mask': attention_mask, 'cache_position': cache_position, 'past_key_values': past_key_values, 'position_ids': position_ids}
+        causal_mask_mapping = {'full_attention': create_causal_mask(**mask_kwargs)}
+        if self.has_sliding_layers:
+            causal_mask_mapping['sliding_attention'] = create_sliding_window_causal_mask(**mask_kwargs)
+    return (causal_mask_mapping, mask_kwargs)
+2026-01-21 23:06:08.829 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:269 - ---------------------
+2026-01-21 23:06:08.835 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:267 - ---- Autowrapper ----
+2026-01-21 23:06:08.835 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:268 - @torch.fx.wrap
+def wrapped_0(kwargs, labels, logits, loss):
+    if labels is not None:
+        loss = self.loss_function(logits=logits, labels=labels, vocab_size=self.config.vocab_size, **kwargs)
+    return (loss,)
+2026-01-21 23:06:08.835 | DEBUG    | llmcompressor.pipelines.sequential.ast_utils.auto_wrapper:_wrap_stmt:269 - ---------------------
