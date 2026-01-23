@@ -1,22 +1,22 @@
-import torch
 from datasets import load_dataset
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from llmcompressor import oneshot
-from llmcompressor.utils import dispatch_for_generation
 from llmcompressor.modifiers.smoothquant import SmoothQuantModifier
 from llmcompressor.modifiers.quantization import GPTQModifier
 
 max_length = 2048
+scheme = 'W8A8-INT8'
 model_name = 'Qwen/Qwen2.5-1.5B-Instruct'
 data_apth  = '../test_datasets.jsonl'
-store_dir  = '../tmp/Qwen2.5-1.5B-GPTQ-W8A8/'
+store_dir  = f'../tmp/Qwen2.5-1.5B-GPTQ-{scheme}/'
 cache_dir  = '/root/autodl-tmp/Model'
-tokenizer = AutoTokenizer.from_pretrained(
-    model_name,
-    cache_dir=cache_dir,
-    trust_remote_code=True,
-)
+tokenizer = AutoTokenizer.from_pretrained(model_name,
+                                          cache_dir=cache_dir,
+                                          trust_remote_code=True,)
+model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-1.5B-Instruct",
+                                             cache_dir= '/root/autodl-tmp/Model/', 
+                                             mirror='https://hf-mirror.com')
 
 def preprocess(example):
     user_content = example.get("prefix", example.get("instruction", "Who are you?"))
@@ -51,15 +51,15 @@ def preprocess(example):
 dataset = load_dataset("json", data_files=data_apth, split="train")
 dataset = dataset.shuffle(seed=42)
 dataset = dataset.map(preprocess, desc="Preprocess",remove_columns=dataset.column_names)
-print(dataset[0])
+# print(dataset[0])
 
 recipe = [
     SmoothQuantModifier(smoothing_strength=0.8),
-    GPTQModifier(scheme="W8A8", targets="Linear", ignore=["lm_head"]),
+    GPTQModifier(scheme=scheme, targets="Linear", ignore=["lm_head"]),
 ]
 
 oneshot(
-    model=model_name,
+    model= model,
     cache_dir= cache_dir,
     dataset=dataset,
     recipe=recipe,

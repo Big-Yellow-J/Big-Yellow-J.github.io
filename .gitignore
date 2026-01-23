@@ -8,6 +8,7 @@
 # *.json
 *.pth
 *.pt
+*.log
 *.pyc
 /code/Python/DFDataBuild/**/*.png
 /code/Python/DFDataBuild/**/*.jpg
