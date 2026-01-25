@@ -184,7 +184,6 @@ $$
 
 第一项是16-bit低秩分解，第二项为4-bit残差分支。整个过程对应：
 ![](https://s2.loli.net/2026/01/15/ou7nqDyeBPlakV2.webp)
-#TODO: 2、可以了解一下SVDQuant量化代码
 #### GGUF
 > HF文档：[https://huggingface.co/docs/hub/en/gguf](https://huggingface.co/docs/hub/en/gguf)
 > [https://unsloth.ai/docs/basics/inference-and-deployment/saving-to-gguf](https://unsloth.ai/docs/basics/inference-and-deployment/saving-to-gguf)
@@ -195,8 +194,7 @@ GGUF格式是用于存储大型模型预训练结果的，相较于Hugging Face�
 |:--:|:--:|
 |![](https://s2.loli.net/2026/01/16/rNKS8R6Z3mhidX1.webp)|![](https://s2.loli.net/2026/01/16/dLECSrbH51Mozuh.webp)|
 
-其中**传统Q系列**主要是一整块权重共享一个 scale（缩放因子），每个权重用低 bit 整数表示，容易受到极端值的影响。 **K-Quant系列**一个 block 内，再分“子块”，每个子块有自己的 scale，其中S代表子块少、scale少；M代表子块多、scale多。使用方式：
-#TODO: 量化侯模型如何进行后训练可以直接使用 flux1-dev-kontext_fp8_scaled.safetensors 进行介绍
+其中**传统Q系列**主要是一整块权重共享一个 scale（缩放因子），每个权重用低 bit 整数表示，容易受到极端值的影响。 **K-Quant系列**一个 block 内，再分“子块”，每个子块有自己的 scale，其中S代表子块少、scale少；M代表子块多、scale多。
 ## 总结
 本文主要是介绍一些在SD模型中加快生图的策略，1、直接使用加速框架进行优化，比如说指定attention计算后端方式、通过`torch.compile`进行编译、使用`torch.channels_last`去优化内存访问方式等；2、cache策略，发现在生成过程中在某些层/时间布之间图像的特征比较相似，因此就可以考虑将这些计算结果进行缓存在后续n步中直接加载缓存好的特征来实现生成加速，主要介绍框架是`cache-dit`；3、量化技术概述，
 最后简单对比一下生成加速时间
