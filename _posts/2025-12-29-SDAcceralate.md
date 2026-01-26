@@ -179,11 +179,55 @@ optimizer_class = bnb.optim.AdamW8bit
 
 因此对于SVDQuant过程描述如下，对于权重和激活值：$\mathbf{X}$ 以及 $\mathbf{X}$，在最初这两部分值都是存在大量异常值，因此首先通过平滑操作将激活$\mathbf{X}$中的异常值迁移到权重 $\mathbf{X}$中得到更新后权重 $\hat{\mathbf{W}}$，这部分数据表述为：$\hat{\mathbf{W}}=\mathbf{W}\odot S$其中S是平滑因子，用于转移异常（⊙表示逐元素乘法）。这部分操作主要是因为：**将异常值集中到权重侧，因为权重是静态的，更容易后续处理。激活侧的异常值减少后，量化难度降低**。而后，进行SVD分解与低秩吸收，对更新后权重进行奇异值分解：$  \hat{𝑾} = 𝑼 \Sigma 𝑽^T  $, 其中𝑼和𝑽是正交矩阵，$\Sigma$是奇异值对角矩阵。保留前k个最大奇异值（低秩r，通常r << min(m,n)，其中m,n是权重矩阵维度），形成低秩近似：$  𝑳_1 𝑳_2 = 𝑼[:,:r] \cdot \Sigma[:r,:r] \cdot 𝑽^T[:r,:]  $。然后，计算残差：$  𝑹 = \hat{𝑾} - 𝑳_1 𝑳_2$，其中只对残差$𝑹$进行量化（$Q(𝑹)=\text{round}(\frac{𝑹}{S_𝑹})S_𝑹$，其中$S_𝑹$为缩放因子）处理。低秩分支$  𝑳_1 𝑳_2  $使用高精度（16-bit float）运行，专门“吸收”异常值和主要信息，而残差𝑹中的异常值和幅度显著减少，只需量化到4-bit。量化误差界限分析（从论文中）：量化误差上界可通过F范数和奇异值控制，证明低秩吸收后残差的量化难度降低（误差 ≤ $  \frac{\sqrt{\log(\text{size}(𝑹)\pi)}}{q_{\max}} \mathbb{E}[\|𝑹\|_F]  $，其中q_max是量化最大值），**最后的整体近似计算**：
 
-$$\hat{\mathbf{X}}\hat{\mathbf{W}}=\hat{\mathbf{X}}(R+L_1L_2)≈\hat{\mathbf{X}}(L_1L_2)+Q(\hat{\mathbf{X}})Q(R)
+$$
+\hat{\mathbf{X}}\hat{\mathbf{W}}=\hat{\mathbf{X}}(R+L_1L_2)≈\hat{\mathbf{X}}(L_1L_2)+Q(\hat{\mathbf{X}})Q(R)
 $$
 
 第一项是16-bit低秩分解，第二项为4-bit残差分支。整个过程对应：
 ![](https://s2.loli.net/2026/01/15/ou7nqDyeBPlakV2.webp)
+这里简单介绍一下如何使用SVDQuant量化后模型，一般而言不会去主动通过SVDQuant去量化模型（比如说量化Flux）会直接去加载量化后的模型，可以去[huggingface-nunchakus](https://huggingface.co/nunchaku-ai)里面找量化后的模型，对于comfyui使用可以直接nunchakus的comfyui去选择自己模型即可，如果[纯代码](https://nunchaku.tech/docs/nunchaku/usage/lora.html)使用可以
+```python
+import torch
+from diffusers import FluxPipeline
+
+from nunchaku import NunchakuFluxTransformer2dModel
+from nunchaku.lora.flux.compose import compose_lora
+from nunchaku.utils import get_precision
+
+precision = get_precision()  # auto-detect your precision is 'int4' or 'fp4' based on your GPU
+transformer = NunchakuFluxTransformer2dModel.from_pretrained(
+    f"nunchaku-tech/nunchaku-flux.1-dev/svdq-{precision}_r32-flux.1-dev.safetensors"
+)
+pipeline = FluxPipeline.from_pretrained(
+    "black-forest-labs/FLUX.1-dev", transformer=transformer, torch_dtype=torch.bfloat16
+).to("cuda")
+
+### LoRA Related Code ###
+composed_lora = compose_lora(
+    [
+        ("aleksa-codes/flux-ghibsky-illustration/lora.safetensors", 1),
+        ("alimama-creative/FLUX.1-Turbo-Alpha/diffusion_pytorch_model.safetensors", 1),
+    ]
+)  # set your lora strengths here when using composed lora
+transformer.update_lora_params(composed_lora)
+### End of LoRA Related Code ###
+
+image = pipeline(
+    "GHIBSKY style, cozy mountain cabin covered in snow, with smoke curling from the chimney and a warm, inviting light spilling through the windows",  # noqa: E501
+    num_inference_steps=8,
+    guidance_scale=3.5,
+).images[0]
+image.save(f"flux.1-dev-turbo-ghibsky-{precision}.png")
+```
+整个过程中还是比较简单的，只不过值得注意的是，假如我的模型是int4量化后的权重，对于量化后的模型权重不能进行lora训练（精度丢失严重）那么直接对fp16的模型进行加载（如果显存不够，`from_pretrained`过程中可以使用`BitsAndBytesConfig`进行量化）而后通过Qlora进行微调这样得到的 LoRA 权重是全精度（通常 float16）的，不是量化过的。**在comfyui中**可以直接加载这个lora权重（将lora放到`models/loras/`中然后使用`Nunchaku Flux LoRA Loader`进行加载即可）。但是对于其它权重需要[进行量化](https://nunchaku.tech/docs/nunchaku/python_api/nunchaku.lora.flux.convert.html)将其转化为nunchakus可以使用权重：
+```python
+python -m nunchaku.lora.flux.convert \
+    --lora-path xx.safetensor \
+    --base-model xxx.safetensors \
+    --output-dir ./tmp/ \
+    --lora-name xx
+```
+上面几个参数分别表示lora、模型权重。
 #### GGUF
 > HF文档：[https://huggingface.co/docs/hub/en/gguf](https://huggingface.co/docs/hub/en/gguf)
 > [https://unsloth.ai/docs/basics/inference-and-deployment/saving-to-gguf](https://unsloth.ai/docs/basics/inference-and-deployment/saving-to-gguf)

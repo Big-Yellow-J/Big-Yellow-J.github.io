@@ -31,53 +31,29 @@ git clone git@gitee.com:smallvillage/stable-diffusion-webui.git
 6、图像生成日志目录 (log/images): 存储与图像生成过程相关的日志信息，这对于调试和分析生成过程非常重要。
 7、初始化图像的目录 (outputs/init-images): 用于保存在图像到图像转换过程中使用的初始图像或源图像。
 **根目录**
-`.launcher`：可能包含与项目启动器相关的配置文件。    
-
-`__pycache__`：存储 Python 编译过的字节码文件，以加快加载时间。    
-
-`config_states`：可能用于存储项目配置的状态或历史版本。    
-
+`.launcher`：可能包含与项目启动器相关的配置文件。
+`__pycache__`：存储 Python 编译过的字节码文件，以加快加载时间。
+`config_states`：可能用于存储项目配置的状态或历史版本。
 `configs`：用于存放配置文件，通常包含项目运行所需的参数设置。   
-
-`detected_maps`：可能存储自动生成的映射或检测结果。    
-
-
-`embeddings`：可能包含用于机器学习的嵌入向量数据。    
-
-`extensions` 和 ` extensions_builtin `：存储项目的扩展或插件。    
-
+`detected_maps`：可能存储自动生成的映射或检测结果。
+`embeddings`：可能包含用于机器学习的嵌入向量数据。
+`extensions` 和 ` extensions_builtin `：存储项目的扩展或插件。
 `git`：通常是 Git 版本控制的相关目录。 
-
 `html`、` javascript `：存储网页前端相关的 HTML 文件和 JavaScript 脚本。  
-
-`launcher`：可能包含启动项目的脚本或可执行文件。    
-
-`localizations`：包含项目的本地化文件，如翻译或语言资源。    
-
-`log`：存储日志文件，记录项目运行时的活动或错误信息。    
-
+`launcher`：可能包含启动项目的脚本或可执行文件。
+`localizations`：包含项目的本地化文件，如翻译或语言资源。
+`log`：存储日志文件，记录项目运行时的活动或错误信息。
 `models`：通常用于存储机器学习模型或项目中使用的数据模型。   
-
-`modules`：包含项目的代码模块或组件。    
-
+`modules`：包含项目的代码模块或组件。
 `outputs`：存储项目运行产生的输出文件，如生成的图像或报告。   
-
-`py310`：可能指 Python 3.10 版本的特定文件或环境。    
-
-`repositories`：可能用于存储与代码仓库相关的数据。    
-
+`py310`：可能指 Python 3.10 版本的特定文件或环境。
+`repositories`：可能用于存储与代码仓库相关的数据。
 `scripts`：包含用于项目构建、部署或其他自动化任务的脚本。   
-
-`tags`：可能用于版本标记或注释。    
-
-`test`：存储测试代码和测试数据。    
-
+`tags`：可能用于版本标记或注释。
+`test`：存储测试代码和测试数据。
 `textual_inversion`：可能是一个特定的功能模块，用于文本相关的处理或转换。
-
-`textual_inversion_templates`：存储文本逆向工程或模板化处理的文件。   
-
-`tmp`：临时文件夹，用于存储临时数据或运行时产生的临时文件。    
-
+`textual_inversion_templates`：存储文本逆向工程或模板化处理的文件
+`tmp`：临时文件夹，用于存储临时数据或运行时产生的临时文件。
 得到内容之后直接去修改`stable-diffusion-webui/modules/patches.py`里面的
 ```python
 # data_path = cmd_opts_pre.data_dir
@@ -113,9 +89,7 @@ hf download Madespace/Checkpoint --local-dir ~/autodl-tmp/SDWebUIFile/models/Sta
 hf download Madespace/Checkpoint dreamshaperXL_sfwV2TurboDPMSDE.safetensors --local-dir ~/autodl-tmp/SDWebUIFile/models/Stable-diffusion/
 hf download stabilityai/sdxl-vae sdxl_vae.safetensors --local-dir ~/autodl-tmp/SDWebUIFile/models/Stable-diffusion/
 ```
-
 执行上面处理就可以在SD WebUI里面看到自己下载的权重了
-
 ### SD WebUI 插件安装使用
 对于SD WebUI插件主要介绍两种：1、汉化插件；2、ControlNext插件
 **安装汉化插件**
@@ -153,12 +127,46 @@ hf download lllyasviel/sd_control_collection diffusers_xl_depth_full.safetensors
 > 对于ComfyUI不需要看太多视频，简单总结使用就是：在ComfyUI中所有的运行过程都是在 **工作流** 上进行运行，而工作流中每一个“方框”就是我们的 **节点**（可以意见为一个函数有与输入和输出），不同节点之间输入接输出。
 
 ### ComfyUI 自定义节点
-自定义节点之前，先了解安装节点，直接进入ComfyUI里面的节点目录`/root/autodl-tmp/ComfyUI/custom_nodes`，然后找到你需要安装的节点 clone到这个文件夹里面，然后安装依赖，就可以完成一个节点的安装了。自定义节点过程[^2]。这里直接给出一个比较简洁的模板去自定义节点
+自定义节点之前，先了解安装节点，直接进入ComfyUI里面的节点目录`/root/autodl-tmp/ComfyUI/custom_nodes`，然后找到你需要安装的节点 clone到这个文件夹里面，然后安装依赖，就可以完成一个节点的安装了，**推荐安装节点**：[ComfyUI-LG_HotReload](https://github.com/LAOGOU-666/ComfyUI-LG_HotReload)避免每次更新节点都需要去重启服务。自定义节点过程[^2]。这里直接给出一个比较简洁的模板去自定义节点，首先在ComfyUI/custom_nodes文件中创建一个节点名称（名字任取）文件夹，而后再去创建一个`__init__.py`文件，以及你的节点功能文件，比如说`sam_node.py`，对于这两个文件，前者主要是用来将你的节点暴露给comfyui让他可以找到你的节点，后者则是你的节点的功能实现。比如说我要做一个onefromer+sam去**图像分割的节点**那么就可以按照下面过程进行。
+**首先**，明确我的函数需要的输入和返回。对于图像分割那么输入就是原始图像，而输出一般就是mask图像。那么对于`sam_node.py`就可以这么定义：
+```python
+class OneformerSAMNode:
+def __init__(self):
+  ....
+@classmethod
+def INPUT_TYPES(cls):
+return {
+"required": {
+"image": ("IMAGE",),
+"oneformer_model": (["oneformer_large", "oneformer_tiny"], {"default": "oneformer_large"}),
+"sam_model": (["vit_b", "vit_l"], {"default": "vit_l"}),
+"processor_resolution": ("INT", {"default": 512, "min": 256, "max": 1024, "step": 64}),
+}
+}
+RETURN_TYPES = ("IMAGE", "MASK", "BOOLEAN")
+RETURN_NAMES = ("mask_image", "mask", "is_empty")
+FUNCTION = "detect"
+CATEGORY = "image/empty_detect"
+
+def detect(self, image, oneformer_model, sam_model, processor_resolution):
+  ...
+  return (mask_image, mask, is_empty)
 ```
+对于上述函数，`INPUT_TYPES`里面定义了节点的输入，`RETURN_TYPES`定义了节点的输出，`FUNCTION`定义了节点的功能，`CATEGORY`定义了节点的分类。
+**而后**，在定义函数之后就只需要让comfyui去找到这个节点，那么就需要在`__init__.py`文件中进行如下定义：
+```python
+from .comfyui_node import NODE_CLASS_MAPPINGS as EMPTY_DETECT_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS as EMPTY_DETECT_DISPLAY
 
+# 合并所有节点映射
+NODE_CLASS_MAPPINGS = {}
+NODE_CLASS_MAPPINGS.update(EMPTY_DETECT_MAPPINGS)
+
+NODE_DISPLAY_NAME_MAPPINGS = {}
+NODE_DISPLAY_NAME_MAPPINGS.update(EMPTY_DETECT_DISPLAY)
+
+# ComfyUI 会自动导入这些映射
+__all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
 ```
-
-
 ## 参考
 [^1]: [https://blog.csdn.net/weixin_47420447/article/details/135663351](https://blog.csdn.net/weixin_47420447/article/details/135663351)
 [^2]: [comfyui自定义节点](https://waytoagi.feishu.cn/wiki/Mhj5wl6v1i0j6ZkpevycPIlYnAg)
