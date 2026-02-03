@@ -10,7 +10,6 @@ tags:
 - 多模态
 - multimodal
 show_footer_image: true
-stickie: true
 description: 多模态大语言模型通用框架通过视觉编码器（如ViT/Clip）与文本编码器处理多模态信息，经映射层对齐维度后输入LLM输出结果。QwenVL系列为典型代表，从QwenVL到QwenVL3持续迭代：QwenVL采用ViT-bigG视觉编码器与单层Cross-Attention压缩视觉token至256长度；QwenVL2引入动态分辨率处理图像，拼接2x2相邻token并结合M-RoPE位置编码；QwenVL2.5优化为window-attention与2D-RoPE；QwenVL3则通过MRoPE-Interleave与DeepStack技术提升视频理解与图文对齐精度。同时，DeepSeek
   OCR等技术探索视觉压缩长文本上下文，展现多模态模型在视觉token处理与跨模态对齐上的技术演进。
 ---

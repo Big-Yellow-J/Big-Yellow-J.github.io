@@ -11,7 +11,6 @@ tags:
 - diffusion model
 - python
 show: true
-stickie: true
 description: 本文介绍生成模型开发常用的Python库Diffusers与Accelerate，助力开发者高效实践。Accelerate提供快速分布式训练方案，无需手动编写torch代码，支持梯度累计、混合精度训练等加速方法，可结合tensorboard/wandb记录训练过程，适配warm-up学习率调整策略及模型不同模块的差异化学习率设置，同时提供模型权重保存与读取功能，使用时需注意通过accelerator.end_training()结束追踪器，以及tqdm进度条仅主进程显示（disable=not
   accelerator.is_local_main_process）。Diffusers聚焦扩散模型全流程，训练阶段通过DDPM/DDIM进行加噪处理（noise_scheduler.add_noise添加确定噪声至图片），模型预测噪声并计算loss；生成阶段则利用训练好的模型逐步预测噪声并从噪声图片中剥离实现解噪。Scheduler是核心组件，主要功能包括add_noise（处理sample、noise、timesteps）与step（基于model_output、timestep、sample执行加噪逆操作，涉及参数计算与结果反推）。StableDiffusionPipeline支持模型加载与推理，文本编码环节通过encode_prompt处理prompt及negative_prompt，可选择CLIP不同层输出，结合Unet解码、vae解码及classifier_free_guidance优化生成效果。StableDiffusionXLInpaintPipeline示例中，基础模型与优化模型（refiner）分阶段协作，基础模型处理高噪声阶段，优化模型负责低噪声阶段细节增强，共享文本编码器与vae提升效率。此外，可通过自定义注意力处理器（如CustonAttnProcessor），遍历unet.attn_processors.keys()替换特定层，实现注意力机制的个性化调整。
 ---

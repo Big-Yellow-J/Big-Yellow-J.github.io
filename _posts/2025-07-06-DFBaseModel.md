@@ -14,7 +14,6 @@ tags:
 - SD
 - SDVL
 show: true
-stickie: true
 description: 本文主要介绍基于Unet和Dit框架的基座扩散模型，重点对比SD1.5与SDXL的核心差异，包括CLIP编码器（SDXL采用双编码器拼接提升文本理解能力）、图像输出维度（SDXL默认1024x1024优于SD1.5的512x512）及技术优化策略。还涵盖Imagen的多阶段生成与动态调整方法，Dit模型的patch切分与adaLN模块，Hunyuan-DiT的双文本编码器与旋转位置编码，FLUX.1的VAE通道优化与旋转位置编码，以及SD3的三文本编码器与MM-Dit架构。同时涉及VAE模型重构表现对比、guidance_rescale参数对生成效果的影响，和Adapters技术如ControlNet（零卷积层条件控制）、DreamBooth（样本微调与类别先验损失）等插件式模型调整方法，旨在全面解析不同扩散模型的结构特性与应用技术。
 ---
 ## 基座扩散模型

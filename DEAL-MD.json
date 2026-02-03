@@ -598,5 +598,15 @@
       "new_description",
       "扩散模型生成加速策略主要包括加速框架优化、Cache策略及量化技术。加速框架方面，可通过指定attention计算后端（如flash_attn）、torch.compile编译、torch.channels_last优化内存访问，或使用xFormers加速attention计算并降低显存，配合CPU卸载、设备分配等显存优化措施。Cache策略利用扩散过程时间冗余，如DeepCache缓存UNet高层特征、FORA复用DiT的Attn和MLP层特征，FBCache基于First Block L1误差判断是否复用残差，CacheDit结合前n层缓存与阈值判断实现加速。量化技术通过PTQ或QAT降低显存并加速，如Bitsandbytes的即时可逆int4/int8量化、SVDQuant分解权重吸收异常值后量化残差、GGUF格式的紧凑编码与多种PTQ量化级别。测试显示，结合channel优化、flash_attn及cache-dit等策略可有效缩短生图时间。"
     ]
+  ],
+  "./writing/2026-01-28-Ai-toolkit-Training.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "本文介绍使用Ai-toolkit框架对扩散模型进行微调的方法，涵盖环境准备、数据集配置、训练参数设置及代码自定义参数。环境需autodl服务器（VGPU-32G，CUDA 13.0），配置hf token后，数据集要求图像为.jpg/.jpeg/.png格式、文本为.txt格式且图文匹配，存放于指定路径。训练时模型路径建议默认，模型下载报错可重启任务。微调流程简单，修改数据后点击开始训练即可。代码支持自定义参数，包括model模块的assistant_lora_path，train模块的xformers加速、attention_backend计算方式，decorator模块的num_tokens（支持flux模型），以及adapter模块的t2i图像到图像条件适配功能。"
+    ]
   ]
 }
