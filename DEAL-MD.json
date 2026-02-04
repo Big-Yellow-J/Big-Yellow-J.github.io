@@ -608,5 +608,15 @@
       "new_description",
       "本文介绍使用Ai-toolkit框架对扩散模型进行微调的方法，涵盖环境准备、数据集配置、训练参数设置及代码自定义参数。环境需autodl服务器（VGPU-32G，CUDA 13.0），配置hf token后，数据集要求图像为.jpg/.jpeg/.png格式、文本为.txt格式且图文匹配，存放于指定路径。训练时模型路径建议默认，模型下载报错可重启任务。微调流程简单，修改数据后点击开始训练即可。代码支持自定义参数，包括model模块的assistant_lora_path，train模块的xformers加速、attention_backend计算方式，decorator模块的num_tokens（支持flux模型），以及adapter模块的t2i图像到图像条件适配功能。"
     ]
+  ],
+  "./_posts/2026-01-28-Ai-toolkit-Training.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "Ai-toolkit框架用于扩散模型微调，需在autodl服务器（VGPU-32G、CUDA 13.0）安装，配置hf token后上传数据集（图像为.jpg/.jpeg/.png，文本为txt且一一对应，路径xxx/ai-toolkit/datasets）。训练界面参数建议默认模型路径，模型下载报错可重启任务。数据处理涉及dataset构建（FileItemDTO处理prompt和图像tensor转换）、DataLoaderBatchDTO（含tensor、control_tensor、caption_list），训练通过train_single_accumulation函数进行vae、text_encoder编码及loss计算，数据后处理含prepare_prompt等步骤。训练参数包括model模块assistant_lora_path，train模块xformers、attention_backend，decorator模块（flux模型）num_tokens，adapter模块（t2i）图像条件适配功能。"
+    ]
   ]
 }
