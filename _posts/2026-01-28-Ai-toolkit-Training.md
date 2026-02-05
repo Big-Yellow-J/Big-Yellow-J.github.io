@@ -75,6 +75,18 @@ npm run build_and_start
 ### Ai-toolkit模型微调
 对于文生图/图生图微调训练很简单只需要将上面的数据进行修改即可，而后点击开始训练即可
 ![](https://s2.loli.net/2026/01/28/ydSs2CKgG8tD5T7.webp)
+值得注意的是，如果模型还需要去继续训练，比如说我在第一批数据得到一个lora但是又有另外一批数据需要继续去训练，在前端是不支持的，需要重新去建立一个训练任务（可以直接复制第一批数据的yaml文件）而后将其中的数据以及命名都改掉，修改yaml中的`name: Flux-Klein-AID-Inpatient-2000-9B`，而后将上一批数据中训练得到的最好的lora复制到新的文件夹中，而后启动训练即可（`python run.py output/tmp/config.yaml`）这个过程会在终端出现
+```bash
+#### IMPORTANT RESUMING FROM /root/autodl-tmp/xxx/ai-toolkit/output/xxx/xxx.safetensors ####
+Loading from /root/autodl-tmp/xxx/ai-toolkit/output/xxx/xxx.safetensors
+```
+说明模型重新去加载了lora，具体代码在`jobs/process/BaseSDTrainProcess.py`中的函数`get_latest_save_path`就是去加载最新得到权重进行继续训练。
+```python
+if latest_save_path is not None:
+    print_acc(f"#### IMPORTANT RESUMING FROM {latest_save_path} ####")
+    model_config_to_load.name_or_path = latest_save_path
+    self.load_training_state_from_metadata(latest_save_path)
+```
 ### Ai-toolkit代码分析
 在Ai-toolkit中模型微调整个流程如下：[Googledrive-Drawio](https://drive.google.com/file/d/1X87iDyYk2ebtdrG5-_Q4qUvu67wwvEOs/view?usp=sharing)。对于上述流程图中只介绍了对于模型、数据都是如何处理的，对于具体如何处理没有介绍，这里简单做一些介绍数据以及模型处理过程进行初步介绍，对于数据处理过程：
 **对于dataset构建过程**：
