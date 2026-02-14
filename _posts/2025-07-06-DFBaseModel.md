@@ -12,7 +12,9 @@ tags:
 - ControlNet
 - T2I-Adapter
 - SD
-- SDVL
+- SDXL
+- Flux
+- Z-image
 show: true
 description: 本文主要介绍基于Unet和Dit框架的基座扩散模型，重点对比SD1.5与SDXL的核心差异，包括CLIP编码器（SDXL采用双编码器拼接提升文本理解能力）、图像输出维度（SDXL默认1024x1024优于SD1.5的512x512）及技术优化策略。还涵盖Imagen的多阶段生成与动态调整方法，Dit模型的patch切分与adaLN模块，Hunyuan-DiT的双文本编码器与旋转位置编码，FLUX.1的VAE通道优化与旋转位置编码，以及SD3的三文本编码器与MM-Dit架构。同时涉及VAE模型重构表现对比、guidance_rescale参数对生成效果的影响，和Adapters技术如ControlNet（零卷积层条件控制）、DreamBooth（样本微调与类别先验损失）等插件式模型调整方法，旨在全面解析不同扩散模型的结构特性与应用技术。
 ---
@@ -238,6 +240,11 @@ embed_dim=self.inner_dim,pos_embed_max_size=pos_embed_max_size,  # hard-code for
 self.pos_embed = FluxPosEmbed(theta=10000, axes_dim=axes_dims_rope)
 ```
 
+### Flux系列模型
+#### Flux-Context模型
+#### Flux-Klein
+### 千问系列模型
+#### Z-Image-Turbo 
 ### VAE基座模型
 对于VAE模型在之前的[博客](https://www.big-yellow-j.top/posts/2025/05/11/VAE.html)有介绍过具体的原理，这里主要就是介绍几个常见的VAE架构模型（使用过程中其实很少会去修改VAE架构，一般都是直接用SD自己使用的）所以就简单对比一下不同的VAE模型在图片重构上的表，主要是使用此[huggingface](https://huggingface.co/spaces/rizavelioglu/vae-comparison)上的进行比较（比较的数值越小越好，就数值而言 **CogView4-6B**效果最佳），下面结果为随便挑选的一个图片进行测试结果：
 
