@@ -289,7 +289,7 @@ Turbo是对Z-Image进行蒸馏加速版本。对于Z-Image其具体模型结构�
 ![image.png](https://test.fukit.cn/autoupload/f/vkB-Pqb1HNqojGbyEgL65tiO_OyvX7mIgxFBfDMDErs/default/image.png)
 在预训练（pre-training）阶段都是使用flow-matching方法进行训练，对于上述过程中首先在低质量预训练（Low-Resolution Pre-training）中使用256分辨率图像进行训练，在Omni Pre-training中则是直接进行更加复制训练任意分辨率、文生图、图生图等预训练。后续的强化学习中先使用DPO做offline alignment在使用GRPO做online alignment。除此之外使用Distribution Matching Distillation（DMD分布匹配蒸馏方式）去蒸馏模型得到Turbo模型
 ### 基座模型对比效果分析
-具体使用测试服务器为3090-24G进行测试：得到[不同模型在文生图效果对比分析结果](https://docs.google.com/spreadsheets/d/1Cm7xxdbY6l9Zl4-NVJnxE3HPt256Z-G34-FRwoxFEfI/edit?usp=sharing)
+具体使用测试服务器为3090-24G进行测试：得到[不同模型在文生图效果对比分析结果](https://xcnsumle7uuf.feishu.cn/wiki/Tu74wPeCEirZ5XkY3WncaET1nod?from=from_copylink)
 ### VAE基座模型
 对于VAE模型在之前的[博客](https://www.big-yellow-j.top/posts/2025/05/11/VAE.html)有介绍过具体的原理，这里主要就是介绍几个常见的VAE架构模型（使用过程中其实很少会去修改VAE架构，一般都是直接用SD自己使用的）所以就简单对比一下不同的VAE模型在图片重构上的表，主要是使用此[huggingface](https://huggingface.co/spaces/rizavelioglu/vae-comparison)上的进行比较（比较的数值越小越好，就数值而言 **CogView4-6B**效果最佳），下面结果为随便挑选的一个图片进行测试结果：
 
