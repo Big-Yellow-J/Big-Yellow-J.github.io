@@ -284,9 +284,9 @@ Qwen image[^18]无论是多行文字、段落布局，还是中英文等不同�
 对于两种模型权重地址如下：1、[Z-Image HuggingFace](https://huggingface.co/Tongyi-MAI/Z-Image)；2、[Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo)对于两种模型对比如下：
 ![image.png](https://test.fukit.cn/autoupload/f/vkB-Pqb1HNqojGbyEgL65tiO_OyvX7mIgxFBfDMDErs/default/image.png)
 Turbo是对Z-Image进行蒸馏加速版本。对于Z-Image其具体模型结构如下所示（在模型结构上差异不大，关键点在于数据构建过程见：[扩散模型数据构建](https://www.big-yellow-j.top/posts/2026/02/15/DataBuild.html)）
-![](https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260219131344750.png)
+![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260219131344750.png)
 对于上述模型结构，文本编码器：Qwen3-4B；VAE使用Flux VAE；位置编码上使用3D Unified RoPE编码方式，除此之外对于图像编辑任务上使用SigLIP2去提取图像特征。除此之外再上述结构中Q/K-Norm指的是在计算attention之前提前去对Q/K进行归一化处理（一般的注意力计算是对Q/K/V在计算attention之后进行归一化亦或者提前对3者都进行归一化）除此之外其在训练阶段使用策略是：
-![](https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260219131448332.png)
+![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260219131448332.png)
 在预训练（pre-training）阶段都是使用flow-matching方法进行训练，对于上述过程中首先在低质量预训练（Low-Resolution Pre-training）中使用256分辨率图像进行训练，在Omni Pre-training中则是直接进行更加复制训练任意分辨率、文生图、图生图等预训练。后续的强化学习中先使用DPO做offline alignment在使用GRPO做online alignment。除此之外使用Distribution Matching Distillation（DMD分布匹配蒸馏方式）去蒸馏模型得到Turbo模型
 ### 基座模型对比效果分析
 具体使用测试服务器为3090-24G进行测试，得到[不同模型在文生图效果对比分析结果](https://xcnsumle7uuf.feishu.cn/wiki/Tu74wPeCEirZ5XkY3WncaET1nod?from=from_copylink)
