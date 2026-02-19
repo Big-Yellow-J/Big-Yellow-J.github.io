@@ -27,7 +27,9 @@ $$
 
 其中$X$为输入向量，$\Vert. \Vert_F$为Frobenius范数。按照论文里面的描述GPTQ整个过程为：
 ![](https://s2.loli.net/2025/10/12/zTrLfJi3HXyt9jm.webp)
-对于具体数学原理的描述参考文章[^2][^3]（数学原理推荐直接看：[GPTQ详细解读](https://zhuanlan.zhihu.com/p/1941146483756897225)），简单总结一下上面过程就是：1、每行独立计算二阶海森矩阵。2、每行按顺序进行逐个参数量化，从而可以并行计算。3、按block维度进行更新，对剩余参数进行延迟更新弥补。4、对逆海森矩阵使用cholesky分解，等价消除迭代中的矩阵更新计算。**它的核心流程其实就是量化-补偿-量化-补偿的迭代**（具体过程见流程图中内部循环：首先量化$W_{:,j}$，而后去计算误差并且补充到 $W_{:,j:(i+B)}$），具体的代码实现过程（[官方GPTQ-Github](https://github.com/IST-DASLab/gptq)）主要是对其中LlamaAttention和LlamaMLP层中的Linear层[权重进行量化](https://github.com/IST-DASLab/gptq/blob/2d65066eeb06a5c9ff5184d8cebdf33662c67faf/llama.py#L75C1-L84C1)。代码处理过程[^4]：
+> 实际使用LLMCompressor进行模型量化过程中，$\lambda$对应参数`dampening_frac`可能（$W8A8$）会出现：`Failed to invert hessian due to numerical instability. Consider increasing GPTQModifier.dampening_frac, increasing the number of calibration samples, or shuffling the calibration dataset`其主要原因是计算Hessian矩阵出现严重病态（ill-conditioned）或接近奇异/非正定时，Cholesky 分解就会失败，抛出数值不稳定错误。因此就可以根据里面建议：增加数据、增加$\lambda$的值
+
+对于具体数学原理的描述参考文章[^2][^3]（数学原理推荐直接看：[GPTQ详细解读](https://zhuanlan.zhihu.com/p/1941146483756897225)），简单总结一下上面过程就是：1、每行独立计算二阶海森矩阵。2、每行按顺序进行逐个参数量化，从而可以并行计算。3、按block维度进行更新，对剩余参数进行延迟更新弥补。4、对逆海森矩阵使用cholesky分解，等价消除迭代中的矩阵更新计算。**它的核心流程其实就是量化-补偿-量化-补偿的迭代**（具体过程见流程图中**内部循环**：首先量化$W_{:,j}$，而后去计算误差并且补充到 $W_{:,j:(i+B)}$），具体的代码实现过程（[官方GPTQ-Github](https://github.com/IST-DASLab/gptq)）主要是对其中LlamaAttention和LlamaMLP层中的Linear层[权重进行量化](https://github.com/IST-DASLab/gptq/blob/2d65066eeb06a5c9ff5184d8cebdf33662c67faf/llama.py#L75C1-L84C1)。代码处理过程[^4]：
 **首先**、计算Hessian矩阵（因为后续计算损失和补偿权重需要，因此提前计算矩阵）
 这个矩阵近似：$H_F=2X_FX_F^T$（$X$是**经过前面几层神经网络之后，到达被量化层的激活**）。实现方式是在每一层Layer上注册hook，通过hook的方式在layer forward后使用calibration data的input来生成Hessian矩阵，这种计算方式常见于量化流程中校准数据的处理
 ```python
@@ -41,7 +43,7 @@ handles = []
 # 添加hook
 for name in subset:
     handles.append(subset[name].register_forward_hook(add_batch(name)))
-# 处理岩本计算数据
+# 处理样本计算数据
 for j in range(args.nsamples):
     outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_ids=position_ids)[0]
 # 去除hook

@@ -596,7 +596,7 @@
     ],
     [
       "new_description",
-      "扩散模型生成加速策略主要包括加速框架优化、Cache策略及量化技术。加速框架方面，可通过指定attention计算后端（如flash_attn）、torch.compile编译、torch.channels_last优化内存访问，或使用xFormers加速attention计算并降低显存，配合CPU卸载、设备分配等显存优化措施。Cache策略利用扩散过程时间冗余，如DeepCache缓存UNet高层特征、FORA复用DiT的Attn和MLP层特征，FBCache基于First Block L1误差判断是否复用残差，CacheDit结合前n层缓存与阈值判断实现加速。量化技术通过PTQ或QAT降低显存并加速，如Bitsandbytes的即时可逆int4/int8量化、SVDQuant分解权重吸收异常值后量化残差、GGUF格式的紧凑编码与多种PTQ量化级别。测试显示，结合channel优化、flash_attn及cache-dit等策略可有效缩短生图时间。"
+      "扩散模型生成加速策略主要包括加速框架、Cache策略和量化技术。加速框架通过优化计算后端（如flash_attn）、torch.compile编译、torch.channels_last内存访问优化及xFormers加速attention计算，结合CPU卸载和设备分配等显存优化措施提升效率。Cache策略利用扩散过程时间冗余，如DeepCache缓存UNet高层特征、FORA复用DiT的Attn/MLP特征、CacheDit基于残差误差动态复用缓存，减少重复计算。量化技术通过PTQ（如Bitsandbytes即时量化、SVDQuant分解低秩与残差量化、GGUF的K-Quant优化）和QAT，将权重/激活量化为低比特（INT4/INT8），降低显存并加速推理，实现生成速度提升。"
     ]
   ],
   "./writing/2026-01-28-Ai-toolkit-Training.md": [
@@ -617,6 +617,16 @@
     [
       "new_description",
       "Ai-toolkit框架用于扩散模型微调，需在autodl服务器（VGPU-32G、CUDA 13.0）安装，配置hf token后上传数据集（图像为.jpg/.jpeg/.png，文本为txt且一一对应，路径xxx/ai-toolkit/datasets）。训练界面参数建议默认模型路径，模型下载报错可重启任务。数据处理涉及dataset构建（FileItemDTO处理prompt和图像tensor转换）、DataLoaderBatchDTO（含tensor、control_tensor、caption_list），训练通过train_single_accumulation函数进行vae、text_encoder编码及loss计算，数据后处理含prepare_prompt等步骤。训练参数包括model模块assistant_lora_path，train模块xformers、attention_backend，decorator模块（flux模型）num_tokens，adapter模块（t2i）图像条件适配功能。"
+    ]
+  ],
+  "./writing/2026-02-15-DataBuild.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "Z-Image生成模型数据集构建过程中，通过多维度Data Profiling Engine进行自动化数据体检与精选，涵盖元数据、技术质量、信息密度、美学语义及图文对齐维度。采用pHash去重（含缩小尺寸、灰度化、DCT变换取8*8矩阵、均值比较生成哈希值及汉明距离计算）、自研质量/AIGC/VLM模型打分、CN-CLIP对齐过滤及VLM一体化生成caption，结合borderpixel variance与BPP过滤低信息熵样本，从海量脏数据中提炼出高质量、强对齐、偏中文文化的训练语料，数据收集经编码后粗过滤（去重+规则过滤）及图文匹配完成。"
     ]
   ]
 }

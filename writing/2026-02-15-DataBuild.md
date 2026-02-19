@@ -11,7 +11,10 @@ tags:
 - 数据构建
 show: true
 stickie: true
+description: Z-Image生成模型数据集构建过程中，通过多维度Data Profiling Engine进行自动化数据体检与精选，涵盖元数据、技术质量、信息密度、美学语义及图文对齐维度。采用pHash去重（含缩小尺寸、灰度化、DCT变换取8*8矩阵、均值比较生成哈希值及汉明距离计算）、自研质量/AIGC/VLM模型打分、CN-CLIP对齐过滤及VLM一体化生成caption，结合borderpixel
+  variance与BPP过滤低信息熵样本，从海量脏数据中提炼出高质量、强对齐、偏中文文化的训练语料，数据收集经编码后粗过滤（去重+规则过滤）及图文匹配完成。
 ---
+
 本文主要去收集看到的所有论文中关于**生成模型数据集构建过程**
 ## Z-Image数据构建过程
 在Z-Image[^1]中对于比较常规的数据处理方式比如使用多模态模型对图像描述，使用llm去做prompt augmentation等不同的是在Z-Image中的数据构建方式如下：
