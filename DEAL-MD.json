@@ -628,5 +628,15 @@
       "new_description",
       "Z-Image生成模型数据集构建过程中，通过多维度Data Profiling Engine进行自动化数据体检与精选，涵盖元数据、技术质量、信息密度、美学语义及图文对齐维度。采用pHash去重（含缩小尺寸、灰度化、DCT变换取8*8矩阵、均值比较生成哈希值及汉明距离计算）、自研质量/AIGC/VLM模型打分、CN-CLIP对齐过滤及VLM一体化生成caption，结合borderpixel variance与BPP过滤低信息熵样本，从海量脏数据中提炼出高质量、强对齐、偏中文文化的训练语料，数据收集经编码后粗过滤（去重+规则过滤）及图文匹配完成。"
     ]
+  ],
+  "./_posts/2026-02-20-ModelTraining.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "训练Qwen2.5VL-3B模型时出现Loss下降但Grad Norm先降后升的现象。模型采用AdamW优化器、cosine学习率warm up策略及交叉熵损失函数，通过tensorboard记录训练指标。Loss反映模型拟合效果，Grad Norm为所有参数梯度向量拼接后的L2范数，反映优化器中间状态。分析表明，Grad Norm上升可能因梯度范数与参数范数成正比，参数范数增加导致；也与权重衰减和学习率安排（尤其是warm up策略）的相互作用有关。"
+    ]
   ]
 }
