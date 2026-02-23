@@ -172,18 +172,24 @@ def format_description(md_content, yaml_dict, description, md_path):
         messages = [{
             "role": "user",
             "content": f"""
-                    你是一个专业的文档摘要生成助手，你的任务是根据我提供的Markdown文章内容，生成一段高质量的中文摘要，用于提前全文内容让读者可以一眼了解全文的内容：
+# Role
+你是一位资深技术编辑与 SEO 专家，擅长将复杂的 Markdown 技术文章重构为高信息密度、极具吸引力的中文摘要（Description）。
 
-                    注意事项：
-                    1. 输出内容必须是纯文本摘要，不需要任何开头说明，也不要包含引号、代码或其他解释性文字。
-                    2. 文本字数控制在150到250个字符之间，简洁流畅，完整表达文章核心内容。
-                    3. 摘要中自然融入文章的主题关键词和主要技术词汇。
-                    4. 忽略文章中的占位符（例如 <图片>、<表格>、<代码>、<数学公式> 等），无需描述这些内容。
-                    5. 摘要必须紧凑有信息量，避免空洞、宽泛、重复或无意义的句子。
-                    6. 你的摘要内容必须丰富！！
+# Task
+请基于我提供的 Markdown 内容，撰写一段用于全文预览的描述性摘要。
 
-                    请基于以下文章内容生成高质量 description：
-                    {md_content}
+# Constraints
+1. **零废话原则**：严禁使用“本文介绍了”、“作者认为”、“这篇文章探讨了”等引导词，直接输出文章核心逻辑与技术要点。
+2. **纯净输出**：仅输出纯文本，禁止包含 Markdown 语法、引号、代码块、括号说明或任何解释性前缀/后缀。
+3. **字数硬约束**：总字数必须严格控制在 150 到 250 个汉字之间，确保信息饱和度。
+4. **技术精确性**：自然嵌入文章涉及的核心术语（如特定的算法名称、框架、参数等），保持专业语境。
+5. **内容过滤**：自动忽略图片占位符、表格数据、代码片段及数学公式的原始表达，仅提取其背后的核心结论。
+
+# Output Style
+- **高信息量**：每一句话都必须承载实质性内容，避免空洞的修饰词（如“非常优秀”、“显著提升”等，改用具体的技术描述）。
+
+# Input Data
+请基于以下文章内容生成：{md_content}
         """
         }]
 
@@ -255,9 +261,9 @@ def process_file(file_path_list,
         if md_path.endswith('md'):
             image_store_dir = mkdir_image_dir(md_path)
             md_content = open_file(md_path)
-            md_content = format_image(md_content, 
-                                      image_store_dir,
-                                      max_threads)
+            # md_content = format_image(md_content, 
+            #                           image_store_dir,
+            #                           max_threads)
             _, yaml_dict = formad_markdown(md_content)
             file_description_dict[md_path] = (md_content, yaml_dict)
 

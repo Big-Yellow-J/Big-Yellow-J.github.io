@@ -171,9 +171,6 @@ if use_clipped_model_output:
 pred_sample_direction = (1 - alpha_prod_t_prev - std_dev_t**2) ** (0.5) * pred_epsilon
 prev_sample = alpha_prod_t_prev ** (0.5) * pred_original_sample + pred_sample_direction
 ```
-
-## Flow Matching
-
 ## 不同调度器生成对比
 > 只是简单对比不同调度器在生成效果上的速度差异（SDXL模型）
 
@@ -201,5 +198,5 @@ negative_prompt = "blurry, low quality, distorted, extra limbs, deformed, low co
 ```
 
 ## 参考
-[^1]:https://arxiv.org/abs/2010.02502
-[^2]:https://arxiv.org/abs/2006.11239
+[^1]:[https://arxiv.org/abs/2010.02502](https://arxiv.org/abs/2010.02502)
+[^2]:[https://arxiv.org/abs/2006.11239](https://arxiv.org/abs/2010.02502)

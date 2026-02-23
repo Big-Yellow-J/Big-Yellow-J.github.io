@@ -638,5 +638,15 @@
       "new_description",
       "训练Qwen2.5VL-3B模型时出现Loss下降但Grad Norm先降后升的现象。模型采用AdamW优化器、cosine学习率warm up策略及交叉熵损失函数，通过tensorboard记录训练指标。Loss反映模型拟合效果，Grad Norm为所有参数梯度向量拼接后的L2范数，反映优化器中间状态。分析表明，Grad Norm上升可能因梯度范数与参数范数成正比，参数范数增加导致；也与权重衰减和学习率安排（尤其是warm up策略）的相互作用有关。"
     ]
+  ],
+  "./_posts/2026-02-23-FlowMatching.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "Latent Consistency Model（LCM）通过将随机微分SDE转化为常微分ODE实现生成加速，仅需3-5步生成图像。Flow Matching算法则通过学习连续的确定性向量场（velocity field），构造从噪声到数据的最优概率路径加速生成。传统扩散模型需前向加噪、反向去噪，路径弯曲，采样需20-100步；Flow Matching直接学习从噪声（t=0）到真实数据（t=1）的连续流动路径，路径确定。训练中传统SD模型预测噪声，Flow Matching预测移动速度（如MNIST数据集中预测速度场），采样路径固定，因预测内容与路径差异，需适配方法作用于SD1.5等模型。"
+    ]
   ]
 }
