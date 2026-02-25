@@ -17,8 +17,22 @@ description: 本文详细介绍常用Attention操作及KV-cache内存优化方�
 ---
 
 本文主要介绍常用的Attention操作（多头注意力等）以及在KV-cahce中如何节约内容的操作
-
 ## 一、Attention类别
+
+| 类别 | 复杂度 | 是否精确 | 典型代表模型/论文 | 当前主流实现方式 |
+| :---: | :---: | :---: | :---: | :---: |
+| Standard Scaled Dot-Product | O(n²) | 是 | 原 Transformer | PyTorch SDPA / naive |
+| Multi-Head Attention (MHA) | O(n²) | 是 | 几乎所有 | PyTorch SDPA |
+| Multi-Query Attention (MQA) | O(n²) | 是 | Grok-1, 早期 Llama | PyTorch SDPA + head复用 |
+| Grouped Query Attention (GQA) | O(n²) | 是 | Llama-3, Mistral, Qwen2 | PyTorch SDPA |
+| FlashAttention-2/3/4 | O(n²) | 是 | 几乎所有现代推理框架 | Dao-AI Lab/flash-attention 包 |
+| Sparse Attention | < O(n²) | 近似/精确 | Longformer, BigBird | xFormers sparse / Triton 自定义 |
+| Block-Sparse / Local | < O(n²) | 是/近似 | Mistral Sliding Window | xFormers block-sparse / Flash |
+| Linear Attention | O(n) | 近似 | Performer, Linformer | Triton / 自定义 |
+| Multi-Head Latent Attention (MLA) | O(n²) | 是 | DeepSeek-V3 | 模型自定义实现 |
+| PagedAttention | O(n²) | 是 | vLLM / 连续批处理 | vLLM 内置 |
+
+对于上述各类Attention计算实现代码（抛去那些框架内置的如flash attention等）：[Attention.ipynb](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/Attention/Attention.ipynb)
 ### 1、Multi Head Attention
 关于 **Multi Head Attention**网上有较多的解释了，这里主要记录如下几点
 1、对于注意力计算公式的理解：

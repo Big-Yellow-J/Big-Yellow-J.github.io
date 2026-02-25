@@ -9,86 +9,69 @@ description: DeepSpeed是微软开发的深度学习优化库，专为高性能�
 ---
 
 ## `DeepSpeed`原理
-DeepSpeed 是由微软开发的一种深度学习优化库，专为高性能训练和推理而设计，尤其适用于大规模深度学习模型（如 GPT 系列、BERT 等）。它通过一系列技术和优化策略，帮助研究者和开发者高效利用硬件资源，实现快速训练、降低内存使用以及提升推理速度。
-正如其官方描述那样：
-
+DeepSpeed 是由微软开发的一种深度学习优化库，专为高性能训练和推理而设计，尤其适用于大规模深度学习模型（如 GPT 系列、BERT 等）。它通过一系列技术和优化策略，帮助研究者和开发者高效利用硬件资源，实现快速训练、降低内存使用以及提升推理速度。正如其官方描述那样：
 ![image](https://s2.loli.net/2025/06/21/XCztHyfDvhTQG5x.webp)
 > Image From: https://github.com/microsoft/DeepSpeed
 
----
-
 `Deepspeed`作为一种显存优化技术，那么就会有一个问题：**模型训练显存都被谁占用了？**
 参考论文（https://arxiv.org/pdf/1910.02054）中的描述在一个`1.5B`的`GPT-2`模型参数量为`3G`（半精度）但是一块32G的显卡可能无法训练下来，这是因为显存都被 **模型状态** 以及 **剩余状态**（`Residual Memory Consumption`）
-
 **模型状态**显存占用
-
 主要指的是：*优化器状态，梯度，模型参数*。比如说在训练过程中一般都会选择使用`Adam`作为一种优化器进行使用，而在`Adam`计算过程中就会存储两部分内容：**1、动量（上一轮梯度累计）；2、二阶动量（存储梯度平方的滑动平均值）**。如何去避免这部分结果对显存占用的影响，就提出了 *混合精度训练*（用`FP16`存储和计算梯度及优化器状态）
 比如说：用`Adam`作为优化器在混合精度下训练参数量为$\Phi$的模型显存占用：1、一部分用来存储`FP16`的参数以及梯度：$2\Phi, 2\Phi$；2、另外一部分需要存储优化器状态（`FP32`存储：模型参数，动量，二阶动量）：$4\Phi, 4\Phi, 4\Phi$。那么显存占用上就有：$2+ 2+ 4+ 4+ 4=16\Phi$。那么回到上面提到的`1.5B`的`GPT-2`至少需要：$1.5 \times 16=24G$
 **剩余状态**显存占用
 这部分主要指的是： 除了模型状态之外的显存占用，包括**激活值（activation）**（可以通过`Activation checkpointing`减少）、**各种临时缓冲区（buffer）**以及无法使用的**显存碎片（fragmentation）**
-
----
-
 ### 三种切分
-
 了解模型训练过程中显存占用之后再去了解`DeepSpeed`中核心内容`ZeRO`（按照论文中表述作者是分了两部分介绍：`ZeRO-DP`和`ZeRO-R`分别去优化上面两部分显存占用）
-> `ZeRO-DP`原理
-
+#### `ZeRO-DP`原理
 主要是通过**切分**（`partitioning`）的方式来减少 **模型状态**显存占用
 ![image](https://s2.loli.net/2025/06/21/4OUkVeJpjsF8zvc.webp)
-
 第一种方式为$P_{OS}$：对优化器的状态进行切分，将$N$块GPU上每块只存储$\frac{1}{N}$，那么最后显存占用（按上面的显存分析为例）就为：$4\Phi+ \frac{12\times \Phi}{N}$
 第二种方式为$P_{OS+g}$也就是在对优化器切分的基础上补充一个对梯度的切分，那么显存占用上就变成为：$2\Phi+ \frac{(2+ 12)\times \Phi}{N}$
 第三种方式为$P_{OS+g+p}$也就是对模型状态三个都进行切分，显存占用为：$\frac{4\Phi+ 12\Phi}{N}$
 对于上面3种方式显存减少上分别为：$4\text{x}, 8\text{x}, N$（其中N表示的为设备数量）
-
----
-
 进一步理解上面3个操作
-> Image From: https://zhuanlan.zhihu.com/p/618865052
+> Image From: [https://zhuanlan.zhihu.com/p/618865052](https://zhuanlan.zhihu.com/p/618865052)
+> `ZeRO-DP`是一种 *用完就丢* 的套路，**计算时候是完整内容，但是使用完之后就丢掉**
 
 **第一种方式$P_{OS}$**
-因为会将优化器状态切分，那么在3个不同设备上分别存储**3分优化器状态**（o1, o2, o3）,对于这3部分优化器（因为优化器最后还是去“作用”到梯度上），分别对各自的梯度进行优化，但是会有一个问题：每块GPU上存储的是 **一部分优化器状态**，那么对于每份优化器也只能去优化各自的参数，每次更新需要通过 **All-Gather** 操作合并梯度，完成优化器状态更新
+Forward过程：参数全复制，每张卡正常前向计算；Backward过程：每张卡计算完整梯度；梯度同步过程：通过**All-Reduce**（或 reduce-scatter + all-gather）把梯度平均（因为多卡并行每张卡上处理数据不同对于梯度也就不同），使每张卡得到相同的完整梯度；Optimizer step过程：每张卡**只更新自己负责的 1/N 份优化器状态**（对应模型的 1/N 份参数），更新后通过**All-Gather**（或等效广播）把更新后的参数同步回所有卡，使参数保持全复制  
 ![image](https://s2.loli.net/2025/06/21/zZP5wKRG2duH7L3.webp)
 **第二种方式$P_{OS+g}$**
+Forward过程：参数全复制，正常计算；Backward过程：每张卡计算本地梯度；梯度同步过程：执行 **Reduce-Scatter**，每个 GPU 只保留全局平均后“自己负责参数 shard”对应的那 1/N 份梯度（其余丢弃）；Optimizer step：用本地 1/N 梯度 + 本地 1/N 优化器状态，直接更新本地 1/N 参数 shard；参数同步：执行 **All-Gather**（或等效广播），把更新后的完整参数广播给所有卡（保持参数全复制）  
 ![image](https://s2.loli.net/2025/06/21/WSEDgNrws4n6hC1.webp)
-在进行前向+反向传播之后，**得到完整的梯度**，因为要实现梯度拆分，那么就对梯度进行`reduce-scatter`对于不同的GPU就会存储不同的梯度（g1, g2, g3白色的就会剔除掉）前向和反向传播需要通过 **All-Gather** 和 **All-Reduce** 操作同步梯度和参数
 **第三种方式为$P_{OS+g+p}$**
+Forward和Backward（每层/每个 bucket）过程：执行**All-Gather** 把本层/本 bucket 的参数 shard 收集成完整参数-->进行前向/反向计算-->计算完立即释放完整参数（节省内存）；梯度同步：执行 **Reduce-Scatter**，把所有卡的梯度按 shard 聚合，每个 GPU 只拿到“自己负责参数 shard”对应的 1/N 梯度；Optimizer step：每张卡用本地 1/N 梯度 + 本地 1/N 优化器状态，直接更新本地 1/N 参数 shard
 ![image](https://s2.loli.net/2025/06/21/eViXt9sI2rluF4H.webp)
-
-通过 **All-Gather**和 **Reduce-Scatter** 高效完成参数同步和更新。总的来说：`ZeRO-DP`是一种 *用完就丢* 的套路，**计算时候是完整内容，但是使用完之后就丢掉**
-
-> **补充1**：`All-Gather`, `All-Reduce`, `reduce-scatter`什么意思？
-> `All-Gather`：**将每个设备上的数据片段收集起来并广播到所有设备上**。最终，每个设备都会拥有所有设备的数据片段
-> 比如说4个GPU分别存储不同的值：$GPU_i: i(i=1,2,3,4)$通过 `all-gather`那么不同GPU值为$GPU_i: [1,2,3,4]$
-> `reduce-scatter`：将**数据分片并执行 **聚合**，然后将结果分发给每个设备**。每个设备最终只保留聚合后的部分结果
-> 比如说4个GPU分别存储不同的值：$GPU_i: [i_1, i_2, i_3, i_4](i=1,2,3,4)$ 通过 `reduce-scatter`（假设为按照加法聚合）那么不同GPU值为$GPU_1: [1_1, 2_1, 3_1, 4_1]$
-> `All-Reduce`：**用于在所有设备之间对数据进行 **聚合（Reduce）** 和 **广播（Broadcast）****。每个设备都会执行相同的聚合操作，并最终持有相同的聚合结果
-> 比如说4个GPU分别存储不同的值：$GPU_i: i(i=1,2,3,4)$通过 `all-reduce`（假设为`sum`）那么不同GPU值为$GPU_i: 10$，然后将这个值广播到其他设备上。
-> 对于 **all-gather**和 **all-reduce**简单理解为：前者每块显卡都只保留部分内容，需要“组合”起来，后者每块显卡都是保留完整内容，但是计算结果不同，只需要“汇聚”起来。
-> `Ring-ALLReduce`操作：
-> **第一阶段**，通过`reduce-sactter`传递参数
-> ![image](https://s2.loli.net/2025/06/21/WipqDmgUbZ9TAnc.webp)
-> 通过3次参数更新之后，这样就会出现不同设备上都会有一个都具有参数$a_i+ b_i+ c_i+ d_i$那么下一阶段就是通过`all-gather`将不同设备上参数广播到不同设备最后实现参数都实现更新。
-> ![image](https://s2.loli.net/2025/06/21/YMbcTewvnJFjDZC.webp)
-> **补充2**：通信量和传统的数据并行之间有无区别？
-> 这部分描述来自论文（https://arxiv.org/pdf/1910.02054）中的描述：
-> **传统的数据并行方式**：传统的`DDP`主要使用的是`Ring AllReduce`在通信量上为：$2\Phi$（主要来自两部分：）
-> $P_{OS}$ 和 $P_{OS+g}$ 通信量：$2\Phi$，以后者为例：因为每部分设备只保留了部分梯度信息，因此首先需要通过`reduce-scatter`操作（$\Phi$）在梯度都通一之后需要对所有的参数进行更新（$\Phi$）
-> $P_{OS+g+p}$：$3\Phi$。**前向传播**过程中每个设备都只保存了部分参数，因此需要对设备之间进行一次参数广播，在前向操作结束之后，将其他参数删除掉（比如$GPU_i$接受了$i+1,...,n$的参数，那么就将这部分参数删除）此部分通信量为：$\frac{\Phi \times N}{N}=\Phi$，类似的**反向传播**还需要再来一次，梯度还需要进行`reduce-scatter`
-
----
-
-> `ZeRO-R`原理
-
+对于上述过程中提到的几个概念：`All-Gather`, `All-Reduce`, `reduce-scatter`其具体的原理如下：
+1、`All-Gather`：把每个设备上的**同等大小**的数据收集起来，然后把完整集合**广播**给所有设备。最终每个设备都得到所有设备数据的**完整拼接**。。比如说4个GPU分别存储不同的值：GPU₀: [A], GPU₁: [B], GPU₂: [C], GPU₃: [D]，all-gather 后：每个GPU都得到 [A, B, C, D]。
+2、`reduce-scatter`：先对所有设备**相同位置**的数据做聚合（reduce），然后把聚合后的完整结果**分片**（scatter）分发给每个设备，每个设备只拿到其中一部分。比如说4个GPU计算得到不同的梯度值（reduce操作为sum，输出分4份）：
+初始：  
+   GPU₀: [a0, a1, a2, a3]  
+   GPU₁: [b0, b1, b2, b3]  
+   GPU₂: [c0, c1, c2, c3]  
+   GPU₃: [d0, d1, d2, d3]
+reduce-scatter 后（假设按顺序分片）：  
+   GPU₀: [a0+b0+c0+d0]  
+   GPU₁: [a1+b1+c1+d1]  
+   GPU₂: [a2+b2+c2+d2]  
+   GPU₃: [a3+b3+c3+d3]
+3、`All-Reduce`：对所有设备上的数据做全局聚合（reduce），然后把**同一个聚合结果广播**给所有设备。最终每个设备拿到的值完全相同。。比如说4个GPU分别存储不同的值：GPU₀: [10,20], GPU₁: [30,40], GPU₂: [50,60], GPU₃: [70,80]。all-reduce(sum) 后：每个GPU都得到 [160, 200]
+对于**all-gather**和 **all-reduce**简单理解为：前者“把碎片拼成完整，大家都拿完整版”（只拼接、不计算），而后者“把不同值加起来（或其他聚合），把同一个答案发给大家”（先算、再广播）。
+4、`Ring-ALLReduce`操作：
+**第一阶段**，通过`reduce-sactter`传递参数
+![image](https://s2.loli.net/2025/06/21/WipqDmgUbZ9TAnc.webp)
+通过3次参数更新之后，这样就会出现不同设备上都会有一个都具有参数$a_i+ b_i+ c_i+ d_i$那么下一阶段就是通过`all-gather`将不同设备上参数广播到不同设备最后实现参数都实现更新。
+![image](https://s2.loli.net/2025/06/21/YMbcTewvnJFjDZC.webp)
+对于通信量过程分析：
+这部分描述来自论文（[https://arxiv.org/pdf/1910.02054](https://arxiv.org/pdf/1910.02054)）中的描述：在**传统的数据并行方式**：传统的`DDP`主要使用的是`Ring AllReduce`在通信量上为：$2\Phi$（主要来自两部分：）在DeepSpeed中通信量分析如下：
+$P_{OS}$ 和 $P_{OS+g}$ 通信量：$2\Phi$，以后者为例：因为每部分设备只保留了部分梯度信息，因此首先需要通过`reduce-scatter`操作（$\Phi$）在梯度都通一之后需要对所有的参数进行更新（All-Gather操作）（$\Phi$）
+$P_{OS+g+p}$：$3\Phi$。在前向和反向都需要进行参数All-Gather那么此时通信量就是$2\phi$，而后还需要对提取进行Reduce-Scather此时通信量为 $\phi$
+#### `ZeRO-R`原理
 1、对于激活值的占用。通过$P_a$：`Partitioned Activation Checkpointing`通过分区+checkpointing方式
 2、对于临时缓冲区。模型训练过程中经常会创建一些大小不等的临时缓冲区，比如对梯度进行AllReduce，解决办法就是预先创建一个固定的缓冲区，训练过程中不再动态创建，如果要传输的数据较小，则多组数据bucket后再一次性传输，提高效率
 3、对于显存碎片。显存出现碎片的一大原因是时候gradient checkpointing后，不断地创建和销毁那些不保存的激活值，解决方法是预先分配一块连续的显存，将常驻显存的模型状态和checkpointed activation存在里面，剩余显存用于动态创建和销毁discarded activation
-
 ## `DeepSpeed`代码
-
 `Deepspeed`代码也比较简单，首先安装`deepspeed`:`pip install deepspeed`。使用`deepspeed`之前一般先去初始化，[代码](https://github.com/microsoft/DeepSpeed/blob/fa8db5cf2f9cf724fd2703353d40e3b37a8e7310/deepspeed/__init__.py#L68)如下：
-
 ```python
 def initialize(args=None,
                model: torch.nn.Module = None,
@@ -140,9 +123,7 @@ def initialize(args=None,
     """
 
 ```
-
 `deepspeed`具体案例可以查看其官方示例：https://github.com/microsoft/DeepSpeedExamples.具体使用也很简单,因为`Deepspeed`将各种功能都封装好了，可以直接使用，一个建议`Demo`如下：
-
 ```
 # 首先初始化
 model_engine, optimizer, train_loader, _ = deepspeed.initialize(
@@ -160,12 +141,9 @@ def train(model_engine, optimizer, train_loader, ...):
     model_engine.step()
     ...
 ```
-
 值得注意的是：
 * 1、如果需要访问设备，可以直接用：`model_engine.local_rank()`进行访问即可  
 * 2、如果再`deepspeed`参数（更加多的参数可以参考官方文档：[1](https://www.deepspeed.ai/docs/config-json/#zero-optimizations-for-fp16-training)，[2](https://deepspeed.readthedocs.io/en/latest/zero3.html#deepspeed.runtime.zero.config.DeepSpeedZeroConfig.contiguous_gradients)）中设置了 *半精度* 训练，在数据里面要设定：`images.to(model.local_rank).half()`
-
----
 
 ```json
 {
@@ -192,9 +170,6 @@ def train(model_engine, optimizer, train_loader, ...):
   } // 指定zero的方式：1，2，3
 }
 ```
-
----
-
 * 3、理论上分析，在显存占用上是 $P_{OS}<P_{OS+g}<P_{OS+g+p}$ 但是实验过程中会出现相反的情况，参考[这部分讨论](https://github.com/microsoft/DeepSpeed/issues/1302)：1、在使用`deepspeed`中的`zero`设定时，**需要保证模型的大小足够大（大小>1B的参数）**。于此同时在使用`stage=2`或者`stage=3`的时候可以分别指定下面参数：1、`reduce_bucket_size`，`allgather_bucket_size`；2、`stage3_max_live_parameters`， `stage3_max_reuse_distance`
 * 4、对于`zero`中`stage`设定，通过结合github上的[讨论](https://zhuanlan.zhihu.com/p/630734624)：
 
@@ -274,9 +249,7 @@ def train(model_engine, optimizer, train_loader, ...):
 实际参数过程中，可能还需要设置`train_batch_size`，`gradient_accumulation_steps`（梯度累计次数），`optimizer`（优化器选择）
 
 ### 代码
-
 https://gitee.com/a-ha-a/deep-learning-note/tree/master/DeepLearning-Summary/Computer-Vision/deepspeed
-
 > 😶‍🌫️FROM: https://www.deepspeed.ai/docs/config-json/#batch-size-related-parameters
 
 1、`batch_size`参数设置
@@ -337,9 +310,7 @@ https://juejin.cn/post/7340849989743919138
 https://github.com/wdndev/llm_interview_note/blob/main/04.%E5%88%86%E5%B8%83%E5%BC%8F%E8%AE%AD%E7%BB%83/deepspeed%E4%BB%8B%E7%BB%8D/deepspeed%E4%BB%8B%E7%BB%8D.md
 
 ## 报错处理
-
 1、**索引超出了该张量的尺寸**
-
 ```
 ../aten/src/ATen/native/cuda/Indexing.cu:1289: indexSelectLargeIndex: block: [4,0,0], thread: [63,0,0] Assertion `srcIndex < srcSelectDimSize` failed.
 ...
@@ -348,9 +319,7 @@ https://github.com/wdndev/llm_interview_note/blob/main/04.%E5%88%86%E5%B8%83%E5%
 [rank0]: For debugging consider passing CUDA_LAUNCH_BLOCKING=1.
 [rank0]: Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
 ```
-
 这种一般是超出索引，一般来说对文本编码中会设置一个`vocab_size`参数，如果设置的参数小于定义数据范围就会报这个错误，一种简单方法就是，直接使用`tokenizer`的`vocab_size`即可，比如说：
-
 ```python
 from qwen_tokenizer.tokenization_qwen import QWenTokenizer
 from model.model import Transformer, ModelArgs
@@ -359,7 +328,6 @@ tokenizer_qwen = QWenTokenizer('./qwen_tokenizer/qwen.tiktoken')
 args = ModelArgs
 args.vocab_size = tokenizer_qwen.vocab_size
 ```
-
 ## 参考
 1、https://arxiv.org/pdf/1910.02054  
 2、https://zhuanlan.zhihu.com/p/513571706  
