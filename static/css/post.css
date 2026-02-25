@@ -197,7 +197,7 @@ body {
 }
 .page-post code {
   font-size: 13px;
-  background-color: #eeeeee;
+  background-color: #e7e7e7;
   word-break: break-all;
   padding: 3px 5px;
   margin: 0 4px;
@@ -273,44 +273,117 @@ body {
   transition: background-color 0.3s ease;
 }
 
-/* 响应式设计，适应不同屏幕 */
-/* @media screen and (max-width: 560px) { */
-  /* .page-post table { */
-    /* font-size: 12px; */
-  /* } */
-  /* .page-post th, */
-  /* .page-post td { */
-    /* padding: 8px 12px; 调整表格单元格内边距 */
-  /* } */
-/* } */
 
-/* 代码容器样式 */
-.code-container {
-  position: relative;
+:root {
+    /* 核心背景：使用深炭黑而非纯黑 */
+    --code-bg: #1e1e1e;          /* 代码区域背景 */
+    --header-bg: #333131;        /* 头部背景，稍亮一点形成对比 */
+    --border-color: #333333;     /* 边框颜色 */
+    --text-main: #d4d4d4;        /* 主文本色 */
+    --accent: #569cd6;           /* 蓝色点缀（VS Code 风格） */
 }
 
-/* 复制按钮样式 */
-.copy-button {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 4px 8px;
-  font-size: 12px;
-  background-color: #4BB596;
-  color: #ffffff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  opacity: 0.8;
-  transition: opacity 0.3s ease;
+/* 容器基础样式 */
+.code-fold-container {
+    margin: 2em 0;
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--code-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+    font-family: 'Cascadia Code', 'Fira Code', ui-monospace, monospace;
 }
 
-.copy-button:hover {
-  opacity: 1;
+/* 现代感头部 */
+.code-fold-header {
+    background: var(--header-bg);
+    padding: 12px 16px; /* 增加一点内边距更显高级 */
+    color: #ffffff; /* 稍微淡化的文字 */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid var(--border-color);
 }
 
-.copy-button:active {
-  transform: scale(0.95);
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* 模拟 Mac 按钮（保留，在深色下非常好看） */
+.header-dots {
+    display: flex;
+    gap: 6px;
+    margin-right: 4px;
+}
+.dot { width: 11px; height: 11px; border-radius: 50%; }
+.dot-r { background: #ff5f56; }
+.dot-y { background: #ffbd2e; }
+.dot-g { background: #27c93f; }
+
+.lang-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #858585; /* 稍微淡化的文字 */
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+/* 箭头动画 */
+.fold-arrow {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.3s ease;
+    fill: #666; /* 默认颜色 */
+}
+.is-collapsed .fold-arrow { transform: rotate(-90deg); }
+
+/* 折叠核心逻辑 */
+.code-fold-content {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.code-fold-content.is-collapsed {
+    grid-template-rows: 0fr;
+}
+.code-fold-inner { overflow: hidden; }
+
+/* 修复行号与代码样式 */
+pre.line-numbers {
+    padding-left: 3.8em !important;
+    margin: 0 !important;
+    background: transparent !important;
+    font-size: 14px !important;
+    color: var(--text-main) !important;
+}
+
+.line-numbers .line-numbers-rows {
+    border-right: 1px solid #333 !important;
+    padding: 1em 0 !important;
+    background: rgba(255, 255, 255, 0.02); /* 行号背景微显 */
+}
+
+/* 现代化复制按钮 */
+.copy-btn {
+    background: #3c3c3c;
+    color: #ccc;
+    border: 1px solid #444;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
 }
 
 /* 分享 */

@@ -30,45 +30,54 @@
   </div>
   {% endif %}
 
-  <!-- AI 摘要 -->
-  {% if page.description %}
-    <div id="description-llm" style="font-family: 'Noto Serif SC', Courier, monospace; white-space: pre-wrap; font-size: 1rem; padding: 16px; border-left: 4px solid #4a90e2; background: #f8fafc; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); line-height: 1.6; color: #333;"></div>
-    <script>
-      const descriptionText = `🫸🫸 ` + `{{ page.description | strip_newlines | escape }}`+ ` 🫷🫷`;
-      const descriptionEl = document.getElementById('description-llm');
-      let index = 0;
-      let isTyping = true;
+<!-- AI 摘要 -->
+{% if page.description %}
+  <div id="description-llm"
+       style="
+         font-family: 'Noto Serif SC', serif;
+         white-space: pre-wrap;
+         font-size: 1rem;
+         padding-top: 0px;
+         padding-bottom: 0px;
+         padding-left: 16px;
+         padding-right: 2px;
+         border-left: 4px solid #4a90e2;
+         background: #f8fafc;
+         border-radius: 8px;
+         margin: 20px 0;
+         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+         line-height: 1.6;
+         color: #333;
+         opacity: 0;
+         transition: opacity 0.5s ease-in, border-left-color 0.4s ease;
+       ">
+    🫸🫸 豆包总结：{{ page.description | strip_newlines | escape }} 🫷🫷
+  </div>
 
-      function typeWriter() {
-        if (isTyping && index < descriptionText.length) {
-          descriptionEl.textContent += descriptionText.charAt(index);
-          index++;
-          setTimeout(typeWriter, 10);
-        } else {
-          descriptionEl.style.borderLeftColor = '#2ecc71';
-        }
-      }
-
-      function handleVisibilityChange() {
-        if (document.visibilityState === 'hidden' && isTyping) {
-          isTyping = false;
-          descriptionEl.textContent = descriptionText; // Render full text immediately
-          descriptionEl.style.borderLeftColor = '#2ecc71';
-        }
-      }
-
-      document.addEventListener("DOMContentLoaded", () => {
-        descriptionEl.style.opacity = '0';
-        descriptionEl.style.transition = 'opacity 0.5s ease-in';
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const el = document.getElementById('description-llm');
+      
+      // 淡入显示
+      setTimeout(() => {
+        el.style.opacity = '1';
+        // 完成后把左边框变成完成色
         setTimeout(() => {
-          descriptionEl.style.opacity = '1';
-          typeWriter();
-        }, 200);
-      });
+          el.style.borderLeftColor = '#2ecc71';
+        }, 600); // 比淡入稍晚一点，视觉上更自然
+      }, 200);
+    });
 
-      document.addEventListener("visibilitychange", handleVisibilityChange);
-    </script>
-  {% endif %}
+    // 标签页切走再切回时，也直接显示完成状态
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === 'visible') {
+        const el = document.getElementById('description-llm');
+        el.style.opacity = '1';
+        el.style.borderLeftColor = '#2ecc71';
+      }
+    });
+  </script>
+{% endif %}
     
   <!-- Lightbox CSS -->
   <script src="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/lightbox2/2.11.3/js/lightbox.min.js" type="application/javascript"></script>
@@ -82,26 +91,14 @@
     {{ content_with_images }}
   </div>
   
-  <!-- Prism 样式与插件 -->
-  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/themes/prism.css" rel="stylesheet">
+  <!-- Prism 代码样式与插件 -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/themes/prism-tomorrow.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/prism.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-javascript.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-python.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-markup.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/previewers/prism-previewers.min.js"></script>
-  <!-- <link href="https://cdn.staticfile.org/prism/1.26.0/themes/prism.min.css" rel="stylesheet">
-  <script src="https://cdn.staticfile.org/prism/1.26.0/prism.min.js"></script>
-  <script src="https://cdn.staticfile.org/prism/1.26.0/components/prism-python.min.js"></script>
-  <script src="https://cdn.staticfile.org/prism/1.26.0/components/prism-javascript.min.js"></script>
-  <script src="https://cdn.staticfile.org/prism/1.26.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
-  <link href="https://cdn.staticfile.org/prism/1.26.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet"> -->
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      Prism.highlightAll();
-    });
-  </script>
+  <script src="/static/js/code.js"></script>
   
   <!-- 在文章内容下方添加微信公众号 -->
   <!-- {% unless page.categories contains "life" %}

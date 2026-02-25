@@ -453,50 +453,6 @@ blog.addLoadEvent(function () {
   }
 })
 
-/**
- * 添加代码复制按钮
- */
-blog.addLoadEvent(function () {
-  // 只在文章页生效
-  if (document.getElementsByClassName('page-post').length === 0) {
-    return;
-  }
-
-  // 遍历所有 <pre><code> 组合
-  document.querySelectorAll('.page-post pre code').forEach(function (code) {
-    // 创建容器包裹 <pre>
-    const pre = code.parentNode;
-    const wrapper = document.createElement('div');
-    wrapper.className = 'code-container';
-    pre.parentNode.insertBefore(wrapper, pre);
-    wrapper.appendChild(pre);
-
-    // 创建复制按钮
-    const button = document.createElement('button');
-    button.className = 'copy-button';
-    button.textContent = 'Copy';
-    wrapper.appendChild(button);
-
-    // 添加点击事件
-    button.addEventListener('click', function () {
-      const text = code.innerText; // 获取代码内容
-      navigator.clipboard
-        .writeText(text)
-        .then(function () {
-          button.textContent = 'Copied!';
-          setTimeout(function () {
-            button.textContent = 'Copy';
-          }, 5000); // 2秒后恢复按钮文本
-        })
-        .catch(function () {
-          button.textContent = 'Failed';
-          setTimeout(function () {
-            button.textContent = 'Copy';
-          }, 2000);
-        });
-    });
-  });
-});
 
 
 /**
