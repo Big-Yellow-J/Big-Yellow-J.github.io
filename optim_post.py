@@ -261,9 +261,9 @@ def process_file(file_path_list,
         if md_path.endswith('md'):
             image_store_dir = mkdir_image_dir(md_path)
             md_content = open_file(md_path)
-            # md_content = format_image(md_content, 
-            #                           image_store_dir,
-            #                           max_threads)
+            md_content = format_image(md_content, 
+                                      image_store_dir,
+                                      max_threads)
             _, yaml_dict = formad_markdown(md_content)
             file_description_dict[md_path] = (md_content, yaml_dict)
 

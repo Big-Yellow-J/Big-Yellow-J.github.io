@@ -162,11 +162,11 @@
   "./_posts/2025-02-27-LLM-OUT.md": [
     [
       "old_description",
-      "本文介绍LLM生成策略，包括区别于Greedy search的Beam search（选束宽结合多步输出）、影响概率分布多样性的温度调节，还有Lookahead Search（前瞻评估平衡生成连贯与多样）等相关内容"
+      null
     ],
     [
       "new_description",
-      "本文介绍LLM生成策略，包括Beam search（通过束宽选择候选输出）、Greedy search（选最优输出）、温度调节（影响概率分布及输出多样性与确定性）和Lookahead Search（前瞻评估多步结果以平衡连贯性与多样性），解决直接取最大概率在文本生成中的合理性问题。"
+      "LLM生成过程包含Prefill阶段和Decoding阶段，Prefill输入整个prompt的所有token输出KV Cache及首个输出token的logits，Decoding利用KV Cache和上一步token自回归生成。Beam Search通过束宽（k）选择k个最优输出作为第t步，t+1步结合前k步输出构成新输出，区别于Greedy search仅选最优。温度调节通过温度系数影响概率分布，温度0时选logits最大值对应token（确定性），较高温度使分布均匀增加随机性，较低使分布尖锐减少多样性，数值精度可能导致temperature=0时输出差异，温度仅控制采样随机性。Lookahead Search前瞻评估多步生成结果质量，平衡连贯性和多样性。"
     ]
   ],
   "./_posts/2025-01-06-TextEmbedding.md": [
@@ -647,6 +647,36 @@
     [
       "new_description",
       "Latent Consistency Model（LCM）通过将随机微分SDE转化为常微分ODE实现生成加速，仅需3-5步生成图像。Flow Matching算法则通过学习连续的确定性向量场（velocity field），构造从噪声到数据的最优概率路径加速生成。传统扩散模型需前向加噪、反向去噪，路径弯曲，采样需20-100步；Flow Matching直接学习从噪声（t=0）到真实数据（t=1）的连续流动路径，路径确定。训练中传统SD模型预测噪声，Flow Matching预测移动速度（如MNIST数据集中预测速度场），采样路径固定，因预测内容与路径差异，需适配方法作用于SD1.5等模型。"
+    ]
+  ],
+  "./_posts/2025-08-28-OpenModelQwen.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "Qwen多模态系列模型迭代至QwenVL3，各版本核心改进包括：QwenVL采用ViT-bigG视觉编码器，单层Cross-Attention融合器压缩视觉token至256长度，整合二维绝对位置编码；QwenVL2引入动态分辨率处理，2x2相邻token拼接及多模态旋转位置编码（M-RoPE），增加时间维度对齐视频处理流程；QwenVL2.5使用RMSNorm替换LayerNorm，ViT中MLP改为SwiGLU结构，新增window-attention；QwenVL3升级MRoPE-Interleave位置编码、DeepStack技术融合ViT多层次特征，文本时间戳对齐机制提升视频事件定位精度，patch_size从14增至16，三维卷积含bias，ViT隐层维度1280调整为1152，固定预训练位置编码通过双线性插值适配新分辨率。"
+    ]
+  ],
+  "./_posts/2025-08-28-OpenModelDeepSeek.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "DeepSeek v3采用混合专家模型，新增辅助损失平衡专家不均衡，结构创新包括低秩优化KV-cache（降维升维减少显存）和混合专家机制（Routed Expert直接传入隐藏层，Shared Expert经门控筛选），集成Multi-Token Prediction技术。DeepSeek-R1基于思维链（CoT），通过Group Relative Policy Optimization（GRPO）训练，含生成回答、评分、裁剪更新（clip函数限定值）及KL散度惩罚偏差步骤。DeepSeek OCR以视觉压缩长文本上下文，将多token文本转为图片减少tokens，模型采用SAM-base（patch-size 16）+2层Conv（16倍下采样）+CLIP-large（去patch-embedding），1024x1024图片经处理后token从4096压缩至256，类似技术如Glyph通过文本转image实现压缩。"
+    ]
+  ],
+  "./_posts/2026-02-26-RLHF-1.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "LLM训练分为预训练（自回归预测下一个文本）和后训练（含SFT监督微调和RLHF人类反馈强化学习）。DPO直接利用人类偏好数据微调，策略模型（如Lora）对比参考模型（SFT后或原始模型），通过Sigmoid函数和β超参数（0.1-1）优化，提升Good answer生成概率并降低Bad answer概率。PPO基于策略梯度，采用Clipping机制限制策略更新幅度，通过GAE计算优势函数，损失包含policy loss、value loss、entropy bonus及KL惩罚。GRPO作为DPO扩展处理组级别偏好优化，引入KL项防止模式坍塌，解决输出变长（去除token长度偏差）和奖励为0（添加虚拟满分样本）问题，生成16-64条响应计算组相对优势。"
     ]
   ]
 }

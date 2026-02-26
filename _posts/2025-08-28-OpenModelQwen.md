@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 多模态算法QwenVL、KimiVL、DeepSeek等算法原理
+title: 开源模型技术总结-1————Qwen系列模型
 categories: 多模态
 extMath: true
 images: true
@@ -8,16 +8,15 @@ address: 武汉🏯
 tags:
 - cv-backbone
 - 多模态
+- llm
 - multimodal
 show_footer_image: true
-description: 多模态大语言模型通用框架通过视觉编码器（如ViT/Clip）与文本编码器处理多模态信息，经映射层对齐维度后输入LLM输出结果。QwenVL系列为典型代表，从QwenVL到QwenVL3持续迭代：QwenVL采用ViT-bigG视觉编码器与单层Cross-Attention压缩视觉token至256长度；QwenVL2引入动态分辨率处理图像，拼接2x2相邻token并结合M-RoPE位置编码；QwenVL2.5优化为window-attention与2D-RoPE；QwenVL3则通过MRoPE-Interleave与DeepStack技术提升视频理解与图文对齐精度。同时，DeepSeek
-  OCR等技术探索视觉压缩长文本上下文，展现多模态模型在视觉token处理与跨模态对齐上的技术演进。
+special_tag: 长期更新
+description: Qwen多模态系列模型迭代至QwenVL3，各版本核心改进包括：QwenVL采用ViT-bigG视觉编码器，单层Cross-Attention融合器压缩视觉token至256长度，整合二维绝对位置编码；QwenVL2引入动态分辨率处理，2x2相邻token拼接及多模态旋转位置编码（M-RoPE），增加时间维度对齐视频处理流程；QwenVL2.5使用RMSNorm替换LayerNorm，ViT中MLP改为SwiGLU结构，新增window-attention；QwenVL3升级MRoPE-Interleave位置编码、DeepStack技术融合ViT多层次特征，文本时间戳对齐机制提升视频事件定位精度，patch_size从14增至16，三维卷积含bias，ViT隐层维度1280调整为1152，固定预训练位置编码通过双线性插值适配新分辨率。
 ---
 
-对于多模态系列模型大致的多模态大语言模型的通用模型框架和每个模块的一些实现方法[^1]：
-![](https://s2.loli.net/2025/09/21/JF9YdeEAhuMyzkZ.webp)
-基本上就是对于图片/视频等通过不同的视觉编码器（Vit/Clip等）进行编码，对于text通过编码器进行编码，而后将视觉模态信息通过映射层（q-former/mlp等）将两部分维度对齐而后丢到LLM中输出结果。简单总结常用的多模态模型。
-## QwenVL系列
+## Qwen大语言系列模型
+## Qwen多模态系列模型
 目前QwenVL迭代更新迭代到3（**截至2025.10.10**）主要介绍QwenVL、QwenVL2、QwenVL2.5、QwenVL3
 ### QwenVL
 在QwenVL[^4]中在论文里面作者提到的其模型的整个训练过程如下：
@@ -117,8 +116,15 @@ attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).
 ```
 ### QwenVL-3
 在官方Blog[^7]的介绍中
-![](https://qianwen-res.oss-accelerate.aliyuncs.com/Qwen3-VL/qwen3vl_arc.jpg#center)
-对于模型架构的更新为：1、**MRoPE-Interleave**: 改进位置编码，采用时间(t)、高度(h)、宽度(w)交错分布形式，提升对长视频的理解能力。2、**DeepStack 技术**: 融合 ViT 多层次特征，将视觉特征注入 LLM 的多层中，实现更精细化的视觉理解和图文对齐精度。3、**文本时间戳对齐机制 (T-RoPE 升级)**: 采用“时间戳-视频帧”交错输入形式，实现帧级别时间信息与视觉内容的细粒度对齐，提升视频事件定位精度。整体模型结构在区别上一代QwenVL-2.5改进点在于：patch_embed的patch_size变大了（14->16），embed使用的三维卷积里加了bias，ViT的隐层维度hiddeen_dim从1280->1152，而后使用DeepStack、MRoPE-Interleave。对于具体源码（[代码](https://github.com/huggingface/transformers/blob/0419ff881d7bb503f4fc0f0a7a5aac3d012c9b91/src/transformers/models/qwen3_vl/modular_qwen3_vl.py)）分析整体模型处理过程如下（[代码](https://github.com/huggingface/transformers/blob/0419ff881d7bb503f4fc0f0a7a5aac3d012c9b91/src/transformers/models/qwen3_vl/modeling_qwen3_vl.py#L885)）
+![20260226135106](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image/20260226135106.png)
+对于模型架构的更新简单总结为：1、**MRoPE-Interleave**: 改进位置编码，采用时间(t)、高度(h)、宽度(w)交错分布形式，提升对长视频的理解能力。2、**DeepStack 技术**: 融合 ViT 多层次特征，将视觉特征注入 LLM 的多层中，实现更精细化的视觉理解和图文对齐精度。3、**文本时间戳对齐机制 (T-RoPE 升级)**: 采用“时间戳-视频帧”交错输入形式，实现帧级别时间信息与视觉内容的细粒度对齐，提升视频事件定位精度。整体模型结构在区别上一代QwenVL-2.5改进点在于：patch_embed的patch_size变大了（14->16），embed使用的三维卷积里加了bias，ViT的隐层维度hiddeen_dim从1280->1152，而后使用DeepStack、MRoPE-Interleave。
+* **DeepStack 技术原理**
+
+从最上面的模型结构图中可以发现DeepStack就是将视觉视觉编码器特征融入到LLM Block的每一层中，参考论文中的结构图[^9]:
+![20260226135226](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image/20260226135226.png)
+之所以要使用该技术是为了解决：**计算与内存开销过高**:传统LMMs将所有视觉visual tokens拼接成一维序列输入到语言模型的第一层，导致需要处理的输入序列长度显著增加，尤其在处理高分辨率图像或多帧视频时，计算和内存成本急剧上升。**细粒度视觉信息丢失**:现有方法通过压缩视觉Token(如空间池化、感知器重采样等)来平衡计算开销与信息保留，但会牺牲高分辨率图像中的细节信息。**视觉与语言交互效率不足**:现有方法仅通过第一层Transformer处理所有视觉Token，未能充分利用语言模型深层结构的层次化特征提取能力。
+#### 源码结构
+对于具体源码（[代码](https://github.com/huggingface/transformers/blob/0419ff881d7bb503f4fc0f0a7a5aac3d012c9b91/src/transformers/models/qwen3_vl/modular_qwen3_vl.py)）分析整体模型处理过程如下（[代码](https://github.com/huggingface/transformers/blob/0419ff881d7bb503f4fc0f0a7a5aac3d012c9b91/src/transformers/models/qwen3_vl/modeling_qwen3_vl.py#L885)）
 > **值得注意的是在输入数据预处理阶段QwenVL-3和2.5的处理是相同的通过smart_resize去修改分辨率**
 
 ```python
@@ -130,20 +136,7 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
     self.language_model = Qwen3VLTextModel._from_config(config.text_config)
     self.rope_deltas = None  # cache rope_deltas here
     self.post_init()
-  def forward(
-    self,
-    input_ids: torch.LongTensor = None,
-    attention_mask: Optional[torch.Tensor] = None,
-    position_ids: Optional[torch.LongTensor] = None,
-    past_key_values: Optional[Cache] = None,
-    inputs_embeds: Optional[torch.FloatTensor] = None,
-    pixel_values: Optional[torch.Tensor] = None,
-    pixel_values_videos: Optional[torch.FloatTensor] = None,
-    image_grid_thw: Optional[torch.LongTensor] = None,
-    video_grid_thw: Optional[torch.LongTensor] = None,
-    cache_position: Optional[torch.LongTensor] = None,
-    **kwargs: Unpack[TransformersKwargs],
-    ):
+  def forward(...):
     ...
     # 图像处理过程
     if pixel_values is not None:
@@ -153,82 +146,95 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
           input_ids, inputs_embeds=inputs_embeds, image_features=image_embeds
       )
       inputs_embeds = inputs_embeds.masked_scatter(image_mask, image_embeds)
+    ...
+    outputs = self.language_model(...,inputs_embeds=inputs_embeds,...)
 ```
-### `get_image_features`处理过程
-> [代码](https://github.com/huggingface/transformers/blob/0419ff881d7bb503f4fc0f0a7a5aac3d012c9b91/src/transformers/models/qwen3_vl/modeling_qwen3_vl.py#L1048C1-L1062C52)
+* `get_image_features`处理过程：通过Qwen视觉编码其处理并且获取特定层视觉编码特征
 
-通过视觉编码处理得到`image_embeds`和 `deepstack_image_embeds`而后再去对 `image_embeds`进行裁剪，裁剪的逻辑为：
-`split_sizes = (image_grid_thw.prod(-1) // self.visual.spatial_merge_size**2).tolist();image_embeds = torch.split(image_embeds, split_sizes)` 回到`self.visual`中模型具体处理过程如下（[代码](https://github.com/huggingface/transformers/blob/0419ff881d7bb503f4fc0f0a7a5aac3d012c9b91/src/transformers/models/qwen3_vl/modeling_qwen3_vl.py#L701)）：
+通过视觉编码处理得到`image_embeds`和 `deepstack_image_embeds`而后再去对 `image_embeds`进行裁剪，裁剪的逻辑为：`split_sizes = (image_grid_thw.prod(-1) // self.visual.spatial_merge_size**2).tolist();image_embeds = torch.split(image_embeds, split_sizes)` 回到`self.visual`中模型具体处理过程如下（[代码](https://github.com/huggingface/transformers/blob/0419ff881d7bb503f4fc0f0a7a5aac3d012c9b91/src/transformers/models/qwen3_vl/modeling_qwen3_vl.py#L701)）：
 ```python
-def forward(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor, **kwargs):
-  # 1、视觉patch处理
-  hidden_states = self.patch_embed(hidden_states)
-  # 2、添加绝对位置编码
-  pos_embeds = self.fast_pos_embed_interpolate(grid_thw)
-  hidden_states = hidden_states + pos_embeds
-
-  rotary_pos_emb = self.rot_pos_emb(grid_thw)
-
-  seq_len, _ = hidden_states.size()
-  hidden_states = hidden_states.reshape(seq_len, -1)
-  rotary_pos_emb = rotary_pos_emb.reshape(seq_len, -1)
-  emb = torch.cat((rotary_pos_emb, rotary_pos_emb), dim=-1)
-  position_embeddings = (emb.cos(), emb.sin())
-
-  cu_seqlens = torch.repeat_interleave(grid_thw[:, 1] * grid_thw[:, 2], grid_thw[:, 0]).cumsum(
-      dim=0,
-      dtype=grid_thw.dtype if torch.jit.is_tracing() else torch.int32,
-  )
-  cu_seqlens = F.pad(cu_seqlens, (1, 0), value=0)
-  # Vit处理
-  deepstack_feature_lists = []
-  for layer_num, blk in enumerate(self.blocks):
-      hidden_states = blk(
-          hidden_states,
-          cu_seqlens=cu_seqlens,
-          position_embeddings=position_embeddings,
-          **kwargs,
-      )
-      if layer_num in self.deepstack_visual_indexes:
-          deepstack_feature = self.deepstack_merger_list[self.deepstack_visual_indexes.index(layer_num)](
-              hidden_states
-          )
-          deepstack_feature_lists.append(deepstack_feature)
-
-  hidden_states = self.merger(hidden_states)
-
-  return hidden_states, deepstack_feature_lists
+# https://github.com/huggingface/transformers/blob/0419ff881d7bb503f4fc0f0a7a5aac3d012c9b91/src/transformers/models/qwen3_vl/modeling_qwen3_vl.py#L701
+class Qwen3VLVisionModel(Qwen3VLPreTrainedModel):
+  def __init__(...):
+    ...
+    self.blocks = nn.ModuleList([Qwen3VLVisionBlock(config) for _ in range(config.depth)])
+    self.merger = Qwen3VLVisionPatchMerger(...)
+    self.deepstack_visual_indexes = config.deepstack_visual_indexes
+    self.deepstack_merger_list = nn.ModuleList(
+        [
+            Qwen3VLVisionPatchMerger(
+                config=config,
+                use_postshuffle_norm=True,
+            )
+            for _ in range(len(config.deepstack_visual_indexes))
+        ]
+    )
+  def forward(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor, **kwargs):
+    ... # 对图像数据通过 patch_embed 进行处理而后补充位置编码
+    # Vit处理
+    deepstack_feature_lists = []
+    for layer_num, blk in enumerate(self.blocks):
+        hidden_states = blk(...)
+        if layer_num in self.deepstack_visual_indexes:
+            deepstack_feature = self.deepstack_merger_list[self.deepstack_visual_indexes.index(layer_num)](hidden_states)
+            deepstack_feature_lists.append(deepstack_feature)
+    hidden_states = self.merger(hidden_states) # 直接通过两层fc进行处理
+    return hidden_states, deepstack_feature_lists
 ```
-`patch_embed`就是直接使用3维卷积（bias为True）：`Conv3d(3, 1152, kernel_size=(2, 16, 16), stride=(2, 16, 16))`（维度上对应：`(grid_t*grid_h*grid_w, hiddend_size)`）；
-`fast_pos_embed_interpolate`用于处理任意分辨率的输入。在一个**固定分辨率**的网格上（`self.pos_embed` 对应的维度为 `(2304, 1152)` ）预定义位置编码，然后对任意分辨率的输入进行快速插值，得到对应位置的插值位置编码。
-> 在 ViT 模型的预训练阶段，通常使用固定的输入分辨率（例如 224×224），并将其划分为固定数量的 patch（例如 14×14，共 196 个 patch）。这意味着模型内部的 pos_embed 是一个固定长度的可学习参数矩阵，模型在训练过程中已经隐式地学习到了这些位置编码之间的空间关系。
-> 当推理阶段输入的分辨率发生变化时，如果直接重新计算或生成新的位置编码，就会破坏模型在预训练阶段学到的空间语义信息，从而导致性能下降。
-> 因此，QwenVL-3 等模型的做法是：**固定一套在预训练阶段学习到的位置编码**，在输入新的分辨率时，不重新生成编码，而是通过 **双线性插值** 将原始位置编码映射到新的空间尺度上，从而在保持预训练空间结构的前提下，适配不同输入尺寸。换句话说，新的 patch 位置不再重新计算 embedding，而是通过插值在原有位置编码上“找到”其对应的空间位置。
+`patch_embed`就是直接使用3维卷积（bias为True）：`Conv3d(3, 1152, kernel_size=(2, 16, 16), stride=(2, 16, 16))`（维度上对应：`(grid_t*grid_h*grid_w, hiddend_size)`），对于上述DStack过程中也比较好理解直接从需要处理的每层（通过Qwen3VLVisionBlock总共由27层叠加）中挑选出对应的处理后的特征，直接挑选[8, 16, 24]层处理后的特征。
+> 在 ViT 模型的预训练阶段，通常使用固定的输入分辨率（例如 224×224），并将其划分为固定数量的 patch（例如 14×14，共 196 个 patch）。这意味着模型内部的 pos_embed 是一个固定长度的可学习参数矩阵，模型在训练过程中已经隐式地学习到了这些位置编码之间的空间关系。当推理阶段输入的分辨率发生变化时，如果直接重新计算或生成新的位置编码，就会破坏模型在预训练阶段学到的空间语义信息，从而导致性能下降。因此，QwenVL-3 等模型的做法是：**固定一套在预训练阶段学习到的位置编码**，在输入新的分辨率时，不重新生成编码，而是通过 **双线性插值** 将原始位置编码映射到新的空间尺度上，从而在保持预训练空间结构的前提下，适配不同输入尺寸。换句话说，新的 patch 位置不再重新计算 embedding，而是通过插值在原有位置编码上“找到”其对应的空间位置。
+* llm处理过程：直接将视觉token位置上补充我的DeepStack特征
 
-`deepstack_merger_list`处理
+```python
+# https://github.com/huggingface/transformers/blob/0419ff881d7bb503f4fc0f0a7a5aac3d012c9b91/src/transformers/models/qwen3_vl/modeling_qwen3_vl.py#L760
+class Qwen3VLTextModel(Qwen3VLPreTrainedModel):
+    def __init__(self, config: Qwen3VLTextConfig):
+        super().__init__(config)
+        self.padding_idx = config.pad_token_id
+        self.vocab_size = config.vocab_size
 
+        self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
+        self.layers = nn.ModuleList(
+            [Qwen3VLTextDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
+        )
+        self.norm = Qwen3VLTextRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.rotary_emb = Qwen3VLTextRotaryEmbedding(config=config)
+        self.gradient_checkpointing = False
+
+    def forward(...,input_ids: Optional[torch.LongTensor] = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,...
+        visual_pos_masks: Optional[torch.Tensor] = None,
+        deepstack_visual_embeds: Optional[list[torch.Tensor]] = None,
+    ):
+        ...
+        for layer_idx, decoder_layer in enumerate(self.layers):
+            layer_outputs = decoder_layer(...) # 模型解码输出
+            hidden_states = layer_outputs
+
+            if deepstack_visual_embeds is not None and layer_idx in range(len(deepstack_visual_embeds)):
+                hidden_states = self._deepstack_process(
+                    hidden_states,
+                    visual_pos_masks,
+                    deepstack_visual_embeds[layer_idx],
+                )
+        hidden_states = self.norm(hidden_states)
+        ...
+    def _deepstack_process(
+        self, hidden_states: torch.Tensor, visual_pos_masks: torch.Tensor, visual_embeds: torch.Tensor
+    ):
+        visual_pos_masks = visual_pos_masks.to(hidden_states.device) # 形状 batch_size, seqlen
+        visual_embeds = visual_embeds.to(hidden_states.device, hidden_states.dtype)
+        local_this = hidden_states[visual_pos_masks, :].clone() + visual_embeds
+        hidden_states[visual_pos_masks, :] = local_this
+        return hidden_states
+```
+其实从上面代码中很容易发现在DeepStack中QwenVL-3处理方式很简单直接选出**所有视觉token位置**而后将视觉特征进行补充，其中visual_pos_masks的形状是batch_size, seqlen
 ### 总结
 从QwenVL到QwenVL2.5视觉编码器处理过程：
 **QwenVL**：将图像转化为**固定的分辨率**而后将输入到Vit-bigG进行处理得到视觉特征之后再去使用类似Q-former处理过程（QwenVL中使用的是*一个随机初始化的单层Cross-Attention模块*）使用learned-query（压缩到**固定的256长度的token**）将视觉token进行压缩而后输入到LLM中。
 **QwenVL2**：首先使用**动态分辨率**（将图像**除以固定的factor而后保持横纵比**将其缩减到 `[mix_pixels, max_pixels]`中）去处理图像而后将其输入到视觉编码器中，而后将**2x2的的相邻的token进行拼接**（也就是将图像补充一个时间帧得到TCHW，而后再去在THW三个维度划分得到不同的patch：grid_t,grid_h,grid_w）到一个token而后通过MLP层进行处理。
 **QwenVL2.5**：整体框架上和QwenVL2差异不大，区别在于使用了window-attention以及2D-RoPE
-## KimiVL系列
-## DeepSeek系列
-### DeepSeek OCR
-DeepSeek OCR[^8]主要内容就是尝试**使用视觉的方式去压缩长文本上下文**，按照论文里面的描述就是：
-$f_{dec}:R^{n\times d_{latent}}\rightarrow R^{N\times d_{text}}, \hat{X}=f_{dec}(X)$
-前面部分代表压缩的视觉tokens后面代表重构的文本表述。其实从上面公式就可以了解在DeepSeek OCR中做的就是：对于原始文本输入需要较长的tokens数量（比如说1w个字），但是如果这1w个文本都在图片上可能就是512个tokens。
-> 但是作者只是在OCR邻域做测试，正如论文里面说的：
-> It is reasonable to conjecture that LLMs, through specialized pretraining optimization, would demonstrate more natural integration of such capabilities.
-
-![](https://s2.loli.net/2025/11/11/IxuHpXCj2hJ3sTU.webp)
-对于传统多模态中的视觉结构：第一种使用多个视觉编码器进行编码处理，第二种：将图片切割为不同的patch而后进行处理，第三种：使用动态分辨率而后将图片去切割为不同patch进行编码。论文中使用的模型结构（为了实现：1、处理高分辨率；2、高分辨率小低激活；3、较少的视觉tokens；4、支持多分辨率输入；5、计算参数少）为：**SAM-base**（patch-size：16）+**Conv**（2层，kernel_size=3,strid=2, paddingg=1去对视觉token进行16倍下采样）+**CLIP-large**（去掉patch-embedding因为我的输入就是patch了），那么对于1024x1024首先划分为1024/16 × 1024/16 = 4096个patch token，在对4096个token进行压缩，数量变为4096/16 = 256。
-![](https://s2.loli.net/2025/11/11/GhRspCQc9LHOJPA.webp)
-在许多论文里面也用到了压缩技术（*截至到：2025.10.23*部分论文），比如说Glyph（Zhipu-清华）[^10]和另外一篇论文[^11]
-![](https://s2.loli.net/2025/11/11/hosSXQyPOlxLYvc.webp)
-对于这些内容核心的思路都是将文本转化为image来进行压缩tokens比如在论文[^11]中直接将text转化为latex格式的图片而后通过模型进行处理。
-
-
 ## 参考
 [^1]: [https://arxiv.org/abs/2504.07491](https://arxiv.org/abs/2504.07491)
 [^2]: [https://zhuanlan.zhihu.com/p/25267823390](https://zhuanlan.zhihu.com/p/25267823390)
@@ -237,6 +243,5 @@ $f_{dec}:R^{n\times d_{latent}}\rightarrow R^{N\times d_{text}}, \hat{X}=f_{dec}
 [^5]: [https://www.big-yellow-j.top/posts/2025/08/29/QwenVLCode.html](https://www.big-yellow-j.top/posts/2025/08/29/QwenVLCode.html)
 [^6]: [https://arxiv.org/abs/2502.13923](https://arxiv.org/abs/2502.13923)
 [^7]: [QwenVL-3-Blog](https://qwen.ai/blog?id=99f0335c4ad9ff6153e517418d48535ab6d8afef&from=research.latest-advancements-list)
-[^8]: [https://www.arxiv.org/pdf/2510.18234](https://www.arxiv.org/pdf/2510.18234)
-[^10]: [https://arxiv.org/pdf/2510.17800](https://arxiv.org/pdf/2510.17800)
-[^11]: [https://arxiv.org/pdf/2510.18279](https://arxiv.org/pdf/2510.18279)
+[^8]: [https://arxiv.org/pdf/2511.21631](https://arxiv.org/pdf/2511.21631)
+[^9]: [https://arxiv.org/pdf/2406.04334](https://arxiv.org/pdf/2406.04334)

@@ -45,6 +45,61 @@ title: 首页
   font-size: 0.85em;
   color: #555;
 }
+
+.flame {
+  display: inline-block;
+  margin-right: 4px;
+  animation: beat 1.2s infinite ease-in-out;
+  vertical-align: middle;
+}
+@keyframes beat {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.35); }
+}
+
+.title {
+  position: relative;          /* 关键：让子元素的 absolute 定位参考这里 */
+  display: inline-block;       /* 防止宽度撑开 */
+}
+
+.post-link {
+  text-decoration: none;       /* 根据你的 hover-underline 调整 */
+  position: relative;          /* 备用，确保 hover 范围正确 */
+}
+
+.update-hint {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: 8px;             /* 稍拉大一点距离，更好看 */
+  padding: 4px 8px;
+  font-size: 0.82em;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.88);
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  transform: translateY(-6px);
+  z-index: 10;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+}
+
+.update-hint::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 10px;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid rgba(0,0,0,0.88);
+}
+
+.post-link:hover .update-hint {
+  opacity: 1;
+  transform: translateY(0);
+}
 </style>
 
 <div class="page page-index">
@@ -58,9 +113,13 @@ title: 首页
           {% unless post.categories contains "life" %}
             {% if post.show != false %}
               <li>
-                <span class="date">{{ post.date | date: "%Y/%m/%d" }}</span>
+                <span class="date">{{ post.date | date: "%Y-%m-%d" }}</span>
                 <div class="title">
-                  <a href="{{ site.baseurl }}{{ post.url }}" class="hover-underline"><span style="color: red;">[持续更新] </span>{{ post.title }}</a>
+                  <a href="{{ site.baseurl }}{{ post.url }}" class="hover-underline">
+                    <span class="flame">🔥</span>
+                    <span style="color: red;">[持续更新] </span>
+                    {{ post.title }}
+                  </a>
                 </div>
                 <div class="categories">
                   {% for categorie in post.categories %}
@@ -81,7 +140,6 @@ title: 首页
     {% unless post.categories contains "life" %}
       {% if post.show != false and post.stickie != true %}
         {% capture post_year %}{{ post.date | date: "%Y" }}{% endcapture %}
-
         {% if post_year != current_year %}
           {% if current_year != "" %}
             </ul>
@@ -93,21 +151,31 @@ title: 首页
             <ul>
             {% assign current_year = post_year %}
         {% endif %}
-
         <li>
-          <span class="date">{{ post.date | date: "%Y/%m/%d" }}</span>
+          <span class="date">{{ post.date | date: "%Y-%m-%d" }}</span>
+
           <div class="title">
-            <!-- <a href="{{ site.baseurl }}{{ post.url }}" class="hover-underline">{{ post.title }}</a> -->
-            <a href="{{ site.baseurl }}{{ post.url }}" class="hover-underline">
+            <a href="{{ site.baseurl }}{{ post.url }}" class="hover-underline post-link">
               {% if post.special_tag %}
-                <span style="color: red;">[{{ post.special_tag }}] </span>
+                <span class="flame">🔥</span>
+                <span style="color: red;">[{{ post.special_tag }}]</span>
               {% endif %}
               {{ post.title }}
             </a>
+
+            {% if post.last_modified_at and post.last_modified_at != post.date %}
+              <span class="update-hint">
+                更新于 {{ post.last_modified_at | date: "%Y-%m-%d" }}
+              </span>
+            {% endif %}
           </div>
+
           <div class="categories">
             {% for categorie in post.categories %}
-              <a href="{{ site.baseurl }}/pages/categories.html#{{ categorie }}" class="hover-underline">{{ categorie }}</a>
+              <a href="{{ site.baseurl }}/pages/categories.html#{{ categorie }}" class="hover-underline">
+                {{ categorie }}
+              </a>
+              {% unless forloop.last %}, {% endunless %}
             {% endfor %}
           </div>
         </li>
