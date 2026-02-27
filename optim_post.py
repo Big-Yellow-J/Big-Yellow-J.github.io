@@ -193,7 +193,17 @@ def format_description(md_content, yaml_dict, description, md_path):
         """
         }]
 
-        model_list = ['doubao-seed-1-6-250615', 'doubao-seed-1-6-flash-250615', 'doubao-seed-1-6-250615', 'doubao-1-5-lite-32k-250115']
+        model_list = [
+            'doubao-1-5-pro-256k-250115',
+            'doubao-seed-2-0-pro-260215',
+            'doubao-seed-1-6-250615', 
+            'doubao-seed-1-6-flash-250615', 
+            'doubao-seed-1-8-251228',
+            'doubao-seed-2-0-code-preview-260215',
+            'doubao-seed-2-0-mini-260215',
+            'doubao-1-5-pro-32k-250115',
+            'doubao-1-5-lite-32k-250115'
+        ]
         re_connrct = 0
         while re_connrct< len(model_list):
             try:

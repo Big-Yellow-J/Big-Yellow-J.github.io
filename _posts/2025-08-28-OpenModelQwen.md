@@ -16,8 +16,9 @@ description: Qwen多模态系列模型迭代至QwenVL3，各版本核心改进�
 ---
 
 ## Qwen大语言系列模型
+### Qwen3
+
 ## Qwen多模态系列模型
-目前QwenVL迭代更新迭代到3（**截至2025.10.10**）主要介绍QwenVL、QwenVL2、QwenVL2.5、QwenVL3
 ### QwenVL
 在QwenVL[^4]中在论文里面作者提到的其模型的整个训练过程如下：
 ![](https://s2.loli.net/2025/09/21/HEhlRPFJBMKpjoZ.webp)

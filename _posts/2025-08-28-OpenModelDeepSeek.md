@@ -49,9 +49,9 @@ description: DeepSeek v3采用混合专家模型，新增辅助损失平衡专�
 **Step-2**：对于生成的回答进行评分。${r_1,...,r_G}$，而后计算$A_i=\frac{r_i- \text{mean}({r_1,...,r_G})}{\text{std}({r_,...,r_G})}$
 **Step-3**：使用裁剪更新策略：$\text{clip}(\frac{\pi_{\theta}(o_i|q)}{\pi_{\theta_{old}(o_i|q)}},1-\epsilon,\epsilon)$比如说：如果新策略开始给o1分配过高的概率，裁剪机制确保不会过度强调这个响应。这种方式保证了即使在像推理这样复杂的任务中，策略优化也能保持稳定和可靠。通过clip函数将内部值限定在$(1-\epsilon, 1+\epsilon)$之间
 **Step-4**：通过KL散度（用来度量两个概率分布相似度的指标）惩罚偏差
-### DeepSeek OCR
-DeepSeek OCR[^1]主要内容就是尝试**使用视觉的方式去压缩长文本上下文**，按照论文里面的描述就是：
-$f_{dec}:R^{n\times d_{latent}}\rightarrow R^{N\times d_{text}}, \hat{X}=f_{dec}(X)$
+## DeepSeek OCR
+### DeepSeek OCRv1
+DeepSeek OCR[^1]主要内容就是尝试**使用视觉的方式去压缩长文本上下文**，按照论文里面的描述就是：$f_{dec}:R^{n\times d_{latent}}\rightarrow R^{N\times d_{text}}, \hat{X}=f_{dec}(X)$
 前面部分代表压缩的视觉tokens后面代表重构的文本表述。其实从上面公式就可以了解在DeepSeek OCR中做的就是：对于原始文本输入需要较长的tokens数量（比如说1w个字），但是如果这1w个文本都在图片上可能就是512个tokens。
 > 但是作者只是在OCR邻域做测试，正如论文里面说的：
 > It is reasonable to conjecture that LLMs, through specialized pretraining optimization, would demonstrate more natural integration of such capabilities.
@@ -63,6 +63,8 @@ $f_{dec}:R^{n\times d_{latent}}\rightarrow R^{N\times d_{text}}, \hat{X}=f_{dec}
 ![](https://s2.loli.net/2025/11/11/hosSXQyPOlxLYvc.webp)
 对于这些内容核心的思路都是将文本转化为image来进行压缩tokens比如在论文[^11]中直接将text转化为latex格式的图片而后通过模型进行处理。
 
+<!-- ### DeepSeek OCRv2
+在论文中[^6] -->
 
 ## 参考
 [^1]: [https://www.arxiv.org/pdf/2510.18234](https://www.arxiv.org/pdf/2510.18234)
@@ -70,3 +72,4 @@ $f_{dec}:R^{n\times d_{latent}}\rightarrow R^{N\times d_{text}}, \hat{X}=f_{dec}
 [^3]: [https://arxiv.org/pdf/2510.18279](https://arxiv.org/pdf/2510.18279)
 [^4]: [DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning](https://arxiv.org/pdf/2501.12948)
 [^5]: [Chain-of-Thought Prompting Elicits Reasoning in Large Language Models](https://arxiv.org/pdf/2201.11903)
+[^6]: [https://arxiv.org/pdf/2601.20552](https://arxiv.org/pdf/2601.20552)
