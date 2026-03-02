@@ -698,5 +698,15 @@
       "new_description",
       "请您提供需要处理的具体Markdown技术文章正文内容，我将依据给定规则为您生成符合要求的高信息密度摘要。"
     ]
+  ],
+  "./_posts/2026-03-01-RLHF-2.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "梳理强化学习DPO、PPO、GRPO三类优化算法常见的两类训练崩溃问题。熵坍缩源于动作概率与优势值协方差结构性恒正，训练初期策略熵快速趋近于0，模型失去探索性，效果陷入瓶颈，可通过DAPO调整GRPO的epsilon高低边界、动态温度调度仅对top20%高熵token计算策略梯度两种方案缓解，对应GRPO可配置epsilon_low、epsilon_high、top_entropy_quantile参数实现。奖励坍缩由GRPO组内归一化抹平多奖励信号相对差异导致，训练信号分辨率大幅下降，可采用GDPO对各奖励分量独立标准化后加权求和的方案解决。"
+    ]
   ]
 }
