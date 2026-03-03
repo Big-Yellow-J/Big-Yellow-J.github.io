@@ -288,6 +288,157 @@ blog.addLoadEvent(function () {
   ckeckToShow()
 })
 
+// 移动到底部
+blog.addLoadEvent(function () {
+  var el = document.querySelector('.footer-btn.to-bottom') // 确保 HTML 中有这个类名
+  if (!el) return
+
+  blog.addEvent(el, 'click', function (event) {
+    // 滚动到文档的总高度
+    window.scrollTo(0, document.documentElement.scrollHeight || document.body.scrollHeight)
+    event.stopPropagation()
+  }, true)
+})
+
+// 一键复制全文 Markdown 到剪贴板（放在 footer 的按钮）
+document.addEventListener('DOMContentLoaded', function () {
+  const copyBtn = document.querySelector('.footer-btn.copy-all');
+  if (!copyBtn) return;
+
+  copyBtn.addEventListener('click', function () {
+    // 获取文章容器（根据你的主题调整选择器）
+    const article = document.querySelector('.post-content, .entry-content, article');
+    if (!article) {
+      alert('找不到文章内容区域');
+      return;
+    }
+
+    // 从 data-* 或 fallback 获取元数据（强烈建议在 _layouts/post.html 加 data-* 属性）
+    const title  = article.dataset.title  || document.querySelector('h1')?.textContent.trim() || '无标题';
+    const url    = article.dataset.url    || window.location.href;
+    const date   = article.dataset.date   || '';
+    const author = article.dataset.author || '佚名';
+
+    const contentEl = article;
+    const clone = contentEl.cloneNode(true);
+
+    // 图片路径处理：转为绝对路径
+    clone.querySelectorAll('img').forEach(img => {
+      if (img.src && !img.src.startsWith('http') && !img.src.startsWith('data:')) {
+        try {
+          img.src = new URL(img.src, window.location.origin).href;
+        } catch (e) {
+          console.warn('图片路径处理失败:', img.src);
+        }
+      }
+    });
+
+    // 初始化 Turndown
+    const turndownService = new TurndownService({
+      headingStyle: 'atx',
+      bulletListMarker: '-',
+      codeBlockStyle: 'fenced',
+      fence: '```'
+    });
+
+    // 加载 GFM 插件（@truto 版本，表格支持更好）
+    if (window.gfm) {
+      turndownService.use(window.gfm);
+    } else {
+      console.warn('GFM 插件未加载，表格转换可能不完美。请检查 <script src="https://cdn.jsdelivr.net/npm/@truto/turndown-plugin-gfm@latest/dist/turndown-plugin-gfm.min.js"></script>');
+    }
+
+    // 自定义规则：优化代码块语言保留
+    turndownService.addRule('fencedCodeBlockWithLanguage', {
+      filter: 'pre',
+      replacement: function (content, node, options) {
+        const codeNode = node.firstChild;
+        if (codeNode?.nodeName === 'CODE') {
+          const langMatch = codeNode.className.match(/language-(\w+)/);
+          const lang = langMatch ? langMatch[1] : '';
+          const code = codeNode.textContent.trim();
+          return `\n\n${options.fence}${lang}\n${code}\n${options.fence}\n\n`;
+        }
+        return `\n\n${content}\n\n`;
+      }
+    });
+
+    let markdown = turndownService.turndown(clone.innerHTML);
+
+    // 添加转载 header
+    const header = [
+      `# ${title}`,
+      '',
+      `**作者**：${author}`,
+      `**原文链接**：[${url}](${url})`,
+      `**发布日期**：${date}`,
+      '',
+      `转载请注明出处，感谢！`,
+      '---',
+      ''
+    ].join('\n');
+
+    markdown = header + markdown;
+
+    // 复制到剪贴板 + 页面提示
+    navigator.clipboard.writeText(markdown.trim()).then(() => {
+      // 成功提示：右下角绿色框（纯 inline style）
+      const msg = document.createElement('div');
+      msg.textContent = '复制成功！';
+      msg.style.position = 'fixed';
+      msg.style.bottom = '30px';
+      msg.style.right = '30px';
+      msg.style.background = '#4caf50';
+      msg.style.color = 'white';
+      msg.style.padding = '12px 24px';
+      msg.style.borderRadius = '6px';
+      msg.style.boxShadow = '0 3px 10px rgba(0,0,0,0.3)';
+      msg.style.zIndex = '9999';
+      msg.style.fontSize = '16px';
+      msg.style.fontWeight = 'bold';
+      msg.style.opacity = '1';
+
+      document.body.appendChild(msg);
+
+      // 2.2秒后淡出并移除
+      setTimeout(() => {
+        msg.style.opacity = '0';
+        setTimeout(() => msg.remove(), 500);
+      }, 2200);
+
+      // 可选：按钮短暂变绿
+      const originalColor = copyBtn.style.color;
+      copyBtn.style.color = '#4caf50';
+      setTimeout(() => { copyBtn.style.color = originalColor || ''; }, 1500);
+    }).catch(err => {
+      console.error('复制失败:', err);
+
+      // 失败提示：右下角红色框
+      const msg = document.createElement('div');
+      msg.textContent = '复制失败，请手动复制';
+      msg.style.position = 'fixed';
+      msg.style.bottom = '30px';
+      msg.style.right = '30px';
+      msg.style.background = '#f44336';
+      msg.style.color = 'white';
+      msg.style.padding = '12px 24px';
+      msg.style.borderRadius = '6px';
+      msg.style.boxShadow = '0 3px 10px rgba(0,0,0,0.3)';
+      msg.style.zIndex = '9999';
+      msg.style.fontSize = '16px';
+      msg.style.fontWeight = 'bold';
+      msg.style.opacity = '1';
+
+      document.body.appendChild(msg);
+
+      setTimeout(() => {
+        msg.style.opacity = '0';
+        setTimeout(() => msg.remove(), 500);
+      }, 2200);
+    });
+  });
+});
+
 // 点击图片全屏预览
 blog.addLoadEvent(function () {
   if (!document.querySelector('.page-post')) {

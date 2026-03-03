@@ -172,6 +172,10 @@ input:-webkit-autofill {
 .footer-btn.to-top.show {
   bottom: 16px;
 }
+.footer-btn.copy-all {
+  right: 16px;
+  bottom: 112px; /* 再往上一点 */
+}
 .svg-icon {
   display: inline-block;
   width: 1em;
@@ -195,6 +199,10 @@ input:-webkit-autofill {
 .icon-arrow-top {
   mask-image: url('../img/icon-arrow-top.svg');
   -webkit-mask-image: url('../img/icon-arrow-top.svg');
+}
+.copy-svgrepo-com {
+  mask-image: url('../img/copy-svgrepo-com.svg');
+  -webkit-mask-image: url('../img/copy-svgrepo-com.svg');
 }
 @media screen and (max-width: 560px) {
   .header {
