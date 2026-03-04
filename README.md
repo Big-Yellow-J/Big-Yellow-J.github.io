@@ -32,13 +32,12 @@ sudo apt install ruby-full build-essential ruby-bundler
 ```bash
 gem sources --add https://mirrors.tuna.tsinghua.edu.cn/rubygems/ --remove https://rubygems.org/
 gem sources -l
-gem sources --clear-all
-gem sources --update
-export GEM_HOME="~/.gems"
+gem sources --clear-all && gem sources --update
+export GEM_HOME="xxxx/.gems" # 注意路径改为绝对路径，写入gem编译文件
 gem install bundler
 bundle config mirror.https://rubygems.org https://mirrors.tuna.tsinghua.edu.cn/rubygems
 bundle config list
-bundle config set path "~/.gems"
+bundle config set path "xxxx/.gems"
 ```
 
 通过下面命令启动/编译项目（进入到网页文件中）
