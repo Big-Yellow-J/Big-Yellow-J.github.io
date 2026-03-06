@@ -21,12 +21,10 @@ description: Ai-toolkit框架用于扩散模型微调，需在autodl服务器（
 ```python
 # 首先安装基本环境
 source /etc/network_turbo  # autodl 上执行该命令进行代理
-conda create -n ai-toolkit python=3.12
-conda activate ai-toolkit
-pip install --no-cache-dir torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 --index-url https://download.pytorch.org/whl/cu126
-
 git clone https://github.com/ostris/ai-toolkit.git
 cd ai-toolkit
+conda create -n ai-toolkit python=3.12
+conda activate ai-toolkit
 pip3 install --no-cache-dir torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 --index-url https://download.pytorch.org/whl/cu126
 pip3 install -r requirements.txt
 
@@ -269,3 +267,12 @@ adapter:
     - "path/to/your/image.png"
     - "path/to/your/image2.png"
 ```
+
+### 排错处理
+* 1、加载数据过程中出现数据形状不匹配问题
+
+![企业微信截图_17727623386283](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image企业微信截图_17727623386283.png)
+对于上面截图报错在测试`Klein9B`模型过程中出现，主要是在测试`batch_size>1`就容易发生，可以直接将所有的数据都固定到相同形状可以解决
+* 2、进程一直被`killed`
+
+在运行代码（直接使用`python run.py ...`）有些适合就会在终端直接被`killed`（ai-toolkit默认的 `torch=2.7`可能版本不太合适）切换为 `torch=2.10`的版本 `pip3 install --no-cache-dir torch==2.10.0 torchvision==0.25.0 torchaudio==2.10.0 --index-url https://download.pytorch.org/whl/cu126`

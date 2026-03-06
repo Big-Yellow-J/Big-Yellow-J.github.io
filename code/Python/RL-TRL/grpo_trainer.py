@@ -92,14 +92,18 @@ def format_dataset_hf(examples, tokenizer):
         "solution": examples["solution"]
     }
 
-def load_datasets(config: CustomGRPOConfig, tokenizer=None):
+def load_datasets(config: CustomGRPOConfig, tokenizer=None, split: str='train'):
+    '''
+    GPPO训练数据基本格式：
+    {'prompt': [{'content': ' xxx', 'role': 'user'}], 'solution': 'Yes'}
+    '''
     if config.dataset_from == "hf":
         dataset = load_dataset(
             config.dataset_name,
-            split="train",
+            split= split,
             cache_dir=config.cache_dir
         )
-        
+        print(dataset[0])
         if tokenizer is not None:
             dataset = dataset.map(
                 lambda x: format_dataset_hf(x, tokenizer),
@@ -110,11 +114,11 @@ def load_datasets(config: CustomGRPOConfig, tokenizer=None):
             dataset = dataset.shuffle(seed=config.random_seed)
             num_samples = int(len(dataset) * config.data_ratio)
             dataset = dataset.select(range(num_samples))
-        print("="*100)
-        print(f"数据集大小: {len(dataset)}")
-        print(f"示例 Prompt:\n{dataset[0]['prompt']}")
-        print(f"示例 Solution:\n{dataset[0]['solution']}")
-        print("="*100)
+        # print("="*100)
+        # print(f"数据集大小: {len(dataset)}")
+        # print(f"示例 Prompt:\n{dataset[0]['prompt']}")
+        # print(f"示例 Solution:\n{dataset[0]['solution']}")
+        # print("="*100)
         return dataset
     else:
         raise NotImplementedError("目前仅支持 HuggingFace 数据集")
@@ -271,23 +275,24 @@ if __name__ == "__main__":
     config = CustomGRPOConfig()
     model, tokenizer = load_model_tokenizer(config)
     dataset = load_datasets(config, tokenizer)
-    peft_config = get_peft_config()
-    model = get_peft_model(model, peft_config)
-    model.print_trainable_parameters()
-
-    trainer = CustomGRPOTrainer(
-        model=model,
-        reward_funcs=[
-            accuracy_reward,
-            reasoning_accuracy_reward,
-            format_reward,
-            length_reward,
-        ],
-        args=config,
-        train_dataset=dataset,
-        processing_class=tokenizer,
-    )
-    trainer.train()
-    trainer.save_model(os.path.join(config.output_dir, "final_lora"))
-    tokenizer.save_pretrained(os.path.join(config.output_dir, "final_lora"))
-    print("训练完成！输出目录：", config.output_dir)
+    print(dataset[0])
+    # peft_config = get_peft_config()
+    # model = get_peft_model(model, peft_config)
+    # model.print_trainable_parameters()
+    #
+    # trainer = CustomGRPOTrainer(
+    #     model=model,
+    #     reward_funcs=[
+    #         accuracy_reward,
+    #         reasoning_accuracy_reward,
+    #         format_reward,
+    #         length_reward,
+    #     ],
+    #     args=config,
+    #     train_dataset=dataset,
+    #     processing_class=tokenizer,
+    # )
+    # trainer.train()
+    # trainer.save_model(os.path.join(config.output_dir, "final_lora"))
+    # tokenizer.save_pretrained(os.path.join(config.output_dir, "final_lora"))
+    # print("训练完成！输出目录：", config.output_dir)
