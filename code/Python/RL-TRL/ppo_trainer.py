@@ -1,268 +1,418 @@
 import os
 import re
-import gc
+import random
+import warnings
+from datetime import datetime
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+warnings.filterwarnings("ignore")
 
 import torch
-import random
-import torch.nn as nn
-from datetime import datetime
+from torch import nn
 from dataclasses import dataclass, field
-from typing import List, Any
+from typing import Optional, List
+import numpy as np
+from tqdm import tqdm
 
+from trl import (
+    PPOConfig,
+    PPOTrainer,
+    AutoModelForCausalLMWithValueHead,
+    create_reference_model,
+)
+from transformers import (
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    set_seed,
+    GenerationConfig
+)
 from datasets import load_dataset
-from trl import PPOConfig, PPOTrainer, AutoModelForCausalLMWithValueHead
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from peft import LoraConfig, get_peft_model
 
-# 关键：引入 accelerate 来处理分布式/设备状态
-from accelerate import Accelerator
+set_seed(42)
 
 @dataclass
-class CustomPPOConfig(PPOConfig):
-    random_seed: int = 2026
-    project_name: str = "Qwen-PPO-Math"
-    cache_dir: str = "/root/autodl-fs/Model"
-    current_date: str = field(default_factory=lambda: datetime.now().strftime("%Y%m%d"))
-    special_num: int = field(default_factory=lambda: random.randint(0, 9999))
-    tracker_project_name: str = field(init=False)
-    output_dir: str = field(init=False)
+class ScriptArguments:
+    data_ratio: float = field(default=0.001)
+    model_name: str = field(default="gpt2")
+    tokenizer_name: Optional[str] = field(default=None)
+    cache_dir: str = field(default="/root/autodl-tmp/Model")
+    dataset_name: str = field(default="trl-lib/DeepMath-103K")
 
-    dataset_name: str = "trl-lib/DeepMath-103K"
-    dataset_from: str = "hf"
-    data_ratio: float = 0.1
-    shuffle_dataset: bool = True
+    max_prompt_length: int=field(default=1024)
+    max_generate_length: int=field(default=1204)
+    max_length: int = field(default=2048)
+    min_length: int = field(default=10)
 
-    model_name: str = (
-        "/root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/"
-        "Model/models--Qwen--Qwen2-0.5B-Instruct/snapshots/c540970f9e29518b1d8f06ab8b24cba66ad77b6d"
-    )
-    bf16: bool = True
+    learning_rate: float = field(default=1e-6)
 
-    save_steps: int = 100
-    logging_steps: int = 5
+    batch_size: int = field(default=16)
+    mini_batch_size: int = field(default=4)
+    gradient_accumulation_steps: int = field(default=4)
+    ppo_epochs: int = field(default=4)
 
-    ppo_epochs: int = 1               # 注意：新版常用 ppo_epochs 而非 num_ppo_epochs
-    kl_coef: float = 0.05
-    gradient_checkpointing: bool = False
-    gradient_accumulation_steps: int = 4
-    response_length: int = 1024       # 用于 generation 的最大长度
-    per_device_train_batch_size: int = 2
-    report_to: str = "tensorboard"
-    learning_rate: float = 1e-6
+    adap_kl_ctrl: bool = field(default=True)
+    init_kl_coef: float = field(default=0.2)
+    target: float = field(default=6.0)
+    horizon: float = field(default=10000)
+    cliprange_reward: float = field(default=0.2)
+    output_dir: str = field(default="./ppo_output")
+    seed: int = field(default=42)
+    use_peft: bool = field(default=False)
+    lora_r: int = field(default=16)
+    lora_alpha: int = field(default=32)
 
-    def __post_init__(self):
-        self.tracker_project_name = f"{self.current_date}-{self.project_name}-{self.special_num:04d}"
-        self.output_dir = f"/root/autodl-fs/Model/Outputs/{self.tracker_project_name}"
-
-
-THINK_PROMPT_SUFFIX = (
-    "请使用以下格式完整回答问题：\n"
-    "<think>\n你的逐步推理过程（请详细写出思考步骤）\n</think>\n"
-    "<answer>\n最终答案（只写答案本身，不要重复问题）\n</answer>\n"
-)
-
-
-def tokenize_dataset(examples, tokenizer, max_length=1024):
-    model_inputs = tokenizer(
-        examples["prompt"],
-        padding=False,
-        truncation=True,
-        max_length=max_length,
-    )
-    return {
-        "input_ids": model_inputs["input_ids"],
-        "attention_mask": model_inputs["attention_mask"],
-    }
-
-
-def format_dataset_hf(examples, tokenizer):
-    processed_prompts = []
-    for messages in examples["prompt"]:
-        messages = [msg.copy() for msg in messages]
-        last_msg = messages[-1]
-        if last_msg["role"] == "user":
-            last_msg["content"] = last_msg["content"].rstrip() + "\n\n" + THINK_PROMPT_SUFFIX
-        formatted_text = tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True
-        )
-        processed_prompts.append(formatted_text)
-
-    return {"prompt": processed_prompts, "solution": examples["solution"]}
-
-
-def load_datasets(config: CustomPPOConfig, tokenizer=None, split: str = "train"):
-    if config.dataset_from != "hf":
-        raise NotImplementedError("目前仅支持 HuggingFace 数据集")
-
-    dataset = load_dataset(
-        config.dataset_name,
-        split=split,
-        cache_dir=config.cache_dir
-    )
-    if config.data_ratio < 1.0:
-        dataset = dataset.shuffle(seed=config.random_seed)
-        num_samples = int(len(dataset) * config.data_ratio)
-        dataset = dataset.select(range(num_samples))
-
-    if tokenizer is not None:
-        dataset = dataset.map(
-            lambda x: format_dataset_hf(x, tokenizer),
-            batched=True,
-            desc="Applying chat template"
-        )
-        print("=" * 100)
-        if len(dataset) > 0:
-            print(f"示例 Prompt:\n{dataset[0]['prompt']}")
-            print(f"示例 Solution:\n{dataset[0]['solution']}")
-        print("=" * 100)
-
-        dataset = dataset.map(
-            lambda x: tokenize_dataset(x, tokenizer),
-            batched=True,
-            desc="Tokenizing"
-        )
-
-        dataset.set_format(type="torch", columns=["input_ids", "attention_mask"])
-    print("=" * 100)
-    print(f"数据集大小: {len(dataset)}")
-    print("=" * 100)
-    return dataset
-
-
-def get_peft_config():
-    return LoraConfig(
-        r=32,
-        lora_alpha=32,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-        lora_dropout=0.0,
-        bias="none",
-        task_type="CAUSAL_LM",
-        modules_to_save=["lm_head"],
-    )
-
-
-def load_model_tokenizer(config: CustomPPOConfig):
-    compute_dtype = torch.bfloat16 if config.bf16 else torch.float16
-
-    model = AutoModelForCausalLMWithValueHead.from_pretrained(
-        config.model_name,
-        torch_dtype=compute_dtype,
-        device_map="auto",
-        attn_implementation="flash_attention_2",
-        cache_dir=config.cache_dir,
-        return_dict=True,  # 确保返回对象
-    )
-
-    # 重点：强制所有子模块同步 return_dict
-    model.config.return_dict = True
-    model.pretrained_model.config.return_dict = True
-    model.config.use_cache = False
-    model.pretrained_model.config.use_cache = False
-
-    # 之前的“接线”代码
-    base_prefix = model.pretrained_model.base_model_prefix
-    model.base_model_prefix = base_prefix
-    setattr(model, base_prefix, model.pretrained_model)
-
-    if hasattr(model.pretrained_model, "generation_config"):
-        model.generation_config = model.pretrained_model.generation_config
-    model.is_gradient_checkpointing = getattr(model.pretrained_model, "is_gradient_checkpointing", False)
-    tokenizer = AutoTokenizer.from_pretrained(
-        config.model_name,
-        cache_dir=config.cache_dir,
-        padding_side="left",
-    )
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-    return model, tokenizer
-
-class DummyRuleBasedRewardModel(nn.Module):
+class RewardModel:
     def __init__(self):
-        super().__init__()
-        self.accuracy_weight = 1.0
-        self.reasoning_weight = 0.6
-        self.format_weight = 0.8
-        self.length_weight = 0.3
+        pass
 
-    def forward(self, completions: List[str], solutions: List[Any], **kwargs) -> torch.Tensor:
+    def _reward_format(self, text_completions: str):
+        format_score = 0.0
+        think_match = re.search(r'<think>(.*?)</think>', text_completions, re.DOTALL | re.IGNORECASE)
+        ans_match = re.search(r'<answer>(.*?)</answer>', text_completions, re.DOTALL | re.IGNORECASE)
+        has_think = bool(think_match and think_match.group(1).strip())
+        has_answer = bool(ans_match and ans_match.group(1).strip())
+        if has_think and has_answer:
+            format_score = 1.0
+        elif has_think or has_answer:
+            format_score = 0.4
+        return format_score, has_think, has_answer
+
+    def _reward_length(self, text_completions: str):
+        length = len(text_completions.strip())
+        if 200 <= length <= 1000:
+            return 1.0
+        elif length < 200:
+            return length / 200
+        else:
+            return max(0.4, 1.0 - (length - 1000) / 2000)
+
+    def _reward_repetition(self, text_completions: str):
+        words = text_completions.split()
+        if len(words) < 10:
+            return 0.0
+        ngrams = [tuple(words[i:i + 4]) for i in range(len(words) - 3)]
+        ratio = len(set(ngrams)) / len(ngrams) if ngrams else 1.0
+        return ratio - 1.0
+
+    def compute_reward(self, completions: List[str], solutions: List[str]) -> List[float]:
         rewards = []
-        for completion, gt in zip(completions, solutions):
-            ans_match = re.search(r'<answer>(.*?)</answer>', completion, re.DOTALL | re.IGNORECASE)
-            if ans_match:
-                pred = ans_match.group(1).strip()
-                gt_clean = str(gt).strip() if gt is not None else ""
-                acc_score = 1.0 if pred == gt_clean else 0.0
-            else:
-                acc_score = 0.0
+        for text, gt in zip(completions, solutions):
+            try:
+                format_score, accuracy_score = 0.0, 0.0
+                think_match = re.search(r'<think>(.*?)</think>', text, re.DOTALL | re.IGNORECASE)
+                ans_match = re.search(r'<answer>(.*?)</answer>', text, re.DOTALL | re.IGNORECASE)
+                has_think = bool(think_match and think_match.group(1).strip())
+                has_answer = bool(ans_match and ans_match.group(1).strip())
 
-            think_match = re.search(r'<think>(.*?)</think>', completion, re.DOTALL | re.IGNORECASE)
-            has_think = bool(think_match and think_match.group(1).strip())
-            has_answer = bool(ans_match)
+                if has_think and has_answer:
+                    format_score = 1.0
+                elif has_think or has_answer:
+                    format_score = 0.4
+                if has_answer:
+                    pred = ans_match.group(1).strip()
+                    gt_clean = str(gt).strip()
+                    if pred == gt_clean:
+                        accuracy_score = 1.0
+                    else:
+                        accuracy_score = 0.1 if has_think else 0.0
 
-            format_score = 1.0 if has_think and has_answer else (0.4 if has_think or has_answer else 0.0)
+                repeation_score = self._reward_repetition(text)
+                length_score = self._reward_length(text)
+                final_reward = format_score * 0.2 + accuracy_score * 0.6 + repeation_score * 0.1 + length_score * 0.1
+                rewards.append(float(final_reward))
+            except Exception as e:
+                print(f"獎勵計算錯誤: {e}")
+                rewards.append(0.0)
+        return rewards
 
-            length = len(completion.strip())
-            if 100 <= length <= 800:
-                len_score = 1.0
-            elif length < 60:
-                len_score = 0.1 + length / 600.0
-            else:
-                len_score = max(0.3, 1.2 - (length - 800) / 1200.0)
+class PPOTrainerWrapper:
+    def __init__(
+        self,
+        model_name: str,
+        dataset_name: str,
+        output_dir: str,
+        use_peft: bool = False,
+        **kwargs
+    ):
+        self.model_name = model_name
+        self.dataset_name = dataset_name
+        self.output_dir = output_dir
+        self.use_peft = use_peft
 
-            total_reward = (
-                self.accuracy_weight * acc_score +
-                self.reasoning_weight * (acc_score + format_score) / 2 +
-                self.format_weight * format_score +
-                self.length_weight * len_score
+        self.script_args = ScriptArguments(
+            model_name=model_name,
+            dataset_name=dataset_name,
+            output_dir=output_dir,
+            use_peft=use_peft,
+            **kwargs
+        )
+
+        self._setup_tokenizer()
+        self._setup_model()
+        self._setup_datasets()
+        self._setup_ppo_config()
+        self._setup_reward_model()
+
+    def _setup_tokenizer(self):
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.script_args.tokenizer_name or self.script_args.model_name,
+            cache_dir= self.script_args.cache_dir,
+        )
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+
+    def _setup_model(self):
+        base_model = AutoModelForCausalLM.from_pretrained(
+            self.script_args.model_name,
+            torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
+            device_map="auto" if torch.cuda.is_available() else None,
+            cache_dir=self.script_args.cache_dir,
+        )
+
+        if self.use_peft:
+            from peft import LoraConfig, get_peft_model
+            peft_config = LoraConfig(
+                r=self.script_args.lora_r,
+                lora_alpha=self.script_args.lora_alpha,
+                lora_dropout=0.05,
+                bias="none",
+                task_type="CAUSAL_LM",
             )
-            rewards.append(total_reward)
+            self.model = get_peft_model(base_model, peft_config)
+            self.model.print_trainable_parameters()
+        else:
+            self.model = base_model
 
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        return torch.tensor(rewards, device=device, dtype=torch.float32)
+        self.ppo_model = AutoModelForCausalLMWithValueHead.from_pretrained(
+            self.model_name,
+            torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
+            device_map="auto" if torch.cuda.is_available() else None,
+            cache_dir=self.script_args.cache_dir,
+        )
 
-class CustomPPOTrainer(PPOTrainer):
-    def compute_loss(self, model, inputs, return_outputs=False):
-        try:
-            result = super().compute_loss(model=model, inputs=inputs, return_outputs=return_outputs)
-            return result
-        except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
-            if "out of memory" in str(e).lower() or isinstance(e, torch.cuda.OutOfMemoryError):
-                print(f"[OOM] Batch skipped: {str(e)[:200]}...")
-                torch.cuda.empty_cache()
-                gc.collect()
-                device = next(model.parameters()).device
-                dummy_loss = torch.tensor(0.0, device=device, requires_grad=True)
-                if return_outputs:
-                    return dummy_loss, {"oom_skipped": 1.0, "loss": 0.0}
-                return dummy_loss
-            raise
+        gen_config = GenerationConfig.from_pretrained(
+            self.script_args.model_name,
+            pad_token_id=self.tokenizer.pad_token_id,
+            eos_token_id=self.tokenizer.eos_token_id,
+            bos_token_id=self.tokenizer.bos_token_id if self.tokenizer.bos_token_id is not None else self.tokenizer.eos_token_id,
+            cache_dir=self.script_args.cache_dir,
+        )
+        self.ppo_model.pretrained_model.generation_config = gen_config
+        if self.use_peft:
+            try:
+                self.ppo_model.pretrained_model.base_model.model.generation_config = gen_config
+            except AttributeError:
+                pass
+
+        self.ref_model = create_reference_model(self.ppo_model)
+
+    def _format_dataset(self, examples):
+        THINK_PROMPT_SUFFIX = (
+            "\n\n請使用以下格式完整回答問題：\n"
+            "<think>\n你的逐步推理過程（請詳細寫出思考步驟）\n</think>\n"
+            "<answer>\n最終答案\n</answer>\n"
+        )
+        if "instruction" in examples:
+            raw_texts = examples["instruction"]
+        elif "problem" in examples:
+            raw_texts = examples["problem"]
+        else:
+            first_key = list(examples.keys())[0]
+            raw_texts = examples[first_key]
+
+        formatted_prompts = []
+        for text in raw_texts:
+            content = text[0]['content'] if isinstance(text, list) and len(text) > 0 else text
+            content_with_think = THINK_PROMPT_SUFFIX + str(content).rstrip()
+            messages = [{"role": "user", "content": content_with_think}]
+            formatted_text = self.tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                max_length=self.script_args.max_prompt_length,
+                add_generation_prompt=True,
+                return_tensors="pt",
+            )
+            formatted_prompts.append(formatted_text)
+
+        tokenized = self.tokenizer(
+            formatted_prompts,
+            truncation=True,
+            max_length=self.script_args.max_prompt_length,
+            padding=False,
+        )
+        tokenized["query"] = formatted_prompts
+        return tokenized
+
+    def _setup_datasets(self, **kwargs):
+        cache_dir = kwargs.get('cache_dir', self.script_args.cache_dir)
+        if self.dataset_name == "trl-lib/DeepMath-103K":
+            dataset = load_dataset(
+                self.dataset_name,
+                split="train",
+                cache_dir=cache_dir
+            )
+            data_nums = int(len(dataset) * self.script_args.data_ratio)
+            if data_nums > 0 and data_nums < len(dataset):
+                dataset = dataset.select(range(data_nums))
+            self.train_dataset = dataset.map(
+                self._format_dataset,
+                batched=True,
+                remove_columns=dataset.column_names,
+                desc="Injecting think prompt and tokenizing"
+            )
+            self.query_dataset = self.train_dataset
+            print("="*100, f"\nDataset info: {self.query_dataset}\n", "="*100)
+
+    def _setup_ppo_config(self):
+        project_name= "Qwen-PPO-Math"
+        current_date= datetime.now().strftime("%Y%m%d")
+        special_num= random.randint(0, 9999)
+        self.tracker_project_name= f'{current_date}-{project_name}-{special_num:04d}'
+        self.ppo_config = PPOConfig(
+            batch_size=self.script_args.batch_size,
+            mini_batch_size=self.script_args.mini_batch_size,
+            gradient_accumulation_steps=self.script_args.gradient_accumulation_steps,
+            learning_rate=self.script_args.learning_rate,
+            ppo_epochs=self.script_args.ppo_epochs,
+            adap_kl_ctrl=self.script_args.adap_kl_ctrl,
+            init_kl_coef=self.script_args.init_kl_coef,
+            target=self.script_args.target,
+            horizon=self.script_args.horizon,
+            cliprange=self.script_args.cliprange_reward,
+            cliprange_value=self.script_args.cliprange_reward,
+            gamma=1.0,
+            lam=0.95,
+            seed=self.script_args.seed,
+            log_with="tensorboard",
+            tracker_project_name=self.tracker_project_name,
+            project_kwargs={
+                "logging_dir": f"{self.script_args.output_dir}/logs",
+            },
+        )
+
+    def _setup_reward_model(self):
+        self.reward_model = RewardModel()
+
+    def train(self):
+        ppo_trainer = PPOTrainer(
+            config=self.ppo_config,
+            model=self.ppo_model,
+            ref_model=self.ref_model,
+            tokenizer=self.tokenizer,
+        )
+
+        generation_kwargs = {
+            "min_length": -1,
+            "top_k": 0.0,
+            "top_p": 0.9,
+            "temperature": 0.7,
+            "do_sample": True,
+            "pad_token_id": self.tokenizer.pad_token_id,
+            "eos_token_id": self.tokenizer.eos_token_id,
+        }
+
+        device = ppo_trainer.accelerator.device
+        batch_size = self.script_args.batch_size
+
+        progress_bar = tqdm(range(num_iterations), desc="PPO Training")
+        for iteration in progress_bar:
+            start = iteration * batch_size
+            end = start + batch_size
+            batch_indices = range(start, min(end, len(self.query_dataset)))
+            batch = self.query_dataset.select(batch_indices)
+
+            if len(batch) < batch_size:
+                continue
+            query_tensors = [
+                torch.as_tensor(q["input_ids"], dtype=torch.long, device=device)
+                for q in batch
+            ]
+
+            response_tensors = []
+            for i, query_tensor in enumerate(query_tensors):
+                input_length = query_tensor.shape[0]
+                with torch.no_grad():
+                    output = ppo_trainer.generate(
+                        query_tensor,
+                        max_new_tokens=self.script_args.max_generate_length,
+                        **generation_kwargs
+                    )
+                resp = output[0, input_length:]
+                if resp.numel() == 0:
+                    resp = torch.tensor(
+                        [self.tokenizer.eos_token_id],
+                        dtype=torch.long,
+                        device=device
+                    )
+                response_tensors.append(resp)
+            responses = [
+                self.tokenizer.decode(gen, skip_special_tokens=True)
+                for gen in response_tensors
+            ]
+            query_texts = [
+                self.tokenizer.decode(q, skip_special_tokens=True)
+                for q in query_tensors
+            ]
+            batch = batch.add_column("response", responses)
+            batch = batch.add_column("query_text", query_texts)
+
+            full_texts = [q + r for q, r in zip(query_texts, responses)]
+            raw_rewards = self.reward_model.compute_reward(full_texts, batch["query_text"])
+
+            rewards = [
+                torch.tensor(float(r), dtype=torch.float32, device=device)
+                for r in raw_rewards
+            ]
+
+            n_queries = len(query_tensors)
+            n_responses = len(response_tensors)
+            n_rewards = len(rewards)
+            if not (n_queries == n_responses == n_rewards == batch_size):
+                continue
+
+            stats = ppo_trainer.step(query_tensors, response_tensors, rewards)
+            batch_dict = {
+                "query": query_texts,
+                "response": responses
+            }
+            ppo_trainer.log_stats(stats, batch_dict, rewards)
+
+            mean_reward = torch.mean(torch.stack(rewards)).item()  # 用 torch 計算更安全
+            progress_bar.set_postfix({
+                "reward": f"{mean_reward:.4f}",
+                "kl": f"{stats['objective/kl']:.4f}",
+            })
+            if (iteration + 1) % 20 == 0:
+                self.save_model(iteration + 1)
+        self.save_model("final")
+        return ppo_trainer
+
+    def save_model(self, step: str):
+        save_path = f"{self.script_args.output_dir}/checkpoint-{step}"
+        self.ppo_model.save_pretrained(save_path)
+        self.tokenizer.save_pretrained(save_path)
+        print(f"模型已保存到: {save_path}")
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="TRL PPO 训练 (trl 0.11.0)")
+    parser.add_argument("--model_name", type=str, default="Qwen/Qwen2-0.5B-Instruct")
+    parser.add_argument("--dataset_name", type=str, default="trl-lib/DeepMath-103K")
+    parser.add_argument("--output_dir", type=str, default="/root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/Model/Outputs/PPOTrainer/")
+    parser.add_argument("--use_peft", action="store_true")
+    parser.add_argument("--num_iterations", type=int, default=1000)
+    parser.add_argument("--cache_dir", type=str, default="/root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/Model")
+    args = parser.parse_args()
+
+    trainer = PPOTrainerWrapper(
+        model_name=args.model_name,
+        dataset_name=args.dataset_name,
+        output_dir=args.output_dir,
+        use_peft=args.use_peft,
+        cache_dir=args.cache_dir,
+    )
+    trainer.train(num_iterations=args.num_iterations)
 
 if __name__ == "__main__":
-    config = CustomPPOConfig()
-    accelerator = Accelerator()
-    config.distributed_state = accelerator.state
-    peft_config = get_peft_config()
-
-    model, tokenizer = load_model_tokenizer(config)
-    model.pretrained_model = get_peft_model(model.pretrained_model, peft_config)
-
-    dataset = load_datasets(config, tokenizer)
-    reward_model = DummyRuleBasedRewardModel()
-    trainer = CustomPPOTrainer(
-        args=config,
-        model=model,
-        ref_model=None,           # 自动创建参考模型
-        reward_model=reward_model,
-        value_model=model,
-        train_dataset=dataset,
-        processing_class=tokenizer
-    )
-    trainer.train()
-    final_dir = os.path.join(config.output_dir, "final_lora")
-    os.makedirs(final_dir, exist_ok=True)
-    trainer.save_model(final_dir)
-    tokenizer.save_pretrained(final_dir)
-    print("训练完成！输出目录：", final_dir)
+    main()

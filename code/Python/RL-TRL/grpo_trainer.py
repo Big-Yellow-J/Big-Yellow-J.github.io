@@ -17,6 +17,7 @@ from typing import List, Any
 
 @dataclass
 class CustomGRPOConfig(GRPOConfig):
+    # trl: 0.22.2
     # https://github.com/huggingface/trl/blob/v0.29.0/trl/trainer/grpo_config.py#L23
     random_seed: int = 2026
     project_name: str = "Qwen-GRPO-Math"
@@ -95,7 +96,7 @@ def format_dataset_hf(examples, tokenizer):
 def load_datasets(config: CustomGRPOConfig, tokenizer=None, split: str='train'):
     '''
     GPPO训练数据基本格式：
-    {'prompt': [{'content': ' xxx', 'role': 'user'}], 'solution': 'Yes'}
+    {'prompt': [{'content': ' xxx', 'role': 'user'}], 'solution': 'xxx'}
     '''
     if config.dataset_from == "hf":
         dataset = load_dataset(
