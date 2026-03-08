@@ -67,7 +67,7 @@ def _preprocess():
 ![](https://s2.loli.net/2025/09/21/R8yLfVqpznvkgZw.webp)
 在图像处理过程上和QwenVL2差异不大都是直接：动态分辨率处理-->复制时间维度-->将序列切割为patch，对比两个模型差异：
 ![](https://s2.loli.net/2025/09/22/NvKgQqhC36WAkjU.webp)
-1、采用 RMSNorm 替换了所有 LayerNorm；2、ViT中每一个VisionBlock中的MLP换成了SwiGLU 结构。只从模型结构上差异不到，在QwenVL2.5中主要进行改动：1、使用window-attention（对应上述结构中的`Qwen2_5_VLVisionAttention`）对于具体的划分window方法（[代码](https://github.com/huggingface/transformers/blob/41925e42135257361b7f02aa20e3bbdab3f7b923/src/transformers/models/qwen2_5_vl/modeling_qwen2_5_vl.py#L465)）：根据输入的图像大小 (gird_t, grid_h, grid_w)去得到窗口索引 (window_index) 和 累积序列长度 (cu_window_seqlens)。具体例子如下：
+1、采用 RMSNorm 替换了所有 LayerNorm；2、ViT中每一个VisionBlock中的MLP换成了SwiGLU 结构。只从模型结构上差异不到，在QwenVL2.5中主要进行改动：1、在视觉编码过程中使用window-attention（对应上述结构中的`Qwen2_5_VLVisionAttention`）对于具体的划分window方法（[代码](https://github.com/huggingface/transformers/blob/41925e42135257361b7f02aa20e3bbdab3f7b923/src/transformers/models/qwen2_5_vl/modeling_qwen2_5_vl.py#L465)）：根据输入的图像大小 (gird_t, grid_h, grid_w)去得到窗口索引 (window_index) 和 累积序列长度 (cu_window_seqlens)。具体例子如下：
 ```python
 # 数据数据特征
 [ [ 0,  1,  2,  3,  4,  5],
@@ -231,6 +231,41 @@ class Qwen3VLTextModel(Qwen3VLPreTrainedModel):
         return hidden_states
 ```
 其实从上面代码中很容易发现在DeepStack中QwenVL-3处理方式很简单直接选出**所有视觉token位置**而后将视觉特征进行补充，其中visual_pos_masks的形状是batch_size, seqlen
+### QwenVL-3.5
+简单总结模型主要亮点在于：1、**使用linear-attention+full+attention的混合**，其中整体的混合比例3：1（3层linear attention后叠加1层full attention）比如说
+![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260308150901627.png)
+2、除此之外引入门控注意力计算（Gate-Attention[^10]）主要过程式在计算QKV三部分的注意力之后引入Gate机制。在代码中的具体实现过程为代码为（图片来源![知乎](https://zhuanlan.zhihu.com/p/2006241509226350575)）：
+![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260308164431758.png)
+对于上述过程中的QKV和常规的Attention中计算没差异，关键在于其引入了z、b、a这三组变量，其中b、a主要是用在Gate计算中而z则是在最后计算完attention之后再去`self.norm(core_attn_out, z)`，在计算门控过程中代码过程如下
+```python
+core_attn_out = torch.zeros(batch_size, num_heads, sequence_length, v_head_dim).to(value)
+last_recurrent_state = (
+    torch.zeros(batch_size, num_heads, k_head_dim, v_head_dim).to(value)
+    if initial_state is None
+    else initial_state.to(value)
+)
+# q_t: (B, H, d_k) 
+# g_t: (B, H, 1, 1)
+# beta_t: (B, H, 1)
+for i in range(sequence_length):
+    q_t = query[:, :, i]
+    k_t = key[:, :, i]
+    v_t = value[:, :, i]
+    
+    g_t = g[:, :, i].exp().unsqueeze(-1).unsqueeze(-1)
+    beta_t = beta[:, :, i].unsqueeze(-1)
+
+    last_recurrent_state = last_recurrent_state * g_t
+    
+    kv_mem = (last_recurrent_state * k_t.unsqueeze(-1)).sum(dim=-2)
+    
+    delta = (v_t - kv_mem) * beta_t
+    last_recurrent_state = last_recurrent_state + k_t.unsqueeze(-1) * delta.unsqueeze(-2)
+    core_attn_out[:, :, i] = (last_recurrent_state * q_t.unsqueeze(-1)).sum(dim=-2)
+```
+上述代码整个计算对应下面过程：$S_{t}=\alpha_{t} S_{t-1}+\beta_{t}\left(v_{t}-\alpha_{t} S_{t-1} k_{t}\right) k_{t}^{\top}$ 计算公式中 $\alpha_t$ 对应代码中的 g_t而 $\beta_t$就对应beta_t。通过这部分计算可以实现注意力计算的复杂度降低为 $O(T · d_k · d_v)$ 而对于上述公式中 $\alpha_t$主要是遗忘系数用来控制历史保留和检索衰减，$\beta_t$学习率控制新信息的写入强度，内部的 $v_{t}-\alpha_{t} S_{t-1} k_{t}$主要是用来预测残差只更新"记错的部分"，而非全部覆盖。
+
+对于上述之所以这么计算简单理解如下：首先在最开始的Attention计算中是这样的：$O_t=\text{Softmax}(Q_tK_{1:t}^T)V_{1:t}=\sum_1^t \text{softmax}(Q_tK_i^T)V_i$ 也就是说在生成过程中每进入一个新的词（$Q_t$）都需要去和前面所有的KV都进行计算，如果直接去掉内部的 $\text{softmax}$[^11]那么就可以得到：$O_t≈\sum_1^t(Q_tK_i^T)V_i$ 此时这个等式可以满足交换运算顺序可以得到 $O_t=Q_t^T\sum_1^t K_iV_i^T$ 对于这个公式内部的 $\sum_1^t K_iV_i^T=S_{t-1}+K_tV_t^T$ 那么最后**注意力计算过程**（最朴素的线性注意力计算过程）为：$O_t=Q_t(S_{t-1}+K_tV_t^T))=Q_tS_{t-1}+Q_tK_tV_t^T$ 但是这个计算过程存在小问题：所有历史$S_{t-1}$都是平等重要，并且随着你推理长度变长新的信息就被淹没了，那么就可以直接 **一次带遗忘 + 误差修正的外积更新**，比如说对于最上面的公式可以直接写成：$\alpha_t(S_{t-1}-\beta_t K_tK_t^T)S_{t-1}+\beta_tV_tK_t^T$ 首先我的 $\alpha_t$ 就对应遗忘机制（对于我的$S_{t-1}$ 需要保存多少）而内部的就是一个误差更新机制（我的$t$对于历史状态有多少的影响）对于$\beta$也可以理解为新信息写入强度，最后回到代码里面这个 $S_{t-1}$就是我们缓存的KV-Cache。
 ### 总结
 从QwenVL到QwenVL2.5视觉编码器处理过程：
 **QwenVL**：将图像转化为**固定的分辨率**而后将输入到Vit-bigG进行处理得到视觉特征之后再去使用类似Q-former处理过程（QwenVL中使用的是*一个随机初始化的单层Cross-Attention模块*）使用learned-query（压缩到**固定的256长度的token**）将视觉token进行压缩而后输入到LLM中。
@@ -246,3 +281,5 @@ class Qwen3VLTextModel(Qwen3VLPreTrainedModel):
 [^7]: [QwenVL-3-Blog](https://qwen.ai/blog?id=99f0335c4ad9ff6153e517418d48535ab6d8afef&from=research.latest-advancements-list)
 [^8]: [https://arxiv.org/pdf/2511.21631](https://arxiv.org/pdf/2511.21631)
 [^9]: [https://arxiv.org/pdf/2406.04334](https://arxiv.org/pdf/2406.04334)
+[^10]: [https://arxiv.org/pdf/2505.06708](https://arxiv.org/pdf/2505.06708)
+[^11]: [https://spaces.ac.cn/archives/7546](https://spaces.ac.cn/archives/7546)
