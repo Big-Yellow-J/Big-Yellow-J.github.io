@@ -234,7 +234,7 @@ class Qwen3VLTextModel(Qwen3VLPreTrainedModel):
 ### QwenVL-3.5
 简单总结模型主要亮点在于：1、**使用linear-attention+full+attention的混合**，其中整体的混合比例3：1（3层linear attention后叠加1层full attention）比如说
 ![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260308150901627.png)
-2、除此之外引入门控注意力计算（Gate-Attention[^10]）主要过程式在计算QKV三部分的注意力之后引入Gate机制。在代码中的具体实现过程为代码为（图片来源![知乎](https://zhuanlan.zhihu.com/p/2006241509226350575)）：
+2、除此之外引入门控注意力计算（Gate-Attention[^10]）主要过程式在计算QKV三部分的注意力之后引入Gate机制。在代码中的具体实现过程为代码为（图片来源[知乎](https://zhuanlan.zhihu.com/p/2006241509226350575)）：
 ![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260308164431758.png)
 对于上述过程中的QKV和常规的Attention中计算没差异，关键在于其引入了z、b、a这三组变量，其中b、a主要是用在Gate计算中而z则是在最后计算完attention之后再去`self.norm(core_attn_out, z)`，在计算门控过程中代码过程如下
 ```python
