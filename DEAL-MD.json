@@ -656,7 +656,7 @@
     ],
     [
       "new_description",
-      "Qwen多模态系列模型迭代至QwenVL3，各版本核心改进包括：QwenVL采用ViT-bigG视觉编码器，单层Cross-Attention融合器压缩视觉token至256长度，整合二维绝对位置编码；QwenVL2引入动态分辨率处理，2x2相邻token拼接及多模态旋转位置编码（M-RoPE），增加时间维度对齐视频处理流程；QwenVL2.5使用RMSNorm替换LayerNorm，ViT中MLP改为SwiGLU结构，新增window-attention；QwenVL3升级MRoPE-Interleave位置编码、DeepStack技术融合ViT多层次特征，文本时间戳对齐机制提升视频事件定位精度，patch_size从14增至16，三维卷积含bias，ViT隐层维度1280调整为1152，固定预训练位置编码通过双线性插值适配新分辨率。"
+      "通义千问多模态系列QwenVL迭代脉络清晰，初代采用ViT-bigG视觉编码器、单层交叉注意力模块配合可学习查询，将视觉特征压缩为256长度输入7B基座大模型。QwenVL2支持动态分辨率，引入2×2相邻token拼接、多模态旋转位置编码M-RoPE，新增时间维度对齐视频处理逻辑。QwenVL2.5替换RMSNorm、SwiGLU激活，新增窗口注意力机制。QwenVL3推出MRoPE-Interleave、DeepStack多层特征注入技术，提升长视频理解与图文对齐精度。QwenVL3.5采用3:1比例混合线性与全注意力，引入门控注意力机制，降低计算复杂度同时优化长序列推理效果。"
     ]
   ],
   "./_posts/2025-08-28-OpenModelDeepSeek.md": [
@@ -707,6 +707,16 @@
     [
       "new_description",
       "梳理强化学习DPO、PPO、GRPO三类优化算法常见的两类训练崩溃问题。熵坍缩源于动作概率与优势值协方差结构性恒正，训练初期策略熵快速趋近于0，模型失去探索性，效果陷入瓶颈，可通过DAPO调整GRPO的epsilon高低边界、动态温度调度仅对top20%高熵token计算策略梯度两种方案缓解，对应GRPO可配置epsilon_low、epsilon_high、top_entropy_quantile参数实现。奖励坍缩由GRPO组内归一化抹平多奖励信号相对差异导致，训练信号分辨率大幅下降，可采用GDPO对各奖励分量独立标准化后加权求和的方案解决。"
+    ]
+  ],
+  "./_posts/2026-03-09-FireRedModel.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "FireRED OCR基于Qwen3-vl微调，数据构建环节采用聚类去重保留长尾数据、多维度分类保证分布均衡、多工具联动清洗修复三类处理，训练分三阶段推进：先预训练强化目标检测、特定区域识别、页面转Markdown三类文档识别能力，再用高质量数据做监督微调，最后通过GRPO强化学习优化输出格式，奖励函数覆盖数学公式、表格完整性、文本准确性、标签闭合四类维度。FireRED Edit采用分桶采样策略提升显存利用率，优化DPO策略区分择优避坏参数，搭配DiffusionNFT自生成训练数据，双维度奖励函数结合一致性损失规避生成图像细节崩溃。"
     ]
   ]
 }

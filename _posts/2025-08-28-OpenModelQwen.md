@@ -12,7 +12,7 @@ tags:
 - multimodal
 show_footer_image: true
 special_tag: 长期更新
-description: Qwen多模态系列模型迭代至QwenVL3，各版本核心改进包括：QwenVL采用ViT-bigG视觉编码器，单层Cross-Attention融合器压缩视觉token至256长度，整合二维绝对位置编码；QwenVL2引入动态分辨率处理，2x2相邻token拼接及多模态旋转位置编码（M-RoPE），增加时间维度对齐视频处理流程；QwenVL2.5使用RMSNorm替换LayerNorm，ViT中MLP改为SwiGLU结构，新增window-attention；QwenVL3升级MRoPE-Interleave位置编码、DeepStack技术融合ViT多层次特征，文本时间戳对齐机制提升视频事件定位精度，patch_size从14增至16，三维卷积含bias，ViT隐层维度1280调整为1152，固定预训练位置编码通过双线性插值适配新分辨率。
+description: 通义千问多模态系列QwenVL迭代脉络清晰，初代采用ViT-bigG视觉编码器、单层交叉注意力模块配合可学习查询，将视觉特征压缩为256长度输入7B基座大模型。QwenVL2支持动态分辨率，引入2×2相邻token拼接、多模态旋转位置编码M-RoPE，新增时间维度对齐视频处理逻辑。QwenVL2.5替换RMSNorm、SwiGLU激活，新增窗口注意力机制。QwenVL3推出MRoPE-Interleave、DeepStack多层特征注入技术，提升长视频理解与图文对齐精度。QwenVL3.5采用3:1比例混合线性与全注意力，引入门控注意力机制，降低计算复杂度同时优化长序列推理效果。
 ---
 
 ## Qwen大语言系列模型
@@ -266,6 +266,8 @@ for i in range(sequence_length):
 上述代码整个计算对应下面过程：$S_{t}=\alpha_{t} S_{t-1}+\beta_{t}\left(v_{t}-\alpha_{t} S_{t-1} k_{t}\right) k_{t}^{\top}$ 计算公式中 $\alpha_t$ 对应代码中的 g_t而 $\beta_t$就对应beta_t。通过这部分计算可以实现注意力计算的复杂度降低为 $O(T · d_k · d_v)$ 而对于上述公式中 $\alpha_t$主要是遗忘系数用来控制历史保留和检索衰减，$\beta_t$学习率控制新信息的写入强度，内部的 $v_{t}-\alpha_{t} S_{t-1} k_{t}$主要是用来预测残差只更新"记错的部分"，而非全部覆盖。
 
 对于上述之所以这么计算简单理解如下：首先在最开始的Attention计算中是这样的：$O_t=\text{Softmax}(Q_tK_{1:t}^T)V_{1:t}=\sum_1^t \text{softmax}(Q_tK_i^T)V_i$ 也就是说在生成过程中每进入一个新的词（$Q_t$）都需要去和前面所有的KV都进行计算，如果直接去掉内部的 $\text{softmax}$[^11]那么就可以得到：$O_t≈\sum_1^t(Q_tK_i^T)V_i$ 此时这个等式可以满足交换运算顺序可以得到 $O_t=Q_t^T\sum_1^t K_iV_i^T$ 对于这个公式内部的 $\sum_1^t K_iV_i^T=S_{t-1}+K_tV_t^T$ 那么最后**注意力计算过程**（最朴素的线性注意力计算过程）为：$O_t=Q_t(S_{t-1}+K_tV_t^T))=Q_tS_{t-1}+Q_tK_tV_t^T$ 但是这个计算过程存在小问题：所有历史$S_{t-1}$都是平等重要，并且随着你推理长度变长新的信息就被淹没了，那么就可以直接 **一次带遗忘 + 误差修正的外积更新**，比如说对于最上面的公式可以直接写成：$\alpha_t(S_{t-1}-\beta_t K_tK_t^T)S_{t-1}+\beta_tV_tK_t^T$ 首先我的 $\alpha_t$ 就对应遗忘机制（对于我的$S_{t-1}$ 需要保存多少）而内部的就是一个误差更新机制（我的$t$对于历史状态有多少的影响）对于$\beta$也可以理解为新信息写入强度，最后回到代码里面这个 $S_{t-1}$就是我们缓存的KV-Cache。
+> 简单解释一下里面 $\text{softmax}$ 作用：都知道计算 $QK^T$ 过程中我们相当于得到了token之间 “相似度”而后将整个相似度加权到 $V$上，而$\text{softmax}$在其中的作用就是去把原始相似度分数变成概率分布并且放大显著差异
+
 ### 总结
 从QwenVL到QwenVL2.5视觉编码器处理过程：
 **QwenVL**：将图像转化为**固定的分辨率**而后将输入到Vit-bigG进行处理得到视觉特征之后再去使用类似Q-former处理过程（QwenVL中使用的是*一个随机初始化的单层Cross-Attention模块*）使用learned-query（压缩到**固定的256长度的token**）将视觉token进行压缩而后输入到LLM中。
