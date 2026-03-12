@@ -133,15 +133,21 @@ $$
 
 ![MLA完整计算过程](https://s2.loli.net/2025/06/21/tfRXSoD7T68zwnp.webp)
 
-> 对于上面完整的计算过程，对于Q之所以要计算两次（线降维而后升维）而不是只去计算一次，思路和LoRA的相似，将：$xw$中的$w$分解为两部分更加小的矩阵（对应上述图中的$W^{DQ}\text{和}W^{UQ}$）
+对于输入首先进行压缩得到压缩状态（$c^{KV}$ 和 $c^Q$），去缓存这个压缩状态（而不是原始的完整 K 和 V），而后再对压缩状态进行解压得到 KV 的值。 不过值得注意的是，在计算 RoPE过程中，主要是对 Q 和 K 这两部分值加入位置信息，而且 Q 和 K 的处理方式是不同的，这也是 MLA 的关键设计点之一。 具体来说：
+- 对于 K 的 RoPE 计算过程：**直接对原始输入 $h_t$ 进行一次独立的线性投影 + RoPE**，得到一个很小的位置专用向量 $k^R$（不经过低维压缩），然后再把这个 $k^R$ 拼接到解压出来的内容部分 $k^C$ 后面，组成完整的 K。
+- 对于 Q 的 RoPE 计算过程：**先对 Q 也做一次低维压缩得到 $c^Q$**，然后对这个压缩后的 $c^Q$ 进行 RoPE 操作，得到带有位置信息的 $q^R$，再把 $q^R$ 拼接回解压/投影后的内容部分 $q^C$，组成完整的 Q。
+
+之所以 K 可以直接用原始输入计算 RoPE，而 Q 要先压缩再算 RoPE 主要原因是为了推理阶段的“权重吸收”优化：
+- K 的内容部分（$k^C$）是可以通过 $W^{UK}$ 从 $c^{KV}$ 实时解压出来的，这个解压矩阵 $W^{UK}$ 可以和 Q 的投影矩阵融合（吸收）掉，从而在推理时少做一次大矩阵乘法，显著提升速度。 如果 K 的 RoPE 也放在压缩路径里，就会破坏这种融合的可能性（因为 RoPE 是位置相关的非线性操作，不能随便和线性层交换顺序）。
+- 而 Q 在推理时本身就需要和所有历史 K 计算注意力分数，Q 的计算量相对固定，所以即使 Q 也经过一次压缩再加 RoPE，对速度影响较小，但可以大幅节省训练时的激活内存。
+
+简单一句话概括 MLA 的 RoPE 拆分逻辑：
+“K 的位置信息直接从原始输入独立计算（不压缩），以保证推理时能做权重吸收加速；Q 的位置信息先压缩再计算 RoPE，以节省训练内存。” 这样设计既实现了极高的 KV cache 压缩率（通常 90%+），又保留了位置编码的有效性，同时还获得了推理加速的红利。
 
 从上述公式也容易发现，在`MLA`中只是对缓存进行一个“替换”操作，用一个低纬度的$C_t^{KV}$来代替（也就是说：**只需要存储$c_t^{KV}$即可**）原本的`KV`（或者说将容量多的`KV`进行投影操作，这个过程和[LoRA](https://arxiv.org/pdf/2106.09685)有些许相似），在进行投影操作之后就需要对`attention`进行计算。对于上述公式简单理解：
 假设输入模型（输入到`Attention`）数据为$h_t$（假设为：$n\times d$），在传统的`KV-cache`中会将计算过程中的`KV`不断缓存下来，在后续计算过程中“拿出来”（这样就会导致随着输出文本加多，导致缓存的占用不断累计：$\sum 2n\times d$），因此在`MLA`中的操作就是：对于$h_t$进行压缩：$n \times d \times d \times d_s= n \times d_s$这样一来我就只需要缓存：$n \times d_s$即可（如果需要复原就只需要再去乘一下新的矩阵即可）
-
 ![MLA](https://s2.loli.net/2025/06/21/4ZIMukCfQgSWBTJ.webp)
-
 [部分代码](https://github.com/deepseek-ai/DeepSeek-V3/blob/b5d872ead062c94b852d75ce41ae0b10fcfa1c86/inference/model.py#L393)部分参数初始化值按照[236B的设置中的设定](https://github.com/deepseek-ai/DeepSeek-V3/blob/main/inference/configs/config_236B.json)：
-
 ```python
 class MLA(nn.Module):
     def __init__(...):
@@ -262,6 +268,8 @@ for output in outputs:
     generated_text = output.outputs[0].text
     print(f"Prompt: {prompt!r}, Generated text: {generated_text!r}")
 ```
+### 4、Native Sparse Attention(NSA)
+主要是在DeepSeek v3.2中提出，详细描述：[开源模型技术总结-2————DeepSeek系列模型](https://www.big-yellow-j.top/posts/2025/08/28/OpenModelDeepSeek.html)
 ## 参考
 1、[https://mloasisblog.com/blog/ML/AttentionOptimization](https://mloasisblog.com/blog/ML/AttentionOptimization)
 2、[https://github.com/vllm-project/vllm](https://github.com/vllm-project/vllm)
