@@ -76,7 +76,7 @@ $$
 $$
 x_i=\frac{e^{x_i-max(x_{:N})}}{\sum e^{x_j-max(x_{:N})}}
 $$
-其实这里就提出一个对于Softmax的问题：使用传统的softmax可能会导致一个数值溢出问题。而对于mask部分在flash-attn2/3中优化比较大，比如说casual-attn只能看到过去，那么就有很多是没有参与计算的，比如score中只有 $(1,1)$ 位置有值那么也就只需要q第一行，k第一列没别要取用其他信息。使用 **Flash Attention**如何去处理 **GQA**以及 **MQA**
+其实这里就提出一个对于Softmax的问题：使用传统的softmax可能会导致一个数值溢出问题。而对于mask部分在flash-attn2/3中优化比较大，比如说casual-attn只能看到过去，那么就有很多是没有参与计算的，比如score中只有 $(1,1)$ 位置有值那么也就只需要q第一行，k第一列没别要取用其他信息（**其实在这里也能够说明使用mask是可以加速计算的**！！！ ）。使用 **Flash Attention**如何去处理 **GQA**以及 **MQA**
 ![1](https://s2.loli.net/2025/06/21/LnbcEZ2BYKpVkeq.webp)
 **GQA** 和**MQA** 本质上是对 Key/Value（KV）头的压缩，即 减少 Key/Value 头的数量，从而降低计算和显存开销。因此，在 Flash Attention 中，主要需要：1、为 K/V 头建立索引映射，确保多个 Query 头正确共享相应的 Key/Value。2、在计算 QK^T 时，使用映射索引进行广播，避免存储重复的 K/V，同时保持正确的注意力计算逻辑。3、利用 Flash Attention 的块计算机制，在低显存环境下高效完成 Softmax 归一化和注意力分配
 代码操作，首先安装`flash-attn`：`pip install flash-attn`。代码使用：
