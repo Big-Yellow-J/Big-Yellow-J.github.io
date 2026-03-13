@@ -60,44 +60,26 @@ $$
 SWA的核心思想是指：假设一个单词或token的含义，通常主要受其周围邻近的token影响，也就是说每个 token 仅与窗口内的其他 token 交互。这里的窗口大小为3。包括自己在内，每个位置只能往前看3个输入。
 ## 二、内存优化管理
 ### 1、Flash Attention
-[论文](https://arxiv.org/pdf/2205.14135)提出，是一种高效的注意力计算方法，旨在解决 Transformer 模型在处理长序列时的计算效率和内存消耗问题。**其核心思想是通过在 GPU 显存中分块执行注意力计算，减少显存读写操作，提升计算效率并降低显存占用**。
+[论文](https://arxiv.org/pdf/2205.14135)提出，是一种高效的注意力计算方法，旨在解决 Transformer 模型在处理长序列时的计算效率和内存消耗问题。**其核心思想是通过在 GPU 显存中分块执行注意力计算，减少显存读写操作，提升计算效率并降低显存占用**。需要了解一点到底是上面导致计算速度慢的问题，按照论文里面的描述（下面右图），在计算耗时中矩阵Matmul相对耗时没那么长，计算耗时大头在Mask、Softmax、Dropout这些（这些需要进行全局计算），而这些之所以耗时比较长是因为比如mask可能就需要遍历所有nxn矩阵然后逐一写入-inf，而softmax中也因为需要计算整个列也会导致耗时较大。
 ![1](https://s2.loli.net/2025/06/21/rOHS2XYvQh846IK.webp)
-`Flash Attention`计算机制：
-**分块计算**：传统注意力计算会将整个注意力矩阵 (N×N) 存入 GPU 内存（HBM），这对长序列来说非常消耗内存，FlashAttention 将输入分块，每次只加载一小块数据到更快的 SRAM 中进行计算，传统`Attention`计算和`flash attention`计算：
+> **HBM**（High Bandwidth Memory，高带宽内存）:是一种专为高性能计算和图形处理设计的内存类型，旨在提供高带宽和较低的功耗。HBM 常用于需要大量数据访问的任务，如图形处理、大规模矩阵运算和 AI 模型训练。 
+> **SRAM**（Static Random Access Memory，静态随机存取存储器）:是一种速度极快的存储器，用于存储小块数据。在 GPU 中，SRAM 主要作为缓存（如寄存器文件、共享内存和缓存），用于快速访问频繁使用的数据。例如在图中 FlashAttention 的计算中，将关键的计算块（如小规模矩阵）存放在 SRAM 中，减少频繁的数据传输，提升计算速度。
+> 简单理解就是SRAM是我的电脑芯片的内存（小但是计算快）、HBM对应我的内存条（大但是慢）
+
+`Flash Attention`计算机制简单总结就是：**分块计算**在传统注意力计算会将整个注意力矩阵 (N×N) 存入 GPU 内存（HBM），这对长序列来说非常消耗内存，FlashAttention 将输入分块，每次只加载一小块数据到更快的 SRAM 中进行计算，传统`Attention`计算和`flash attention`计算：
 ![1](https://s2.loli.net/2025/06/21/6hLGm7WMqBkgyUr.webp)
-
-对比上：传统的计算和存储都是发生再`HBM`上，而对于`flash attention`则是**首先**会将`Q,K,V`进行划分（算法1-4：整体流程上首先根据`SRAM`的大小`M`去计算划分比例（$\lceil \frac{N}{B_r} \rceil$）然后根据划分比例去对`QKV`进行划分这样一来Q（$N\times d$就会被划分为不同的小块，然后只需要去遍历这些小块然后计算注意力即可））。
-**然后计算**`Attention`（算法5-15），计算中也容易发现：先将分块存储再`HBM`上的值读取到`SRAM`上再它上面进行计算，不过值得注意的是：在传统的$QK^T$计算之后通过`softmax`进行处理，但是如果将上述值拆分了，再去用普通的`softmax`就不合适，因此使用`safe softmax`
-
----
-
-1、**HBM**（High Bandwidth Memory，高带宽内存）:是一种专为高性能计算和图形处理设计的内存类型，旨在提供高带宽和较低的功耗。HBM 常用于需要大量数据访问的任务，如图形处理、大规模矩阵运算和 AI 模型训练。
-2、 **SRAM**（Static Random Access Memory，静态随机存取存储器）:是一种速度极快的存储器，用于存储小块数据。在 GPU 中，SRAM 主要作为缓存（如寄存器文件、共享内存和缓存），用于快速访问频繁使用的数据。例如在图中 FlashAttention 的计算中，将关键的计算块（如小规模矩阵）存放在 SRAM 中，减少频繁的数据传输，提升计算速度。
-3、不同`softmax`计算：
-`softmax`:
-
+传统的计算和存储都是发生再`HBM`上，而对于`flash attention`则是**首先**会将`Q,K,V`进行划分（算法1-4：整体流程上首先根据`SRAM`的大小`M`去计算划分比例（$\lceil \frac{N}{B_r} \rceil$）然后根据划分比例去对`QKV`进行划分这样一来Q：$N\times d$就会被划分为不同的小块，**然后计算**`Attention`（算法5-15），计算中也容易发现：先将分块存储再`HBM`上的值读取到`SRAM`上再它上面进行计算，不过值得注意的是：在传统的$QK^T$计算之后通过`softmax`进行处理，但是如果将上述值拆分了，再去用普通的`softmax`就不合适，因此使用`safe softmax`，对于普通的softmax计算
 $$
 x_i=\frac{e^{x_i}}{\sum e^{x_j}}
 $$
-
 `safe softmax`（主要防止输出过大溢出，就减最大值）:
-
 $$
 x_i=\frac{e^{x_i-max(x_{:N})}}{\sum e^{x_j-max(x_{:N})}}
 $$
-
-其实这里就提出一个对于Softmax的问题：使用传统的softmax可能会导致一个数值溢出问题。
-
-4、使用 **Flash Attention**如何去处理 **GQA**以及 **MQA**问题？
-
+其实这里就提出一个对于Softmax的问题：使用传统的softmax可能会导致一个数值溢出问题。而对于mask部分在flash-attn2/3中优化比较大，比如说casual-attn只能看到过去，那么就有很多是没有参与计算的，比如score中只有 $(1,1)$ 位置有值那么也就只需要q第一行，k第一列没别要取用其他信息。使用 **Flash Attention**如何去处理 **GQA**以及 **MQA**
 ![1](https://s2.loli.net/2025/06/21/LnbcEZ2BYKpVkeq.webp)
-
 **GQA** 和**MQA** 本质上是对 Key/Value（KV）头的压缩，即 减少 Key/Value 头的数量，从而降低计算和显存开销。因此，在 Flash Attention 中，主要需要：1、为 K/V 头建立索引映射，确保多个 Query 头正确共享相应的 Key/Value。2、在计算 QK^T 时，使用映射索引进行广播，避免存储重复的 K/V，同时保持正确的注意力计算逻辑。3、利用 Flash Attention 的块计算机制，在低显存环境下高效完成 Softmax 归一化和注意力分配
-
----
-
 代码操作，首先安装`flash-attn`：`pip install flash-attn`。代码使用：
-
 ```python
 from flash_attn import flash_attn_func
 import torch
@@ -108,7 +90,6 @@ q = torch.randn(32, 64, 8, int(1024/8)).to(device, dtype=torch.bfloat16)
 out = flash_attn_func(q, q, q, causal= False)
 print(out.shape)
 ```
-
 `flash_attn_func`输入参数：
 1、`q,k,v`：形状为：`(batch_size, seqlen, nheads, headdim)`也就是说一般文本输入为：`(batch_size, seqlen, embed_dim)`要根据设计的`nheads`来处理输入的维度，并且需要保证：`headdim`≤256，于此同时要保证数据类型为：`float16` 或 `bfloat16`
 2、`causal`：`bool`判断是不是使用`causal attention mask`
@@ -143,7 +124,6 @@ $$
 
 简单一句话概括 MLA 的 RoPE 拆分逻辑：
 “K 的位置信息直接从原始输入独立计算（不压缩），以保证推理时能做权重吸收加速；Q 的位置信息先压缩再计算 RoPE，以节省训练内存。” 这样设计既实现了极高的 KV cache 压缩率（通常 90%+），又保留了位置编码的有效性，同时还获得了推理加速的红利。
-
 从上述公式也容易发现，在`MLA`中只是对缓存进行一个“替换”操作，用一个低纬度的$C_t^{KV}$来代替（也就是说：**只需要存储$c_t^{KV}$即可**）原本的`KV`（或者说将容量多的`KV`进行投影操作，这个过程和[LoRA](https://arxiv.org/pdf/2106.09685)有些许相似），在进行投影操作之后就需要对`attention`进行计算。对于上述公式简单理解：
 假设输入模型（输入到`Attention`）数据为$h_t$（假设为：$n\times d$），在传统的`KV-cache`中会将计算过程中的`KV`不断缓存下来，在后续计算过程中“拿出来”（这样就会导致随着输出文本加多，导致缓存的占用不断累计：$\sum 2n\times d$），因此在`MLA`中的操作就是：对于$h_t$进行压缩：$n \times d \times d \times d_s= n \times d_s$这样一来我就只需要缓存：$n \times d_s$即可（如果需要复原就只需要再去乘一下新的矩阵即可）
 ![MLA](https://s2.loli.net/2025/06/21/4ZIMukCfQgSWBTJ.webp)
