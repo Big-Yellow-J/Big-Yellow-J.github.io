@@ -321,8 +321,8 @@ class CustomDPOTrainer:
     accelerator.end_training()
     progress_bar.close()
 
-
 if __name__ == "__main__":
   dpo_config = CustomDPOConfig()
   dpo_trainer = CustomDPOTrainer(dpo_config, format_dataset_vicgalle)
+  model = dpo_trainer._load_model()
   dpo_trainer.train()

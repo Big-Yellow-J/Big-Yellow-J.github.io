@@ -14,10 +14,6 @@ show_footer_image: true
 special_tag: 长期更新
 description: 通义千问多模态系列QwenVL迭代脉络清晰，初代采用ViT-bigG视觉编码器、单层交叉注意力模块配合可学习查询，将视觉特征压缩为256长度输入7B基座大模型。QwenVL2支持动态分辨率，引入2×2相邻token拼接、多模态旋转位置编码M-RoPE，新增时间维度对齐视频处理逻辑。QwenVL2.5替换RMSNorm、SwiGLU激活，新增窗口注意力机制。QwenVL3推出MRoPE-Interleave、DeepStack多层特征注入技术，提升长视频理解与图文对齐精度。QwenVL3.5采用3:1比例混合线性与全注意力，引入门控注意力机制，降低计算复杂度同时优化长序列推理效果。
 ---
-
-## Qwen大语言系列模型
-### Qwen3.5
-[](https://zhuanlan.zhihu.com/p/2006241509226350575)
 ## Qwen多模态系列模型
 ### QwenVL
 在QwenVL[^4]中在论文里面作者提到的其模型的整个训练过程如下：
@@ -231,7 +227,7 @@ class Qwen3VLTextModel(Qwen3VLPreTrainedModel):
         return hidden_states
 ```
 其实从上面代码中很容易发现在DeepStack中QwenVL-3处理方式很简单直接选出**所有视觉token位置**而后将视觉特征进行补充，其中visual_pos_masks的形状是batch_size, seqlen
-### QwenVL-3.5
+### Qwen-3.5
 简单总结模型主要亮点在于：1、**使用linear-attention+full+attention的混合**，其中整体的混合比例3：1（3层linear attention后叠加1层full attention）比如说
 ![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260308150901627.png)
 2、除此之外引入门控注意力计算（Gate-Attention[^10]）主要过程式在计算QKV三部分的注意力之后引入Gate机制。在代码中的具体实现过程为代码为（图片来源[知乎](https://zhuanlan.zhihu.com/p/2006241509226350575)）：
@@ -264,7 +260,6 @@ for i in range(sequence_length):
     core_attn_out[:, :, i] = (last_recurrent_state * q_t.unsqueeze(-1)).sum(dim=-2)
 ```
 上述代码整个计算对应下面过程：$S_{t}=\alpha_{t} S_{t-1}+\beta_{t}\left(v_{t}-\alpha_{t} S_{t-1} k_{t}\right) k_{t}^{\top}$ 计算公式中 $\alpha_t$ 对应代码中的 g_t而 $\beta_t$就对应beta_t。通过这部分计算可以实现注意力计算的复杂度降低为 $O(T · d_k · d_v)$ 而对于上述公式中 $\alpha_t$主要是遗忘系数用来控制历史保留和检索衰减，$\beta_t$学习率控制新信息的写入强度，内部的 $v_{t}-\alpha_{t} S_{t-1} k_{t}$主要是用来预测残差只更新"记错的部分"，而非全部覆盖。
-
 对于上述之所以这么计算简单理解如下：首先在最开始的Attention计算中是这样的：$O_t=\text{Softmax}(Q_tK_{1:t}^T)V_{1:t}=\sum_1^t \text{softmax}(Q_tK_i^T)V_i$ 也就是说在生成过程中每进入一个新的词（$Q_t$）都需要去和前面所有的KV都进行计算，如果直接去掉内部的 $\text{softmax}$[^11]那么就可以得到：$O_t≈\sum_1^t(Q_tK_i^T)V_i$ 此时这个等式可以满足交换运算顺序可以得到 $O_t=Q_t^T\sum_1^t K_iV_i^T$ 对于这个公式内部的 $\sum_1^t K_iV_i^T=S_{t-1}+K_tV_t^T$ 那么最后**注意力计算过程**（最朴素的线性注意力计算过程）为：$O_t=Q_t(S_{t-1}+K_tV_t^T))=Q_tS_{t-1}+Q_tK_tV_t^T$ 但是这个计算过程存在小问题：所有历史$S_{t-1}$都是平等重要，并且随着你推理长度变长新的信息就被淹没了，那么就可以直接 **一次带遗忘 + 误差修正的外积更新**，比如说对于最上面的公式可以直接写成：$\alpha_t(S_{t-1}-\beta_t K_tK_t^T)S_{t-1}+\beta_tV_tK_t^T$ 首先我的 $\alpha_t$ 就对应遗忘机制（对于我的$S_{t-1}$ 需要保存多少）而内部的就是一个误差更新机制（我的$t$对于历史状态有多少的影响）对于$\beta$也可以理解为新信息写入强度，最后回到代码里面这个 $S_{t-1}$就是我们缓存的KV-Cache。
 > 简单解释一下里面 $\text{softmax}$ 作用：都知道计算 $QK^T$ 过程中我们相当于得到了token之间 “相似度”而后将整个相似度加权到 $V$上，而$\text{softmax}$在其中的作用就是去把原始相似度分数变成概率分布并且放大显著差异
 
@@ -272,7 +267,9 @@ for i in range(sequence_length):
 从QwenVL到QwenVL2.5视觉编码器处理过程：
 **QwenVL**：将图像转化为**固定的分辨率**而后将输入到Vit-bigG进行处理得到视觉特征之后再去使用类似Q-former处理过程（QwenVL中使用的是*一个随机初始化的单层Cross-Attention模块*）使用learned-query（压缩到**固定的256长度的token**）将视觉token进行压缩而后输入到LLM中。
 **QwenVL2**：首先使用**动态分辨率**（将图像**除以固定的factor而后保持横纵比**将其缩减到 `[mix_pixels, max_pixels]`中）去处理图像而后将其输入到视觉编码器中，而后将**2x2的的相邻的token进行拼接**（也就是将图像补充一个时间帧得到TCHW，而后再去在THW三个维度划分得到不同的patch：grid_t,grid_h,grid_w）到一个token而后通过MLP层进行处理。
-**QwenVL2.5**：整体框架上和QwenVL2差异不大，区别在于使用了window-attention以及2D-RoPE
+**QwenVL2.5**：整体框架上和QwenVL2差异不大，区别在于使用了window-attention（主要是对数据进行切块而后在块内做注意力计算）以及2D-RoPE
+**QwenVL3**：改进点在于使用DeepStack技术将Vit提取得到的视觉特征注入LLM Decoder的特定位置层中，而不是最开始只在输入层注入视觉信息
+**QwenVL3.5**：改进点在于使用线性注意力机制$\alpha_t(S_{t-1}-\beta_t K_tK_t^T)S_{t-1}+\beta_tV_tK_t^T$主要参数 $\alpha$ 主要是控制历史信息重要性、$\beta$主要是控制当前信息重要性、内部计算 $KK^T$主要是进行方向引导
 ## 参考
 [^1]: [https://arxiv.org/abs/2504.07491](https://arxiv.org/abs/2504.07491)
 [^2]: [https://zhuanlan.zhihu.com/p/25267823390](https://zhuanlan.zhihu.com/p/25267823390)
@@ -285,3 +282,4 @@ for i in range(sequence_length):
 [^9]: [https://arxiv.org/pdf/2406.04334](https://arxiv.org/pdf/2406.04334)
 [^10]: [https://arxiv.org/pdf/2505.06708](https://arxiv.org/pdf/2505.06708)
 [^11]: [https://spaces.ac.cn/archives/7546](https://spaces.ac.cn/archives/7546)
+[^11]: [https://arxiv.org/pdf/2407.10671](https://arxiv.org/pdf/2407.10671)

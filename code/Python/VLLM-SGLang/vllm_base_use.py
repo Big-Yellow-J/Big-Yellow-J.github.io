@@ -1,6 +1,4 @@
-import os
 import time
-import pprint
 from vllm import LLM, SamplingParams
 
 def load_model(model_name, cache_dir=None):
@@ -13,7 +11,8 @@ def load_model(model_name, cache_dir=None):
         gpu_memory_utilization=0.5,
         max_num_seqs=16,              # 降低预热 dummy requests
         max_model_len=20480,          # 限制最大序列长度
-        logprobs_mode= 'processed_logprobs'
+        logprobs_mode= 'processed_logprobs',
+        async_scheduling=False,
     )
     return llm
 
@@ -27,21 +26,21 @@ def model_generate(llm, prompt):
         max_tokens=20,            # 最大生成长度
         logprobs=5,               # 输出 top-5 token 概率
     )
-    outputs = llm.generate([prompt], sampling_params)
+    prompt = prompt if isinstance(prompt, list) else [prompt]
+    outputs = llm.generate(prompt, sampling_params)
 
-    for i, output in enumerate(outputs):
-        print(f"Prompt {i}: {output.prompt}")
-        for j, gen in enumerate(output.outputs):
-            print(f"  Sample {j}: {gen.text}")
-            print(f"  Tokens: {gen.token_ids}")
-            print(f"  Logprobs: {gen.logprobs}")
-            print(f"  Finish reason: {gen.finish_reason}")
-    print(f"✅ 推理完成，用时：{time.time()- s_time:.2f} 秒 {type(outputs)}")
+    # for i, output in enumerate(outputs):
+    #     # print(f"Prompt {i}: {output.prompt}")
+    #     for j, gen in enumerate(output.outputs):
+    #         print(f"  Sample {j}: {gen.text}")
+        #     print(f"  Tokens: {gen.token_ids}")
+        #     print(f"  Logprobs: {gen.logprobs}")
+        #     print(f"  Finish reason: {gen.finish_reason}")
 
 if __name__ == '__main__':
-    cache_dir = '/hy-tmp'
-    model_name = 'Qwen/Qwen3-0.6B'
-    prompt = 'Please tell me how to acceralate the llm generate!'
+    cache_dir = '/root/autodl-fs/Model/'
+    model_name = 'Qwen/Qwen2-0.5B-Instruct'
+    prompt = ['Please tell me how to acceralate the llm generate!', "你是谁？"]*100
     llm_model = load_model(model_name= model_name,
                            cache_dir= cache_dir)
     model_generate(llm_model, prompt)

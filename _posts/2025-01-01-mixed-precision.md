@@ -48,13 +48,10 @@ description: 不同精度训练包括单精度（FP32）、半精度（FP16/BF16
 * 1、`FP32 MASTER COPY OF WEIGHTS`
 
 模型权重会同时维护两个版本：1、FP32权重（Master Copy）：以32位浮点数表示，**用于存储和更新权重的精确值**。2、FP16权重（Working Copy）：以16位浮点数表示，用于**前向传播和反向传播的计算，减少显存占用并加速运算**。
-
-> 这里就会有一个问题，反向传播过程中要计算梯度，如果（梯度用FP16）**梯度很小**，不也还是会出现溢出问题，作者后续提到`LOSS SCALING`可以解决这种问题。如果**梯度很大**也会导致溢出问题，梯度计算使用FP16，但在权重更新之前，梯度会转换为 FP32 精度进行累积和存储，从而避免因溢出导致的权重更新错误。
-> 另外之所以要用FP32对权重进行保存这是因为，作者研究发现更新 FP16 权重会导致 80% 的相对准确度损失。
+这里就会有一个问题，反向传播过程中要计算梯度，如果（梯度用FP16）**梯度很小**，不也还是会出现溢出问题，作者后续提到`LOSS SCALING`可以解决这种问题。如果**梯度很大**也会导致溢出问题，梯度计算使用FP16，但在权重更新之前，梯度会转换为 FP32 精度进行累积和存储，从而避免因溢出导致的权重更新错误。另外之所以要用FP32对权重进行保存这是因为，作者研究发现更新 FP16 权重会导致 80% 的相对准确度损失。
 > we match FP32 training results when updating an FP32 master copy of weights after FP16 forward and backward passes, while updating FP16 weights results in 80% relative accuracy loss
 
-> 另外一方面，如果拷贝权重，不也等同于把显存的占用拉大了？参考[知乎](https://zhuanlan.zhihu.com/p/103685761)上描述显存占用上主要是中间过程值
-
+另外一方面，如果拷贝权重，不也等同于把显存的占用拉大了？参考[知乎](https://zhuanlan.zhihu.com/p/103685761)上描述显存占用上主要是中间过程值
 ![image](https://s2.loli.net/2025/06/21/HLfs29UiNaCo48g.webp)
 
 * 2、`LOSS SCALING`
@@ -107,23 +104,15 @@ for _ in range(20):
 `Apex`中`Amp`参数（https://nvidia.github.io/apex/amp.html）：
 
 1、`opt_level`（**欧1而不是零1**）:
-
 `O0`：纯FP32训练，可以作为accuracy的baseline；
 `O1`：混合精度训练（推荐使用），根据黑白名单自动决定使用FP16（GEMM, 卷积）还是FP32（Softmax）进行计算。
 `O2`：“几乎FP16”混合精度训练，不存在黑白名单，除了Batch norm，几乎都是用FP16计算。
 `O3`：纯FP16训练，很不稳定，但是可以作为speed的baseline；
-
 2、`loss_scale="dynamic"`
-
 损失值处理（`LOSS SCALING`）默认是动态（初始一个较大的值，检查到溢出就减小）
-
-
 **测试效果：**
-
 **准确率变化上**：
-
 在公开数据集（`CIFAR10`）上进行测试（模型为`resnet50`）测试使用的设备为`4090`
-
 **训练集上变化**
 
 | **Run**    | **Smoothed** | **Value** | **Step** | **Time**    | **显存占用**|
@@ -165,12 +154,8 @@ else:
 * **3、使用`Apex`框架会出现**溢出情况
 
 因为在`Apex`的`amp`默认使用的是`dynamic`可以改为`1024`或者`2048`
-
-
 ## 显存优化
-
 `gradient-checkpoint`参考：https://www.big-yellow-j.top/posts/2025/01/03/DistributeTraining.html
-
 ## 参考
 1、https://arxiv.org/pdf/1710.03740
 2、https://www.exxactcorp.com/blog/hpc/what-is-fp64-fp32-fp16
