@@ -2,7 +2,6 @@ import os
 import re
 import gc
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
-
 import torch
 import random
 from datetime import datetime
@@ -14,7 +13,6 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import LoraConfig, get_peft_model
 
 from typing import List, Any
-
 @dataclass
 class CustomGRPOConfig(GRPOConfig):
     # trl: 0.22.2
@@ -43,7 +41,6 @@ class CustomGRPOConfig(GRPOConfig):
     top_p: float = 1.0
     top_k: int = 0
     reward_weights: List[str] = field(default_factory=lambda: [2.0, 1.2, 1.0, 0.4]) # 不同奖励函数权重
-
     # model_name: str = "Qwen/Qwen2-0.5B-Instruct"
     model_name: str="/root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/Model/models--Qwen--Qwen2-0.5B-Instruct/snapshots/c540970f9e29518b1d8f06ab8b24cba66ad77b6d"
     bf16: bool = True

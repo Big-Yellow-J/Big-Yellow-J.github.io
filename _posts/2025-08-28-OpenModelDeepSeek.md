@@ -101,8 +101,7 @@ else: # 模型推理阶段
 ### DeepSeek OCRv1
 DeepSeek OCR[^1]主要内容就是尝试**使用视觉的方式去压缩长文本上下文**，按照论文里面的描述就是：$f_{dec}:R^{n\times d_{latent}}\rightarrow R^{N\times d_{text}}, \hat{X}=f_{dec}(X)$
 前面部分代表压缩的视觉tokens后面代表重构的文本表述。其实从上面公式就可以了解在DeepSeek OCR中做的就是：对于原始文本输入需要较长的tokens数量（比如说1w个字），但是如果这1w个文本都在图片上可能就是512个tokens。
-> 但是作者只是在OCR邻域做测试，正如论文里面说的：
-> It is reasonable to conjecture that LLMs, through specialized pretraining optimization, would demonstrate more natural integration of such capabilities.
+> 但是作者只是在OCR邻域做测试，正如论文里面说的： It is reasonable to conjecture that LLMs, through specialized pretraining optimization, would demonstrate more natural integration of such capabilities.
 
 ![](https://s2.loli.net/2025/11/11/IxuHpXCj2hJ3sTU.webp)
 对于传统多模态中的视觉结构：第一种使用多个视觉编码器进行编码处理，第二种：将图片切割为不同的patch而后进行处理，第三种：使用动态分辨率而后将图片去切割为不同patch进行编码。论文中使用的模型结构（为了实现：1、处理高分辨率；2、高分辨率小低激活；3、较少的视觉tokens；4、支持多分辨率输入；5、计算参数少）为：**SAM-base**（patch-size：16）+**Conv**（2层，kernel_size=3,strid=2, paddingg=1去对视觉token进行16倍下采样）+**CLIP-large**（去掉patch-embedding因为我的输入就是patch了），那么对于1024x1024首先划分为1024/16 × 1024/16 = 4096个patch token，在对4096个token进行压缩，数量变为4096/16 = 256。

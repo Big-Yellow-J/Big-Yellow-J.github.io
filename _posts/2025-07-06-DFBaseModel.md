@@ -32,12 +32,10 @@ description: 本文主要介绍基于Unet和Dit框架的基座扩散模型，重
 **2、图像输出维度区别**：
 再SD1.5中的默认输出是：512x512而再SDXL中的默认输出是：1024x1024，如果希望将SD1.5生成的图像处理为1024x1024可以直接通过超分算法来进行处理，除此之外在SDXL中还会使用一个refiner模型（和Unet的结构相似）来强化base模型（Unet）生成的效果。
 **3、SDXL论文中的技术细节**：
-
 * 1、**图像分辨率优化策略**。
 
 数据集中图像的尺寸图像利用率问题（选择512x512舍弃256x256就会导致图像大量被舍弃）如果通过超分辨率算法将图像就行扩展会放大伪影，这些伪影可能会泄漏到最终的模型输出中，例如，导致样本模糊。（The second method, on the other hand, usually introduces upscaling artifacts which may leak into the final model outputs, causing, for example, blurry samples.）作者做法是：**训练阶段**直接将原始图像的分辨率 $c=(h_{org},w_{org})$作为一个条件，通过傅里叶特征编码而后加入到time embedding中，**推理阶段**直接将分辨率作为一个条件就行嵌入，进而实现：**当输入低分辨率条件时，生成的图像较模糊；在不断增大分辨率条件时，生成的图像质量不断提升。**
 ![image.png](https://s2.loli.net/2025/07/09/pMcLmdHThu2CnNx.webp)
-
 * 2、**图像裁剪优化策略**
 
 直接统一采样裁剪坐标top和cleft（分别指定从左上角沿高度和宽度轴裁剪的像素数量的整数），并通过傅里叶特征嵌入将它们作为调节参数输入模型，类似于上面描述的尺寸调节。第1，2点代码中的处理方式为：
@@ -56,12 +54,10 @@ def _get_add_time_ids(
     add_time_ids = torch.tensor([add_time_ids], dtype=dtype)
     return add_time_ids
 ```
-
 > **推荐阅读**：
 > 1、[SDv1.5-SDXL-SD3生成效果对比](https://www.magicflow.ai/showcase/sd3-sdxl-sd1.5)
 
 #### SD3模型
-
 > SD3的diffusers官方文档：[StableDiffusion3Pipeline](https://huggingface.co/docs/diffusers/en/api/pipelines/stable_diffusion/stable_diffusion_3#diffusers.StableDiffusion3Pipeline)
 
 https://zhouyifan.net/2024/09/03/20240809-flux1/
