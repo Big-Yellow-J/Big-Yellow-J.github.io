@@ -276,3 +276,36 @@ adapter:
 * 2、进程一直被`killed`
 
 在运行代码（直接使用`python run.py ...`）有些适合就会在终端直接被`killed`（ai-toolkit默认的 `torch=2.7`可能版本不太合适）切换为 `torch=2.10`的版本 `pip3 install --no-cache-dir torch==2.10.0 torchvision==0.25.0 torchaudio==2.10.0 --index-url https://download.pytorch.org/whl/cu126`
+
+* 3、hf_transfer/CAS 错误
+
+> An error occurred while downloading using `hf_transfer`. Consider disabling HF_HUB_ENABLE_HF_TRANSFER for better error handling.
+
+启动命令前使用
+```cmd
+export HF_HUB_ENABLE_HF_TRANSFER=0 # 处理hf_transfer报错
+export HF_HUB_DISABLE_XET=1 # 处理CAS报错
+```
+
+* 4、端口占用错误
+
+```cmd
+[UI] next start --port 8675 restarted
+[UI]  ⨯ Failed to start server
+[UI] Error: listen EADDRINUSE: address already in use :::8675
+[UI]     at <unknown> (Error: listen EADDRINUSE: address already in use :::8675)
+[UI]     at new Promise (<anonymous>) {
+[UI]   code: 'EADDRINUSE',
+[UI]   errno: -98,
+[UI]   syscall: 'listen',
+[UI]   address: '::',
+[UI]   port: 8675
+[UI] }
+[UI] next start --port 8675 exited with code 1
+```
+保持npm运行另起终端
+```cmd
+sudo apt install net-tools
+sudo netstat -tunlp | grep ':8675'
+kill -9 470457
+```
