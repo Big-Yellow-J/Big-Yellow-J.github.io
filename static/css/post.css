@@ -38,7 +38,7 @@ body {
 .page-post .post p {
   font-family: "Noto Serif SC", "Georgia", serif;
   color: #000000;
-  margin: 2px 0; /* Add this rule for consistent paragraph spacing */
+  margin: 5px 0; /* Add this rule for consistent paragraph spacing */
 }
 .page-post .post h1,
 .page-post .post h2 {
