@@ -12,9 +12,9 @@ def load_model(model_name, cache_dir=None):
         max_num_seqs=16,              # 降低预热 dummy requests
         max_model_len=20480,          # 限制最大序列长度
         logprobs_mode= 'processed_logprobs',
-        async_scheduling=False,
-        max_num_batched_tokens=32, # 调度循环还能处理的“新 token 总数上限” 对应参数 token_budget
-        long_prefill_token_threshold=50, # 长 prompt 阈值
+        # async_scheduling=False,
+        max_num_batched_tokens=128, # 调度循环还能处理的“新 token 总数上限” 对应参数 token_budget
+        long_prefill_token_threshold=1024, # 长 prompt 阈值
         enable_prefix_caching=True,
     )
     return llm
@@ -48,7 +48,7 @@ if __name__ == '__main__':
 2、long_prefill_token_threshold：如果一个 waiting 请求的 prompt 超长（> threshold），就强制切成小块，防止它一次性吃掉整个 token_budget，导致其他请求饿死。对应参数 `long_prefill_token_threshold=1024`
 3、enable_prefix_caching：开始prefix缓存复用
 4、max_num_seqs：最大并发数,
-    """, """你是谁？"""]
+    """* 10, ]
     llm_model = load_model(model_name= model_name,
                            cache_dir= cache_dir)
     model_generate(llm_model, prompt)

@@ -718,5 +718,15 @@
       "new_description",
       "FireRED OCR基于Qwen3-vl微调，数据构建环节采用聚类去重保留长尾数据、多维度分类保证分布均衡、多工具联动清洗修复三类处理，训练分三阶段推进：先预训练强化目标检测、特定区域识别、页面转Markdown三类文档识别能力，再用高质量数据做监督微调，最后通过GRPO强化学习优化输出格式，奖励函数覆盖数学公式、表格完整性、文本准确性、标签闭合四类维度。FireRED Edit采用分桶采样策略提升显存利用率，优化DPO策略区分择优避坏参数，搭配DiffusionNFT自生成训练数据，双维度奖励函数结合一致性损失规避生成图像细节崩溃。"
     ]
+  ],
+  "./_posts/2026-03-15-vllm-2.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "基于vllm 0.17.1，介绍其推理中generate过程及调度器运行。generate时，prompt经处理进入_add_request，编码并关联采样参数；后进入_run_engine，涉及模型输出。调度器含waiting与running队列，waiting队列中取出request，判断状态、算已处理tokens、定新生成tokens数与分配block后加入running；running队列则定新生成tokens数、资源抢占后让模型执行，整体围绕请求处理、状态判断、资源分配等关键环节展开，把控生成与调度流程。"
+    ]
   ]
 }
