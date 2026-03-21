@@ -728,5 +728,15 @@
       "new_description",
       "基于vllm 0.17.1，介绍其推理中generate过程及调度器运行。generate时，prompt经处理进入_add_request，编码并关联采样参数；后进入_run_engine，涉及模型输出。调度器含waiting与running队列，waiting队列中取出request，判断状态、算已处理tokens、定新生成tokens数与分配block后加入running；running队列则定新生成tokens数、资源抢占后让模型执行，整体围绕请求处理、状态判断、资源分配等关键环节展开，把控生成与调度流程。"
     ]
+  ],
+  "./_posts/2026-03-21-attention-residuals.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "传统残差连接通过跳跃连接缓解深度模型梯度消失与退化问题，但存在各层贡献权重一致、浅层信息随层数叠加逐渐被稀释的缺陷，过往门控、加权类改进效果有限。针对该痛点，Kimi提出注意力残差连接，对前序所有block输出计算softmax注意力权重做加权融合，分别在单block计算后、MLP处理前执行两次融合。字节推出混合深度注意力方案，基于GQA的历史KV缓存，同步计算序列维度常规注意力与深度维度历史信息注意力，融合更新输出，解决大模型深度增加后的信号衰减问题。"
+    ]
   ]
 }
