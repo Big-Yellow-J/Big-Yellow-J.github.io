@@ -365,13 +365,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let markdown = turndownService.turndown(clone.innerHTML);
 
-    // 添加转载 header
-    const encodedUrl = encodeURIComponent(url);
+    // 添加转载 header - 修改：直接使用原始 URL，不进行编码
     const header = [
       `# ${title}`,
       '',
       `**作者**：${author}`,
-      `**原文链接**：[${encodedUrl}](${encodedUrl})`,
+      `**原文链接**：[${url}](${url})`,  // 直接使用原始 URL，显示和链接都是原始格式
       `**发布日期**：${date}`,
       '',
       `转载请注明出处，感谢！`,
