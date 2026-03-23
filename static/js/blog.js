@@ -366,11 +366,12 @@ document.addEventListener('DOMContentLoaded', function () {
     let markdown = turndownService.turndown(clone.innerHTML);
 
     // 添加转载 header
+    const encodedUrl = encodeURIComponent(url);
     const header = [
       `# ${title}`,
       '',
       `**作者**：${author}`,
-      `**原文链接**：[${url}](${url})`,
+      `**原文链接**：[${encodedUrl}](${encodedUrl})`,
       `**发布日期**：${date}`,
       '',
       `转载请注明出处，感谢！`,
