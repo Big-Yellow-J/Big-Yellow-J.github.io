@@ -315,12 +315,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 从 data-* 或 fallback 获取元数据（强烈建议在 _layouts/post.html 加 data-* 属性）
     const title  = article.dataset.title  || document.querySelector('h1')?.textContent.trim() || '无标题';
-//    const url    = article.dataset.url    || window.location.href;
+    const url    = article.dataset.url    || window.location.href;
     const date   = article.dataset.date   || '';
     const author = article.dataset.author || '佚名';
-    const url = "https://www.big-yellow-j.top/${url}"
-     let url = article.dataset.url || window.location.href;
-     url = `https://www.big-yellow-j.top/${url}`;
+
     const contentEl = article;
     const clone = contentEl.cloneNode(true);
 
@@ -367,12 +365,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let markdown = turndownService.turndown(clone.innerHTML);
 
-    // 添加转载 header - 修改：直接使用原始 URL，不进行编码
+    // 添加转载 header
     const header = [
       `# ${title}`,
       '',
       `**作者**：${author}`,
-      `**原文链接**：[${url}](${url})`,  // 直接使用原始 URL，显示和链接都是原始格式
+      `**原文链接**：[${url}](${url})`,
       `**发布日期**：${date}`,
       '',
       `转载请注明出处，感谢！`,
@@ -659,4 +657,3 @@ function shareOnWeChat() {
     </html>
   `);
 }
-
