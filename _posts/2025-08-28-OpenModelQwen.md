@@ -30,8 +30,10 @@ description: 通义千问多模态系列QwenVL迭代脉络清晰，初代采用V
 ### QwenVL-2
 对于QwenVL-2[^3]其模型的基本结构如下：
 ![](https://s2.loli.net/2025/09/21/5c1jovnLVOaS62H.webp)
+
 **1、使用动态分辨率**（也就是说输入图像不需要再去改变图像尺寸到一个固定值），于此同时为了减少 **visual-token**数量，将**2x2的的相邻的token进行拼接**到一个token而后通过MLP层进行处理。
 ![](https://s2.loli.net/2025/09/21/w3agENHmLVcoSdt.webp)
+
 **动态分辨率**处理如上，通过指定`[mix_pixels, max_pixels]`范围然后将图像保持原始的纵横比去缩减图像到上面的范围中（[处理过程](https://github.com/QwenLM/Qwen2.5-VL/blob/c15045f8829fee29d4b3996e068775fe6a5855db/qwen-vl-utils/src/qwen_vl_utils/vision_process.py#L59)，首先计算原始图像的像素数量，而后判断和上面指标的范围，如果超出范围就去计算需要修改的比例，在将整个比例去处理到分辨率上）
 在通过使用动态分辨率处理图像之后会在单一**图片增加时间维度**也就是将：CHW-->TCHW（这点是为了和视频处理过程进行对齐），在源码中T选择数值为2也就是将图片“复制一次”，而后对帧序列进行Patchification操作
 ```python
@@ -55,6 +57,7 @@ def _preprocess():
         grid_t * grid_h * grid_w, channel * self.temporal_patch_size * self.patch_size * self.patch_size
     )
 ```
+
 上面过程也就是进行所谓的“2x2的相邻token拼接”，最后得到`[grid_t * grid_h * grid_w, channel * temporal_patch_size(2) * patch_size(14) * patch_size(14)]`（其中`grid_h=resized_height // self.patch_size(14)`）
 2、**多模态的旋转位置编码（M-RoPE）**,也就是将原来位置编码所携带的信息处理为：时序（temporal）、高度（height）、宽度（width）。比如下图中对于文本处理直接初始化为：$(i,i,i)$。但是对于图片而言就是：$(i,x,y)$ 其中 $i$ 是恒定的，而对于视频就会将 $i$ 换成视频中图像的顺序
 **总结处理过程**：动态分辨率处理-->复制时间维度-->将序列切割为patch。这样一来就会直接将图像处理为：`[grid_t * grid_h * grid_w, channel * temporal_patch_size(2) * patch_size(14) * patch_size(14)]`（其中`grid_h=resized_height // self.patch_size(14)`）除此之外而后去计算 3d-RoPE最后通过一层线性层处理就得到最后的视觉token。
@@ -99,7 +102,9 @@ cu_window_seqlens.extend(cu_seqlens_tmp.tolist())
 # [0, 64, 96, 128, 144]
 # 得到最后返回结果window_index, cu_window_seqlens
 ```
+
 在得到window_index和cu_window_seqlens之后就是[计算注意力过程](https://github.com/huggingface/transformers/blob/41925e42135257361b7f02aa20e3bbdab3f7b923/src/transformers/models/qwen2_5_vl/modeling_qwen2_5_vl.py#L267C9-L275C100)
+
 ```python
 for i in range(1, len(cu_seqlens)):
   attention_mask[..., cu_seqlens[i - 1] : cu_seqlens[i], cu_seqlens[i - 1] : cu_seqlens[i]] = 0
@@ -146,6 +151,7 @@ class Qwen3VLModel(Qwen3VLPreTrainedModel):
     ...
     outputs = self.language_model(...,inputs_embeds=inputs_embeds,...)
 ```
+
 * `get_image_features`处理过程：通过Qwen视觉编码其处理并且获取特定层视觉编码特征
 
 通过视觉编码处理得到`image_embeds`和 `deepstack_image_embeds`而后再去对 `image_embeds`进行裁剪，裁剪的逻辑为：`split_sizes = (image_grid_thw.prod(-1) // self.visual.spatial_merge_size**2).tolist();image_embeds = torch.split(image_embeds, split_sizes)` 回到`self.visual`中模型具体处理过程如下（[代码](https://github.com/huggingface/transformers/blob/0419ff881d7bb503f4fc0f0a7a5aac3d012c9b91/src/transformers/models/qwen3_vl/modeling_qwen3_vl.py#L701)）：
@@ -178,6 +184,7 @@ class Qwen3VLVisionModel(Qwen3VLPreTrainedModel):
     hidden_states = self.merger(hidden_states) # 直接通过两层fc进行处理
     return hidden_states, deepstack_feature_lists
 ```
+
 `patch_embed`就是直接使用3维卷积（bias为True）：`Conv3d(3, 1152, kernel_size=(2, 16, 16), stride=(2, 16, 16))`（维度上对应：`(grid_t*grid_h*grid_w, hiddend_size)`），对于上述DStack过程中也比较好理解直接从需要处理的每层（通过Qwen3VLVisionBlock总共由27层叠加）中挑选出对应的处理后的特征，直接挑选[8, 16, 24]层处理后的特征。
 > 在 ViT 模型的预训练阶段，通常使用固定的输入分辨率（例如 224×224），并将其划分为固定数量的 patch（例如 14×14，共 196 个 patch）。这意味着模型内部的 pos_embed 是一个固定长度的可学习参数矩阵，模型在训练过程中已经隐式地学习到了这些位置编码之间的空间关系。当推理阶段输入的分辨率发生变化时，如果直接重新计算或生成新的位置编码，就会破坏模型在预训练阶段学到的空间语义信息，从而导致性能下降。因此，QwenVL-3 等模型的做法是：**固定一套在预训练阶段学习到的位置编码**，在输入新的分辨率时，不重新生成编码，而是通过 **双线性插值** 将原始位置编码映射到新的空间尺度上，从而在保持预训练空间结构的前提下，适配不同输入尺寸。换句话说，新的 patch 位置不再重新计算 embedding，而是通过插值在原有位置编码上“找到”其对应的空间位置。
 * llm处理过程：直接将视觉token位置上补充我的DeepStack特征
@@ -226,12 +233,15 @@ class Qwen3VLTextModel(Qwen3VLPreTrainedModel):
         hidden_states[visual_pos_masks, :] = local_this
         return hidden_states
 ```
+
 其实从上面代码中很容易发现在DeepStack中QwenVL-3处理方式很简单直接选出**所有视觉token位置**而后将视觉特征进行补充，其中visual_pos_masks的形状是batch_size, seqlen
 ### Qwen-3.5
 简单总结模型主要亮点在于：1、**使用linear-attention+full+attention的混合**，其中整体的混合比例3：1（3层linear attention后叠加1层full attention）比如说
 ![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260308150901627.png)
+
 2、除此之外引入门控注意力计算（Gate-Attention[^10]）主要过程式在计算QKV三部分的注意力之后引入Gate机制。在代码中的具体实现过程为代码为（图片来源[知乎](https://zhuanlan.zhihu.com/p/2006241509226350575)）：
 ![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260308164431758.png)
+
 对于上述过程中的QKV和常规的Attention中计算没差异，关键在于其引入了z、b、a这三组变量，其中b、a主要是用在Gate计算中而z则是在最后计算完attention之后再去`self.norm(core_attn_out, z)`，在计算门控过程中代码过程如下
 ```python
 core_attn_out = torch.zeros(batch_size, num_heads, sequence_length, v_head_dim).to(value)
@@ -259,8 +269,11 @@ for i in range(sequence_length):
     last_recurrent_state = last_recurrent_state + k_t.unsqueeze(-1) * delta.unsqueeze(-2)
     core_attn_out[:, :, i] = (last_recurrent_state * q_t.unsqueeze(-1)).sum(dim=-2)
 ```
+
 上述代码整个计算对应下面过程：$S_{t}=\alpha_{t} S_{t-1}+\beta_{t}\left(v_{t}-\alpha_{t} S_{t-1} k_{t}\right) k_{t}^{\top}$ 计算公式中 $\alpha_t$ 对应代码中的 g_t而 $\beta_t$就对应beta_t。通过这部分计算可以实现注意力计算的复杂度降低为 $O(T · d_k · d_v)$ 而对于上述公式中 $\alpha_t$主要是遗忘系数用来控制历史保留和检索衰减，$\beta_t$学习率控制新信息的写入强度，内部的 $v_{t}-\alpha_{t} S_{t-1} k_{t}$主要是用来预测残差只更新"记错的部分"，而非全部覆盖。
-对于上述之所以这么计算简单理解如下：首先在最开始的Attention计算中是这样的：$O_t=\text{Softmax}(Q_tK_{1:t}^T)V_{1:t}=\sum_1^t \text{softmax}(Q_tK_i^T)V_i$ 也就是说在生成过程中每进入一个新的词（$Q_t$）都需要去和前面所有的KV都进行计算，如果直接去掉内部的 $\text{softmax}$[^11]那么就可以得到：$O_t≈\sum_1^t(Q_tK_i^T)V_i$ 此时这个等式可以满足交换运算顺序可以得到 $O_t=Q_t^T\sum_1^t K_iV_i^T$ 对于这个公式内部的 $\sum_1^t K_iV_i^T=S_{t-1}+K_tV_t^T$ 那么最后**注意力计算过程**（最朴素的线性注意力计算过程）为：$O_t=Q_t(S_{t-1}+K_tV_t^T))=Q_tS_{t-1}+Q_tK_tV_t^T$ 但是这个计算过程存在小问题：所有历史$S_{t-1}$都是平等重要，并且随着你推理长度变长新的信息就被淹没了，那么就可以直接 **一次带遗忘 + 误差修正的外积更新**，比如说对于最上面的公式可以直接写成：$\alpha_t(S_{t-1}-\beta_t K_tK_t^T)S_{t-1}+\beta_tV_tK_t^T$ 首先我的 $\alpha_t$ 就对应遗忘机制（对于我的$S_{t-1}$ 需要保存多少）而内部的就是一个误差更新机制（我的$t$对于历史状态有多少的影响）对于$\beta$也可以理解为新信息写入强度，最后回到代码里面这个 $S_{t-1}$就是我们缓存的KV-Cache。
+对于上述之所以这么计算简单理解如下：首先在最开始的Attention计算中是这样的：$O_t=\text{Softmax}(Q_tK_{1:t}^T)V_{1:t}=\sum_1^t \text{softmax}(Q_tK_i^T)V_i$ 也就是说在生成过程中每进入一个新的词（$Q_t$）都需要去和前面所有的KV都进行计算，如果直接去掉内部的 $\text{softmax}$[^11]那么就可以得到：$O_t≈\sum_1^t(Q_tK_i^T)V_i$ 此时这个等式可以满足交换运算顺序可以得到 $O_t=Q_t^T\sum_1^t K_iV_i^T$ 对于这个公式内部的 $\sum_1^t K_iV_i^T=S_{t-1}+K_tV_t^T$ 那么最后**注意力计算过程**（最朴素的线性注意力计算过程）为：
+$$O_t=Q_t(S_{t-1}+K_tV_t^T))=Q_tS_{t-1}+Q_tK_tV_t^T$$
+但是这个计算过程存在小问题：所有历史$S_{t-1}$都是平等重要，并且随着你推理长度变长新的信息就被淹没了，那么就可以直接 **一次带遗忘 + 误差修正的外积更新**，比如说对于最上面的公式可以直接写成：$\alpha_t(S_{t-1}-\beta_t K_tK_t^T)S_{t-1}+\beta_tV_tK_t^T$ 首先我的 $\alpha_t$ 就对应遗忘机制（对于我的$S_{t-1}$ 需要保存多少）而内部的就是一个误差更新机制（我的$t$对于历史状态有多少的影响）对于$\beta$也可以理解为新信息写入强度，最后回到代码里面这个 $S_{t-1}$就是我们缓存的KV-Cache。
 > 简单解释一下里面 $\text{softmax}$ 作用：都知道计算 $QK^T$ 过程中我们相当于得到了token之间 “相似度”而后将整个相似度加权到 $V$上，而$\text{softmax}$在其中的作用就是去把原始相似度分数变成概率分布并且放大显著差异
 
 ### 总结
