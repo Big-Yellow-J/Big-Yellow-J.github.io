@@ -19,10 +19,10 @@
   <div class="subtitle">
     <span>{{site.author}} 于 
       {{ page.date | date: "%Y-%m-%d" }} 
-      在 {{ page.address }} {{ page.date | date: "%Y-%m-%d" }} 发布 
+      在 {{ page.address }} 发布
         ⏳ 预计阅读 {{ minutes }} 分钟 
         <strong> 🕛更新于 {{ page.last_modified_at | date: "%Y-%m-%d" }}</strong>
-        <span id="busuanzi_container_page_pv"> 👀阅读量：<span id="vercount_value_page_pv">Loading</span>
+       👀阅读量：<span id="vercount_value_page_pv">Loading</span>
     </span>
     {% if page.url contains "TODO" %}
       <span style="color: red; font-weight: bold; font-size: large;">writing.....</span>
