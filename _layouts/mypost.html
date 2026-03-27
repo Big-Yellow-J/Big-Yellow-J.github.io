@@ -12,8 +12,7 @@
   {% assign minutes = words | divided_by: 60 | plus: 1 %}
 
   <!-- 记录访问量 -->
-  <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
-  <script async src="https://busuanzi.icodeq.com/busuanzi.pure.mini.js"></script>
+  <script defer src="https://events.vercount.one/js"></script>
 
   <!-- 标题更新日期等 -->
   {% if page.date %}
@@ -23,7 +22,7 @@
       在 {{ page.address }} {{ page.date | date: "%Y-%m-%d" }} 发布 
         ⏳ 预计阅读 {{ minutes }} 分钟 
         <strong> 🕛更新于 {{ page.last_modified_at | date: "%Y-%m-%d" }}</strong>
-        <span id="busuanzi_container_page_pv"> 👀阅读量：<span id="busuanzi_value_page_pv"></span>次</span>
+        <span id="busuanzi_container_page_pv"> 👀阅读量：<span id="vercount_value_page_pv">Loading</span>
     </span>
     {% if page.url contains "TODO" %}
       <span style="color: red; font-weight: bold; font-size: large;">writing.....</span>

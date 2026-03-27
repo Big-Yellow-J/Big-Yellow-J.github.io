@@ -32,8 +32,7 @@ $$
 > 实际使用LLMCompressor进行模型量化过程中，$\lambda$对应参数`dampening_frac`可能（$W8A8$）会出现：`Failed to invert hessian due to numerical instability. Consider increasing GPTQModifier.dampening_frac, increasing the number of calibration samples, or shuffling the calibration dataset`其主要原因是计算Hessian矩阵出现严重病态（ill-conditioned）或接近奇异/非正定时，Cholesky 分解就会失败，抛出数值不稳定错误。因此就可以根据里面建议：增加数据、增加$\lambda$的值
 
 对于具体数学原理的描述参考文章[^2][^3]（数学原理推荐直接看：[GPTQ详细解读](https://zhuanlan.zhihu.com/p/1941146483756897225)），简单总结一下上面过程就是：1、每行独立计算二阶海森矩阵。2、每行按顺序进行逐个参数量化，从而可以并行计算。3、按block维度进行更新，对剩余参数进行延迟更新弥补。4、对逆海森矩阵使用cholesky分解，等价消除迭代中的矩阵更新计算。**它的核心流程其实就是量化-补偿-量化-补偿的迭代**（具体过程见流程图中**内部循环**：首先量化$W_{:,j}$，而后去计算误差并且补充到 $W_{:,j:(i+B)}$），具体的代码实现过程（[官方GPTQ-Github](https://github.com/IST-DASLab/gptq)）主要是对其中LlamaAttention和LlamaMLP层中的Linear层[权重进行量化](https://github.com/IST-DASLab/gptq/blob/2d65066eeb06a5c9ff5184d8cebdf33662c67faf/llama.py#L75C1-L84C1)。代码处理过程[^4]：
-**首先**、计算Hessian矩阵（因为后续计算损失和补偿权重需要，因此提前计算矩阵）
-这个矩阵近似：$H_F=2X_FX_F^T$（$X$是**经过前面几层神经网络之后，到达被量化层的激活**）。实现方式是在每一层Layer上注册hook，通过hook的方式在layer forward后使用calibration data的input来生成Hessian矩阵，这种计算方式常见于量化流程中校准数据的处理
+**首先**、计算Hessian矩阵（因为后续计算损失和补偿权重需要，因此提前计算矩阵） 这个矩阵近似：$H_F=2X_FX_F^T$（$X$是**经过前面几层神经网络之后，到达被量化层的激活**）。实现方式是在每一层Layer上注册hook，通过hook的方式在layer forward后使用calibration data的input来生成Hessian矩阵，这种计算方式常见于量化流程中校准数据的处理
 ```python
 def add_batch(name):
     def tmp(_, inp, out):
@@ -186,8 +185,7 @@ def quantize(x, scale, zero, maxq):
     q = torch.clamp(torch.round(x / scale) + zero, 0, maxq)
     return scale * (q - zero)
 ```
-**最后**、量化模型保存
-之前的步骤中量化和反量化后计算lose都是浮点位数的，所以并没有生成wbit位format的数值内容，在llama_pack方法中通过model和之前得到的quantizer(scale, zero)来生成wbit位数表达格式的量化模型，其定义如下所示
+**最后**、量化模型保存 。之前的步骤中量化和反量化后计算lose都是浮点位数的，所以并没有生成wbit位format的数值内容，在llama_pack方法中通过model和之前得到的quantizer(scale, zero)来生成wbit位数表达格式的量化模型，其定义如下所示
 ```python
 def llama_pack3(model, quantizers):
     layers = find_layers(model)
@@ -303,11 +301,13 @@ for i in tqdm.tqdm(range(len(layers))):
     layer = layers[i]
     layer = layer.cuda()
     named_linears = get_named_linears(layer)
-
+    
+    # AWQ量化过程中，记录输入数据
     def cache_input_hook(m, x, y, name, feat_dict):
         x = x[0]
         x = x.detach().cpu()
         feat_dict[name].append(x)
+        
     input_feat = defaultdict(list)
     handles = []
     for name in named_linears:
@@ -316,14 +316,15 @@ for i in tqdm.tqdm(range(len(layers))):
                 functools.partial(cache_input_hook, name=name, feat_dict=input_feat)
             )
         )
+        
     inps = inps.to(next(layer.parameters()).device)
+    # 输入数据被 线性层 处理触发上面的 hook 去记录每层的输入 x
     inps = layer(inps, **layer_kwargs)[0]
     for h in handles:
         h.remove()
     input_feat = {k: torch.cat(v, dim=0) for k, v in input_feat.items()}
 ```
-其中cache_input_hook过程就是直接记录每层layer中的linear层的输入值并且将其记录到input_feat中。
-**scale处理过程**代码如下：
+其中cache_input_hook过程就是直接记录每层layer中的linear层的输入值并且将其记录到input_feat中。**scale处理过程**（寻找最有因子过程）代码如下：
 ```python
 elif isinstance(module, (LlamaDecoderLayer, Qwen2DecoderLayer)):
     # attention input
@@ -340,6 +341,7 @@ elif isinstance(module, (LlamaDecoderLayer, Qwen2DecoderLayer)):
             kwargs=module_kwargs,
         )
     )
+
 '''
 _auto_get_scale 中核心逻辑是使用 search_module_scale 并且其中4个参数分别对应
 block = module2inspect=module.self_attn 
@@ -349,41 +351,41 @@ x = input_feat["self_attn.q_proj"]
 def _search_module_scale(block, linears2scale: list, x, kwargs={}):
     # block：对应block linears2scale：对应线性层
     x = x.to(next(block.parameters()).device)
-    # 记录未量化的输出结果
+    
+    # 第一步，将数据数据用没有被量化的模型进行一次计算，并且计算 平均幅度（x_max）
     with torch.no_grad():
         org_out = block(x, **kwargs)
         ...
-
     x_max = get_act_scale(x) # x.abs().view(-1, x.shape[-1]).mean(0)
 
     best_error = float("inf")
     best_ratio = -1
     best_scales = None
-
+    
+    # 第二步，直接用网格搜索方法去寻找最优的 scale
     n_grid = 20
     history = []
-
     org_sd = {k: v.cpu() for k, v in block.state_dict().items()}
     for ratio in range(n_grid):
         ratio = ratio * 1 / n_grid
+        # 计算当前比例的缩放因子，并且进行归一化处理
         scales = x_max.pow(ratio).clamp(min=1e-4).view(-1)
         scales = scales / (scales.max() * scales.min()).sqrt()
-
+        
+        # 进行一次模拟量化操作
         for fc in linears2scale:
+            # 物理缩放权重：把激活值的压力转移到权重上
             fc.weight.mul_(scales.view(1, -1).to(fc.weight.device))
+            # 模拟量化：量化后再除以 scales 还原回浮点域
             fc.weight.data = w_quantize_func(fc.weight.data) / (scales.view(1, -1))
-        out = block(x, **kwargs)
-        if isinstance(out, tuple):
-            out = out[0]
-
-        loss = ((org_out - out).float().pow(2).mean().item())
-        history.append(loss)
+        out = block(x, **kwargs) # 计算量化后的模型输出
+        ...
+        loss = ((org_out - out).float().pow(2).mean().item()) # 计算损失
         is_best = loss < best_error
         if is_best:
-            best_error = loss
-            best_ratio = ratio
+            ...
             best_scales = scales
-        # 恢复到最初状态
+        # 恢复到最初状态，去寻找下一个 ratio
         block.load_state_dict(org_sd)
     ...
     best_scales = best_scales.view(-1)
@@ -427,7 +429,7 @@ def pseudo_quantize_tensor(w, n_bit=8, zero_point=True, q_group_size=-1, inplace
 对于上面过程总结就是：把 w 线性映射到一个由 bit 位数（n_bit）决定的固定整数区间（q_min 到 q_max），其中scale 决定缩放比例，zero_point 决定映射偏移
 ## 总结
 GPTQ量化技术总结：核心流程其实就是**量化-补偿-量化-补偿的迭代**，首先通过对模型权重$W$首先去对$W$进行**分块拆分**得到不同的block再去到每一个block里面去按照每i列进行量化（`quantize`）处理（`q = quantize(...)`），而后去计算loss并且去对其他的列（`i:`）计算`W1[:, i:] -= err1.unsqueeze(1).matmul(Hinv1[i, i:].unsqueeze(0))`，在处理完毕第1块之后再去将后面块的列进行误差补偿（`W[:, i2:] -= Err1.matmul(Hinv[i1:i2, i2:])`），这样就得到了scales, zeros这信息，在去使用这些信息去对模型权重进行转化`intweight = torch.round((linear.weight.data + self.zeros) / self.scales).to(torch.int)`，最后就是用32 个intweight的行使用 3 个 uint32 行来存储，推理过程的话：$y = Wx + b\rightarrow y≈x(s_j(q-z_j))+b$
-AWQ量化技术总结：核心流程就是**对所有权重均进行低比特量化，但是，在量化时，对于显著权重乘以较大的scale，相当于降低其量化误差；同时，对于非显著权重，乘以较小的scale，相当于给予更少的关注**，对于这个scale值的寻找直接计算每一层的输入“激活值”（`x.abs().view(-1, x.shape[-1]).mean(0)`）而后对这个激活值不断进行scale处理将其通过`w_quantize_func`操作应用到模型的层上进而得到量化后的模型权重，然后去计算和没有量化的权重loss得到最佳scale
+AWQ量化技术总结：核心流程就是**对所有权重均进行低比特量化，但是，在量化时，对于显著权重乘以较大的scale，相当于降低其量化误差；同时，对于非显著权重，乘以较小的scale，相当于给予更少的关注**，对于这个scale值的寻找直接计算每一层的输入“激活值”（`x.abs().view(-1, x.shape[-1]).mean(0)`）而后对这个激活值通过网格搜索方法（`scales = x_max.pow(ratio).clamp(min=1e-4).view(-1)`其中ratio对应网格收缩）不断去尝试不同的scale，并且将这个scale去用到最初的模型权重上进行一次**模拟量化**处理，而后去计算 _模拟量化后模型计算得到的损失和没有量化的模型之间损失_，找到这个最佳scale即可。
 ## 代码操作
 > [Github-code](https://github.com/shangxiaaabb/ProjectCode/blob/main/code/Python/DFModelCode/DF_acceralate/quant_LLM.ipynb)
 > [模型ONNX部署技术](https://github.com/shangxiaaabb/ProjectCode/blob/main/code/Python/ONNX_TensoRT/ModelDeployment.ipynb)
