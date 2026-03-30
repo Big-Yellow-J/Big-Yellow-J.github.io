@@ -748,5 +748,15 @@
       "new_description",
       "基于vllm 0.17.1版本，详解KV缓存块管理器实现逻辑。默认block_size为16，单块可存储16个token，显存按设备显存固定比率预分配，block数量由可用显存、单块单层字节数、模型层数计算得到，每层预分配形状为[2,num_blocks,block_size,num_kv_heads,head_size]的KV缓存张量。prefill阶段按token数向上取整分配block并写入全量KV，decode阶段增量写入，显存不足时触发请求换出、重排等抢占策略，支持公共前缀缓存复用。KVCacheManager核心能力包含前缀块匹配、槽位分配、块释放、前缀缓存重置，通过slot_mapping实现非连续块高效寻址。"
     ]
+  ],
+  "./_posts/2026-03-26-RLHF-3.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "针对GRPO存在的token级重要性采样与序列级奖励不匹配、路由阶段不一致易导致专家训练崩溃问题，Qwen团队提出GSPO算法，取消token平均改为序列级重要性计算，在TRL中可通过GRPOConfig设置importance_sampling_level为sequence快速启用。针对GRPO硬裁剪脆性问题，Qwen团队推出SAPO算法，将硬裁剪升级为温度控制软裁剪，兼顾序列一致性与token自适应，在TRL中设置loss_type为sapo即可启用。KL散度计算主流采用K3 Bregman估计器，DeepSeek-V3.2对其进行修正，解决原始K3梯度权重无界、训练动态不稳定问题。"
+    ]
   ]
 }
