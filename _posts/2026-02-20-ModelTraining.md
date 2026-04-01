@@ -13,18 +13,21 @@ description: 训练Qwen2.5VL-3B模型时出现Loss下降但Grad Norm先降后升
   up策略及交叉熵损失函数，通过tensorboard记录训练指标。Loss反映模型拟合效果，Grad Norm为所有参数梯度向量拼接后的L2范数，反映优化器中间状态。分析表明，Grad
   Norm上升可能因梯度范数与参数范数成正比，参数范数增加导致；也与权重衰减和学习率安排（尤其是warm up策略）的相互作用有关。
 ---
-
 在训练模型（Qwen2.5VL-3B）过程中出现奇怪现象：Loss下降但是Grad Norm先下降后上升的情况争对这种情况简单调研分析，首先选择模型以及训练过程中参数如下：Qwen2.5VL-3B、AdamW、cosine（学习率warm up策略）、交叉熵损失函数。而后通过tensorboard记录优化过程loss以及grad_norm，其中记录方式如下：
 ```python
 outputs = model(**batch_data)
 loss = outputs.loss
 accelerator.backward(loss)
 if accelerator.sync_gradients:
-    grad_norm = torch.norm(torch.stack(
-        [torch.norm(p.grad.detach(), p=2.0) 
-         for p in model.parameters() if p.grad is not None])).item()
-    accelerator.clip_grad_norm_(model.parameters(), 
-                                config.max_grad_norm)
+    # 记录裁剪钱梯度值
+    # grad_norm = torch.norm(torch.stack(
+    #     [torch.norm(p.grad.detach(), p=2.0) 
+    #      for p in model.parameters() if p.grad is not None])).item()
+    # accelerator.clip_grad_norm_(model.parameters(), 
+    #                             config.max_grad_norm)
+    # 直接记录裁剪侯的梯度值
+    raw_grad_norm = accelerator.clip_grad_norm_(model.parameters(), config.max_grad_norm)
+    grad_norm = raw_grad_norm.item() if hasattr(raw_grad_norm, 'item') else raw_grad_norm
 ...
 if accelerator.sync_gradients:
     progress_bar.update(1)

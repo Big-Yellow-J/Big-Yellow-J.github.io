@@ -1,18 +1,127 @@
 ---
 layout: mypost
-title: 模型训练分析-2：模型训练性能分析
+title: 模型训练分析-2：模型训练性能分析以及dataloader处理过程
 categories: 深度学习基础理论
 extMath: true
 images: true
 address: changsha
 show_footer_image: true
 tags:
-- loss
 - 模型训练
-description: 针对代码分析需求，拆解全流程各环节的执行逻辑、参数定义与作用边界，覆盖静态代码扫描、语义解析、依赖追踪、运行时性能 profiling 等核心模块的实现思路，明确不同分析维度的适用场景与输出价值，帮助开发者快速掌握代码分析的完整方法路径，精准定位代码潜在的语法错误、性能瓶颈、逻辑漏洞与安全隐患，可直接应用于日常研发阶段的代码质量管控、故障溯源与架构优化工作。
 ---
+在模型训练过程中，通过分析模型损失、准确率这些基础指标去判别模型优化效果，通过flash-attn、混合精度训练等去优化模型训练速度，但是训练过程中对于设备性能瓶颈分析似乎做的比较少，比如说CPU、GPU使用率等，下面内容系统分析一下如何去分析训练/推理过程中的性能瓶颈。在介绍工具使用之前首先了解在使用pytroch进行训练过程中设备之间处理顺序是什么：`磁盘 → 内存 → CPU → GPU（前向）→ GPU（反向）→ GPU（参数更新）→ 内存 → 磁盘（可选）`，一般而言对于数据处理（**主要是通过CPU进行数据处理，如数据增强等**），这个过程主要是 `磁盘 → 内存 → CPU`，而后就是将处理后的数据交给GPU进行计算。**训练过程中瓶颈分析**[^1]：
+**CPU 瓶颈**比较好认。GPU 利用率像心电图一样上下跳动，高的时候在算，低的时候在等数据。htop 一看，CPU 某几个核打满了，其他的闲着，DataLoader 的 worker 数量没配对。**GPU 计算瓶颈**的表现是利用率高，但实际吞吐量低。这时候得看 MFU（Model FLOPs Utilization），如果 MFU 很低，说明 GPU 算力没被喂饱。可能是算子实现效率差，也可能是 kernel 太碎，调度开销太大。**I/O 瓶颈**有个很典型的症状：训练刚开始特别慢，跑几个 step 之后速度才上来。因为第一批数据要从磁盘读，后面的数据可能已经缓存到内存里了。iotop 一看，磁盘读写爆高，CPU 反而不怎么忙。**多卡训练的通信瓶颈**也好判断。看 nvidia-smi，某几张卡利用率明显比其他的低，它们在等梯度同步。在 profiler 里看 NCCL 相关操作，如果 AllReduce 的时间占到 30% 以上，就是通信在拖。还有个容易被忽略的：框架开销。Python 解释器本身、GIL 锁、过多的 Python 层函数调用，这些都会吃掉时间。在 `torch.profiler `的 CPU trace 里，如果看到大量时间花在 Python 调度上而不是实际计算上，就是这个问题。
+> 绝大部分时间 kernel算子一般都是优化比较好的（除非你自己去写算子），绝大多数情况下优化dataloader过程基本可以满足需求
 
-- [ ] 给一个简单代码分析
-- [ ] 了解每个分析过程中每一个环节的内容以及参数含义
+## dataloader过程
+平时写代码过程中对于 `dataloader`过程处理比较简单：
+```python
+from torch.utils.data import DataLoader, Dataset
+class CustomDataset(Dataset):
+    def __init__(self, ...):
+        ...
+    def __len__(self):
+        # 一般就是直接返回数据数量
+        ...
+    def __getitem__(self, idx):
+        # 一般就是对数据进行处理如标准化等
+        ...
+        # 如果处理报错就可以直接去下一个数据处理
+        # next_index = (index + 1) % len(self)
+        # return self.__getitem__(next_index)
+    def collate_fn(self, batches):
+        batch_size = len(batches)
+        # 解包 batches 在 __getitem__ 中返回什么就解包得到什么
+        _, _ = zip(*batches)
+train_dataset = CustomDataset(xxx)
+train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True, collate_fn= train_dataset.collate_fn)
+```
+介绍dataloader原理之前先去看里面几个参数含义：1、batch_size：一次处理多少数据；2、shuffle：是否对数据进行打乱（一般对val数据不打乱）；3、sampler：
+## 宏观指标分析
+最简单分析方法直接基于linux（假设服务器为linux Ubuntu系统）的基础命令进行分析，主要是分析CPU内存使用情况、GPU使用情况、磁盘io使用情况。**CPU性能分析**，一般而言可以直接使用htop、top、bytop等工具直接去看，这里直接使用bytop工具进行性能分析，首先安装bytop[^2]（`pip3 install bpytop --upgrade` 或者直接使用 `sudo apt install bpytop`），而后就可以直接终端使用 `bpytop`就可以看到各项性能分析
+![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260401153039800.png)
+![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260401153015796.png)
+使用方法比较简单直接通过数字选择需要看到的面板：
+```
+1：显示/关闭 CPU性能分析
+2：显示/关闭 内存/存储性能分析
+3：显示/关闭 网络分析
+4：显示/关闭 各项进程进行分析
+```
+首先通过上述 `bpytop`就可以简单了解各项进程上在内存上使用情况如何、CPU使用情况如何。**GPU性能分析**，对于GPU性能分析最简单工具直接使用 `watch -n 0.1 nvidia-smi` 每0.1s刷新nvidia-smi情况，主要是去看GPU利用率、显存占用情况
+![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260401153751296.png)
+**值得注意的是**，有些时候即使将所有的在跑的程序都关闭但是发现显存还是被占用（利用率是0）[^3]使用`ps -ef`命令
+![](https://www.autodl.com/docs/qa4.assets/image-20220713171325500.png)
+可以看到PID、PPID、CMD 3列重要信息，分别是进程ID、父进程ID、进程的启动命令。通过命令可以判断哪些进程是自己程序启动的进程，比如上方的python train.py就是我启动的进程，其他的均为系统进程或无关显存占用的进程。接下来杀死进程：从截图中看到python train.py程序的进程ID是594 和797，那么可以使用`kill -9 594 797`命令来结束进程。 
 
-https://www.zhihu.com/question/1927112862976972744/answer/2016593596803986385?utm_psn=2022387930946126849
+但是常常占用显存的进程会很多，特别是在多卡并行时，按此方法会比较繁琐，以下介绍一种更强大的方式结束进程：通过`ps -ef`能看出，我自己的进程都包含了train关键字（并且其他无关的系统进程没有包含，防止误杀），那么使用grep命令可以过滤出我自己的进程，例如：
+![](https://www.autodl.com/docs/qa4.assets/image-20220713172143285.png)
+接下来是获取进程的ID，此时可以使用awk命令，awk命令用法复杂，这里简单记住以下命令即可：
+![](https://www.autodl.com/docs/qa4.assets/image-20220713172301267.png)
+最后再通过kill命令，即可完整的结束进程。完整命令为`ps -ef | grep train | awk '{print $2}' | xargs kill -9`
+![](https://www.autodl.com/docs/qa4.assets/image-20220713172428298.png)
+以上输出中会多出来一个No such process的错误，可以忽略，出现原因是grep train也会产生一个进程，被自己过滤出来。
+## 微观指标分析
+上面介绍了宏观指标去看CPU/GPU/磁盘/内存之间的使用情况，最好的情况就是这几项的指标都要上去保证在一个较好的情况下，下面进一步介绍更加微观的指标
+### 基于torch profiler分析
+直接使用torch原生工具[^4]进行性能分析可以帮助我们分析和优化模型的执行时间、GPU 利用率、内存带宽等性能指标。通过 torch.profiler，你可以了解每一层模型在设备上的执行情况，分析 GPU 资源的利用率（**再了解每一块的耗时之后就可以直接再去争对耗时较长的内容进一步分析优化了**），具体代码测试过程中使用方法比较简单：
+```python
+from torch.profiler import profile, ProfilerActivity, tensorboard_trace_handler
+# 首先初始化 profile 
+# 如果要使用tensorboard需要额外安装 pip install torch-tb-profiler
+...
+
+self.accelerator = Accelerator(...,log_with='tensorboard',project_dir=args.log_dir)
+...
+log_root = self.args.log_dir
+if self.accelerator.is_main_process:
+    profiler = profile(
+        activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+        schedule=torch.profiler.schedule(
+            wait=1,      # 等待步数
+            warmup=1,    # 预热步数
+            active=3,    # 活跃步数
+            repeat=2     # 重复次数
+        ),
+        on_trace_ready=tensorboard_trace_handler(log_dir),
+        record_shapes=True,            # 记录张量形状
+        profile_memory=True,           # 记录内存使用
+        with_stack=True,               # 记录调用栈
+        with_flops=True                # 计算 FLOPs
+    )
+    prof.start()
+...
+for epoch in range(1, self.num_epochs + 1):
+    for batch_idx, (images, labels) in enumerate(self.train_loader):
+        ...
+        if profiler and self.accelerator.is_main_process:
+            profiler.step()
+if prof:
+    prof.stop()
+```
+torch profile使用比较简单就是先初始化而后`start()`启动记录器、`step()`记录结果、`stop()`停止记录，而后直接通过 `tensorboard --logdir logs/ --bind_all` 即可，上述过程中需要注意tensorboard和profile的存储的最终的文件夹要保持一致，对于启动后的在tensorboard中视图中各项结果分析如下[^5]：
+**Overview（概览）**：这个页面能帮你快速判断性能瓶颈在哪。
+![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260401215011996.png)
+主要关注红框中内容，它会将每个Step（迭代）的时间拆分成 **Kernel**（计算）、**Memcpy**（数据传输）、**Memset**（GPU内存设置时间）、**DataLoader**（数据加载） 和 **CPU Exec**（CPU计算） 等几部分。如果"Kernel"占比低而"DataLoader"很高，说明数据加载是瓶颈；如果"CPU Exec"很高，则说明CPU侧的算子或逻辑存在优化空间。
+**Operator（算子）**：这个表格是所有PyTorch操作（如aten::convolution）的性能数据。
+![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260401215618602.png)
+主要关注红框中内容，Calls（运行过程中被使用次数）、Device xxx Duration（在 GPU 上花费的累计时间）、Host xxx Duration（在主机上花费时间），分析过程中主要是去更具耗时最长的就是优化重点。如果开启了with_stack=True，点击"Call Stack"还能直接跳转到你代码中调用该算子的位置
+**Trace（追踪）**：这个时间线视图最直观，能让你看到每个算子和CUDA Kernel的精确起止时间。使用方法：在Chrome浏览器打开 chrome://tracing，然后加载生成的JSON文件。或者直接在TensorBoard的Trace页面分析。你可以通过鼠标滚轮缩放，并利用右上角的 Flow Events 按钮，查看是哪个CPU算子启动了一个GPU Kernel，这对于定位CUDA Kernel的启动延迟问题非常有帮助。
+**Memory（内存）**：这个视图展示了内存随时间的分配和释放情况，帮你发现内存泄漏或不必要的显存占用。
+![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260401220618523.png)
+**Kernel（内核）**：这是GPU上执行的底层函数视图。
+![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260401220329364.png)
+主要是去查看GPU利用率（GPU Utilization）、SM效率（Est. SM Efficiency）以及Tensor Core的使用情况。如果这些指标偏低，说明GPU并没有被充分利用。
+## 调节参数优化
+CPU 瓶颈（一般就去修改数据处理过程，如数据增强等操作）可以直接调 num_workers、增大 prefetch_factor、把预处理卸载到 GPU等处理操作。
+```python
+DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=True)
+```
+I/O 瓶颈就换 SSD、预加载数据到内存、用 NVIDIA DALI。GPU 计算瓶颈就做算子融合、上 torch.compile、开混合精度。通信瓶颈就上梯度压缩、通信计算重叠。框架开销就减少 Python 调用、用 TorchScript 或者 C++ 扩展
+## 参考
+[^1]: [https://www.zhihu.com/question/1927112862976972744/answer/2016593596803986385?utm_psn=2022387930946126849](https://www.zhihu.com/question/1927112862976972744/answer/2016593596803986385?utm_psn=2022387930946126849)
+[^2]: [https://github.com/aristocratos/bpytop](https://github.com/aristocratos/bpytop)
+[^3]: [https://www.autodl.com/docs/qa4/](https://www.autodl.com/docs/qa4/)
+[^4]: [https://pytorch-cn.com/tutorials/recipes/recipes/profiler_recipe.html](https://pytorch-cn.com/tutorials/recipes/recipes/profiler_recipe.html)
+[^5]: [https://github.com/pytorch/kineto/blob/main/tb_plugin/README.md](https://github.com/pytorch/kineto/blob/main/tb_plugin/README.md)
+[^6]: [https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader](https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader)
