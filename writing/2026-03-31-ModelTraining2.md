@@ -110,7 +110,7 @@ if self.accelerator.is_main_process:
         with_stack=True,               # 记录调用栈
         with_flops=True                # 计算 FLOPs
     )
-    prof.start()
+    profiler.start()
 ...
 for epoch in range(1, self.num_epochs + 1):
     for batch_idx, (images, labels) in enumerate(self.train_loader):
@@ -118,9 +118,10 @@ for epoch in range(1, self.num_epochs + 1):
         if profiler and self.accelerator.is_main_process:
             profiler.step()
 if prof:
+    profiler.export_chrome_trace("trace.json")
     prof.stop()
 ```
-torch profile使用比较简单就是先初始化而后`start()`启动记录器、`step()`记录结果、`stop()`停止记录，而后直接通过 `tensorboard --logdir logs/ --bind_all` 即可，上述过程中需要注意tensorboard和profile的存储的最终的文件夹要保持一致，对于启动后的在tensorboard中视图中各项结果分析如下[^5]：
+torch profile使用比较简单就是先初始化而后`start()`启动记录器、`step()`记录结果、`stop()`停止记录，而后直接通过 `tensorboard --logdir logs/` 即可（ **值得注意的是**，上面代码只会记录少数步，当 `repeat=0`时候就会一直记录，不需要频繁记录那么多），上述过程中需要注意tensorboard和profile的存储的最终的文件夹要保持一致，对于启动后的在tensorboard中视图中各项结果分析如下[^5]：
 **Overview（概览）**：这个页面能帮你快速判断性能瓶颈在哪。
 ![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260401215011996.png)
 主要关注红框中内容，它会将每个Step（迭代）的时间拆分成 **Kernel**（计算）、**Memcpy**（数据传输）、**Memset**（GPU内存设置时间）、**DataLoader**（数据加载） 和 **CPU Exec**（CPU计算） 等几部分。如果"Kernel"占比低而"DataLoader"很高，说明数据加载是瓶颈；如果"CPU Exec"很高，则说明CPU侧的算子或逻辑存在优化空间。

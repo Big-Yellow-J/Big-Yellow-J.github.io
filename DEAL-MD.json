@@ -496,7 +496,7 @@
     ],
     [
       "new_description",
-      "PyTorch计算图是记录张量运算关系的动态图，支持反向传播计算叶子节点梯度，显存占用包括数据本身及中间激活，可用.detach()减少。数据形状改变方法有reshape、view、transpose、permute等，需注意是否拷贝数据；model.train()/eval()控制Dropout与BatchNorm模式，torch.no_grad()关闭autograd记录以省显存加速前向。"
+      "PyTorch计算图用于记录张量运算关系，节点分为张量、运算两类，边代表数据流与依赖关系，作为动态图框架，每次前向时即时构建，反向传播沿图从输出节点计算叶子张量梯度，显存占用含数据本身、计算图中间激活两部分，可通过.detach()分离无梯度需求张量、调整精度降低显存开销。PyTorch2.0新增torch.compile，经TorchDynamo抓图生成FX Graph、AOTAutograd提前生成反向图、TorchInductor完成算子融合等优化并生成Triton/C++代码实现计算提速，主流训练框架均支持开启。同时梳理reshape、view等张量变形方法的特性差异，明确model.train()、model.eval()、torch.no_grad()的适用场景与功能边界。"
     ]
   ],
   "./_posts/2025-08-29-QwenVLCode.md": [

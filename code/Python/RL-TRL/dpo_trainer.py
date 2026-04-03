@@ -1,5 +1,4 @@
 import os
-
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 import glob
 import shutil
@@ -15,11 +14,12 @@ from trl import DPOConfig, DPOTrainer
 from peft import LoraConfig, get_peft_model
 from torch.utils.tensorboard import SummaryWriter
 from transformers import AutoModelForCausalLM, AutoTokenizer
-
+from torch.profiler import profile, ProfilerActivity, tensorboard_trace_handler
 
 @dataclass
 class CustomDPOConfig:
   # 基础设置
+  compile: str=True
   random_seed: int = 2026
   model_name: str = "Qwen/Qwen2-0.5B-Instruct"
   project_name: str = "Qwen-DPO-Training"
@@ -34,10 +34,14 @@ class CustomDPOConfig:
   # 数据集配置
   dataset_name: str = "vicgalle/OpenHermesPreferences-roleplay"
   split: str = "train"
-  data_ratio: float = 1.0
+  data_ratio: float = 0.95
+  eval_data_ratio: float = 0.05
+  num_workers: int=16
 
   # 训练配置
-  max_steps: int = 10000
+  max_steps: int = 1000
+  eval_steps: float= 0.2
+  eval_strategy: str= "steps" # no/steps/epoch
   learning_rate: float = 5e-6
   per_device_train_batch_size: int = 2
   gradient_accumulation_steps: int = 4
@@ -69,7 +73,6 @@ class CustomDPOConfig:
     self.tracker_project_name = f'{current_date}-{self.project_name}-{special_num:04d}'
     self.output_dir = f"/root/autodl-fs/Model/Outputs/{self.tracker_project_name}"
 
-
 def format_dataset_trl_lib(example):
   """格式化 trl-lib 数据集"""
   return {
@@ -85,7 +88,6 @@ def format_dataset_vicgalle(example):
     "chosen": [{"role": "assistant", "content": example["chosen"]}],
     "rejected": [{"role": "assistant", "content": example["rejected"]}],
   }
-
 
 class CustomDPOTrainer:
   def __init__(self, config: CustomDPOConfig, format_function=None):
@@ -105,7 +107,7 @@ class CustomDPOTrainer:
       torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
       device_map="auto",
       cache_dir=self.config.cache_dir,
-      attn_implementation="flash_attention_2",
+      # attn_implementation="flash_attention_2",
     )
 
     if self.config.use_peft:
@@ -121,7 +123,6 @@ class CustomDPOTrainer:
       self.model.print_trainable_parameters()
     else:
       self.model = model
-
     self.ref_model = None
 
   def _load_tokenizer(self):
@@ -136,31 +137,37 @@ class CustomDPOTrainer:
 
   def _load_dataset(self):
     """加载并处理数据集"""
-    dataset = load_dataset(
-      self.config.dataset_name,
-      split=self.config.split,
-      cache_dir=self.config.cache_dir,
-    )
+    self.dataset = load_dataset(self.config.dataset_name, split=self.config.split, cache_dir=self.config.cache_dir, )
+    dataset = self.dataset
 
     # 按比例抽取数据
-    num_samples = int(len(dataset) * self.config.data_ratio)
-    dataset = dataset.shuffle(self.config.random_seed).select(range(num_samples))
+    num_train = int(len(dataset) * self.config.data_ratio)
+    num_eval = max(100, int(len(dataset) * self.config.eval_data_ratio))
+
+    shuffled = dataset.shuffle(self.config.random_seed)
+    train_dataset = shuffled.select(range(num_train))
+    eval_start = min(num_train, len(dataset) - num_eval)
+    eval_dataset = shuffled.select(range(eval_start, eval_start + num_eval))
 
     if self.format_function:
-      self.dataset = dataset.map(
-        self.format_function,
-        batched=False,
-        remove_columns=dataset.column_names,
-        desc="Formatting DPO Dataset",
+      self.train_dataset = dataset.map(
+        self.format_function, batched=False, remove_columns=train_dataset.column_names,
+        desc="Format Train Dataset"
+      )
+      self.eval_dataset = dataset.map(
+        self.format_function, batched=False, remove_columns=eval_dataset.column_names,
+        desc="Format eval Dataset"
       )
     else:
-      self.dataset = dataset
+      self.train_dataset = train_dataset
+      self.eval_dataset = eval_dataset
 
   def _build_dpo_config(self):
     """构建 DPOConfig"""
     self.dpo_config = DPOConfig(
       output_dir=self.config.output_dir,
       run_name=self.config.tracker_project_name,
+      dataloader_num_workers=self.config.num_workers,
 
       # 训练参数
       max_steps=self.config.max_steps,
@@ -173,6 +180,11 @@ class CustomDPOTrainer:
       max_completion_length=self.config.max_completion_length,
       loss_type=self.config.loss_type,
       label_smoothing=self.config.label_smoothing,
+      eval_steps=int(self.config.max_steps* self.config.eval_steps),
+      eval_strategy= self.config.eval_strategy,
+
+      # torch compile
+      torch_compile= self.config.compile,
 
       # 保存/日志
       save_steps=self.config.save_steps,
@@ -187,9 +199,10 @@ class CustomDPOTrainer:
 
   def _setup_logging(self) -> Optional[SummaryWriter]:
     """初始化 TensorBoard 日志"""
-    tb_log_dir = os.path.join(self.config.output_dir, "runs")
-    os.makedirs(tb_log_dir, exist_ok=True)
-    return SummaryWriter(log_dir=tb_log_dir)
+    special_name = "RUNS-Complie" if self.config.compile else "RUNS"
+    self.tb_log_dir = os.path.join(self.config.output_dir, special_name)
+    os.makedirs(self.tb_log_dir, exist_ok=True)
+    return SummaryWriter(log_dir=self.tb_log_dir)
 
   def _cleanup_old_checkpoints(self):
     """清理旧检查点"""
@@ -244,20 +257,31 @@ class CustomDPOTrainer:
       model=self.model,
       ref_model=self.ref_model,
       args=self.dpo_config,
-      train_dataset=self.dataset,
+      train_dataset=self.train_dataset,
+      eval_dataset=self.eval_dataset,
       processing_class=self.tokenizer,
     )
-
     accelerator = dpo_trainer.accelerator
 
-    # 初始化日志
     if accelerator.is_main_process:
       self.writer = self._setup_logging()
+      profiler = profile(
+        activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+        schedule=torch.profiler.schedule(
+          wait=1,  # 等待步数
+          warmup=1,  # 预热步数
+          active=3,  # 活跃步数
+          repeat=2  # 重复次数
+        ),
+        on_trace_ready=tensorboard_trace_handler(self.tb_log_dir),
+        record_shapes=True,  # 记录张量形状
+        profile_memory=True,  # 记录内存使用
+        with_stack=True,  # 记录调用栈
+        with_flops=True  # 计算 FLOPs
+      )
+      profiler.start()
 
-    # 创建优化器和调度器
     dpo_trainer.create_optimizer_and_scheduler(num_training_steps=self.config.max_steps)
-
-    # 准备数据加载器
     model, optimizer, lr_scheduler, train_dataloader = accelerator.prepare(
       self.model,
       dpo_trainer.optimizer,
@@ -265,7 +289,6 @@ class CustomDPOTrainer:
       dpo_trainer.get_train_dataloader(),
     )
 
-    # 训练循环
     global_step = 0
     progress_bar = tqdm(
       total=self.config.max_steps,
@@ -279,19 +302,16 @@ class CustomDPOTrainer:
         break
 
       with accelerator.accumulate(model):
-        # 计算 loss
         loss, outputs = dpo_trainer.compute_loss(model, batch, return_outputs=True)
         accelerator.backward(loss)
-
-        # 梯度同步点
         if accelerator.sync_gradients:
           accelerator.clip_grad_norm_(model.parameters(), max_norm=1.0)
-
         optimizer.step()
         lr_scheduler.step()
         optimizer.zero_grad(set_to_none=True)
+      if profiler and accelerator.is_main_process:
+        profiler.step()
 
-      # 更新步数和日志
       if accelerator.sync_gradients:
         global_step += 1
         progress_bar.update(1)
@@ -305,24 +325,29 @@ class CustomDPOTrainer:
             for key, value in outputs.items():
               if key != "loss" and isinstance(value, (int, float)):
                 self.writer.add_scalar(f"train/{key}", value, global_step)
-
-        # 保存检查点
+          if global_step % 20 == 0 or global_step == self.config.max_steps:
+            if accelerator.is_main_process:
+              print(f"\n=== Evaluation at step {global_step} ===")
+            eval_metrics = dpo_trainer.evaluate()
+            if accelerator.is_main_process and self.writer:
+              for k, v in eval_metrics.items():
+                if isinstance(v, (int, float)):
+                  self.writer.add_scalar(k, v, global_step)
+              print("Eval metrics:", {k: f"{v:.4f}" for k, v in eval_metrics.items() if isinstance(v, (int, float))})
         if global_step % self.config.save_steps == 0:
           self._save_checkpoint(model, accelerator, global_step)
+    # self._save_final_model(model, accelerator)
 
-    # 保存最终模型
-    self._save_final_model(model, accelerator)
-
-    # 清理资源
+    if profiler and accelerator.is_main_process:
+      # profiler.export_chrome_trace("trace.json")
+      profiler.stop()
     if self.writer:
       self.writer.flush()
       self.writer.close()
-
     accelerator.end_training()
     progress_bar.close()
 
 if __name__ == "__main__":
   dpo_config = CustomDPOConfig()
   dpo_trainer = CustomDPOTrainer(dpo_config, format_dataset_vicgalle)
-  model = dpo_trainer._load_model()
   dpo_trainer.train()

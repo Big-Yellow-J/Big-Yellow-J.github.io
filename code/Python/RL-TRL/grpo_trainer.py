@@ -17,13 +17,15 @@ from typing import List, Any
 class CustomGRPOConfig(GRPOConfig):
     # trl: 0.22.2
     # https://github.com/huggingface/trl/blob/v0.29.0/trl/trainer/grpo_config.py#L23
+    torch_compile = True
+
     random_seed: int = 2026
     project_name: str = "Qwen-GRPO-Math"
     cache_dir: str = "/root/autodl-fs/Model"
     current_date: str = datetime.now().strftime("%Y%m%d")
     special_num: int = random.randint(0, 9999)
     tracker_project_name: str = f'{current_date}-{project_name}-{special_num:04d}'
-    output_dir: str = field(default_factory=lambda: f"/root/autodl-fs/Model/Outputs/{CustomGRPOConfig.tracker_project_name}")
+    output_dir: str = field(default_factory=lambda: f"/root/autodl-fs/Model/Outputs-Compile/{CustomGRPOConfig.tracker_project_name}")
 
     # 保存设置
     save_total_limit: int=2 # 只保存两个
@@ -131,7 +133,7 @@ def load_model_tokenizer(config: CustomGRPOConfig):
         cache_dir=config.cache_dir,
         device_map="auto",
         torch_dtype=compute_dtype,
-        attn_implementation="flash_attention_2",
+        # attn_implementation="flash_attention_2",
     )
     tokenizer = AutoTokenizer.from_pretrained(
         config.model_name,
@@ -274,23 +276,23 @@ if __name__ == "__main__":
     model, tokenizer = load_model_tokenizer(config)
     dataset = load_datasets(config, tokenizer)
     print(dataset[0])
-    # peft_config = get_peft_config()
-    # model = get_peft_model(model, peft_config)
-    # model.print_trainable_parameters()
-    #
-    # trainer = CustomGRPOTrainer(
-    #     model=model,
-    #     reward_funcs=[
-    #         accuracy_reward,
-    #         reasoning_accuracy_reward,
-    #         format_reward,
-    #         length_reward,
-    #     ],
-    #     args=config,
-    #     train_dataset=dataset,
-    #     processing_class=tokenizer,
-    # )
-    # trainer.train()
+    peft_config = get_peft_config()
+    model = get_peft_model(model, peft_config)
+    model.print_trainable_parameters()
+
+    trainer = CustomGRPOTrainer(
+        model=model,
+        reward_funcs=[
+            accuracy_reward,
+            reasoning_accuracy_reward,
+            format_reward,
+            length_reward,
+        ],
+        args=config,
+        train_dataset=dataset,
+        processing_class=tokenizer,
+    )
+    trainer.train()
     # trainer.save_model(os.path.join(config.output_dir, "final_lora"))
     # tokenizer.save_pretrained(os.path.join(config.output_dir, "final_lora"))
     # print("训练完成！输出目录：", config.output_dir)
