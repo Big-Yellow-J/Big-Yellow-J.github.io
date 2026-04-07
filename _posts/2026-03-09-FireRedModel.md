@@ -1,7 +1,7 @@
 ---
 layout: mypost
 title: 开源模型技术总结-3————FireRed（小红书）开源模型
-categories: 生成模型
+categories: 多模态
 extMath: true
 images: true
 address: 长沙🌷

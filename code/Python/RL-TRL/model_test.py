@@ -17,10 +17,9 @@ def extract_user_question(text):
 
 '''
 mkdir -p /root/autodl-tmp/tmp-sore
-export TMPDIR=/root/autodl-tmp/tmp-sore
+export TMPDIR=/root/autodl-tmp/tmp-sore # 指定模型下载缓存路径
 export TEMP=/root/autodl-tmp/tmp-sore
 export TMP=/root/autodl-tmp/tmp-sore
-
 
 vllm serve \
     /root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/Model/models--Qwen--Qwen2-0.5B-Instruct/snapshots/c540970f9e29518b1d8f06ab8b24cba66ad77b6d/ \

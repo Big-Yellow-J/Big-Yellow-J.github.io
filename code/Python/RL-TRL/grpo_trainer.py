@@ -17,7 +17,7 @@ from typing import List, Any
 class CustomGRPOConfig(GRPOConfig):
     # trl: 0.22.2
     # https://github.com/huggingface/trl/blob/v0.29.0/trl/trainer/grpo_config.py#L23
-    torch_compile = True
+    # torch_compile = True
 
     random_seed: int = 2026
     project_name: str = "Qwen-GRPO-Math"
@@ -32,7 +32,7 @@ class CustomGRPOConfig(GRPOConfig):
 
     dataset_name: str = "trl-lib/DeepMath-103K"
     dataset_from: str = "hf"
-    data_ratio: float = 0.1
+    data_ratio: float = 0.01
     shuffle_dataset: bool = True
 
     num_generations: int = 8
