@@ -1,0 +1,10238 @@
+# AOT ID: ['21_backward']
+from ctypes import c_void_p, c_long, c_int
+import torch
+import math
+import random
+import os
+import tempfile
+from math import inf, nan
+from cmath import nanj
+from torch._inductor.hooks import run_intermediate_hooks
+from torch._inductor.utils import maybe_profile
+from torch._inductor.codegen.memory_planning import _align as align
+from torch import device, empty_strided
+from torch._inductor.async_compile import AsyncCompile
+from torch._inductor.select_algorithm import extern_kernels
+import triton
+import triton.language as tl
+from torch._inductor.runtime.triton_heuristics import start_graph, end_graph
+from torch._C import _cuda_getCurrentRawStream as get_raw_stream
+
+aten = torch.ops.aten
+inductor_ops = torch.ops.inductor
+_quantized = torch.ops._quantized
+assert_size_stride = torch._C._dynamo.guards.assert_size_stride
+assert_alignment = torch._C._dynamo.guards.assert_alignment
+empty_strided_cpu = torch._C._dynamo.guards._empty_strided_cpu
+empty_strided_cpu_pinned = torch._C._dynamo.guards._empty_strided_cpu_pinned
+empty_strided_cuda = torch._C._dynamo.guards._empty_strided_cuda
+empty_strided_xpu = torch._C._dynamo.guards._empty_strided_xpu
+empty_strided_mtia = torch._C._dynamo.guards._empty_strided_mtia
+reinterpret_tensor = torch._C._dynamo.guards._reinterpret_tensor
+alloc_from_pool = torch.ops.inductor._alloc_from_pool
+async_compile = AsyncCompile()
+empty_strided_p2p = torch._C._distributed_c10d._SymmetricMemory.empty_strided_p2p
+
+
+# kernel path: /root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/~/autodl-tmp/tmp-sore/torchinductor_root/qy/cqyiezwws3at63kntdpcjdbtzo4cg6eakxbc6gua653z73rfykb3.py
+# Topologically Sorted Source Nodes: [convert_element_type_1905, view_1163], Original ATen: [aten._to_copy, aten.view]
+# Source node to ATen node mapping:
+#   convert_element_type_1905 => convert_element_type_1905
+#   view_1163 => view_1163
+# Graph fragment:
+#   %tangents_1 : Tensor "f32[1, s35, 151936][151936*s35, 151936, 1]cuda:0" = PlaceHolder[target=tangents_1]
+#   %convert_element_type_1905 : Tensor "bf16[1, s35, 151936][151936*s35, 151936, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%tangents_1, torch.bfloat16), kwargs = {})
+#   %view_1163 : Tensor "bf16[s35, 151936][151936, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.reshape.default](args = (%convert_element_type_1905, [%primals_632, 151936]), kwargs = {})
+#   return %view_1163
+triton_poi_fused__to_copy_view_0 = async_compile.triton('triton_poi_fused__to_copy_view_0', '''
+import triton
+import triton.language as tl
+
+from torch._inductor.runtime import triton_helpers, triton_heuristics
+from torch._inductor.runtime.triton_helpers import libdevice, math as tl_math
+from torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties
+triton_helpers.set_driver_to_gpu()
+
+@triton_heuristics.pointwise(
+    size_hints={'x': 134217728}, 
+    filename=__file__,
+    triton_meta={'signature': {'in_ptr0': '*fp32', 'out_ptr0': '*bf16', 'xnumel': 'i32', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=80, cc=89, major=8, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]]}], 'enable_fp_fusion': True},
+    inductor_meta={'grid_type': 'Grid1D', 'autotune_hints': set(), 'kernel_name': 'triton_poi_fused__to_copy_view_0', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 1, 'num_store': 1, 'num_reduction': 0, 'backend_hash': '530A4EEDF49C5716AE98C01E4E74B49F3D6F7913EC4A9A06FFBD6D251F721D80', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'force_filter_reduction_configs': False, 'are_deterministic_algorithms_enabled': False},
+    min_elem_per_thread=0
+)
+@triton.jit
+def triton_poi_fused__to_copy_view_0(in_ptr0, out_ptr0, xnumel, XBLOCK : tl.constexpr):
+    xoffset = tl.program_id(0) * XBLOCK
+    xindex = xoffset + tl.arange(0, XBLOCK)[:]
+    xmask = xindex < xnumel
+    x0 = xindex
+    tmp0 = tl.load(in_ptr0 + (x0), xmask)
+    tmp1 = tmp0.to(tl.float32)
+    tl.store(out_ptr0 + (x0), tmp1, xmask)
+''', device_str='cuda')
+
+
+# kernel path: /root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/~/autodl-tmp/tmp-sore/torchinductor_root/au/caulhlcxlsrg3aj2roqpqhwkciegc2dwv3v4stmn3yhk54shqpdy.py
+# Topologically Sorted Source Nodes: [view_1164, full_default_49, mul_15553, convert_element_type_1910, hidden_states_240, mul_15554, mul_15555, sum_1, pow_50, mul_15556, mul_15557, expand_77, div, pow_51, mul_15558, mul_15559, add_11935, convert_element_type_1911, mul_15560, view_1165], Original ATen: [aten.view, aten.slice_backward, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div, aten.add]
+# Source node to ATen node mapping:
+#   add_11935 => add_11935
+#   convert_element_type_1910 => convert_element_type_1910
+#   convert_element_type_1911 => convert_element_type_1911
+#   div => div
+#   expand_77 => expand_77
+#   full_default_49 => full_default_49
+#   hidden_states_240 => convert_element_type_1900
+#   mul_15553 => mul_15553
+#   mul_15554 => mul_15554
+#   mul_15555 => mul_15555
+#   mul_15556 => mul_15556
+#   mul_15557 => mul_15557
+#   mul_15558 => mul_15558
+#   mul_15559 => mul_15559
+#   mul_15560 => mul_15560
+#   pow_50 => pow_50
+#   pow_51 => pow_51
+#   sum_1 => sum_1
+#   view_1164 => view_1164
+#   view_1165 => view_1165
+# Graph fragment:
+#   %mm_434 : Tensor "bf16[s35, 896][896, 1]cuda:0" = PlaceHolder[target=mm_434]
+#   %primals_631 : Tensor "bf16[896][1]cuda:0" = PlaceHolder[target=primals_631]
+#   %add_11888 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0" = PlaceHolder[target=add_11888]
+#   %rsqrt_48 : Tensor "f32[1, s27, 1][s27, 1, 1]cuda:0" = PlaceHolder[target=rsqrt_48]
+#   %sum_1 : Tensor "f32[1, s27, 1][s27, 1, s27]cuda:0" = PlaceHolder[target=sum_1]
+#   %convert_element_type_1911 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0" = PlaceHolder[target=convert_element_type_1911]
+#   %view_1164 : Tensor "bf16[1, s35, 896][896*s35, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%mm_434, [1, %primals_632, 896]), kwargs = {})
+#   %full_default_49 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.full.default](args = ([1, %primals_1, 896], 0), kwargs = {dtype: torch.bfloat16, layout: torch.strided, device: cuda:0, pin_memory: False})
+#   %slice_scatter_default : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.slice_scatter.default](args = (%full_default_49, %view_1164, 1, %neg_48, 9223372036854775807), kwargs = {})
+#   %mul_15553 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%slice_scatter_default, %primals_631), kwargs = {})
+#   %convert_element_type_1910 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%mul_15553, torch.float32), kwargs = {})
+#   %convert_element_type_1900 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%add_11888, torch.float32), kwargs = {})
+#   %mul_15554 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%convert_element_type_1910, %convert_element_type_1900), kwargs = {})
+#   %mul_15555 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%convert_element_type_1910, %rsqrt_48), kwargs = {})
+#   %sum_1 : Tensor "f32[1, s27, 1][s27, 1, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.sum.dim_IntList](args = (%mul_15554, [2], True), kwargs = {})
+#   %pow_50 : Tensor "f32[1, s27, 1][s27, 1, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.pow.Tensor_Scalar](args = (%rsqrt_48, 3), kwargs = {})
+#   %mul_15556 : Tensor "f32[1, s27, 1][s27, 1, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Scalar](args = (%sum_1, -0.5), kwargs = {})
+#   %mul_15557 : Tensor "f32[1, s27, 1][s27, 1, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%mul_15556, %pow_50), kwargs = {})
+#   %expand_77 : Tensor "f32[1, s27, 896][s27, 1, 0]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.expand.default](args = (%mul_15557, [1, %primals_1, 896]), kwargs = {})
+#   %div : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.div.Scalar](args = (%expand_77, 896), kwargs = {})
+#   %pow_51 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.pow.Tensor_Scalar](args = (%convert_element_type_1900, 1.0), kwargs = {})
+#   %mul_15558 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Scalar](args = (%pow_51, 2.0), kwargs = {})
+#   %mul_15559 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%div, %mul_15558), kwargs = {})
+#   %add_11935 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%mul_15555, %mul_15559), kwargs = {})
+#   %convert_element_type_1911 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=3] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%add_11935, torch.bfloat16), kwargs = {})
+#   %mul_15560 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%convert_element_type_1911, 1.0), kwargs = {})
+#   %view_1165 : Tensor "bf16[s27, 896][896, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.reshape.default](args = (%mul_15560, [%primals_1, 896]), kwargs = {})
+#   return %sum_1,%convert_element_type_1911,%view_1165
+triton_per_fused__to_copy_add_div_expand_mul_pow_slice_backward_sum_view_1 = async_compile.triton('triton_per_fused__to_copy_add_div_expand_mul_pow_slice_backward_sum_view_1', '''
+import triton
+import triton.language as tl
+
+from torch._inductor.runtime import triton_helpers, triton_heuristics
+from torch._inductor.runtime.triton_helpers import libdevice, math as tl_math
+from torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties
+triton_helpers.set_driver_to_gpu()
+
+@triton_heuristics.persistent_reduction(
+    size_hints={'x': 1024, 'r0_': 1024},
+    reduction_hint=ReductionHint.INNER,
+    filename=__file__,
+    triton_meta={'signature': {'in_out_ptr0': '*bf16', 'in_ptr0': '*bf16', 'in_ptr1': '*bf16', 'in_ptr2': '*fp32', 'out_ptr1': '*bf16', 'ks0': 'i64', 'ks1': 'i64', 'xnumel': 'i32', 'r0_numel': 'i32', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=80, cc=89, major=8, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (3,): [['tt.divisibility', 16]], (4,): [['tt.divisibility', 16]], (8,): [['tt.divisibility', 16]]}], 'enable_fp_fusion': True},
+    inductor_meta={'grid_type': 'Grid1D', 'autotune_hints': set(), 'kernel_name': 'triton_per_fused__to_copy_add_div_expand_mul_pow_slice_backward_sum_view_1', 'mutated_arg_names': ['in_out_ptr0'], 'optimize_mem': True, 'no_x_dim': None, 'atomic_add_found': False, 'num_load': 4, 'num_store': 2, 'num_reduction': 1, 'backend_hash': '530A4EEDF49C5716AE98C01E4E74B49F3D6F7913EC4A9A06FFBD6D251F721D80', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'force_filter_reduction_configs': False, 'are_deterministic_algorithms_enabled': False}
+)
+@triton.jit
+def triton_per_fused__to_copy_add_div_expand_mul_pow_slice_backward_sum_view_1(in_out_ptr0, in_ptr0, in_ptr1, in_ptr2, out_ptr1, ks0, ks1, xnumel, r0_numel, XBLOCK : tl.constexpr):
+    r0_numel = 896
+    R0_BLOCK: tl.constexpr = 1024
+    rnumel = r0_numel
+    RBLOCK: tl.constexpr = R0_BLOCK
+    xoffset = tl.program_id(0) * XBLOCK
+    xindex = xoffset + tl.arange(0, XBLOCK)[:, None]
+    xmask = xindex < xnumel
+    r0_index = tl.arange(0, R0_BLOCK)[None, :]
+    r0_offset = 0
+    r0_mask = r0_index < r0_numel
+    roffset = r0_offset
+    rindex = r0_index
+    x0 = xindex
+    r0_1 = r0_index
+    tmp6 = tl.load(in_ptr1 + (r0_1), r0_mask, eviction_policy='evict_last', other=0.0).to(tl.float32)
+    tmp9 = tl.load(in_out_ptr0 + (r0_1 + 896*x0), r0_mask & xmask, other=0.0).to(tl.float32)
+    tmp16 = tl.load(in_ptr2 + (x0), xmask, eviction_policy='evict_last')
+    tmp0 = x0
+    tmp1 = ks0 + ((-1)*ks1)
+    tmp2 = tmp0 >= tmp1
+    tmp3 = tl.load(in_ptr0 + (r0_1 + ((-896)*ks0) + 896*ks1 + 896*x0), r0_mask & tmp2 & xmask, other=0.0).to(tl.float32)
+    tmp4 = 0.0
+    tmp5 = tl.where(tmp2, tmp3, tmp4)
+    tmp7 = tmp5 * tmp6
+    tmp8 = tmp7.to(tl.float32)
+    tmp10 = tmp9.to(tl.float32)
+    tmp11 = tmp8 * tmp10
+    tmp12 = tl.broadcast_to(tmp11, [XBLOCK, R0_BLOCK])
+    tmp14 = tl.where(r0_mask & xmask, tmp12, 0)
+    tmp15 = tl.sum(tmp14, 1)[:, None].to(tl.float32)
+    tmp17 = tmp8 * tmp16
+    tmp18 = -0.5
+    tmp19 = tmp15 * tmp18
+    tmp20 = tmp16 * tmp16
+    tmp21 = tmp20 * tmp16
+    tmp22 = tmp19 * tmp21
+    tmp23 = 0.0011160714285714285
+    tmp24 = tmp22 * tmp23
+    tmp25 = 2.0
+    tmp26 = tmp10 * tmp25
+    tmp27 = tmp24 * tmp26
+    tmp28 = tmp17 + tmp27
+    tmp29 = tmp28.to(tl.float32)
+    tmp30 = 1.0
+    tmp31 = tmp29 * tmp30
+    tl.store(in_out_ptr0 + (r0_1 + 896*x0), tmp29, r0_mask & xmask)
+    tl.store(out_ptr1 + (r0_1 + 896*x0), tmp31, r0_mask & xmask)
+''', device_str='cuda')
+
+
+# kernel path: /root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/~/autodl-tmp/tmp-sore/torchinductor_root/ow/cow5jp5rckwquqpblxsz7od4yhnv6rl2wci64rk27wwqocb54krp.py
+# Topologically Sorted Source Nodes: [convert_element_type_1916], Original ATen: [aten._to_copy]
+# Source node to ATen node mapping:
+#   convert_element_type_1916 => convert_element_type_1916
+# Graph fragment:
+#   %mm_435 : Tensor "bf16[896, 32][32, 1]cuda:0" = PlaceHolder[target=mm_435]
+#   %convert_element_type_1916 : Tensor "f32[896, 32][32, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%mm_435, torch.float32), kwargs = {})
+#   return %convert_element_type_1916
+triton_poi_fused__to_copy_2 = async_compile.triton('triton_poi_fused__to_copy_2', '''
+import triton
+import triton.language as tl
+
+from torch._inductor.runtime import triton_helpers, triton_heuristics
+from torch._inductor.runtime.triton_helpers import libdevice, math as tl_math
+from torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties
+triton_helpers.set_driver_to_gpu()
+
+@triton_heuristics.pointwise(
+    size_hints={'x': 32768}, 
+    filename=__file__,
+    triton_meta={'signature': {'in_ptr0': '*bf16', 'out_ptr0': '*fp32', 'xnumel': 'i32', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=80, cc=89, major=8, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]]}], 'enable_fp_fusion': True},
+    inductor_meta={'grid_type': 'Grid1D', 'autotune_hints': set(), 'kernel_name': 'triton_poi_fused__to_copy_2', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 1, 'num_store': 1, 'num_reduction': 0, 'backend_hash': '530A4EEDF49C5716AE98C01E4E74B49F3D6F7913EC4A9A06FFBD6D251F721D80', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'force_filter_reduction_configs': False, 'are_deterministic_algorithms_enabled': False, 'tiling_scores': {'x': 286720}},
+    min_elem_per_thread=0
+)
+@triton.jit
+def triton_poi_fused__to_copy_2(in_ptr0, out_ptr0, xnumel, XBLOCK : tl.constexpr):
+    xnumel = 28672
+    xoffset = tl.program_id(0) * XBLOCK
+    xindex = xoffset + tl.arange(0, XBLOCK)[:]
+    xmask = tl.full([XBLOCK], True, tl.int1)[:]
+    x0 = xindex
+    tmp0 = tl.load(in_ptr0 + (x0), None).to(tl.float32)
+    tmp1 = tmp0.to(tl.float32)
+    tl.store(out_ptr0 + (x0), tmp1, None)
+''', device_str='cuda')
+
+
+# kernel path: /root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/~/autodl-tmp/tmp-sore/torchinductor_root/n4/cn4fy3ocmmtsxwbjf4vryuzr2ua6jgia7uvrpzfo5iovpe77syq3.py
+# Topologically Sorted Source Nodes: [convert_element_type_1922], Original ATen: [aten._to_copy]
+# Source node to ATen node mapping:
+#   convert_element_type_1922 => convert_element_type_1922
+# Graph fragment:
+#   %mm_437 : Tensor "bf16[32, 4864][4864, 1]cuda:0" = PlaceHolder[target=mm_437]
+#   %convert_element_type_1922 : Tensor "f32[32, 4864][4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%mm_437, torch.float32), kwargs = {})
+#   return %convert_element_type_1922
+triton_poi_fused__to_copy_3 = async_compile.triton('triton_poi_fused__to_copy_3', '''
+import triton
+import triton.language as tl
+
+from torch._inductor.runtime import triton_helpers, triton_heuristics
+from torch._inductor.runtime.triton_helpers import libdevice, math as tl_math
+from torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties
+triton_helpers.set_driver_to_gpu()
+
+@triton_heuristics.pointwise(
+    size_hints={'x': 262144}, 
+    filename=__file__,
+    triton_meta={'signature': {'in_ptr0': '*bf16', 'out_ptr0': '*fp32', 'xnumel': 'i32', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=80, cc=89, major=8, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]]}], 'enable_fp_fusion': True},
+    inductor_meta={'grid_type': 'Grid1D', 'autotune_hints': set(), 'kernel_name': 'triton_poi_fused__to_copy_3', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 1, 'num_store': 1, 'num_reduction': 0, 'backend_hash': '530A4EEDF49C5716AE98C01E4E74B49F3D6F7913EC4A9A06FFBD6D251F721D80', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'force_filter_reduction_configs': False, 'are_deterministic_algorithms_enabled': False, 'tiling_scores': {'x': 1556480}},
+    min_elem_per_thread=0
+)
+@triton.jit
+def triton_poi_fused__to_copy_3(in_ptr0, out_ptr0, xnumel, XBLOCK : tl.constexpr):
+    xnumel = 155648
+    xoffset = tl.program_id(0) * XBLOCK
+    xindex = xoffset + tl.arange(0, XBLOCK)[:]
+    xmask = tl.full([XBLOCK], True, tl.int1)[:]
+    x0 = xindex
+    tmp0 = tl.load(in_ptr0 + (x0), None).to(tl.float32)
+    tmp1 = tmp0.to(tl.float32)
+    tl.store(out_ptr0 + (x0), tmp1, None)
+''', device_str='cuda')
+
+
+# kernel path: /root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/~/autodl-tmp/tmp-sore/torchinductor_root/q4/cq4obwr6bfznb6nirzl7fbmskx7evrkiabd6bt7xrt6anicolg2g.py
+# Topologically Sorted Source Nodes: [view_1168, view_1170, add_11936, silu_23, mul_15561, mul_15562, mul_15563, convert_element_type_1940, neg_49, exp, add_11938, reciprocal, mul_15564, mul_15565, sub_3919, mul_15566, add_11939, mul_15567, convert_element_type_1942, mul_15568], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+# Source node to ATen node mapping:
+#   add_11936 => add_11936
+#   add_11938 => add_11938
+#   add_11939 => add_11939
+#   convert_element_type_1940 => convert_element_type_1940
+#   convert_element_type_1942 => convert_element_type_1942
+#   exp => exp
+#   mul_15561 => mul_15561
+#   mul_15562 => mul_15562
+#   mul_15563 => mul_15563
+#   mul_15564 => mul_15564
+#   mul_15565 => mul_15565
+#   mul_15566 => mul_15566
+#   mul_15567 => mul_15567
+#   mul_15568 => mul_15568
+#   neg_49 => neg_49
+#   reciprocal => reciprocal
+#   silu_23 => convert_element_type_1878, convert_element_type_1879, mul_15380, sigmoid_23
+#   sub_3919 => sub_3919
+#   view_1168 => view_1168
+#   view_1170 => view_1170
+# Graph fragment:
+#   %mm_438 : Tensor "bf16[s27, 4864][4864, 1]cuda:0" = PlaceHolder[target=mm_438]
+#   %mm_439 : Tensor "bf16[s27, 4864][4864, 1]cuda:0" = PlaceHolder[target=mm_439]
+#   %add_11798 : Tensor "bf16[1, s27, 4864][4864*s27, 4864, 1]cuda:0" = PlaceHolder[target=add_11798]
+#   %add_11841 : Tensor "bf16[1, s27, 4864][4864*s27, 4864, 1]cuda:0" = PlaceHolder[target=add_11841]
+#   %view_1168 : Tensor "bf16[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%mm_438, [1, %primals_1, 4864]), kwargs = {})
+#   %view_1170 : Tensor "bf16[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%mm_439, [1, %primals_1, 4864]), kwargs = {})
+#   %add_11936 : Tensor "bf16[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.add.Tensor](args = (%view_1168, %view_1170), kwargs = {})
+#   %convert_element_type_1878 : Tensor "f32[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=4] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%add_11798, torch.float32), kwargs = {})
+#   %sigmoid_23 : Tensor "f32[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.sigmoid.default](args = (%convert_element_type_1878,), kwargs = {})
+#   %mul_15380 : Tensor "f32[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%convert_element_type_1878, %sigmoid_23), kwargs = {})
+#   %convert_element_type_1879 : Tensor "bf16[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%mul_15380, torch.bfloat16), kwargs = {})
+#   %mul_15561 : Tensor "bf16[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.mul.Tensor](args = (%add_11936, %convert_element_type_1879), kwargs = {})
+#   %mul_15562 : Tensor "bf16[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%add_11936, %add_11841), kwargs = {})
+#   %mul_15563 : Tensor "bf16[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%mul_15561, 1.0), kwargs = {})
+#   %convert_element_type_1940 : Tensor "f32[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%mul_15562, torch.float32), kwargs = {})
+#   %neg_49 : Tensor "f32[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.neg.default](args = (%convert_element_type_1878,), kwargs = {})
+#   %exp : Tensor "f32[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.exp.default](args = (%neg_49,), kwargs = {})
+#   %add_11938 : Tensor "f32[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%exp, 1), kwargs = {})
+#   %reciprocal : Tensor "f32[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reciprocal.default](args = (%add_11938,), kwargs = {})
+#   %mul_15564 : Tensor "f32[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.mul.Tensor](args = (%reciprocal, 1), kwargs = {})
+#   %mul_15565 : Tensor "f32[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%convert_element_type_1940, %mul_15564), kwargs = {})
+#   %sub_3919 : Tensor "f32[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.sub.Tensor](args = (1, %mul_15564), kwargs = {})
+#   %mul_15566 : Tensor "f32[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%convert_element_type_1878, %sub_3919), kwargs = {})
+#   %add_11939 : Tensor "f32[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%mul_15566, 1), kwargs = {})
+#   %mul_15567 : Tensor "f32[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%mul_15565, %add_11939), kwargs = {})
+#   %convert_element_type_1942 : Tensor "bf16[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%mul_15567, torch.bfloat16), kwargs = {})
+#   %mul_15568 : Tensor "bf16[1, s27, 4864][4864*s27, 4864, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%convert_element_type_1942, 1.0), kwargs = {})
+#   return %mul_15563,%mul_15561,%mul_15568,%convert_element_type_1942
+triton_poi_fused_add_mul_silu_silu_backward_view_4 = async_compile.triton('triton_poi_fused_add_mul_silu_silu_backward_view_4', '''
+import triton
+import triton.language as tl
+
+from torch._inductor.runtime import triton_helpers, triton_heuristics
+from torch._inductor.runtime.triton_helpers import libdevice, math as tl_math
+from torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties
+triton_helpers.set_driver_to_gpu()
+
+@triton_heuristics.pointwise(
+    size_hints={'x': 4194304}, 
+    filename=__file__,
+    triton_meta={'signature': {'in_ptr0': '*bf16', 'in_ptr1': '*bf16', 'in_ptr2': '*bf16', 'in_ptr3': '*bf16', 'out_ptr0': '*bf16', 'out_ptr1': '*bf16', 'out_ptr2': '*bf16', 'out_ptr3': '*bf16', 'xnumel': 'i32', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=80, cc=89, major=8, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (3,): [['tt.divisibility', 16]], (4,): [['tt.divisibility', 16]], (5,): [['tt.divisibility', 16]], (6,): [['tt.divisibility', 16]], (7,): [['tt.divisibility', 16]], (8,): [['tt.divisibility', 16]]}], 'enable_fp_fusion': True},
+    inductor_meta={'grid_type': 'Grid1D', 'autotune_hints': set(), 'kernel_name': 'triton_poi_fused_add_mul_silu_silu_backward_view_4', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 4, 'num_store': 4, 'num_reduction': 0, 'backend_hash': '530A4EEDF49C5716AE98C01E4E74B49F3D6F7913EC4A9A06FFBD6D251F721D80', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'force_filter_reduction_configs': False, 'are_deterministic_algorithms_enabled': False},
+    min_elem_per_thread=0
+)
+@triton.jit
+def triton_poi_fused_add_mul_silu_silu_backward_view_4(in_ptr0, in_ptr1, in_ptr2, in_ptr3, out_ptr0, out_ptr1, out_ptr2, out_ptr3, xnumel, XBLOCK : tl.constexpr):
+    xoffset = tl.program_id(0) * XBLOCK
+    xindex = xoffset + tl.arange(0, XBLOCK)[:]
+    xmask = xindex < xnumel
+    x0 = xindex
+    tmp0 = tl.load(in_ptr0 + (x0), xmask).to(tl.float32)
+    tmp1 = tl.load(in_ptr1 + (x0), xmask).to(tl.float32)
+    tmp3 = tl.load(in_ptr2 + (x0), xmask).to(tl.float32)
+    tmp11 = tl.load(in_ptr3 + (x0), xmask).to(tl.float32)
+    tmp2 = tmp0 + tmp1
+    tmp4 = tmp3.to(tl.float32)
+    tmp5 = tl.sigmoid(tmp4)
+    tmp6 = tmp4 * tmp5
+    tmp7 = tmp6.to(tl.float32)
+    tmp8 = tmp2 * tmp7
+    tmp9 = 1.0
+    tmp10 = tmp8 * tmp9
+    tmp12 = tmp2 * tmp11
+    tmp13 = tmp12.to(tl.float32)
+    tmp14 = -tmp4
+    tmp15 = libdevice.exp(tmp14)
+    tmp16 = tmp15 + tmp9
+    tmp17 = tl.full([1], 1, tl.int32)
+    tmp18 = (tmp17 / tmp16)
+    tmp19 = tmp18 * tmp9
+    tmp20 = tmp13 * tmp19
+    tmp21 = tmp9 - tmp19
+    tmp22 = tmp4 * tmp21
+    tmp23 = tmp22 + tmp9
+    tmp24 = tmp20 * tmp23
+    tmp25 = tmp24.to(tl.float32)
+    tmp26 = tmp25 * tmp9
+    tl.store(out_ptr0 + (x0), tmp10, xmask)
+    tl.store(out_ptr1 + (x0), tmp8, xmask)
+    tl.store(out_ptr2 + (x0), tmp26, xmask)
+    tl.store(out_ptr3 + (x0), tmp25, xmask)
+''', device_str='cuda')
+
+
+# kernel path: /root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/~/autodl-tmp/tmp-sore/torchinductor_root/7c/c7caemjnnu6wyyqdrrxcdknusgttvbzsa6mx5o75eppm3dtr6c4x.py
+# Topologically Sorted Source Nodes: [view_1174, view_1176, add_11937, view_1180, add_11940, view_1182, add_11941, mul_15569, convert_element_type_1957, hidden_states_236, mul_15570, mul_15571, sum_2, pow_52, mul_15572, mul_15573, expand_78, div_1, pow_53, mul_15574, mul_15575, add_11942, convert_element_type_1958, add_11943, mul_15576, view_1183], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+# Source node to ATen node mapping:
+#   add_11937 => add_11937
+#   add_11940 => add_11940
+#   add_11941 => add_11941
+#   add_11942 => add_11942
+#   add_11943 => add_11943
+#   convert_element_type_1957 => convert_element_type_1957
+#   convert_element_type_1958 => convert_element_type_1958
+#   div_1 => div_1
+#   expand_78 => expand_78
+#   hidden_states_236 => convert_element_type_1866
+#   mul_15569 => mul_15569
+#   mul_15570 => mul_15570
+#   mul_15571 => mul_15571
+#   mul_15572 => mul_15572
+#   mul_15573 => mul_15573
+#   mul_15574 => mul_15574
+#   mul_15575 => mul_15575
+#   mul_15576 => mul_15576
+#   pow_52 => pow_52
+#   pow_53 => pow_53
+#   sum_2 => sum_2
+#   view_1174 => view_1174
+#   view_1176 => view_1176
+#   view_1180 => view_1180
+#   view_1182 => view_1182
+#   view_1183 => view_1183
+# Graph fragment:
+#   %mm_443 : Tensor "bf16[s27, 896][896, 1]cuda:0" = PlaceHolder[target=mm_443]
+#   %mm_444 : Tensor "bf16[s27, 896][896, 1]cuda:0" = PlaceHolder[target=mm_444]
+#   %mm_448 : Tensor "bf16[s27, 896][896, 1]cuda:0" = PlaceHolder[target=mm_448]
+#   %mm_449 : Tensor "bf16[s27, 896][896, 1]cuda:0" = PlaceHolder[target=mm_449]
+#   %primals_621 : Tensor "bf16[896][1]cuda:0" = PlaceHolder[target=primals_621]
+#   %convert_element_type_1957 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0" = PlaceHolder[target=convert_element_type_1957]
+#   %add_11730 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0" = PlaceHolder[target=add_11730]
+#   %convert_element_type_1911 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0" = PlaceHolder[target=convert_element_type_1911]
+#   %rsqrt_47 : Tensor "f32[1, s27, 1][s27, 1, 1]cuda:0" = PlaceHolder[target=rsqrt_47]
+#   %sum_2 : Tensor "f32[1, s27, 1][s27, 1, s27]cuda:0" = PlaceHolder[target=sum_2]
+#   %add_11943 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0" = PlaceHolder[target=add_11943]
+#   %view_1174 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%mm_443, [1, %primals_1, 896]), kwargs = {})
+#   %view_1176 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%mm_444, [1, %primals_1, 896]), kwargs = {})
+#   %add_11937 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%view_1174, %view_1176), kwargs = {})
+#   %view_1180 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%mm_448, [1, %primals_1, 896]), kwargs = {})
+#   %add_11940 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_11937, %view_1180), kwargs = {})
+#   %view_1182 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%mm_449, [1, %primals_1, 896]), kwargs = {})
+#   %add_11941 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_11940, %view_1182), kwargs = {})
+#   %mul_15569 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%add_11941, %primals_621), kwargs = {})
+#   %convert_element_type_1957 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%mul_15569, torch.float32), kwargs = {})
+#   %convert_element_type_1866 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%add_11730, torch.float32), kwargs = {})
+#   %mul_15570 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%convert_element_type_1957, %convert_element_type_1866), kwargs = {})
+#   %mul_15571 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%convert_element_type_1957, %rsqrt_47), kwargs = {})
+#   %sum_2 : Tensor "f32[1, s27, 1][s27, 1, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.sum.dim_IntList](args = (%mul_15570, [2], True), kwargs = {})
+#   %pow_52 : Tensor "f32[1, s27, 1][s27, 1, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.pow.Tensor_Scalar](args = (%rsqrt_47, 3), kwargs = {})
+#   %mul_15572 : Tensor "f32[1, s27, 1][s27, 1, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Scalar](args = (%sum_2, -0.5), kwargs = {})
+#   %mul_15573 : Tensor "f32[1, s27, 1][s27, 1, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%mul_15572, %pow_52), kwargs = {})
+#   %expand_78 : Tensor "f32[1, s27, 896][s27, 1, 0]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.expand.default](args = (%mul_15573, [1, %primals_1, 896]), kwargs = {})
+#   %div_1 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.div.Scalar](args = (%expand_78, 896), kwargs = {})
+#   %pow_53 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.pow.Tensor_Scalar](args = (%convert_element_type_1866, 1.0), kwargs = {})
+#   %mul_15574 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Scalar](args = (%pow_53, 2.0), kwargs = {})
+#   %mul_15575 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%div_1, %mul_15574), kwargs = {})
+#   %add_11942 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%mul_15571, %mul_15575), kwargs = {})
+#   %convert_element_type_1958 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%add_11942, torch.bfloat16), kwargs = {})
+#   %add_11943 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=3] = call_function[target=torch.ops.aten.add.Tensor](args = (%convert_element_type_1911, %convert_element_type_1958), kwargs = {})
+#   %mul_15576 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%add_11943, 1.0), kwargs = {})
+#   %view_1183 : Tensor "bf16[s27, 896][896, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.reshape.default](args = (%mul_15576, [%primals_1, 896]), kwargs = {})
+#   return %convert_element_type_1957,%sum_2,%add_11943,%view_1183
+triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5 = async_compile.triton('triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5', '''
+import triton
+import triton.language as tl
+
+from torch._inductor.runtime import triton_helpers, triton_heuristics
+from torch._inductor.runtime.triton_helpers import libdevice, math as tl_math
+from torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties
+triton_helpers.set_driver_to_gpu()
+
+@triton_heuristics.persistent_reduction(
+    size_hints={'x': 1024, 'r0_': 1024},
+    reduction_hint=ReductionHint.INNER,
+    filename=__file__,
+    triton_meta={'signature': {'in_out_ptr0': '*bf16', 'in_ptr0': '*bf16', 'in_ptr1': '*bf16', 'in_ptr2': '*bf16', 'in_ptr3': '*bf16', 'in_ptr4': '*bf16', 'in_ptr5': '*bf16', 'in_ptr6': '*fp32', 'out_ptr2': '*bf16', 'xnumel': 'i32', 'r0_numel': 'i32', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=80, cc=89, major=8, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (3,): [['tt.divisibility', 16]], (4,): [['tt.divisibility', 16]], (5,): [['tt.divisibility', 16]], (6,): [['tt.divisibility', 16]], (7,): [['tt.divisibility', 16]], (8,): [['tt.divisibility', 16]], (10,): [['tt.divisibility', 16]]}], 'enable_fp_fusion': True},
+    inductor_meta={'grid_type': 'Grid1D', 'autotune_hints': set(), 'kernel_name': 'triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5', 'mutated_arg_names': ['in_out_ptr0'], 'optimize_mem': True, 'no_x_dim': None, 'atomic_add_found': False, 'num_load': 8, 'num_store': 2, 'num_reduction': 1, 'backend_hash': '530A4EEDF49C5716AE98C01E4E74B49F3D6F7913EC4A9A06FFBD6D251F721D80', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'force_filter_reduction_configs': False, 'are_deterministic_algorithms_enabled': False}
+)
+@triton.jit
+def triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5(in_out_ptr0, in_ptr0, in_ptr1, in_ptr2, in_ptr3, in_ptr4, in_ptr5, in_ptr6, out_ptr2, xnumel, r0_numel, XBLOCK : tl.constexpr):
+    r0_numel = 896
+    R0_BLOCK: tl.constexpr = 1024
+    rnumel = r0_numel
+    RBLOCK: tl.constexpr = R0_BLOCK
+    xoffset = tl.program_id(0) * XBLOCK
+    xindex = xoffset + tl.arange(0, XBLOCK)[:, None]
+    xmask = xindex < xnumel
+    r0_index = tl.arange(0, R0_BLOCK)[None, :]
+    r0_offset = 0
+    r0_mask = r0_index < r0_numel
+    roffset = r0_offset
+    rindex = r0_index
+    r0_1 = r0_index
+    x0 = xindex
+    tmp0 = tl.load(in_ptr0 + (r0_1 + 896*x0), r0_mask & xmask, other=0.0).to(tl.float32)
+    tmp1 = tl.load(in_ptr1 + (r0_1 + 896*x0), r0_mask & xmask, other=0.0).to(tl.float32)
+    tmp3 = tl.load(in_ptr2 + (r0_1 + 896*x0), r0_mask & xmask, other=0.0).to(tl.float32)
+    tmp5 = tl.load(in_ptr3 + (r0_1 + 896*x0), r0_mask & xmask, other=0.0).to(tl.float32)
+    tmp7 = tl.load(in_ptr4 + (r0_1), r0_mask, eviction_policy='evict_last', other=0.0).to(tl.float32)
+    tmp10 = tl.load(in_ptr5 + (r0_1 + 896*x0), r0_mask & xmask, other=0.0).to(tl.float32)
+    tmp17 = tl.load(in_out_ptr0 + (r0_1 + 896*x0), r0_mask & xmask, other=0.0).to(tl.float32)
+    tmp18 = tl.load(in_ptr6 + (x0), xmask, eviction_policy='evict_last')
+    tmp2 = tmp0 + tmp1
+    tmp4 = tmp2 + tmp3
+    tmp6 = tmp4 + tmp5
+    tmp8 = tmp6 * tmp7
+    tmp9 = tmp8.to(tl.float32)
+    tmp11 = tmp10.to(tl.float32)
+    tmp12 = tmp9 * tmp11
+    tmp13 = tl.broadcast_to(tmp12, [XBLOCK, R0_BLOCK])
+    tmp15 = tl.where(r0_mask & xmask, tmp13, 0)
+    tmp16 = tl.sum(tmp15, 1)[:, None].to(tl.float32)
+    tmp19 = tmp9 * tmp18
+    tmp20 = -0.5
+    tmp21 = tmp16 * tmp20
+    tmp22 = tmp18 * tmp18
+    tmp23 = tmp22 * tmp18
+    tmp24 = tmp21 * tmp23
+    tmp25 = 0.0011160714285714285
+    tmp26 = tmp24 * tmp25
+    tmp27 = 2.0
+    tmp28 = tmp11 * tmp27
+    tmp29 = tmp26 * tmp28
+    tmp30 = tmp19 + tmp29
+    tmp31 = tmp30.to(tl.float32)
+    tmp32 = tmp17 + tmp31
+    tmp33 = 1.0
+    tmp34 = tmp32 * tmp33
+    tl.store(in_out_ptr0 + (r0_1 + 896*x0), tmp32, r0_mask & xmask)
+    tl.store(out_ptr2 + (r0_1 + 896*x0), tmp34, r0_mask & xmask)
+''', device_str='cuda')
+
+
+# kernel path: /root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/~/autodl-tmp/tmp-sore/torchinductor_root/2d/c2dgdoukdriyoyxoymhlth4yfytucuwl7fxbwojojszbhf4acfay.py
+# Topologically Sorted Source Nodes: [view_1186, view_1188, add_11944, view_1189, permute_642, attn_output, _scaled_dot_product_efficient_attention_backward], Original ATen: [aten.view, aten.add, aten.transpose, aten.slice, aten.expand, aten._scaled_dot_product_efficient_attention_backward]
+# Source node to ATen node mapping:
+#   _scaled_dot_product_efficient_attention_backward => _scaled_dot_product_efficient_attention_backward
+#   add_11944 => add_11944
+#   attn_output => expand_7, slice_9
+#   permute_642 => permute_642
+#   view_1186 => view_1186
+#   view_1188 => view_1188
+#   view_1189 => view_1189
+# Graph fragment:
+#   %mm_453 : Tensor "bf16[s27, 896][896, 1]cuda:0" = PlaceHolder[target=mm_453]
+#   %mm_454 : Tensor "bf16[s27, 896][896, 1]cuda:0" = PlaceHolder[target=mm_454]
+#   %view_1186 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%mm_453, [1, %primals_1, 896]), kwargs = {})
+#   %view_1188 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%mm_454, [1, %primals_1, 896]), kwargs = {})
+#   %add_11944 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%view_1186, %view_1188), kwargs = {})
+#   %view_1189 : Tensor "bf16[1, s27, 14, 64][896*s27, 896, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%add_11944, [1, %primals_1, 14, 64]), kwargs = {})
+#   %permute_642 : Tensor "bf16[1, 14, s27, 64][896*s27, 64, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.permute.default](args = (%view_1189, [0, 2, 1, 3]), kwargs = {})
+#   %slice_9 : Tensor "bf16[1, 1, s27, s27][s27*Max(1, s27 - (Mod(s27, 8)) + 8), s27*Max(1, s27 - (Mod(s27, 8)) + 8), Max(1, s27 - (Mod(s27, 8)) + 8), 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.slice.Tensor](args = (%constant_pad_nd, -1, 0, %primals_1), kwargs = {})
+#   %expand_7 : Tensor "bf16[1, 14, s27, s27][s27*Max(1, s27 - (Mod(s27, 8)) + 8), 0, Max(1, s27 - (Mod(s27, 8)) + 8), 1]cuda:0"[num_users=24] = call_function[target=torch.ops.aten.expand.default](args = (%slice_9, [1, 14, %primals_1, %primals_1]), kwargs = {})
+#   %_scaled_dot_product_efficient_attention_backward : [num_users=3] = call_function[target=torch.ops.aten._scaled_dot_product_efficient_attention_backward.default](args = (%permute_642, %add_11595, %view_1134, %view_1135, %expand_7, %getitem_92, %getitem_93, %getitem_94, %getitem_95, 0.0, [True, True, True, False]), kwargs = {scale: 0.125})
+#   return %buf42
+triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6 = async_compile.triton('triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6', '''
+import triton
+import triton.language as tl
+
+from torch._inductor.runtime import triton_helpers, triton_heuristics
+from torch._inductor.runtime.triton_helpers import libdevice, math as tl_math
+from torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties
+triton_helpers.set_driver_to_gpu()
+
+@triton_heuristics.pointwise(
+    size_hints={'x': 1048576}, 
+    filename=__file__,
+    triton_meta={'signature': {'in_out_ptr0': '*bf16', 'in_ptr0': '*bf16', 'xnumel': 'i32', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=80, cc=89, major=8, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]]}], 'enable_fp_fusion': True},
+    inductor_meta={'grid_type': 'Grid1D', 'autotune_hints': set(), 'kernel_name': 'triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6', 'mutated_arg_names': ['in_out_ptr0'], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 2, 'num_store': 1, 'num_reduction': 0, 'backend_hash': '530A4EEDF49C5716AE98C01E4E74B49F3D6F7913EC4A9A06FFBD6D251F721D80', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'force_filter_reduction_configs': False, 'are_deterministic_algorithms_enabled': False},
+    min_elem_per_thread=0
+)
+@triton.jit
+def triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6(in_out_ptr0, in_ptr0, xnumel, XBLOCK : tl.constexpr):
+    xoffset = tl.program_id(0) * XBLOCK
+    xindex = xoffset + tl.arange(0, XBLOCK)[:]
+    xmask = xindex < xnumel
+    x0 = xindex
+    tmp0 = tl.load(in_out_ptr0 + (x0), xmask).to(tl.float32)
+    tmp1 = tl.load(in_ptr0 + (x0), xmask).to(tl.float32)
+    tmp2 = tmp0 + tmp1
+    tl.store(in_out_ptr0 + (x0), tmp2, xmask)
+''', device_str='cuda')
+
+
+# kernel path: /root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/~/autodl-tmp/tmp-sore/torchinductor_root/ag/cagselfyddgfdo24e2656lge2dhhwyokctneqojrlvmz5xhgo3oe.py
+# Topologically Sorted Source Nodes: [view_1191, sum_4], Original ATen: [aten.view, aten.sum]
+# Source node to ATen node mapping:
+#   sum_4 => sum_4
+#   view_1191 => view_1191
+# Graph fragment:
+#   %getitem_97 : Tensor "bf16[1, 14, s27, 64][896*s27, 64, 896, 1]cuda:0" = PlaceHolder[target=getitem_97]
+#   %view_1191 : Tensor "bf16[1, 2, 7, s27, 64][896*s27, 448, 64, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%getitem_97, [1, 2, 7, %primals_1, 64]), kwargs = {})
+#   %sum_4 : Tensor "bf16[1, 2, 1, s27, 64][128*s27, 64*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.sum.dim_IntList](args = (%view_1191, [2], True), kwargs = {})
+#   return %sum_4
+triton_poi_fused_sum_view_7 = async_compile.triton('triton_poi_fused_sum_view_7', '''
+import triton
+import triton.language as tl
+
+from torch._inductor.runtime import triton_helpers, triton_heuristics
+from torch._inductor.runtime.triton_helpers import libdevice, math as tl_math
+from torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties
+triton_helpers.set_driver_to_gpu()
+
+@triton_heuristics.pointwise(
+    size_hints={'x': 131072}, 
+    filename=__file__,
+    triton_meta={'signature': {'in_ptr0': '*bf16', 'out_ptr0': '*bf16', 'xnumel': 'i32', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=80, cc=89, major=8, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]]}], 'enable_fp_fusion': True},
+    inductor_meta={'grid_type': 'Grid1D', 'autotune_hints': set(), 'kernel_name': 'triton_poi_fused_sum_view_7', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 7, 'num_store': 1, 'num_reduction': 0, 'backend_hash': '530A4EEDF49C5716AE98C01E4E74B49F3D6F7913EC4A9A06FFBD6D251F721D80', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'force_filter_reduction_configs': False, 'are_deterministic_algorithms_enabled': False},
+    min_elem_per_thread=0
+)
+@triton.jit
+def triton_poi_fused_sum_view_7(in_ptr0, out_ptr0, xnumel, XBLOCK : tl.constexpr):
+    xoffset = tl.program_id(0) * XBLOCK
+    xindex = xoffset + tl.arange(0, XBLOCK)[:]
+    xmask = xindex < xnumel
+    x0 = (xindex % 64)
+    x1 = xindex // 64
+    x2 = xindex
+    tmp0 = tl.load(in_ptr0 + (x0 + 448*x1), xmask).to(tl.float32)
+    tmp1 = tl.load(in_ptr0 + (64 + x0 + 448*x1), xmask).to(tl.float32)
+    tmp3 = tl.load(in_ptr0 + (128 + x0 + 448*x1), xmask).to(tl.float32)
+    tmp5 = tl.load(in_ptr0 + (192 + x0 + 448*x1), xmask).to(tl.float32)
+    tmp7 = tl.load(in_ptr0 + (256 + x0 + 448*x1), xmask).to(tl.float32)
+    tmp9 = tl.load(in_ptr0 + (320 + x0 + 448*x1), xmask).to(tl.float32)
+    tmp11 = tl.load(in_ptr0 + (384 + x0 + 448*x1), xmask).to(tl.float32)
+    tmp2 = tmp0 + tmp1
+    tmp4 = tmp2 + tmp3
+    tmp6 = tmp4 + tmp5
+    tmp8 = tmp6 + tmp7
+    tmp10 = tmp8 + tmp9
+    tmp12 = tmp10 + tmp11
+    tl.store(out_ptr0 + (x2), tmp12, xmask)
+''', device_str='cuda')
+
+
+# kernel path: /root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/~/autodl-tmp/tmp-sore/torchinductor_root/ng/cng5b27q57iccphestua7nbu3n4mbj4fx7722pg5v22aql2nbp6h.py
+# Topologically Sorted Source Nodes: [view_1190, sum_3, squeeze, permute_643, clone_50, view_1192, mul_15581, view_1193], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+# Source node to ATen node mapping:
+#   clone_50 => clone_50
+#   mul_15581 => mul_15581
+#   permute_643 => permute_643
+#   squeeze => squeeze
+#   sum_3 => sum_3
+#   view_1190 => view_1190
+#   view_1192 => view_1192
+#   view_1193 => view_1193
+# Graph fragment:
+#   %getitem_98 : Tensor "bf16[1, 14, s27, 64][896*s27, 64, 896, 1]cuda:0" = PlaceHolder[target=getitem_98]
+#   %clone_50 : Tensor "bf16[1, s27, 2, 64][128*s27, 128, 64, 1]cuda:0" = PlaceHolder[target=clone_50]
+#   %view_1190 : Tensor "bf16[1, 2, 7, s27, 64][896*s27, 448, 64, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%getitem_98, [1, 2, 7, %primals_1, 64]), kwargs = {})
+#   %sum_3 : Tensor "bf16[1, 2, 1, s27, 64][128*s27, 64*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.sum.dim_IntList](args = (%view_1190, [2], True), kwargs = {})
+#   %squeeze : Tensor "bf16[1, 2, s27, 64][128*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.squeeze.dim](args = (%sum_3, 2), kwargs = {})
+#   %permute_643 : Tensor "bf16[1, s27, 2, 64][128*s27, 64, 64*s27, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.permute.default](args = (%squeeze, [0, 2, 1, 3]), kwargs = {})
+#   %clone_50 : Tensor "bf16[1, s27, 2, 64][128*s27, 128, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.clone.default](args = (%permute_643,), kwargs = {memory_format: torch.contiguous_format})
+#   %view_1192 : Tensor "bf16[1, s27, 128][128*s27, 128, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.reshape.default](args = (%clone_50, [1, %primals_1, 128]), kwargs = {})
+#   %mul_15581 : Tensor "bf16[1, s27, 128][128*s27, 128, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%view_1192, 1.0), kwargs = {})
+#   %view_1193 : Tensor "bf16[s27, 128][128, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.reshape.default](args = (%mul_15581, [%primals_1, 128]), kwargs = {})
+#   return %clone_50,%view_1193
+triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8 = async_compile.triton('triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8', '''
+import triton
+import triton.language as tl
+
+from torch._inductor.runtime import triton_helpers, triton_heuristics
+from torch._inductor.runtime.triton_helpers import libdevice, math as tl_math
+from torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties
+triton_helpers.set_driver_to_gpu()
+
+@triton_heuristics.pointwise(
+    size_hints={'x': 131072}, 
+    filename=__file__,
+    triton_meta={'signature': {'in_ptr0': '*bf16', 'out_ptr0': '*bf16', 'out_ptr1': '*bf16', 'xnumel': 'i32', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=80, cc=89, major=8, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (3,): [['tt.divisibility', 16]]}], 'enable_fp_fusion': True},
+    inductor_meta={'grid_type': 'Grid1D', 'autotune_hints': set(), 'kernel_name': 'triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 7, 'num_store': 2, 'num_reduction': 0, 'backend_hash': '530A4EEDF49C5716AE98C01E4E74B49F3D6F7913EC4A9A06FFBD6D251F721D80', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'force_filter_reduction_configs': False, 'are_deterministic_algorithms_enabled': False},
+    min_elem_per_thread=0
+)
+@triton.jit
+def triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8(in_ptr0, out_ptr0, out_ptr1, xnumel, XBLOCK : tl.constexpr):
+    xoffset = tl.program_id(0) * XBLOCK
+    xindex = xoffset + tl.arange(0, XBLOCK)[:]
+    xmask = xindex < xnumel
+    x0 = (xindex % 64)
+    x1 = xindex // 64
+    x2 = xindex
+    tmp0 = tl.load(in_ptr0 + (x0 + 448*x1), xmask).to(tl.float32)
+    tmp1 = tl.load(in_ptr0 + (64 + x0 + 448*x1), xmask).to(tl.float32)
+    tmp3 = tl.load(in_ptr0 + (128 + x0 + 448*x1), xmask).to(tl.float32)
+    tmp5 = tl.load(in_ptr0 + (192 + x0 + 448*x1), xmask).to(tl.float32)
+    tmp7 = tl.load(in_ptr0 + (256 + x0 + 448*x1), xmask).to(tl.float32)
+    tmp9 = tl.load(in_ptr0 + (320 + x0 + 448*x1), xmask).to(tl.float32)
+    tmp11 = tl.load(in_ptr0 + (384 + x0 + 448*x1), xmask).to(tl.float32)
+    tmp2 = tmp0 + tmp1
+    tmp4 = tmp2 + tmp3
+    tmp6 = tmp4 + tmp5
+    tmp8 = tmp6 + tmp7
+    tmp10 = tmp8 + tmp9
+    tmp12 = tmp10 + tmp11
+    tmp13 = 1.0
+    tmp14 = tmp12 * tmp13
+    tl.store(out_ptr0 + (x2), tmp12, xmask)
+    tl.store(out_ptr1 + (x2), tmp14, xmask)
+''', device_str='cuda')
+
+
+# kernel path: /root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/~/autodl-tmp/tmp-sore/torchinductor_root/p4/cp4ffpfmfciyf4kcfkhddm3xgyeaybbhfltsfvc5l4lzhv2mqeai.py
+# Topologically Sorted Source Nodes: [convert_element_type_1977], Original ATen: [aten._to_copy]
+# Source node to ATen node mapping:
+#   convert_element_type_1977 => convert_element_type_1977
+# Graph fragment:
+#   %mm_455 : Tensor "bf16[128, 32][32, 1]cuda:0" = PlaceHolder[target=mm_455]
+#   %convert_element_type_1977 : Tensor "f32[128, 32][32, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%mm_455, torch.float32), kwargs = {})
+#   return %convert_element_type_1977
+triton_poi_fused__to_copy_9 = async_compile.triton('triton_poi_fused__to_copy_9', '''
+import triton
+import triton.language as tl
+
+from torch._inductor.runtime import triton_helpers, triton_heuristics
+from torch._inductor.runtime.triton_helpers import libdevice, math as tl_math
+from torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties
+triton_helpers.set_driver_to_gpu()
+
+@triton_heuristics.pointwise(
+    size_hints={'x': 4096}, 
+    filename=__file__,
+    triton_meta={'signature': {'in_ptr0': '*bf16', 'out_ptr0': '*fp32', 'xnumel': 'i32', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=80, cc=89, major=8, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]]}], 'enable_fp_fusion': True},
+    inductor_meta={'grid_type': 'Grid1D', 'autotune_hints': set(), 'kernel_name': 'triton_poi_fused__to_copy_9', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 1, 'num_store': 1, 'num_reduction': 0, 'backend_hash': '530A4EEDF49C5716AE98C01E4E74B49F3D6F7913EC4A9A06FFBD6D251F721D80', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'force_filter_reduction_configs': False, 'are_deterministic_algorithms_enabled': False, 'tiling_scores': {'x': 40960}},
+    min_elem_per_thread=0
+)
+@triton.jit
+def triton_poi_fused__to_copy_9(in_ptr0, out_ptr0, xnumel, XBLOCK : tl.constexpr):
+    xnumel = 4096
+    xoffset = tl.program_id(0) * XBLOCK
+    xindex = xoffset + tl.arange(0, XBLOCK)[:]
+    xmask = tl.full([XBLOCK], True, tl.int1)[:]
+    x0 = xindex
+    tmp0 = tl.load(in_ptr0 + (x0), None).to(tl.float32)
+    tmp1 = tmp0.to(tl.float32)
+    tl.store(out_ptr0 + (x0), tmp1, None)
+''', device_str='cuda')
+
+
+# kernel path: /root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/~/autodl-tmp/tmp-sore/torchinductor_root/lh/clhgtpb5xpif5veesjrpt4pqjse6ycfnqfotpaely6vw7e42p7ga.py
+# Topologically Sorted Source Nodes: [view_1191, sum_4, squeeze_1, matmul, freqs, emb, sin, sin_1, sin_2, sin_3, mul_15577, slice_195, slice_196, neg_50, full_default_52, add_11945, cos, cos_1, cos_2, cos_3, mul_15578, add_11946, permute_653, clone_51, view_1199, mul_15582], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice, aten.neg, aten.slice_backward, aten.add, aten.cos, aten.clone, aten._unsafe_view]
+# Source node to ATen node mapping:
+#   add_11945 => add_11945
+#   add_11946 => add_11946
+#   clone_51 => clone_51
+#   cos => cos
+#   cos_1 => mul_60
+#   cos_2 => convert_element_type_2
+#   cos_3 => unsqueeze_5
+#   emb => clone, expand_4, unsqueeze_4, view_8
+#   freqs => permute
+#   full_default_52 => full_default_52
+#   matmul => unsqueeze_default
+#   mul_15577 => mul_15577
+#   mul_15578 => mul_15578
+#   mul_15582 => mul_15582
+#   neg_50 => neg_50
+#   permute_653 => permute_653
+#   sin => sin
+#   sin_1 => mul_67
+#   sin_2 => convert_element_type_3
+#   sin_3 => unsqueeze_6
+#   slice_195 => slice_195
+#   slice_196 => slice_196
+#   squeeze_1 => squeeze_1
+#   sum_4 => sum_4
+#   view_1191 => view_1191
+#   view_1199 => view_1199
+# Graph fragment:
+#   %sum_4 : Tensor "bf16[1, 2, 1, s27, 64][128*s27, 64, 128*s27, 128, 1]cuda:0" = PlaceHolder[target=sum_4]
+#   %mm_default : Tensor "f32[32, s27][s27, 1]cuda:0" = PlaceHolder[target=mm_default]
+#   %view_1191 : Tensor "bf16[1, 2, 7, s27, 64][896*s27, 448, 64, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%getitem_97, [1, 2, 7, %primals_1, 64]), kwargs = {})
+#   %sum_4 : Tensor "bf16[1, 2, 1, s27, 64][128*s27, 64*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.sum.dim_IntList](args = (%view_1191, [2], True), kwargs = {})
+#   %squeeze_1 : Tensor "bf16[1, 2, s27, 64][128*s27, 64*s27, 64, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.squeeze.dim](args = (%sum_4, 2), kwargs = {})
+#   %unsqueeze_default : Tensor "f32[1, 32, s27][32*s27, s27, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.unsqueeze.default](args = (%mm_default, 0), kwargs = {})
+#   %permute : Tensor "f32[1, s27, 32][32*s27, 1, s27]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.permute.default](args = (%unsqueeze_default, [0, 2, 1]), kwargs = {})
+#   %unsqueeze_4 : Tensor "f32[1, s27, 1, 32][32*s27, 1, 32*s27, s27]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.unsqueeze.default](args = (%permute, 2), kwargs = {})
+#   %expand_4 : Tensor "f32[1, s27, 2, 32][32*s27, 1, 0, s27]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.expand.default](args = (%unsqueeze_4, [1, %primals_1, 2, 32]), kwargs = {})
+#   %clone : Tensor "f32[1, s27, 2, 32][64*s27, 64, 32, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.clone.default](args = (%expand_4,), kwargs = {memory_format: torch.contiguous_format})
+#   %view_8 : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.reshape.default](args = (%clone, [1, %primals_1, 64]), kwargs = {})
+#   %sin : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.sin.default](args = (%view_8,), kwargs = {})
+#   %mul_67 : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%sin, 1.0), kwargs = {})
+#   %convert_element_type_3 : Tensor "bf16[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%mul_67, torch.bfloat16), kwargs = {})
+#   %unsqueeze_6 : Tensor "bf16[1, 1, s27, 64][64*s27, 64*s27, 64, 1]cuda:0"[num_users=48] = call_function[target=torch.ops.aten.unsqueeze.default](args = (%convert_element_type_3, 1), kwargs = {})
+#   %mul_15577 : Tensor "bf16[1, 2, s27, 64][128*s27, 64*s27, 64, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.mul.Tensor](args = (%squeeze_1, %unsqueeze_6), kwargs = {})
+#   %slice_195 : Tensor "bf16[1, 2, s27, 32][128*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.slice.Tensor](args = (%mul_15577, 3, 0, 32), kwargs = {})
+#   %slice_196 : Tensor "bf16[1, 2, s27, 32][128*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.slice.Tensor](args = (%mul_15577, 3, 32, 64), kwargs = {})
+#   %neg_50 : Tensor "bf16[1, 2, s27, 32][64*s27, 32*s27, 32, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.neg.default](args = (%slice_195,), kwargs = {})
+#   %full_default_52 : Tensor "bf16[1, 2, s27, 64][128*s27, 64*s27, 64, 1]cuda:0"[num_users=48] = call_function[target=torch.ops.aten.full.default](args = ([1, 2, %primals_1, 64], 0), kwargs = {dtype: torch.bfloat16, layout: torch.strided, device: cuda:0, pin_memory: False})
+#   %slice_scatter_default_1 : Tensor "bf16[1, 2, s27, 64][128*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.slice_scatter.default](args = (%full_default_52, %neg_50, 3, 32, 9223372036854775807), kwargs = {})
+#   %slice_scatter_default_2 : Tensor "bf16[1, 2, s27, 64][128*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.slice_scatter.default](args = (%full_default_52, %slice_196, 3, 0, 32), kwargs = {})
+#   %add_11945 : Tensor "bf16[1, 2, s27, 64][128*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%slice_scatter_default_1, %slice_scatter_default_2), kwargs = {})
+#   %cos : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.cos.default](args = (%view_8,), kwargs = {})
+#   %mul_60 : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%cos, 1.0), kwargs = {})
+#   %convert_element_type_2 : Tensor "bf16[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%mul_60, torch.bfloat16), kwargs = {})
+#   %unsqueeze_5 : Tensor "bf16[1, 1, s27, 64][64*s27, 64*s27, 64, 1]cuda:0"[num_users=48] = call_function[target=torch.ops.aten.unsqueeze.default](args = (%convert_element_type_2, 1), kwargs = {})
+#   %mul_15578 : Tensor "bf16[1, 2, s27, 64][128*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%squeeze_1, %unsqueeze_5), kwargs = {})
+#   %add_11946 : Tensor "bf16[1, 2, s27, 64][128*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_11945, %mul_15578), kwargs = {})
+#   %permute_653 : Tensor "bf16[1, s27, 2, 64][128*s27, 64, 64*s27, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.permute.default](args = (%add_11946, [0, 2, 1, 3]), kwargs = {})
+#   %clone_51 : Tensor "bf16[1, s27, 2, 64][128*s27, 128, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.clone.default](args = (%permute_653,), kwargs = {memory_format: torch.contiguous_format})
+#   %view_1199 : Tensor "bf16[1, s27, 128][128*s27, 128, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.reshape.default](args = (%clone_51, [1, %primals_1, 128]), kwargs = {})
+#   %mul_15582 : Tensor "bf16[1, s27, 128][128*s27, 128, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%view_1199, 1.0), kwargs = {})
+#   return %mul_15582,%clone_51
+triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10 = async_compile.triton('triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10', '''
+import triton
+import triton.language as tl
+
+from torch._inductor.runtime import triton_helpers, triton_heuristics
+from torch._inductor.runtime.triton_helpers import libdevice, math as tl_math
+from torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties
+triton_helpers.set_driver_to_gpu()
+
+@triton_heuristics.pointwise(
+    size_hints={'y': 1024, 'x': 128}, tile_hint=TileHint.DEFAULT,
+    filename=__file__,
+    triton_meta={'signature': {'in_ptr0': '*bf16', 'in_ptr1': '*fp32', 'out_ptr0': '*bf16', 'out_ptr1': '*bf16', 'ks0': 'i64', 'ynumel': 'i32', 'xnumel': 'i32', 'YBLOCK': 'constexpr', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=80, cc=89, major=8, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (3,): [['tt.divisibility', 16]], (6,): [['tt.divisibility', 16]]}], 'enable_fp_fusion': True},
+    inductor_meta={'grid_type': 'Grid2DWithYZOverflow', 'autotune_hints': set(), 'kernel_name': 'triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 11, 'num_store': 2, 'num_reduction': 0, 'backend_hash': '530A4EEDF49C5716AE98C01E4E74B49F3D6F7913EC4A9A06FFBD6D251F721D80', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'force_filter_reduction_configs': False, 'are_deterministic_algorithms_enabled': False},
+    min_elem_per_thread=0
+)
+@triton.jit
+def triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10(in_ptr0, in_ptr1, out_ptr0, out_ptr1, ks0, ynumel, xnumel, YBLOCK : tl.constexpr, XBLOCK : tl.constexpr):
+    xnumel = 128
+    yoffset = (tl.program_id(1) + tl.program_id(2) * tl.num_programs(1)) * YBLOCK
+    yindex = yoffset + tl.arange(0, YBLOCK)[:, None]
+    ymask = yindex < ynumel
+    xoffset = tl.program_id(0) * XBLOCK
+    xindex = xoffset + tl.arange(0, XBLOCK)[None, :]
+    xmask = xindex < xnumel
+    x1 = xindex
+    y0 = yindex
+    x2 = (xindex % 64)
+    tmp27 = tl.load(in_ptr0 + (x1 + 128*y0), xmask & ymask, eviction_policy='evict_last').to(tl.float32)
+    tmp28 = tl.load(in_ptr1 + (y0 + ks0*((((x1 % 64)) % 32))), xmask & ymask, eviction_policy='evict_last')
+    tmp61 = tl.load(in_ptr1 + (y0 + ks0*((x2 % 32))), xmask & ymask, eviction_policy='evict_last')
+    tmp0 = (x1 % 64)
+    tmp1 = tl.full([1, 1], 32, tl.int64)
+    tmp2 = tmp0 >= tmp1
+    tmp3 = tl.load(in_ptr0 + ((-32) + x1 + 128*y0), tmp2 & xmask & ymask, eviction_policy='evict_last', other=0.0).to(tl.float32)
+    tmp4 = tl.load(in_ptr1 + (y0 + ks0*((((x1 % 64)) % 32))), tmp2 & xmask & ymask, eviction_policy='evict_last', other=0.0)
+    tmp5 = tl_math.sin(tmp4)
+    tmp6 = 1.0
+    tmp7 = tmp5 * tmp6
+    tmp8 = tmp7.to(tl.float32)
+    tmp9 = tmp3 * tmp8
+    tmp10 = -tmp9
+    tmp11 = tl.full(tmp10.shape, 0.0, tmp10.dtype)
+    tmp12 = tl.where(tmp2, tmp10, tmp11)
+    tmp13 = 0.0
+    tmp14 = tl.where(tmp2, tmp12, tmp13)
+    tmp15 = tmp0 < tmp1
+    tmp16 = tl.load(in_ptr0 + (32 + x1 + 128*y0), tmp15 & xmask & ymask, eviction_policy='evict_last', other=0.0).to(tl.float32)
+    tmp17 = tl.load(in_ptr1 + (y0 + ks0*((((x1 % 64)) % 32))), tmp15 & xmask & ymask, eviction_policy='evict_last', other=0.0)
+    tmp18 = tl_math.sin(tmp17)
+    tmp19 = 1.0
+    tmp20 = tmp18 * tmp19
+    tmp21 = tmp20.to(tl.float32)
+    tmp22 = tmp16 * tmp21
+    tmp23 = tl.full(tmp22.shape, 0.0, tmp22.dtype)
+    tmp24 = tl.where(tmp15, tmp22, tmp23)
+    tmp25 = tl.where(tmp15, tmp24, tmp13)
+    tmp26 = tmp14 + tmp25
+    tmp29 = tl_math.cos(tmp28)
+    tmp30 = 1.0
+    tmp31 = tmp29 * tmp30
+    tmp32 = tmp31.to(tl.float32)
+    tmp33 = tmp27 * tmp32
+    tmp34 = tmp26 + tmp33
+    tmp35 = tmp34 * tmp30
+    tmp36 = x2
+    tmp37 = tmp36 >= tmp1
+    tmp38 = tl.load(in_ptr0 + ((-32) + x1 + 128*y0), tmp37 & xmask & ymask, eviction_policy='evict_last', other=0.0).to(tl.float32)
+    tmp39 = tl.load(in_ptr1 + (y0 + ks0*((x2 % 32))), tmp37 & xmask & ymask, eviction_policy='evict_last', other=0.0)
+    tmp40 = tl_math.sin(tmp39)
+    tmp41 = 1.0
+    tmp42 = tmp40 * tmp41
+    tmp43 = tmp42.to(tl.float32)
+    tmp44 = tmp38 * tmp43
+    tmp45 = -tmp44
+    tmp46 = tl.full(tmp45.shape, 0.0, tmp45.dtype)
+    tmp47 = tl.where(tmp37, tmp45, tmp46)
+    tmp48 = tl.where(tmp37, tmp47, tmp13)
+    tmp49 = tmp36 < tmp1
+    tmp50 = tl.load(in_ptr0 + (32 + x1 + 128*y0), tmp49 & xmask & ymask, eviction_policy='evict_last', other=0.0).to(tl.float32)
+    tmp51 = tl.load(in_ptr1 + (y0 + ks0*((x2 % 32))), tmp49 & xmask & ymask, eviction_policy='evict_last', other=0.0)
+    tmp52 = tl_math.sin(tmp51)
+    tmp53 = 1.0
+    tmp54 = tmp52 * tmp53
+    tmp55 = tmp54.to(tl.float32)
+    tmp56 = tmp50 * tmp55
+    tmp57 = tl.full(tmp56.shape, 0.0, tmp56.dtype)
+    tmp58 = tl.where(tmp49, tmp56, tmp57)
+    tmp59 = tl.where(tmp49, tmp58, tmp13)
+    tmp60 = tmp48 + tmp59
+    tmp62 = tl_math.cos(tmp61)
+    tmp63 = tmp62 * tmp30
+    tmp64 = tmp63.to(tl.float32)
+    tmp65 = tmp27 * tmp64
+    tmp66 = tmp60 + tmp65
+    tl.store(out_ptr0 + (x1 + 128*y0), tmp35, xmask & ymask)
+    tl.store(out_ptr1 + (x1 + 128*y0), tmp66, xmask & ymask)
+''', device_str='cuda')
+
+
+# kernel path: /root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/~/autodl-tmp/tmp-sore/torchinductor_root/ji/cjif2sxfiz7tga3wstcp43t5jody3j5zljx6esksx4qebtpcezi3.py
+# Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, mul_15579, slice_197, slice_198, neg_51, full_default_54, add_11947, mul_15580, add_11948, permute_663, clone_52, view_1206, mul_15583], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice, aten.neg, aten.slice_backward, aten.add, aten.clone, aten._unsafe_view]
+# Source node to ATen node mapping:
+#   add_11947 => add_11947
+#   add_11948 => add_11948
+#   clone_52 => clone_52
+#   cos => cos
+#   cos_1 => mul_60
+#   cos_2 => convert_element_type_2
+#   cos_3 => unsqueeze_5
+#   emb => clone, expand_4, unsqueeze_4, view_8
+#   freqs => permute
+#   full_default_54 => full_default_54
+#   matmul => unsqueeze_default
+#   mul_15579 => mul_15579
+#   mul_15580 => mul_15580
+#   mul_15583 => mul_15583
+#   neg_51 => neg_51
+#   permute_663 => permute_663
+#   sin => sin
+#   sin_1 => mul_67
+#   sin_2 => convert_element_type_3
+#   sin_3 => unsqueeze_6
+#   slice_197 => slice_197
+#   slice_198 => slice_198
+#   view_1206 => view_1206
+# Graph fragment:
+#   %getitem_96 : Tensor "bf16[1, 14, s27, 64][896*s27, 64, 896, 1]cuda:0" = PlaceHolder[target=getitem_96]
+#   %mm_default : Tensor "f32[32, s27][s27, 1]cuda:0" = PlaceHolder[target=mm_default]
+#   %unsqueeze_default : Tensor "f32[1, 32, s27][32*s27, s27, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.unsqueeze.default](args = (%mm_default, 0), kwargs = {})
+#   %permute : Tensor "f32[1, s27, 32][32*s27, 1, s27]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.permute.default](args = (%unsqueeze_default, [0, 2, 1]), kwargs = {})
+#   %unsqueeze_4 : Tensor "f32[1, s27, 1, 32][32*s27, 1, 32*s27, s27]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.unsqueeze.default](args = (%permute, 2), kwargs = {})
+#   %expand_4 : Tensor "f32[1, s27, 2, 32][32*s27, 1, 0, s27]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.expand.default](args = (%unsqueeze_4, [1, %primals_1, 2, 32]), kwargs = {})
+#   %clone : Tensor "f32[1, s27, 2, 32][64*s27, 64, 32, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.clone.default](args = (%expand_4,), kwargs = {memory_format: torch.contiguous_format})
+#   %view_8 : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.reshape.default](args = (%clone, [1, %primals_1, 64]), kwargs = {})
+#   %sin : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.sin.default](args = (%view_8,), kwargs = {})
+#   %mul_67 : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%sin, 1.0), kwargs = {})
+#   %convert_element_type_3 : Tensor "bf16[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%mul_67, torch.bfloat16), kwargs = {})
+#   %unsqueeze_6 : Tensor "bf16[1, 1, s27, 64][64*s27, 64*s27, 64, 1]cuda:0"[num_users=48] = call_function[target=torch.ops.aten.unsqueeze.default](args = (%convert_element_type_3, 1), kwargs = {})
+#   %cos : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.cos.default](args = (%view_8,), kwargs = {})
+#   %mul_60 : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%cos, 1.0), kwargs = {})
+#   %convert_element_type_2 : Tensor "bf16[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%mul_60, torch.bfloat16), kwargs = {})
+#   %unsqueeze_5 : Tensor "bf16[1, 1, s27, 64][64*s27, 64*s27, 64, 1]cuda:0"[num_users=48] = call_function[target=torch.ops.aten.unsqueeze.default](args = (%convert_element_type_2, 1), kwargs = {})
+#   %mul_15579 : Tensor "bf16[1, 14, s27, 64][896*s27, 64, 896, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.mul.Tensor](args = (%getitem_96, %unsqueeze_6), kwargs = {})
+#   %slice_197 : Tensor "bf16[1, 14, s27, 32][896*s27, 64, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.slice.Tensor](args = (%mul_15579, 3, 0, 32), kwargs = {})
+#   %slice_198 : Tensor "bf16[1, 14, s27, 32][896*s27, 64, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.slice.Tensor](args = (%mul_15579, 3, 32, 64), kwargs = {})
+#   %neg_51 : Tensor "bf16[1, 14, s27, 32][448*s27, 32, 448, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.neg.default](args = (%slice_197,), kwargs = {})
+#   %full_default_54 : Tensor "bf16[1, 14, s27, 64][896*s27, 64*s27, 64, 1]cuda:0"[num_users=48] = call_function[target=torch.ops.aten.full.default](args = ([1, 14, %primals_1, 64], 0), kwargs = {dtype: torch.bfloat16, layout: torch.strided, device: cuda:0, pin_memory: False})
+#   %slice_scatter_default_3 : Tensor "bf16[1, 14, s27, 64][896*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.slice_scatter.default](args = (%full_default_54, %neg_51, 3, 32, 9223372036854775807), kwargs = {})
+#   %slice_scatter_default_4 : Tensor "bf16[1, 14, s27, 64][896*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.slice_scatter.default](args = (%full_default_54, %slice_198, 3, 0, 32), kwargs = {})
+#   %add_11947 : Tensor "bf16[1, 14, s27, 64][896*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%slice_scatter_default_3, %slice_scatter_default_4), kwargs = {})
+#   %mul_15580 : Tensor "bf16[1, 14, s27, 64][896*s27, 64, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%getitem_96, %unsqueeze_5), kwargs = {})
+#   %add_11948 : Tensor "bf16[1, 14, s27, 64][896*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_11947, %mul_15580), kwargs = {})
+#   %permute_663 : Tensor "bf16[1, s27, 14, 64][896*s27, 64, 64*s27, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.permute.default](args = (%add_11948, [0, 2, 1, 3]), kwargs = {})
+#   %clone_52 : Tensor "bf16[1, s27, 14, 64][896*s27, 896, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.clone.default](args = (%permute_663,), kwargs = {memory_format: torch.contiguous_format})
+#   %view_1206 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.reshape.default](args = (%clone_52, [1, %primals_1, 896]), kwargs = {})
+#   %mul_15583 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%view_1206, 1.0), kwargs = {})
+#   return %mul_15583,%clone_52
+triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11 = async_compile.triton('triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11', '''
+import triton
+import triton.language as tl
+
+from torch._inductor.runtime import triton_helpers, triton_heuristics
+from torch._inductor.runtime.triton_helpers import libdevice, math as tl_math
+from torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties
+triton_helpers.set_driver_to_gpu()
+
+@triton_heuristics.pointwise(
+    size_hints={'y': 1024, 'x': 1024}, tile_hint=TileHint.DEFAULT,
+    filename=__file__,
+    triton_meta={'signature': {'in_ptr0': '*bf16', 'in_ptr1': '*fp32', 'out_ptr0': '*bf16', 'out_ptr1': '*bf16', 'ks0': 'i64', 'ynumel': 'i32', 'xnumel': 'i32', 'YBLOCK': 'constexpr', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=80, cc=89, major=8, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (3,): [['tt.divisibility', 16]], (6,): [['tt.divisibility', 16]]}], 'enable_fp_fusion': True},
+    inductor_meta={'grid_type': 'Grid2DWithYZOverflow', 'autotune_hints': set(), 'kernel_name': 'triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 11, 'num_store': 2, 'num_reduction': 0, 'backend_hash': '530A4EEDF49C5716AE98C01E4E74B49F3D6F7913EC4A9A06FFBD6D251F721D80', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'force_filter_reduction_configs': False, 'are_deterministic_algorithms_enabled': False},
+    min_elem_per_thread=0
+)
+@triton.jit
+def triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11(in_ptr0, in_ptr1, out_ptr0, out_ptr1, ks0, ynumel, xnumel, YBLOCK : tl.constexpr, XBLOCK : tl.constexpr):
+    xnumel = 896
+    yoffset = (tl.program_id(1) + tl.program_id(2) * tl.num_programs(1)) * YBLOCK
+    yindex = yoffset + tl.arange(0, YBLOCK)[:, None]
+    ymask = yindex < ynumel
+    xoffset = tl.program_id(0) * XBLOCK
+    xindex = xoffset + tl.arange(0, XBLOCK)[None, :]
+    xmask = xindex < xnumel
+    x1 = xindex
+    y0 = yindex
+    x2 = (xindex % 64)
+    tmp27 = tl.load(in_ptr0 + (x1 + 896*y0), xmask & ymask, eviction_policy='evict_last').to(tl.float32)
+    tmp28 = tl.load(in_ptr1 + (y0 + ks0*((((x1 % 64)) % 32))), xmask & ymask, eviction_policy='evict_last')
+    tmp61 = tl.load(in_ptr1 + (y0 + ks0*((x2 % 32))), xmask & ymask, eviction_policy='evict_last')
+    tmp0 = (x1 % 64)
+    tmp1 = tl.full([1, 1], 32, tl.int64)
+    tmp2 = tmp0 >= tmp1
+    tmp3 = tl.load(in_ptr0 + ((-32) + x1 + 896*y0), tmp2 & xmask & ymask, eviction_policy='evict_last', other=0.0).to(tl.float32)
+    tmp4 = tl.load(in_ptr1 + (y0 + ks0*((((x1 % 64)) % 32))), tmp2 & xmask & ymask, eviction_policy='evict_last', other=0.0)
+    tmp5 = tl_math.sin(tmp4)
+    tmp6 = 1.0
+    tmp7 = tmp5 * tmp6
+    tmp8 = tmp7.to(tl.float32)
+    tmp9 = tmp3 * tmp8
+    tmp10 = -tmp9
+    tmp11 = tl.full(tmp10.shape, 0.0, tmp10.dtype)
+    tmp12 = tl.where(tmp2, tmp10, tmp11)
+    tmp13 = 0.0
+    tmp14 = tl.where(tmp2, tmp12, tmp13)
+    tmp15 = tmp0 < tmp1
+    tmp16 = tl.load(in_ptr0 + (32 + x1 + 896*y0), tmp15 & xmask & ymask, eviction_policy='evict_last', other=0.0).to(tl.float32)
+    tmp17 = tl.load(in_ptr1 + (y0 + ks0*((((x1 % 64)) % 32))), tmp15 & xmask & ymask, eviction_policy='evict_last', other=0.0)
+    tmp18 = tl_math.sin(tmp17)
+    tmp19 = 1.0
+    tmp20 = tmp18 * tmp19
+    tmp21 = tmp20.to(tl.float32)
+    tmp22 = tmp16 * tmp21
+    tmp23 = tl.full(tmp22.shape, 0.0, tmp22.dtype)
+    tmp24 = tl.where(tmp15, tmp22, tmp23)
+    tmp25 = tl.where(tmp15, tmp24, tmp13)
+    tmp26 = tmp14 + tmp25
+    tmp29 = tl_math.cos(tmp28)
+    tmp30 = 1.0
+    tmp31 = tmp29 * tmp30
+    tmp32 = tmp31.to(tl.float32)
+    tmp33 = tmp27 * tmp32
+    tmp34 = tmp26 + tmp33
+    tmp35 = tmp34 * tmp30
+    tmp36 = x2
+    tmp37 = tmp36 >= tmp1
+    tmp38 = tl.load(in_ptr0 + ((-32) + x1 + 896*y0), tmp37 & xmask & ymask, eviction_policy='evict_last', other=0.0).to(tl.float32)
+    tmp39 = tl.load(in_ptr1 + (y0 + ks0*((x2 % 32))), tmp37 & xmask & ymask, eviction_policy='evict_last', other=0.0)
+    tmp40 = tl_math.sin(tmp39)
+    tmp41 = 1.0
+    tmp42 = tmp40 * tmp41
+    tmp43 = tmp42.to(tl.float32)
+    tmp44 = tmp38 * tmp43
+    tmp45 = -tmp44
+    tmp46 = tl.full(tmp45.shape, 0.0, tmp45.dtype)
+    tmp47 = tl.where(tmp37, tmp45, tmp46)
+    tmp48 = tl.where(tmp37, tmp47, tmp13)
+    tmp49 = tmp36 < tmp1
+    tmp50 = tl.load(in_ptr0 + (32 + x1 + 896*y0), tmp49 & xmask & ymask, eviction_policy='evict_last', other=0.0).to(tl.float32)
+    tmp51 = tl.load(in_ptr1 + (y0 + ks0*((x2 % 32))), tmp49 & xmask & ymask, eviction_policy='evict_last', other=0.0)
+    tmp52 = tl_math.sin(tmp51)
+    tmp53 = 1.0
+    tmp54 = tmp52 * tmp53
+    tmp55 = tmp54.to(tl.float32)
+    tmp56 = tmp50 * tmp55
+    tmp57 = tl.full(tmp56.shape, 0.0, tmp56.dtype)
+    tmp58 = tl.where(tmp49, tmp56, tmp57)
+    tmp59 = tl.where(tmp49, tmp58, tmp13)
+    tmp60 = tmp48 + tmp59
+    tmp62 = tl_math.cos(tmp61)
+    tmp63 = tmp62 * tmp30
+    tmp64 = tmp63.to(tl.float32)
+    tmp65 = tmp27 * tmp64
+    tmp66 = tmp60 + tmp65
+    tl.store(out_ptr0 + (x1 + 896*y0), tmp35, xmask & ymask)
+    tl.store(out_ptr1 + (x1 + 896*y0), tmp66, xmask & ymask)
+''', device_str='cuda')
+
+
+# kernel path: /root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/~/autodl-tmp/tmp-sore/torchinductor_root/rc/crccfutue4ac4y5sqt3coilae3wfkhmswrp3lpfzvxilgcxknjvf.py
+# Topologically Sorted Source Nodes: [view_1196, view_1198, add_11949, view_1203, add_11950, view_1205, add_11951, view_1210, add_11952, view_1212, add_11953, mul_15584, convert_element_type_2015, hidden_states_230, mul_15585, mul_15586, sum_5, pow_54, mul_15587, mul_15588, expand_79, div_2, pow_55, mul_15589, mul_15590, add_11954, convert_element_type_2016, add_11955, mul_15591, view_1213], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+# Source node to ATen node mapping:
+#   add_11949 => add_11949
+#   add_11950 => add_11950
+#   add_11951 => add_11951
+#   add_11952 => add_11952
+#   add_11953 => add_11953
+#   add_11954 => add_11954
+#   add_11955 => add_11955
+#   convert_element_type_2015 => convert_element_type_2015
+#   convert_element_type_2016 => convert_element_type_2016
+#   div_2 => div_2
+#   expand_79 => expand_79
+#   hidden_states_230 => convert_element_type_1821
+#   mul_15584 => mul_15584
+#   mul_15585 => mul_15585
+#   mul_15586 => mul_15586
+#   mul_15587 => mul_15587
+#   mul_15588 => mul_15588
+#   mul_15589 => mul_15589
+#   mul_15590 => mul_15590
+#   mul_15591 => mul_15591
+#   pow_54 => pow_54
+#   pow_55 => pow_55
+#   sum_5 => sum_5
+#   view_1196 => view_1196
+#   view_1198 => view_1198
+#   view_1203 => view_1203
+#   view_1205 => view_1205
+#   view_1210 => view_1210
+#   view_1212 => view_1212
+#   view_1213 => view_1213
+# Graph fragment:
+#   %mm_458 : Tensor "bf16[s27, 896][896, 1]cuda:0" = PlaceHolder[target=mm_458]
+#   %mm_459 : Tensor "bf16[s27, 896][896, 1]cuda:0" = PlaceHolder[target=mm_459]
+#   %mm_463 : Tensor "bf16[s27, 896][896, 1]cuda:0" = PlaceHolder[target=mm_463]
+#   %mm_464 : Tensor "bf16[s27, 896][896, 1]cuda:0" = PlaceHolder[target=mm_464]
+#   %mm_468 : Tensor "bf16[s27, 896][896, 1]cuda:0" = PlaceHolder[target=mm_468]
+#   %mm_469 : Tensor "bf16[s27, 896][896, 1]cuda:0" = PlaceHolder[target=mm_469]
+#   %primals_605 : Tensor "bf16[896][1]cuda:0" = PlaceHolder[target=primals_605]
+#   %convert_element_type_2015 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0" = PlaceHolder[target=convert_element_type_2015]
+#   %add_11396 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0" = PlaceHolder[target=add_11396]
+#   %add_11943 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0" = PlaceHolder[target=add_11943]
+#   %rsqrt_46 : Tensor "f32[1, s27, 1][s27, 1, 1]cuda:0" = PlaceHolder[target=rsqrt_46]
+#   %sum_5 : Tensor "f32[1, s27, 1][s27, 1, s27]cuda:0" = PlaceHolder[target=sum_5]
+#   %add_11955 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0" = PlaceHolder[target=add_11955]
+#   %view_1196 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%mm_458, [1, %primals_1, 896]), kwargs = {})
+#   %view_1198 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%mm_459, [1, %primals_1, 896]), kwargs = {})
+#   %add_11949 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%view_1196, %view_1198), kwargs = {})
+#   %view_1203 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%mm_463, [1, %primals_1, 896]), kwargs = {})
+#   %add_11950 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_11949, %view_1203), kwargs = {})
+#   %view_1205 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%mm_464, [1, %primals_1, 896]), kwargs = {})
+#   %add_11951 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_11950, %view_1205), kwargs = {})
+#   %view_1210 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%mm_468, [1, %primals_1, 896]), kwargs = {})
+#   %add_11952 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_11951, %view_1210), kwargs = {})
+#   %view_1212 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%mm_469, [1, %primals_1, 896]), kwargs = {})
+#   %add_11953 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_11952, %view_1212), kwargs = {})
+#   %mul_15584 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%add_11953, %primals_605), kwargs = {})
+#   %convert_element_type_2015 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%mul_15584, torch.float32), kwargs = {})
+#   %convert_element_type_1821 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%add_11396, torch.float32), kwargs = {})
+#   %mul_15585 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%convert_element_type_2015, %convert_element_type_1821), kwargs = {})
+#   %mul_15586 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%convert_element_type_2015, %rsqrt_46), kwargs = {})
+#   %sum_5 : Tensor "f32[1, s27, 1][s27, 1, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.sum.dim_IntList](args = (%mul_15585, [2], True), kwargs = {})
+#   %pow_54 : Tensor "f32[1, s27, 1][s27, 1, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.pow.Tensor_Scalar](args = (%rsqrt_46, 3), kwargs = {})
+#   %mul_15587 : Tensor "f32[1, s27, 1][s27, 1, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Scalar](args = (%sum_5, -0.5), kwargs = {})
+#   %mul_15588 : Tensor "f32[1, s27, 1][s27, 1, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%mul_15587, %pow_54), kwargs = {})
+#   %expand_79 : Tensor "f32[1, s27, 896][s27, 1, 0]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.expand.default](args = (%mul_15588, [1, %primals_1, 896]), kwargs = {})
+#   %div_2 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.div.Scalar](args = (%expand_79, 896), kwargs = {})
+#   %pow_55 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.pow.Tensor_Scalar](args = (%convert_element_type_1821, 1.0), kwargs = {})
+#   %mul_15589 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Scalar](args = (%pow_55, 2.0), kwargs = {})
+#   %mul_15590 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%div_2, %mul_15589), kwargs = {})
+#   %add_11954 : Tensor "f32[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%mul_15586, %mul_15590), kwargs = {})
+#   %convert_element_type_2016 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%add_11954, torch.bfloat16), kwargs = {})
+#   %add_11955 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=3] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_11943, %convert_element_type_2016), kwargs = {})
+#   %mul_15591 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%add_11955, 1.0), kwargs = {})
+#   %view_1213 : Tensor "bf16[s27, 896][896, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.reshape.default](args = (%mul_15591, [%primals_1, 896]), kwargs = {})
+#   return %convert_element_type_2015,%sum_5,%add_11955,%view_1213
+triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12 = async_compile.triton('triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12', '''
+import triton
+import triton.language as tl
+
+from torch._inductor.runtime import triton_helpers, triton_heuristics
+from torch._inductor.runtime.triton_helpers import libdevice, math as tl_math
+from torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties
+triton_helpers.set_driver_to_gpu()
+
+@triton_heuristics.persistent_reduction(
+    size_hints={'x': 1024, 'r0_': 1024},
+    reduction_hint=ReductionHint.INNER,
+    filename=__file__,
+    triton_meta={'signature': {'in_out_ptr0': '*bf16', 'in_ptr0': '*bf16', 'in_ptr1': '*bf16', 'in_ptr2': '*bf16', 'in_ptr3': '*bf16', 'in_ptr4': '*bf16', 'in_ptr5': '*bf16', 'in_ptr6': '*bf16', 'in_ptr7': '*bf16', 'in_ptr8': '*fp32', 'out_ptr2': '*bf16', 'xnumel': 'i32', 'r0_numel': 'i32', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=80, cc=89, major=8, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (3,): [['tt.divisibility', 16]], (4,): [['tt.divisibility', 16]], (5,): [['tt.divisibility', 16]], (6,): [['tt.divisibility', 16]], (7,): [['tt.divisibility', 16]], (8,): [['tt.divisibility', 16]], (9,): [['tt.divisibility', 16]], (10,): [['tt.divisibility', 16]], (12,): [['tt.divisibility', 16]]}], 'enable_fp_fusion': True},
+    inductor_meta={'grid_type': 'Grid1D', 'autotune_hints': set(), 'kernel_name': 'triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12', 'mutated_arg_names': ['in_out_ptr0'], 'optimize_mem': True, 'no_x_dim': None, 'atomic_add_found': False, 'num_load': 10, 'num_store': 2, 'num_reduction': 1, 'backend_hash': '530A4EEDF49C5716AE98C01E4E74B49F3D6F7913EC4A9A06FFBD6D251F721D80', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'force_filter_reduction_configs': False, 'are_deterministic_algorithms_enabled': False}
+)
+@triton.jit
+def triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12(in_out_ptr0, in_ptr0, in_ptr1, in_ptr2, in_ptr3, in_ptr4, in_ptr5, in_ptr6, in_ptr7, in_ptr8, out_ptr2, xnumel, r0_numel, XBLOCK : tl.constexpr):
+    r0_numel = 896
+    R0_BLOCK: tl.constexpr = 1024
+    rnumel = r0_numel
+    RBLOCK: tl.constexpr = R0_BLOCK
+    xoffset = tl.program_id(0) * XBLOCK
+    xindex = xoffset + tl.arange(0, XBLOCK)[:, None]
+    xmask = xindex < xnumel
+    r0_index = tl.arange(0, R0_BLOCK)[None, :]
+    r0_offset = 0
+    r0_mask = r0_index < r0_numel
+    roffset = r0_offset
+    rindex = r0_index
+    r0_1 = r0_index
+    x0 = xindex
+    tmp0 = tl.load(in_ptr0 + (r0_1 + 896*x0), r0_mask & xmask, other=0.0).to(tl.float32)
+    tmp1 = tl.load(in_ptr1 + (r0_1 + 896*x0), r0_mask & xmask, other=0.0).to(tl.float32)
+    tmp3 = tl.load(in_ptr2 + (r0_1 + 896*x0), r0_mask & xmask, other=0.0).to(tl.float32)
+    tmp5 = tl.load(in_ptr3 + (r0_1 + 896*x0), r0_mask & xmask, other=0.0).to(tl.float32)
+    tmp7 = tl.load(in_ptr4 + (r0_1 + 896*x0), r0_mask & xmask, other=0.0).to(tl.float32)
+    tmp9 = tl.load(in_ptr5 + (r0_1 + 896*x0), r0_mask & xmask, other=0.0).to(tl.float32)
+    tmp11 = tl.load(in_ptr6 + (r0_1), r0_mask, eviction_policy='evict_last', other=0.0).to(tl.float32)
+    tmp14 = tl.load(in_ptr7 + (r0_1 + 896*x0), r0_mask & xmask, other=0.0).to(tl.float32)
+    tmp21 = tl.load(in_out_ptr0 + (r0_1 + 896*x0), r0_mask & xmask, other=0.0).to(tl.float32)
+    tmp22 = tl.load(in_ptr8 + (x0), xmask, eviction_policy='evict_last')
+    tmp2 = tmp0 + tmp1
+    tmp4 = tmp2 + tmp3
+    tmp6 = tmp4 + tmp5
+    tmp8 = tmp6 + tmp7
+    tmp10 = tmp8 + tmp9
+    tmp12 = tmp10 * tmp11
+    tmp13 = tmp12.to(tl.float32)
+    tmp15 = tmp14.to(tl.float32)
+    tmp16 = tmp13 * tmp15
+    tmp17 = tl.broadcast_to(tmp16, [XBLOCK, R0_BLOCK])
+    tmp19 = tl.where(r0_mask & xmask, tmp17, 0)
+    tmp20 = tl.sum(tmp19, 1)[:, None].to(tl.float32)
+    tmp23 = tmp13 * tmp22
+    tmp24 = -0.5
+    tmp25 = tmp20 * tmp24
+    tmp26 = tmp22 * tmp22
+    tmp27 = tmp26 * tmp22
+    tmp28 = tmp25 * tmp27
+    tmp29 = 0.0011160714285714285
+    tmp30 = tmp28 * tmp29
+    tmp31 = 2.0
+    tmp32 = tmp15 * tmp31
+    tmp33 = tmp30 * tmp32
+    tmp34 = tmp23 + tmp33
+    tmp35 = tmp34.to(tl.float32)
+    tmp36 = tmp21 + tmp35
+    tmp37 = 1.0
+    tmp38 = tmp36 * tmp37
+    tl.store(in_out_ptr0 + (r0_1 + 896*x0), tmp36, r0_mask & xmask)
+    tl.store(out_ptr2 + (r0_1 + 896*x0), tmp38, r0_mask & xmask)
+''', device_str='cuda')
+
+
+# kernel path: /root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/~/autodl-tmp/tmp-sore/torchinductor_root/sn/csnjw5xqpknxigaqp7d5xf5z5nr5n7ox7tjw5bbs7vh5vgxtbynd.py
+# Topologically Sorted Source Nodes: [view_2294, sum_95, squeeze_46, permute_2184, clone_119, view_2296, mul_16294], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+# Source node to ATen node mapping:
+#   clone_119 => clone_119
+#   mul_16294 => mul_16294
+#   permute_2184 => permute_2184
+#   squeeze_46 => squeeze_46
+#   sum_95 => sum_95
+#   view_2294 => view_2294
+#   view_2296 => view_2296
+# Graph fragment:
+#   %getitem_190 : Tensor "bf16[1, 14, s27, 64][896*s27, 64, 896, 1]cuda:0" = PlaceHolder[target=getitem_190]
+#   %view_2294 : Tensor "bf16[1, 2, 7, s27, 64][896*s27, 448, 64, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%getitem_190, [1, 2, 7, %primals_1, 64]), kwargs = {})
+#   %sum_95 : Tensor "bf16[1, 2, 1, s27, 64][128*s27, 64*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.sum.dim_IntList](args = (%view_2294, [2], True), kwargs = {})
+#   %squeeze_46 : Tensor "bf16[1, 2, s27, 64][128*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.squeeze.dim](args = (%sum_95, 2), kwargs = {})
+#   %permute_2184 : Tensor "bf16[1, s27, 2, 64][128*s27, 64, 64*s27, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.permute.default](args = (%squeeze_46, [0, 2, 1, 3]), kwargs = {})
+#   %clone_119 : Tensor "bf16[1, s27, 2, 64][128*s27, 128, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.clone.default](args = (%permute_2184,), kwargs = {memory_format: torch.contiguous_format})
+#   %view_2296 : Tensor "bf16[1, s27, 128][128*s27, 128, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%clone_119, [1, %primals_1, 128]), kwargs = {})
+#   %mul_16294 : Tensor "bf16[1, s27, 128][128*s27, 128, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%view_2296, 1.0), kwargs = {})
+#   return %mul_16294
+triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_13 = async_compile.triton('triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_13', '''
+import triton
+import triton.language as tl
+
+from torch._inductor.runtime import triton_helpers, triton_heuristics
+from torch._inductor.runtime.triton_helpers import libdevice, math as tl_math
+from torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties
+triton_helpers.set_driver_to_gpu()
+
+@triton_heuristics.pointwise(
+    size_hints={'x': 131072}, 
+    filename=__file__,
+    triton_meta={'signature': {'in_ptr0': '*bf16', 'out_ptr0': '*bf16', 'xnumel': 'i32', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=80, cc=89, major=8, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]]}], 'enable_fp_fusion': True},
+    inductor_meta={'grid_type': 'Grid1D', 'autotune_hints': set(), 'kernel_name': 'triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_13', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 7, 'num_store': 1, 'num_reduction': 0, 'backend_hash': '530A4EEDF49C5716AE98C01E4E74B49F3D6F7913EC4A9A06FFBD6D251F721D80', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'force_filter_reduction_configs': False, 'are_deterministic_algorithms_enabled': False},
+    min_elem_per_thread=0
+)
+@triton.jit
+def triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_13(in_ptr0, out_ptr0, xnumel, XBLOCK : tl.constexpr):
+    xoffset = tl.program_id(0) * XBLOCK
+    xindex = xoffset + tl.arange(0, XBLOCK)[:]
+    xmask = xindex < xnumel
+    x0 = (xindex % 128)
+    x1 = xindex // 128
+    x2 = xindex
+    tmp0 = tl.load(in_ptr0 + (448*(x0 // 64) + 896*x1 + ((x0 % 64))), xmask).to(tl.float32)
+    tmp1 = tl.load(in_ptr0 + (64 + 448*(x0 // 64) + 896*x1 + ((x0 % 64))), xmask).to(tl.float32)
+    tmp3 = tl.load(in_ptr0 + (128 + 448*(x0 // 64) + 896*x1 + ((x0 % 64))), xmask).to(tl.float32)
+    tmp5 = tl.load(in_ptr0 + (192 + 448*(x0 // 64) + 896*x1 + ((x0 % 64))), xmask).to(tl.float32)
+    tmp7 = tl.load(in_ptr0 + (256 + 448*(x0 // 64) + 896*x1 + ((x0 % 64))), xmask).to(tl.float32)
+    tmp9 = tl.load(in_ptr0 + (320 + 448*(x0 // 64) + 896*x1 + ((x0 % 64))), xmask).to(tl.float32)
+    tmp11 = tl.load(in_ptr0 + (384 + 448*(x0 // 64) + 896*x1 + ((x0 % 64))), xmask).to(tl.float32)
+    tmp2 = tmp0 + tmp1
+    tmp4 = tmp2 + tmp3
+    tmp6 = tmp4 + tmp5
+    tmp8 = tmp6 + tmp7
+    tmp10 = tmp8 + tmp9
+    tmp12 = tmp10 + tmp11
+    tmp13 = 1.0
+    tmp14 = tmp12 * tmp13
+    tl.store(out_ptr0 + (x2), tmp14, xmask)
+''', device_str='cuda')
+
+
+# kernel path: /root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/~/autodl-tmp/tmp-sore/torchinductor_root/gr/cgr6nleswjnsa3v4t3iyh5z22vicbpf3ohz3pbg3nkoely7j6ajy.py
+# Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2295, sum_96, squeeze_47, mul_16290, slice_287, slice_288, neg_119, add_12405, mul_16291, add_12406, permute_2192, clone_120, view_2300, mul_16295], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+# Source node to ATen node mapping:
+#   add_12405 => add_12405
+#   add_12406 => add_12406
+#   clone_120 => clone_120
+#   cos => cos
+#   cos_1 => mul_60
+#   cos_2 => convert_element_type_2
+#   cos_3 => unsqueeze_5
+#   emb => clone, expand_4, unsqueeze_4, view_8
+#   freqs => permute
+#   full_default_52 => full_default_52
+#   matmul => unsqueeze_default
+#   mul_16290 => mul_16290
+#   mul_16291 => mul_16291
+#   mul_16295 => mul_16295
+#   neg_119 => neg_119
+#   permute_2192 => permute_2192
+#   sin => sin
+#   sin_1 => mul_67
+#   sin_2 => convert_element_type_3
+#   sin_3 => unsqueeze_6
+#   slice_287 => slice_287
+#   slice_288 => slice_288
+#   squeeze_47 => squeeze_47
+#   sum_96 => sum_96
+#   view_2295 => view_2295
+#   view_2300 => view_2300
+# Graph fragment:
+#   %sum_96 : Tensor "bf16[1, 2, 1, s27, 64][128*s27, 64, 128*s27, 128, 1]cuda:0" = PlaceHolder[target=sum_96]
+#   %mm_default : Tensor "f32[32, s27][s27, 1]cuda:0" = PlaceHolder[target=mm_default]
+#   %unsqueeze_default : Tensor "f32[1, 32, s27][32*s27, s27, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.unsqueeze.default](args = (%mm_default, 0), kwargs = {})
+#   %permute : Tensor "f32[1, s27, 32][32*s27, 1, s27]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.permute.default](args = (%unsqueeze_default, [0, 2, 1]), kwargs = {})
+#   %unsqueeze_4 : Tensor "f32[1, s27, 1, 32][32*s27, 1, 32*s27, s27]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.unsqueeze.default](args = (%permute, 2), kwargs = {})
+#   %expand_4 : Tensor "f32[1, s27, 2, 32][32*s27, 1, 0, s27]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.expand.default](args = (%unsqueeze_4, [1, %primals_1, 2, 32]), kwargs = {})
+#   %clone : Tensor "f32[1, s27, 2, 32][64*s27, 64, 32, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.clone.default](args = (%expand_4,), kwargs = {memory_format: torch.contiguous_format})
+#   %view_8 : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.reshape.default](args = (%clone, [1, %primals_1, 64]), kwargs = {})
+#   %sin : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.sin.default](args = (%view_8,), kwargs = {})
+#   %mul_67 : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%sin, 1.0), kwargs = {})
+#   %convert_element_type_3 : Tensor "bf16[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%mul_67, torch.bfloat16), kwargs = {})
+#   %unsqueeze_6 : Tensor "bf16[1, 1, s27, 64][64*s27, 64*s27, 64, 1]cuda:0"[num_users=48] = call_function[target=torch.ops.aten.unsqueeze.default](args = (%convert_element_type_3, 1), kwargs = {})
+#   %full_default_52 : Tensor "bf16[1, 2, s27, 64][128*s27, 64*s27, 64, 1]cuda:0"[num_users=48] = call_function[target=torch.ops.aten.full.default](args = ([1, 2, %primals_1, 64], 0), kwargs = {dtype: torch.bfloat16, layout: torch.strided, device: cuda:0, pin_memory: False})
+#   %cos : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.cos.default](args = (%view_8,), kwargs = {})
+#   %mul_60 : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%cos, 1.0), kwargs = {})
+#   %convert_element_type_2 : Tensor "bf16[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%mul_60, torch.bfloat16), kwargs = {})
+#   %unsqueeze_5 : Tensor "bf16[1, 1, s27, 64][64*s27, 64*s27, 64, 1]cuda:0"[num_users=48] = call_function[target=torch.ops.aten.unsqueeze.default](args = (%convert_element_type_2, 1), kwargs = {})
+#   %view_2295 : Tensor "bf16[1, 2, 7, s27, 64][896*s27, 448, 64, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%getitem_189, [1, 2, 7, %primals_1, 64]), kwargs = {})
+#   %sum_96 : Tensor "bf16[1, 2, 1, s27, 64][128*s27, 64*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.sum.dim_IntList](args = (%view_2295, [2], True), kwargs = {})
+#   %squeeze_47 : Tensor "bf16[1, 2, s27, 64][128*s27, 64*s27, 64, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.squeeze.dim](args = (%sum_96, 2), kwargs = {})
+#   %mul_16290 : Tensor "bf16[1, 2, s27, 64][128*s27, 64*s27, 64, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.mul.Tensor](args = (%squeeze_47, %unsqueeze_6), kwargs = {})
+#   %slice_287 : Tensor "bf16[1, 2, s27, 32][128*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.slice.Tensor](args = (%mul_16290, 3, 0, 32), kwargs = {})
+#   %slice_288 : Tensor "bf16[1, 2, s27, 32][128*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.slice.Tensor](args = (%mul_16290, 3, 32, 64), kwargs = {})
+#   %neg_119 : Tensor "bf16[1, 2, s27, 32][64*s27, 32*s27, 32, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.neg.default](args = (%slice_287,), kwargs = {})
+#   %slice_scatter_default_93 : Tensor "bf16[1, 2, s27, 64][128*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.slice_scatter.default](args = (%full_default_52, %neg_119, 3, 32, 9223372036854775807), kwargs = {})
+#   %slice_scatter_default_94 : Tensor "bf16[1, 2, s27, 64][128*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.slice_scatter.default](args = (%full_default_52, %slice_288, 3, 0, 32), kwargs = {})
+#   %add_12405 : Tensor "bf16[1, 2, s27, 64][128*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%slice_scatter_default_93, %slice_scatter_default_94), kwargs = {})
+#   %mul_16291 : Tensor "bf16[1, 2, s27, 64][128*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%squeeze_47, %unsqueeze_5), kwargs = {})
+#   %add_12406 : Tensor "bf16[1, 2, s27, 64][128*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_12405, %mul_16291), kwargs = {})
+#   %permute_2192 : Tensor "bf16[1, s27, 2, 64][128*s27, 64, 64*s27, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.permute.default](args = (%add_12406, [0, 2, 1, 3]), kwargs = {})
+#   %clone_120 : Tensor "bf16[1, s27, 2, 64][128*s27, 128, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.clone.default](args = (%permute_2192,), kwargs = {memory_format: torch.contiguous_format})
+#   %view_2300 : Tensor "bf16[1, s27, 128][128*s27, 128, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%clone_120, [1, %primals_1, 128]), kwargs = {})
+#   %mul_16295 : Tensor "bf16[1, s27, 128][128*s27, 128, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%view_2300, 1.0), kwargs = {})
+#   return %mul_16295
+triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_14 = async_compile.triton('triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_14', '''
+import triton
+import triton.language as tl
+
+from torch._inductor.runtime import triton_helpers, triton_heuristics
+from torch._inductor.runtime.triton_helpers import libdevice, math as tl_math
+from torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties
+triton_helpers.set_driver_to_gpu()
+
+@triton_heuristics.pointwise(
+    size_hints={'y': 1024, 'x': 128}, tile_hint=TileHint.DEFAULT,
+    filename=__file__,
+    triton_meta={'signature': {'in_ptr0': '*bf16', 'in_ptr1': '*fp32', 'out_ptr0': '*bf16', 'ks0': 'i64', 'ynumel': 'i32', 'xnumel': 'i32', 'YBLOCK': 'constexpr', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=80, cc=89, major=8, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (5,): [['tt.divisibility', 16]]}], 'enable_fp_fusion': True},
+    inductor_meta={'grid_type': 'Grid2DWithYZOverflow', 'autotune_hints': set(), 'kernel_name': 'triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_14', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 6, 'num_store': 1, 'num_reduction': 0, 'backend_hash': '530A4EEDF49C5716AE98C01E4E74B49F3D6F7913EC4A9A06FFBD6D251F721D80', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'force_filter_reduction_configs': False, 'are_deterministic_algorithms_enabled': False},
+    min_elem_per_thread=0
+)
+@triton.jit
+def triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_14(in_ptr0, in_ptr1, out_ptr0, ks0, ynumel, xnumel, YBLOCK : tl.constexpr, XBLOCK : tl.constexpr):
+    xnumel = 128
+    yoffset = (tl.program_id(1) + tl.program_id(2) * tl.num_programs(1)) * YBLOCK
+    yindex = yoffset + tl.arange(0, YBLOCK)[:, None]
+    ymask = yindex < ynumel
+    xoffset = tl.program_id(0) * XBLOCK
+    xindex = xoffset + tl.arange(0, XBLOCK)[None, :]
+    xmask = xindex < xnumel
+    x1 = xindex
+    y0 = yindex
+    tmp27 = tl.load(in_ptr0 + (x1 + 128*y0), xmask & ymask, eviction_policy='evict_last').to(tl.float32)
+    tmp28 = tl.load(in_ptr1 + (y0 + ks0*((((x1 % 64)) % 32))), xmask & ymask, eviction_policy='evict_last')
+    tmp0 = (x1 % 64)
+    tmp1 = tl.full([1, 1], 32, tl.int64)
+    tmp2 = tmp0 >= tmp1
+    tmp3 = tl.load(in_ptr0 + ((-32) + x1 + 128*y0), tmp2 & xmask & ymask, eviction_policy='evict_last', other=0.0).to(tl.float32)
+    tmp4 = tl.load(in_ptr1 + (y0 + ks0*((((x1 % 64)) % 32))), tmp2 & xmask & ymask, eviction_policy='evict_last', other=0.0)
+    tmp5 = tl_math.sin(tmp4)
+    tmp6 = 1.0
+    tmp7 = tmp5 * tmp6
+    tmp8 = tmp7.to(tl.float32)
+    tmp9 = tmp3 * tmp8
+    tmp10 = -tmp9
+    tmp11 = tl.full(tmp10.shape, 0.0, tmp10.dtype)
+    tmp12 = tl.where(tmp2, tmp10, tmp11)
+    tmp13 = 0.0
+    tmp14 = tl.where(tmp2, tmp12, tmp13)
+    tmp15 = tmp0 < tmp1
+    tmp16 = tl.load(in_ptr0 + (32 + x1 + 128*y0), tmp15 & xmask & ymask, eviction_policy='evict_last', other=0.0).to(tl.float32)
+    tmp17 = tl.load(in_ptr1 + (y0 + ks0*((((x1 % 64)) % 32))), tmp15 & xmask & ymask, eviction_policy='evict_last', other=0.0)
+    tmp18 = tl_math.sin(tmp17)
+    tmp19 = 1.0
+    tmp20 = tmp18 * tmp19
+    tmp21 = tmp20.to(tl.float32)
+    tmp22 = tmp16 * tmp21
+    tmp23 = tl.full(tmp22.shape, 0.0, tmp22.dtype)
+    tmp24 = tl.where(tmp15, tmp22, tmp23)
+    tmp25 = tl.where(tmp15, tmp24, tmp13)
+    tmp26 = tmp14 + tmp25
+    tmp29 = tl_math.cos(tmp28)
+    tmp30 = 1.0
+    tmp31 = tmp29 * tmp30
+    tmp32 = tmp31.to(tl.float32)
+    tmp33 = tmp27 * tmp32
+    tmp34 = tmp26 + tmp33
+    tmp35 = tmp34 * tmp30
+    tl.store(out_ptr0 + (x1 + 128*y0), tmp35, xmask & ymask)
+''', device_str='cuda')
+
+
+# kernel path: /root/autodl-tmp/HuangJieCode/Big-Yellow-J.github.io/code/Python/RL-TRL/~/autodl-tmp/tmp-sore/torchinductor_root/m4/cm4rsrg4tctbum4llnzd7soluxdq4rid5lrpdkwz7v3as4eeoiae.py
+# Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16292, slice_289, slice_290, neg_120, add_12407, mul_16293, add_12408, permute_2200, clone_121, view_2304, mul_16296], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+# Source node to ATen node mapping:
+#   add_12407 => add_12407
+#   add_12408 => add_12408
+#   clone_121 => clone_121
+#   cos => cos
+#   cos_1 => mul_60
+#   cos_2 => convert_element_type_2
+#   cos_3 => unsqueeze_5
+#   emb => clone, expand_4, unsqueeze_4, view_8
+#   freqs => permute
+#   full_default_54 => full_default_54
+#   matmul => unsqueeze_default
+#   mul_16292 => mul_16292
+#   mul_16293 => mul_16293
+#   mul_16296 => mul_16296
+#   neg_120 => neg_120
+#   permute_2200 => permute_2200
+#   sin => sin
+#   sin_1 => mul_67
+#   sin_2 => convert_element_type_3
+#   sin_3 => unsqueeze_6
+#   slice_289 => slice_289
+#   slice_290 => slice_290
+#   view_2304 => view_2304
+# Graph fragment:
+#   %getitem_188 : Tensor "bf16[1, 14, s27, 64][896*s27, 64, 896, 1]cuda:0" = PlaceHolder[target=getitem_188]
+#   %mm_default : Tensor "f32[32, s27][s27, 1]cuda:0" = PlaceHolder[target=mm_default]
+#   %unsqueeze_default : Tensor "f32[1, 32, s27][32*s27, s27, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.unsqueeze.default](args = (%mm_default, 0), kwargs = {})
+#   %permute : Tensor "f32[1, s27, 32][32*s27, 1, s27]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.permute.default](args = (%unsqueeze_default, [0, 2, 1]), kwargs = {})
+#   %unsqueeze_4 : Tensor "f32[1, s27, 1, 32][32*s27, 1, 32*s27, s27]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.unsqueeze.default](args = (%permute, 2), kwargs = {})
+#   %expand_4 : Tensor "f32[1, s27, 2, 32][32*s27, 1, 0, s27]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.expand.default](args = (%unsqueeze_4, [1, %primals_1, 2, 32]), kwargs = {})
+#   %clone : Tensor "f32[1, s27, 2, 32][64*s27, 64, 32, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.clone.default](args = (%expand_4,), kwargs = {memory_format: torch.contiguous_format})
+#   %view_8 : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.reshape.default](args = (%clone, [1, %primals_1, 64]), kwargs = {})
+#   %sin : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.sin.default](args = (%view_8,), kwargs = {})
+#   %mul_67 : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%sin, 1.0), kwargs = {})
+#   %convert_element_type_3 : Tensor "bf16[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%mul_67, torch.bfloat16), kwargs = {})
+#   %unsqueeze_6 : Tensor "bf16[1, 1, s27, 64][64*s27, 64*s27, 64, 1]cuda:0"[num_users=48] = call_function[target=torch.ops.aten.unsqueeze.default](args = (%convert_element_type_3, 1), kwargs = {})
+#   %cos : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.cos.default](args = (%view_8,), kwargs = {})
+#   %mul_60 : Tensor "f32[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%cos, 1.0), kwargs = {})
+#   %convert_element_type_2 : Tensor "bf16[1, s27, 64][64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.prims.convert_element_type.default](args = (%mul_60, torch.bfloat16), kwargs = {})
+#   %unsqueeze_5 : Tensor "bf16[1, 1, s27, 64][64*s27, 64*s27, 64, 1]cuda:0"[num_users=48] = call_function[target=torch.ops.aten.unsqueeze.default](args = (%convert_element_type_2, 1), kwargs = {})
+#   %full_default_54 : Tensor "bf16[1, 14, s27, 64][896*s27, 64*s27, 64, 1]cuda:0"[num_users=48] = call_function[target=torch.ops.aten.full.default](args = ([1, 14, %primals_1, 64], 0), kwargs = {dtype: torch.bfloat16, layout: torch.strided, device: cuda:0, pin_memory: False})
+#   %mul_16292 : Tensor "bf16[1, 14, s27, 64][896*s27, 64, 896, 1]cuda:0"[num_users=2] = call_function[target=torch.ops.aten.mul.Tensor](args = (%getitem_188, %unsqueeze_6), kwargs = {})
+#   %slice_289 : Tensor "bf16[1, 14, s27, 32][896*s27, 64, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.slice.Tensor](args = (%mul_16292, 3, 0, 32), kwargs = {})
+#   %slice_290 : Tensor "bf16[1, 14, s27, 32][896*s27, 64, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.slice.Tensor](args = (%mul_16292, 3, 32, 64), kwargs = {})
+#   %neg_120 : Tensor "bf16[1, 14, s27, 32][448*s27, 32, 448, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.neg.default](args = (%slice_289,), kwargs = {})
+#   %slice_scatter_default_95 : Tensor "bf16[1, 14, s27, 64][896*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.slice_scatter.default](args = (%full_default_54, %neg_120, 3, 32, 9223372036854775807), kwargs = {})
+#   %slice_scatter_default_96 : Tensor "bf16[1, 14, s27, 64][896*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.slice_scatter.default](args = (%full_default_54, %slice_290, 3, 0, 32), kwargs = {})
+#   %add_12407 : Tensor "bf16[1, 14, s27, 64][896*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%slice_scatter_default_95, %slice_scatter_default_96), kwargs = {})
+#   %mul_16293 : Tensor "bf16[1, 14, s27, 64][896*s27, 64, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%getitem_188, %unsqueeze_5), kwargs = {})
+#   %add_12408 : Tensor "bf16[1, 14, s27, 64][896*s27, 64*s27, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%add_12407, %mul_16293), kwargs = {})
+#   %permute_2200 : Tensor "bf16[1, s27, 14, 64][896*s27, 64, 64*s27, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.permute.default](args = (%add_12408, [0, 2, 1, 3]), kwargs = {})
+#   %clone_121 : Tensor "bf16[1, s27, 14, 64][896*s27, 896, 64, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.clone.default](args = (%permute_2200,), kwargs = {memory_format: torch.contiguous_format})
+#   %view_2304 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.reshape.default](args = (%clone_121, [1, %primals_1, 896]), kwargs = {})
+#   %mul_16296 : Tensor "bf16[1, s27, 896][896*s27, 896, 1]cuda:0"[num_users=1] = call_function[target=torch.ops.aten.mul.Tensor](args = (%view_2304, 1.0), kwargs = {})
+#   return %mul_16296
+triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_15 = async_compile.triton('triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_15', '''
+import triton
+import triton.language as tl
+
+from torch._inductor.runtime import triton_helpers, triton_heuristics
+from torch._inductor.runtime.triton_helpers import libdevice, math as tl_math
+from torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties
+triton_helpers.set_driver_to_gpu()
+
+@triton_heuristics.pointwise(
+    size_hints={'y': 1024, 'x': 1024}, tile_hint=TileHint.DEFAULT,
+    filename=__file__,
+    triton_meta={'signature': {'in_ptr0': '*bf16', 'in_ptr1': '*fp32', 'out_ptr0': '*bf16', 'ks0': 'i64', 'ynumel': 'i32', 'xnumel': 'i32', 'YBLOCK': 'constexpr', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=80, cc=89, major=8, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (5,): [['tt.divisibility', 16]]}], 'enable_fp_fusion': True},
+    inductor_meta={'grid_type': 'Grid2DWithYZOverflow', 'autotune_hints': set(), 'kernel_name': 'triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_15', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 6, 'num_store': 1, 'num_reduction': 0, 'backend_hash': '530A4EEDF49C5716AE98C01E4E74B49F3D6F7913EC4A9A06FFBD6D251F721D80', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'force_filter_reduction_configs': False, 'are_deterministic_algorithms_enabled': False},
+    min_elem_per_thread=0
+)
+@triton.jit
+def triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_15(in_ptr0, in_ptr1, out_ptr0, ks0, ynumel, xnumel, YBLOCK : tl.constexpr, XBLOCK : tl.constexpr):
+    xnumel = 896
+    yoffset = (tl.program_id(1) + tl.program_id(2) * tl.num_programs(1)) * YBLOCK
+    yindex = yoffset + tl.arange(0, YBLOCK)[:, None]
+    ymask = yindex < ynumel
+    xoffset = tl.program_id(0) * XBLOCK
+    xindex = xoffset + tl.arange(0, XBLOCK)[None, :]
+    xmask = xindex < xnumel
+    x1 = xindex
+    y0 = yindex
+    tmp27 = tl.load(in_ptr0 + (x1 + 896*y0), xmask & ymask, eviction_policy='evict_last').to(tl.float32)
+    tmp28 = tl.load(in_ptr1 + (y0 + ks0*((((x1 % 64)) % 32))), xmask & ymask, eviction_policy='evict_last')
+    tmp0 = (x1 % 64)
+    tmp1 = tl.full([1, 1], 32, tl.int64)
+    tmp2 = tmp0 >= tmp1
+    tmp3 = tl.load(in_ptr0 + ((-32) + x1 + 896*y0), tmp2 & xmask & ymask, eviction_policy='evict_last', other=0.0).to(tl.float32)
+    tmp4 = tl.load(in_ptr1 + (y0 + ks0*((((x1 % 64)) % 32))), tmp2 & xmask & ymask, eviction_policy='evict_last', other=0.0)
+    tmp5 = tl_math.sin(tmp4)
+    tmp6 = 1.0
+    tmp7 = tmp5 * tmp6
+    tmp8 = tmp7.to(tl.float32)
+    tmp9 = tmp3 * tmp8
+    tmp10 = -tmp9
+    tmp11 = tl.full(tmp10.shape, 0.0, tmp10.dtype)
+    tmp12 = tl.where(tmp2, tmp10, tmp11)
+    tmp13 = 0.0
+    tmp14 = tl.where(tmp2, tmp12, tmp13)
+    tmp15 = tmp0 < tmp1
+    tmp16 = tl.load(in_ptr0 + (32 + x1 + 896*y0), tmp15 & xmask & ymask, eviction_policy='evict_last', other=0.0).to(tl.float32)
+    tmp17 = tl.load(in_ptr1 + (y0 + ks0*((((x1 % 64)) % 32))), tmp15 & xmask & ymask, eviction_policy='evict_last', other=0.0)
+    tmp18 = tl_math.sin(tmp17)
+    tmp19 = 1.0
+    tmp20 = tmp18 * tmp19
+    tmp21 = tmp20.to(tl.float32)
+    tmp22 = tmp16 * tmp21
+    tmp23 = tl.full(tmp22.shape, 0.0, tmp22.dtype)
+    tmp24 = tl.where(tmp15, tmp22, tmp23)
+    tmp25 = tl.where(tmp15, tmp24, tmp13)
+    tmp26 = tmp14 + tmp25
+    tmp29 = tl_math.cos(tmp28)
+    tmp30 = 1.0
+    tmp31 = tmp29 * tmp30
+    tmp32 = tmp31.to(tl.float32)
+    tmp33 = tmp27 * tmp32
+    tmp34 = tmp26 + tmp33
+    tmp35 = tmp34 * tmp30
+    tl.store(out_ptr0 + (x1 + 896*y0), tmp35, xmask & ymask)
+''', device_str='cuda')
+
+
+async_compile.wait(globals())
+del async_compile
+
+class Runner:
+    def __init__(self, partitions):
+        self.partitions = partitions
+
+    def recursively_apply_fns(self, fns):
+        new_callables = []
+        for fn, c in zip(fns, self.partitions):
+            new_callables.append(fn(c))
+        self.partitions = new_callables
+
+    def call(self, args):
+        primals_1, primals_632, neg_48, primals_20, primals_23, primals_24, primals_27, primals_30, primals_33, primals_34, primals_38, primals_42, primals_46, primals_49, primals_50, primals_53, primals_56, primals_59, primals_60, primals_64, primals_68, primals_72, primals_75, primals_76, primals_79, primals_82, primals_85, primals_86, primals_90, primals_94, primals_98, primals_101, primals_102, primals_105, primals_108, primals_111, primals_112, primals_116, primals_120, primals_124, primals_127, primals_128, primals_131, primals_134, primals_137, primals_138, primals_142, primals_146, primals_150, primals_153, primals_154, primals_157, primals_160, primals_163, primals_164, primals_168, primals_172, primals_176, primals_179, primals_180, primals_183, primals_186, primals_189, primals_190, primals_194, primals_198, primals_202, primals_205, primals_206, primals_209, primals_212, primals_215, primals_216, primals_220, primals_224, primals_228, primals_231, primals_232, primals_235, primals_238, primals_241, primals_242, primals_246, primals_250, primals_254, primals_257, primals_258, primals_261, primals_264, primals_267, primals_268, primals_272, primals_276, primals_280, primals_283, primals_284, primals_287, primals_290, primals_293, primals_294, primals_298, primals_302, primals_306, primals_309, primals_310, primals_313, primals_316, primals_319, primals_320, primals_324, primals_328, primals_332, primals_335, primals_336, primals_339, primals_342, primals_345, primals_346, primals_350, primals_354, primals_358, primals_361, primals_362, primals_365, primals_368, primals_371, primals_372, primals_376, primals_380, primals_384, primals_387, primals_388, primals_391, primals_394, primals_397, primals_398, primals_402, primals_406, primals_410, primals_413, primals_414, primals_417, primals_420, primals_423, primals_424, primals_428, primals_432, primals_436, primals_439, primals_440, primals_443, primals_446, primals_449, primals_450, primals_454, primals_458, primals_462, primals_465, primals_466, primals_469, primals_472, primals_475, primals_476, primals_480, primals_484, primals_488, primals_491, primals_492, primals_495, primals_498, primals_501, primals_502, primals_506, primals_510, primals_514, primals_517, primals_518, primals_521, primals_524, primals_527, primals_528, primals_532, primals_536, primals_540, primals_543, primals_544, primals_547, primals_550, primals_553, primals_554, primals_558, primals_562, primals_566, primals_569, primals_570, primals_573, primals_576, primals_579, primals_580, primals_584, primals_588, primals_592, primals_595, primals_596, primals_599, primals_602, primals_605, primals_606, primals_610, primals_614, primals_618, primals_621, primals_622, primals_625, primals_628, primals_631, primals_633, mm_default, view_11, mm, mm_2, mm_4, add_279, view_30, view_31, constant_pad_nd, getitem, getitem_1, getitem_2, getitem_3, view_35, mm_7, add_414, rsqrt_1, view_41, mm_10, add_482, mm_13, add_525, view_53, mm_16, add_572, rsqrt_2, view_59, mm_18, mm_20, mm_22, add_771, view_78, view_79, getitem_4, getitem_5, getitem_6, getitem_7, view_83, mm_25, add_906, rsqrt_3, view_89, mm_28, add_974, mm_31, add_1017, view_101, mm_34, add_1064, rsqrt_4, view_107, mm_36, mm_38, mm_40, add_1263, view_126, view_127, getitem_8, getitem_9, getitem_10, getitem_11, view_131, mm_43, add_1398, rsqrt_5, view_137, mm_46, add_1466, mm_49, add_1509, view_149, mm_52, add_1556, rsqrt_6, view_155, mm_54, mm_56, mm_58, add_1755, view_174, view_175, getitem_12, getitem_13, getitem_14, getitem_15, view_179, mm_61, add_1890, rsqrt_7, view_185, mm_64, add_1958, mm_67, add_2001, view_197, mm_70, add_2048, rsqrt_8, view_203, mm_72, mm_74, mm_76, add_2247, view_222, view_223, getitem_16, getitem_17, getitem_18, getitem_19, view_227, mm_79, add_2382, rsqrt_9, view_233, mm_82, add_2450, mm_85, add_2493, view_245, mm_88, add_2540, rsqrt_10, view_251, mm_90, mm_92, mm_94, add_2739, view_270, view_271, getitem_20, getitem_21, getitem_22, getitem_23, view_275, mm_97, add_2874, rsqrt_11, view_281, mm_100, add_2942, mm_103, add_2985, view_293, mm_106, add_3032, rsqrt_12, view_299, mm_108, mm_110, mm_112, add_3231, view_318, view_319, getitem_24, getitem_25, getitem_26, getitem_27, view_323, mm_115, add_3366, rsqrt_13, view_329, mm_118, add_3434, mm_121, add_3477, view_341, mm_124, add_3524, rsqrt_14, view_347, mm_126, mm_128, mm_130, add_3723, view_366, view_367, getitem_28, getitem_29, getitem_30, getitem_31, view_371, mm_133, add_3858, rsqrt_15, view_377, mm_136, add_3926, mm_139, add_3969, view_389, mm_142, add_4016, rsqrt_16, view_395, mm_144, mm_146, mm_148, add_4215, view_414, view_415, getitem_32, getitem_33, getitem_34, getitem_35, view_419, mm_151, add_4350, rsqrt_17, view_425, mm_154, add_4418, mm_157, add_4461, view_437, mm_160, add_4508, rsqrt_18, view_443, mm_162, mm_164, mm_166, add_4707, view_462, view_463, getitem_36, getitem_37, getitem_38, getitem_39, view_467, mm_169, add_4842, rsqrt_19, view_473, mm_172, add_4910, mm_175, add_4953, view_485, mm_178, add_5000, rsqrt_20, view_491, mm_180, mm_182, mm_184, add_5199, view_510, view_511, getitem_40, getitem_41, getitem_42, getitem_43, view_515, mm_187, add_5334, rsqrt_21, view_521, mm_190, add_5402, mm_193, add_5445, view_533, mm_196, add_5492, rsqrt_22, view_539, mm_198, mm_200, mm_202, add_5691, view_558, view_559, getitem_44, getitem_45, getitem_46, getitem_47, view_563, mm_205, add_5826, rsqrt_23, view_569, mm_208, add_5894, mm_211, add_5937, view_581, mm_214, add_5984, rsqrt_24, view_587, mm_216, mm_218, mm_220, add_6183, view_606, view_607, getitem_48, getitem_49, getitem_50, getitem_51, view_611, mm_223, add_6318, rsqrt_25, view_617, mm_226, add_6386, mm_229, add_6429, view_629, mm_232, add_6476, rsqrt_26, view_635, mm_234, mm_236, mm_238, add_6675, view_654, view_655, getitem_52, getitem_53, getitem_54, getitem_55, view_659, mm_241, add_6810, rsqrt_27, view_665, mm_244, add_6878, mm_247, add_6921, view_677, mm_250, add_6968, rsqrt_28, view_683, mm_252, mm_254, mm_256, add_7167, view_702, view_703, getitem_56, getitem_57, getitem_58, getitem_59, view_707, mm_259, add_7302, rsqrt_29, view_713, mm_262, add_7370, mm_265, add_7413, view_725, mm_268, add_7460, rsqrt_30, view_731, mm_270, mm_272, mm_274, add_7659, view_750, view_751, getitem_60, getitem_61, getitem_62, getitem_63, view_755, mm_277, add_7794, rsqrt_31, view_761, mm_280, add_7862, mm_283, add_7905, view_773, mm_286, add_7952, rsqrt_32, view_779, mm_288, mm_290, mm_292, add_8151, view_798, view_799, getitem_64, getitem_65, getitem_66, getitem_67, view_803, mm_295, add_8286, rsqrt_33, view_809, mm_298, add_8354, mm_301, add_8397, view_821, mm_304, add_8444, rsqrt_34, view_827, mm_306, mm_308, mm_310, add_8643, view_846, view_847, getitem_68, getitem_69, getitem_70, getitem_71, view_851, mm_313, add_8778, rsqrt_35, view_857, mm_316, add_8846, mm_319, add_8889, view_869, mm_322, add_8936, rsqrt_36, view_875, mm_324, mm_326, mm_328, add_9135, view_894, view_895, getitem_72, getitem_73, getitem_74, getitem_75, view_899, mm_331, add_9270, rsqrt_37, view_905, mm_334, add_9338, mm_337, add_9381, view_917, mm_340, add_9428, rsqrt_38, view_923, mm_342, mm_344, mm_346, add_9627, view_942, view_943, getitem_76, getitem_77, getitem_78, getitem_79, view_947, mm_349, add_9762, rsqrt_39, view_953, mm_352, add_9830, mm_355, add_9873, view_965, mm_358, add_9920, rsqrt_40, view_971, mm_360, mm_362, mm_364, add_10119, view_990, view_991, getitem_80, getitem_81, getitem_82, getitem_83, view_995, mm_367, add_10254, rsqrt_41, view_1001, mm_370, add_10322, mm_373, add_10365, view_1013, mm_376, add_10412, rsqrt_42, view_1019, mm_378, mm_380, mm_382, add_10611, view_1038, view_1039, getitem_84, getitem_85, getitem_86, getitem_87, view_1043, mm_385, add_10746, rsqrt_43, view_1049, mm_388, add_10814, mm_391, add_10857, view_1061, mm_394, add_10904, rsqrt_44, view_1067, mm_396, mm_398, mm_400, add_11103, view_1086, view_1087, getitem_88, getitem_89, getitem_90, getitem_91, view_1091, mm_403, add_11238, rsqrt_45, view_1097, mm_406, add_11306, mm_409, add_11349, view_1109, mm_412, add_11396, rsqrt_46, view_1115, mm_414, mm_416, mm_418, add_11595, view_1134, view_1135, getitem_92, getitem_93, getitem_94, getitem_95, view_1139, mm_421, add_11730, rsqrt_47, view_1145, mm_424, add_11798, mm_427, add_11841, view_1157, mm_430, add_11888, rsqrt_48, view_1161, permute_608, permute_612, permute_617, permute_621, permute_626, permute_630, permute_635, permute_639, permute_646, permute_650, permute_656, permute_660, permute_666, permute_670, permute_675, permute_679, permute_684, permute_688, permute_693, permute_697, permute_702, permute_706, permute_713, permute_717, permute_723, permute_727, permute_733, permute_737, permute_742, permute_746, permute_751, permute_755, permute_760, permute_764, permute_769, permute_773, permute_780, permute_784, permute_790, permute_794, permute_800, permute_804, permute_809, permute_813, permute_818, permute_822, permute_827, permute_831, permute_836, permute_840, permute_847, permute_851, permute_857, permute_861, permute_867, permute_871, permute_876, permute_880, permute_885, permute_889, permute_894, permute_898, permute_903, permute_907, permute_914, permute_918, permute_924, permute_928, permute_934, permute_938, permute_943, permute_947, permute_952, permute_956, permute_961, permute_965, permute_970, permute_974, permute_981, permute_985, permute_991, permute_995, permute_1001, permute_1005, permute_1010, permute_1014, permute_1019, permute_1023, permute_1028, permute_1032, permute_1037, permute_1041, permute_1048, permute_1052, permute_1058, permute_1062, permute_1068, permute_1072, permute_1077, permute_1081, permute_1086, permute_1090, permute_1095, permute_1099, permute_1104, permute_1108, permute_1115, permute_1119, permute_1125, permute_1129, permute_1135, permute_1139, permute_1144, permute_1148, permute_1153, permute_1157, permute_1162, permute_1166, permute_1171, permute_1175, permute_1182, permute_1186, permute_1192, permute_1196, permute_1202, permute_1206, permute_1211, permute_1215, permute_1220, permute_1224, permute_1229, permute_1233, permute_1238, permute_1242, permute_1249, permute_1253, permute_1259, permute_1263, permute_1269, permute_1273, permute_1278, permute_1282, permute_1287, permute_1291, permute_1296, permute_1300, permute_1305, permute_1309, permute_1316, permute_1320, permute_1326, permute_1330, permute_1336, permute_1340, permute_1345, permute_1349, permute_1354, permute_1358, permute_1363, permute_1367, permute_1372, permute_1376, permute_1383, permute_1387, permute_1393, permute_1397, permute_1403, permute_1407, permute_1412, permute_1416, permute_1421, permute_1425, permute_1430, permute_1434, permute_1439, permute_1443, permute_1450, permute_1454, permute_1460, permute_1464, permute_1470, permute_1474, permute_1479, permute_1483, permute_1488, permute_1492, permute_1497, permute_1501, permute_1506, permute_1510, permute_1517, permute_1521, permute_1527, permute_1531, permute_1537, permute_1541, permute_1546, permute_1550, permute_1555, permute_1559, permute_1564, permute_1568, permute_1573, permute_1577, permute_1584, permute_1588, permute_1594, permute_1598, permute_1604, permute_1608, permute_1613, permute_1617, permute_1622, permute_1626, permute_1631, permute_1635, permute_1640, permute_1644, permute_1651, permute_1655, permute_1661, permute_1665, permute_1671, permute_1675, permute_1680, permute_1684, permute_1689, permute_1693, permute_1698, permute_1702, permute_1707, permute_1711, permute_1718, permute_1722, permute_1728, permute_1732, permute_1738, permute_1742, permute_1747, permute_1751, permute_1756, permute_1760, permute_1765, permute_1769, permute_1774, permute_1778, permute_1785, permute_1789, permute_1795, permute_1799, permute_1805, permute_1809, permute_1814, permute_1818, permute_1823, permute_1827, permute_1832, permute_1836, permute_1841, permute_1845, permute_1852, permute_1856, permute_1862, permute_1866, permute_1872, permute_1876, permute_1881, permute_1885, permute_1890, permute_1894, permute_1899, permute_1903, permute_1908, permute_1912, permute_1919, permute_1923, permute_1929, permute_1933, permute_1939, permute_1943, permute_1948, permute_1952, permute_1957, permute_1961, permute_1966, permute_1970, permute_1975, permute_1979, permute_1986, permute_1990, permute_1996, permute_2000, permute_2006, permute_2010, permute_2015, permute_2019, permute_2024, permute_2028, permute_2033, permute_2037, permute_2042, permute_2046, permute_2053, permute_2057, permute_2063, permute_2067, permute_2073, permute_2077, permute_2082, permute_2086, permute_2091, permute_2095, permute_2100, permute_2104, permute_2109, permute_2113, permute_2120, permute_2124, permute_2130, permute_2134, permute_2140, permute_2144, permute_2149, permute_2153, permute_2158, permute_2162, permute_2167, permute_2171, permute_2176, permute_2180, permute_2187, permute_2195, permute_2203, tangents_1 = args
+        args.clear()
+        s27 = primals_1
+        s35 = primals_632
+        assert_size_stride(primals_20, (896, 896), (896, 1))
+        assert_size_stride(primals_23, (896, ), (1, ))
+        assert_size_stride(primals_24, (4864, 896), (896, 1))
+        assert_size_stride(primals_27, (4864, 896), (896, 1))
+        assert_size_stride(primals_30, (896, 4864), (4864, 1))
+        assert_size_stride(primals_33, (896, ), (1, ))
+        assert_size_stride(primals_34, (896, 896), (896, 1))
+        assert_size_stride(primals_38, (128, 896), (896, 1))
+        assert_size_stride(primals_42, (128, 896), (896, 1))
+        assert_size_stride(primals_46, (896, 896), (896, 1))
+        assert_size_stride(primals_49, (896, ), (1, ))
+        assert_size_stride(primals_50, (4864, 896), (896, 1))
+        assert_size_stride(primals_53, (4864, 896), (896, 1))
+        assert_size_stride(primals_56, (896, 4864), (4864, 1))
+        assert_size_stride(primals_59, (896, ), (1, ))
+        assert_size_stride(primals_60, (896, 896), (896, 1))
+        assert_size_stride(primals_64, (128, 896), (896, 1))
+        assert_size_stride(primals_68, (128, 896), (896, 1))
+        assert_size_stride(primals_72, (896, 896), (896, 1))
+        assert_size_stride(primals_75, (896, ), (1, ))
+        assert_size_stride(primals_76, (4864, 896), (896, 1))
+        assert_size_stride(primals_79, (4864, 896), (896, 1))
+        assert_size_stride(primals_82, (896, 4864), (4864, 1))
+        assert_size_stride(primals_85, (896, ), (1, ))
+        assert_size_stride(primals_86, (896, 896), (896, 1))
+        assert_size_stride(primals_90, (128, 896), (896, 1))
+        assert_size_stride(primals_94, (128, 896), (896, 1))
+        assert_size_stride(primals_98, (896, 896), (896, 1))
+        assert_size_stride(primals_101, (896, ), (1, ))
+        assert_size_stride(primals_102, (4864, 896), (896, 1))
+        assert_size_stride(primals_105, (4864, 896), (896, 1))
+        assert_size_stride(primals_108, (896, 4864), (4864, 1))
+        assert_size_stride(primals_111, (896, ), (1, ))
+        assert_size_stride(primals_112, (896, 896), (896, 1))
+        assert_size_stride(primals_116, (128, 896), (896, 1))
+        assert_size_stride(primals_120, (128, 896), (896, 1))
+        assert_size_stride(primals_124, (896, 896), (896, 1))
+        assert_size_stride(primals_127, (896, ), (1, ))
+        assert_size_stride(primals_128, (4864, 896), (896, 1))
+        assert_size_stride(primals_131, (4864, 896), (896, 1))
+        assert_size_stride(primals_134, (896, 4864), (4864, 1))
+        assert_size_stride(primals_137, (896, ), (1, ))
+        assert_size_stride(primals_138, (896, 896), (896, 1))
+        assert_size_stride(primals_142, (128, 896), (896, 1))
+        assert_size_stride(primals_146, (128, 896), (896, 1))
+        assert_size_stride(primals_150, (896, 896), (896, 1))
+        assert_size_stride(primals_153, (896, ), (1, ))
+        assert_size_stride(primals_154, (4864, 896), (896, 1))
+        assert_size_stride(primals_157, (4864, 896), (896, 1))
+        assert_size_stride(primals_160, (896, 4864), (4864, 1))
+        assert_size_stride(primals_163, (896, ), (1, ))
+        assert_size_stride(primals_164, (896, 896), (896, 1))
+        assert_size_stride(primals_168, (128, 896), (896, 1))
+        assert_size_stride(primals_172, (128, 896), (896, 1))
+        assert_size_stride(primals_176, (896, 896), (896, 1))
+        assert_size_stride(primals_179, (896, ), (1, ))
+        assert_size_stride(primals_180, (4864, 896), (896, 1))
+        assert_size_stride(primals_183, (4864, 896), (896, 1))
+        assert_size_stride(primals_186, (896, 4864), (4864, 1))
+        assert_size_stride(primals_189, (896, ), (1, ))
+        assert_size_stride(primals_190, (896, 896), (896, 1))
+        assert_size_stride(primals_194, (128, 896), (896, 1))
+        assert_size_stride(primals_198, (128, 896), (896, 1))
+        assert_size_stride(primals_202, (896, 896), (896, 1))
+        assert_size_stride(primals_205, (896, ), (1, ))
+        assert_size_stride(primals_206, (4864, 896), (896, 1))
+        assert_size_stride(primals_209, (4864, 896), (896, 1))
+        assert_size_stride(primals_212, (896, 4864), (4864, 1))
+        assert_size_stride(primals_215, (896, ), (1, ))
+        assert_size_stride(primals_216, (896, 896), (896, 1))
+        assert_size_stride(primals_220, (128, 896), (896, 1))
+        assert_size_stride(primals_224, (128, 896), (896, 1))
+        assert_size_stride(primals_228, (896, 896), (896, 1))
+        assert_size_stride(primals_231, (896, ), (1, ))
+        assert_size_stride(primals_232, (4864, 896), (896, 1))
+        assert_size_stride(primals_235, (4864, 896), (896, 1))
+        assert_size_stride(primals_238, (896, 4864), (4864, 1))
+        assert_size_stride(primals_241, (896, ), (1, ))
+        assert_size_stride(primals_242, (896, 896), (896, 1))
+        assert_size_stride(primals_246, (128, 896), (896, 1))
+        assert_size_stride(primals_250, (128, 896), (896, 1))
+        assert_size_stride(primals_254, (896, 896), (896, 1))
+        assert_size_stride(primals_257, (896, ), (1, ))
+        assert_size_stride(primals_258, (4864, 896), (896, 1))
+        assert_size_stride(primals_261, (4864, 896), (896, 1))
+        assert_size_stride(primals_264, (896, 4864), (4864, 1))
+        assert_size_stride(primals_267, (896, ), (1, ))
+        assert_size_stride(primals_268, (896, 896), (896, 1))
+        assert_size_stride(primals_272, (128, 896), (896, 1))
+        assert_size_stride(primals_276, (128, 896), (896, 1))
+        assert_size_stride(primals_280, (896, 896), (896, 1))
+        assert_size_stride(primals_283, (896, ), (1, ))
+        assert_size_stride(primals_284, (4864, 896), (896, 1))
+        assert_size_stride(primals_287, (4864, 896), (896, 1))
+        assert_size_stride(primals_290, (896, 4864), (4864, 1))
+        assert_size_stride(primals_293, (896, ), (1, ))
+        assert_size_stride(primals_294, (896, 896), (896, 1))
+        assert_size_stride(primals_298, (128, 896), (896, 1))
+        assert_size_stride(primals_302, (128, 896), (896, 1))
+        assert_size_stride(primals_306, (896, 896), (896, 1))
+        assert_size_stride(primals_309, (896, ), (1, ))
+        assert_size_stride(primals_310, (4864, 896), (896, 1))
+        assert_size_stride(primals_313, (4864, 896), (896, 1))
+        assert_size_stride(primals_316, (896, 4864), (4864, 1))
+        assert_size_stride(primals_319, (896, ), (1, ))
+        assert_size_stride(primals_320, (896, 896), (896, 1))
+        assert_size_stride(primals_324, (128, 896), (896, 1))
+        assert_size_stride(primals_328, (128, 896), (896, 1))
+        assert_size_stride(primals_332, (896, 896), (896, 1))
+        assert_size_stride(primals_335, (896, ), (1, ))
+        assert_size_stride(primals_336, (4864, 896), (896, 1))
+        assert_size_stride(primals_339, (4864, 896), (896, 1))
+        assert_size_stride(primals_342, (896, 4864), (4864, 1))
+        assert_size_stride(primals_345, (896, ), (1, ))
+        assert_size_stride(primals_346, (896, 896), (896, 1))
+        assert_size_stride(primals_350, (128, 896), (896, 1))
+        assert_size_stride(primals_354, (128, 896), (896, 1))
+        assert_size_stride(primals_358, (896, 896), (896, 1))
+        assert_size_stride(primals_361, (896, ), (1, ))
+        assert_size_stride(primals_362, (4864, 896), (896, 1))
+        assert_size_stride(primals_365, (4864, 896), (896, 1))
+        assert_size_stride(primals_368, (896, 4864), (4864, 1))
+        assert_size_stride(primals_371, (896, ), (1, ))
+        assert_size_stride(primals_372, (896, 896), (896, 1))
+        assert_size_stride(primals_376, (128, 896), (896, 1))
+        assert_size_stride(primals_380, (128, 896), (896, 1))
+        assert_size_stride(primals_384, (896, 896), (896, 1))
+        assert_size_stride(primals_387, (896, ), (1, ))
+        assert_size_stride(primals_388, (4864, 896), (896, 1))
+        assert_size_stride(primals_391, (4864, 896), (896, 1))
+        assert_size_stride(primals_394, (896, 4864), (4864, 1))
+        assert_size_stride(primals_397, (896, ), (1, ))
+        assert_size_stride(primals_398, (896, 896), (896, 1))
+        assert_size_stride(primals_402, (128, 896), (896, 1))
+        assert_size_stride(primals_406, (128, 896), (896, 1))
+        assert_size_stride(primals_410, (896, 896), (896, 1))
+        assert_size_stride(primals_413, (896, ), (1, ))
+        assert_size_stride(primals_414, (4864, 896), (896, 1))
+        assert_size_stride(primals_417, (4864, 896), (896, 1))
+        assert_size_stride(primals_420, (896, 4864), (4864, 1))
+        assert_size_stride(primals_423, (896, ), (1, ))
+        assert_size_stride(primals_424, (896, 896), (896, 1))
+        assert_size_stride(primals_428, (128, 896), (896, 1))
+        assert_size_stride(primals_432, (128, 896), (896, 1))
+        assert_size_stride(primals_436, (896, 896), (896, 1))
+        assert_size_stride(primals_439, (896, ), (1, ))
+        assert_size_stride(primals_440, (4864, 896), (896, 1))
+        assert_size_stride(primals_443, (4864, 896), (896, 1))
+        assert_size_stride(primals_446, (896, 4864), (4864, 1))
+        assert_size_stride(primals_449, (896, ), (1, ))
+        assert_size_stride(primals_450, (896, 896), (896, 1))
+        assert_size_stride(primals_454, (128, 896), (896, 1))
+        assert_size_stride(primals_458, (128, 896), (896, 1))
+        assert_size_stride(primals_462, (896, 896), (896, 1))
+        assert_size_stride(primals_465, (896, ), (1, ))
+        assert_size_stride(primals_466, (4864, 896), (896, 1))
+        assert_size_stride(primals_469, (4864, 896), (896, 1))
+        assert_size_stride(primals_472, (896, 4864), (4864, 1))
+        assert_size_stride(primals_475, (896, ), (1, ))
+        assert_size_stride(primals_476, (896, 896), (896, 1))
+        assert_size_stride(primals_480, (128, 896), (896, 1))
+        assert_size_stride(primals_484, (128, 896), (896, 1))
+        assert_size_stride(primals_488, (896, 896), (896, 1))
+        assert_size_stride(primals_491, (896, ), (1, ))
+        assert_size_stride(primals_492, (4864, 896), (896, 1))
+        assert_size_stride(primals_495, (4864, 896), (896, 1))
+        assert_size_stride(primals_498, (896, 4864), (4864, 1))
+        assert_size_stride(primals_501, (896, ), (1, ))
+        assert_size_stride(primals_502, (896, 896), (896, 1))
+        assert_size_stride(primals_506, (128, 896), (896, 1))
+        assert_size_stride(primals_510, (128, 896), (896, 1))
+        assert_size_stride(primals_514, (896, 896), (896, 1))
+        assert_size_stride(primals_517, (896, ), (1, ))
+        assert_size_stride(primals_518, (4864, 896), (896, 1))
+        assert_size_stride(primals_521, (4864, 896), (896, 1))
+        assert_size_stride(primals_524, (896, 4864), (4864, 1))
+        assert_size_stride(primals_527, (896, ), (1, ))
+        assert_size_stride(primals_528, (896, 896), (896, 1))
+        assert_size_stride(primals_532, (128, 896), (896, 1))
+        assert_size_stride(primals_536, (128, 896), (896, 1))
+        assert_size_stride(primals_540, (896, 896), (896, 1))
+        assert_size_stride(primals_543, (896, ), (1, ))
+        assert_size_stride(primals_544, (4864, 896), (896, 1))
+        assert_size_stride(primals_547, (4864, 896), (896, 1))
+        assert_size_stride(primals_550, (896, 4864), (4864, 1))
+        assert_size_stride(primals_553, (896, ), (1, ))
+        assert_size_stride(primals_554, (896, 896), (896, 1))
+        assert_size_stride(primals_558, (128, 896), (896, 1))
+        assert_size_stride(primals_562, (128, 896), (896, 1))
+        assert_size_stride(primals_566, (896, 896), (896, 1))
+        assert_size_stride(primals_569, (896, ), (1, ))
+        assert_size_stride(primals_570, (4864, 896), (896, 1))
+        assert_size_stride(primals_573, (4864, 896), (896, 1))
+        assert_size_stride(primals_576, (896, 4864), (4864, 1))
+        assert_size_stride(primals_579, (896, ), (1, ))
+        assert_size_stride(primals_580, (896, 896), (896, 1))
+        assert_size_stride(primals_584, (128, 896), (896, 1))
+        assert_size_stride(primals_588, (128, 896), (896, 1))
+        assert_size_stride(primals_592, (896, 896), (896, 1))
+        assert_size_stride(primals_595, (896, ), (1, ))
+        assert_size_stride(primals_596, (4864, 896), (896, 1))
+        assert_size_stride(primals_599, (4864, 896), (896, 1))
+        assert_size_stride(primals_602, (896, 4864), (4864, 1))
+        assert_size_stride(primals_605, (896, ), (1, ))
+        assert_size_stride(primals_606, (896, 896), (896, 1))
+        assert_size_stride(primals_610, (128, 896), (896, 1))
+        assert_size_stride(primals_614, (128, 896), (896, 1))
+        assert_size_stride(primals_618, (896, 896), (896, 1))
+        assert_size_stride(primals_621, (896, ), (1, ))
+        assert_size_stride(primals_622, (4864, 896), (896, 1))
+        assert_size_stride(primals_625, (4864, 896), (896, 1))
+        assert_size_stride(primals_628, (896, 4864), (4864, 1))
+        assert_size_stride(primals_631, (896, ), (1, ))
+        assert_size_stride(primals_633, (151936, 896), (896, 1))
+        assert_size_stride(mm_default, (32, s27), (s27, 1))
+        assert_size_stride(view_11, (s27, 896), (896, 1))
+        assert_size_stride(mm, (s27, 32), (32, 1))
+        assert_size_stride(mm_2, (s27, 32), (32, 1))
+        assert_size_stride(mm_4, (s27, 32), (32, 1))
+        assert_size_stride(add_279, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_30, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_31, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(constant_pad_nd, (1, 1, s27, 8 + s27 + (-1)*(s27 % 8)), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), s27*max(1, 8 + s27 + (-1)*(s27 % 8)), max(1, 8 + s27 + (-1)*(s27 % 8)), 1))
+        assert_size_stride(getitem, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_1, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_2, (), ())
+        assert_size_stride(getitem_3, (), ())
+        assert_size_stride(view_35, (s27, 896), (896, 1))
+        assert_size_stride(mm_7, (s27, 32), (32, 1))
+        assert_size_stride(add_414, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_1, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_41, (s27, 896), (896, 1))
+        assert_size_stride(mm_10, (s27, 32), (32, 1))
+        assert_size_stride(add_482, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_13, (s27, 32), (32, 1))
+        assert_size_stride(add_525, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_53, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_16, (s27, 32), (32, 1))
+        assert_size_stride(add_572, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_2, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_59, (s27, 896), (896, 1))
+        assert_size_stride(mm_18, (s27, 32), (32, 1))
+        assert_size_stride(mm_20, (s27, 32), (32, 1))
+        assert_size_stride(mm_22, (s27, 32), (32, 1))
+        assert_size_stride(add_771, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_78, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_79, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_4, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_5, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_6, (), ())
+        assert_size_stride(getitem_7, (), ())
+        assert_size_stride(view_83, (s27, 896), (896, 1))
+        assert_size_stride(mm_25, (s27, 32), (32, 1))
+        assert_size_stride(add_906, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_3, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_89, (s27, 896), (896, 1))
+        assert_size_stride(mm_28, (s27, 32), (32, 1))
+        assert_size_stride(add_974, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_31, (s27, 32), (32, 1))
+        assert_size_stride(add_1017, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_101, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_34, (s27, 32), (32, 1))
+        assert_size_stride(add_1064, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_4, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_107, (s27, 896), (896, 1))
+        assert_size_stride(mm_36, (s27, 32), (32, 1))
+        assert_size_stride(mm_38, (s27, 32), (32, 1))
+        assert_size_stride(mm_40, (s27, 32), (32, 1))
+        assert_size_stride(add_1263, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_126, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_127, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_8, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_9, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_10, (), ())
+        assert_size_stride(getitem_11, (), ())
+        assert_size_stride(view_131, (s27, 896), (896, 1))
+        assert_size_stride(mm_43, (s27, 32), (32, 1))
+        assert_size_stride(add_1398, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_5, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_137, (s27, 896), (896, 1))
+        assert_size_stride(mm_46, (s27, 32), (32, 1))
+        assert_size_stride(add_1466, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_49, (s27, 32), (32, 1))
+        assert_size_stride(add_1509, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_149, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_52, (s27, 32), (32, 1))
+        assert_size_stride(add_1556, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_6, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_155, (s27, 896), (896, 1))
+        assert_size_stride(mm_54, (s27, 32), (32, 1))
+        assert_size_stride(mm_56, (s27, 32), (32, 1))
+        assert_size_stride(mm_58, (s27, 32), (32, 1))
+        assert_size_stride(add_1755, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_174, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_175, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_12, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_13, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_14, (), ())
+        assert_size_stride(getitem_15, (), ())
+        assert_size_stride(view_179, (s27, 896), (896, 1))
+        assert_size_stride(mm_61, (s27, 32), (32, 1))
+        assert_size_stride(add_1890, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_7, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_185, (s27, 896), (896, 1))
+        assert_size_stride(mm_64, (s27, 32), (32, 1))
+        assert_size_stride(add_1958, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_67, (s27, 32), (32, 1))
+        assert_size_stride(add_2001, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_197, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_70, (s27, 32), (32, 1))
+        assert_size_stride(add_2048, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_8, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_203, (s27, 896), (896, 1))
+        assert_size_stride(mm_72, (s27, 32), (32, 1))
+        assert_size_stride(mm_74, (s27, 32), (32, 1))
+        assert_size_stride(mm_76, (s27, 32), (32, 1))
+        assert_size_stride(add_2247, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_222, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_223, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_16, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_17, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_18, (), ())
+        assert_size_stride(getitem_19, (), ())
+        assert_size_stride(view_227, (s27, 896), (896, 1))
+        assert_size_stride(mm_79, (s27, 32), (32, 1))
+        assert_size_stride(add_2382, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_9, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_233, (s27, 896), (896, 1))
+        assert_size_stride(mm_82, (s27, 32), (32, 1))
+        assert_size_stride(add_2450, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_85, (s27, 32), (32, 1))
+        assert_size_stride(add_2493, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_245, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_88, (s27, 32), (32, 1))
+        assert_size_stride(add_2540, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_10, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_251, (s27, 896), (896, 1))
+        assert_size_stride(mm_90, (s27, 32), (32, 1))
+        assert_size_stride(mm_92, (s27, 32), (32, 1))
+        assert_size_stride(mm_94, (s27, 32), (32, 1))
+        assert_size_stride(add_2739, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_270, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_271, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_20, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_21, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_22, (), ())
+        assert_size_stride(getitem_23, (), ())
+        assert_size_stride(view_275, (s27, 896), (896, 1))
+        assert_size_stride(mm_97, (s27, 32), (32, 1))
+        assert_size_stride(add_2874, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_11, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_281, (s27, 896), (896, 1))
+        assert_size_stride(mm_100, (s27, 32), (32, 1))
+        assert_size_stride(add_2942, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_103, (s27, 32), (32, 1))
+        assert_size_stride(add_2985, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_293, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_106, (s27, 32), (32, 1))
+        assert_size_stride(add_3032, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_12, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_299, (s27, 896), (896, 1))
+        assert_size_stride(mm_108, (s27, 32), (32, 1))
+        assert_size_stride(mm_110, (s27, 32), (32, 1))
+        assert_size_stride(mm_112, (s27, 32), (32, 1))
+        assert_size_stride(add_3231, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_318, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_319, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_24, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_25, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_26, (), ())
+        assert_size_stride(getitem_27, (), ())
+        assert_size_stride(view_323, (s27, 896), (896, 1))
+        assert_size_stride(mm_115, (s27, 32), (32, 1))
+        assert_size_stride(add_3366, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_13, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_329, (s27, 896), (896, 1))
+        assert_size_stride(mm_118, (s27, 32), (32, 1))
+        assert_size_stride(add_3434, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_121, (s27, 32), (32, 1))
+        assert_size_stride(add_3477, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_341, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_124, (s27, 32), (32, 1))
+        assert_size_stride(add_3524, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_14, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_347, (s27, 896), (896, 1))
+        assert_size_stride(mm_126, (s27, 32), (32, 1))
+        assert_size_stride(mm_128, (s27, 32), (32, 1))
+        assert_size_stride(mm_130, (s27, 32), (32, 1))
+        assert_size_stride(add_3723, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_366, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_367, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_28, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_29, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_30, (), ())
+        assert_size_stride(getitem_31, (), ())
+        assert_size_stride(view_371, (s27, 896), (896, 1))
+        assert_size_stride(mm_133, (s27, 32), (32, 1))
+        assert_size_stride(add_3858, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_15, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_377, (s27, 896), (896, 1))
+        assert_size_stride(mm_136, (s27, 32), (32, 1))
+        assert_size_stride(add_3926, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_139, (s27, 32), (32, 1))
+        assert_size_stride(add_3969, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_389, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_142, (s27, 32), (32, 1))
+        assert_size_stride(add_4016, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_16, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_395, (s27, 896), (896, 1))
+        assert_size_stride(mm_144, (s27, 32), (32, 1))
+        assert_size_stride(mm_146, (s27, 32), (32, 1))
+        assert_size_stride(mm_148, (s27, 32), (32, 1))
+        assert_size_stride(add_4215, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_414, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_415, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_32, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_33, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_34, (), ())
+        assert_size_stride(getitem_35, (), ())
+        assert_size_stride(view_419, (s27, 896), (896, 1))
+        assert_size_stride(mm_151, (s27, 32), (32, 1))
+        assert_size_stride(add_4350, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_17, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_425, (s27, 896), (896, 1))
+        assert_size_stride(mm_154, (s27, 32), (32, 1))
+        assert_size_stride(add_4418, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_157, (s27, 32), (32, 1))
+        assert_size_stride(add_4461, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_437, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_160, (s27, 32), (32, 1))
+        assert_size_stride(add_4508, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_18, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_443, (s27, 896), (896, 1))
+        assert_size_stride(mm_162, (s27, 32), (32, 1))
+        assert_size_stride(mm_164, (s27, 32), (32, 1))
+        assert_size_stride(mm_166, (s27, 32), (32, 1))
+        assert_size_stride(add_4707, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_462, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_463, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_36, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_37, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_38, (), ())
+        assert_size_stride(getitem_39, (), ())
+        assert_size_stride(view_467, (s27, 896), (896, 1))
+        assert_size_stride(mm_169, (s27, 32), (32, 1))
+        assert_size_stride(add_4842, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_19, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_473, (s27, 896), (896, 1))
+        assert_size_stride(mm_172, (s27, 32), (32, 1))
+        assert_size_stride(add_4910, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_175, (s27, 32), (32, 1))
+        assert_size_stride(add_4953, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_485, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_178, (s27, 32), (32, 1))
+        assert_size_stride(add_5000, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_20, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_491, (s27, 896), (896, 1))
+        assert_size_stride(mm_180, (s27, 32), (32, 1))
+        assert_size_stride(mm_182, (s27, 32), (32, 1))
+        assert_size_stride(mm_184, (s27, 32), (32, 1))
+        assert_size_stride(add_5199, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_510, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_511, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_40, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_41, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_42, (), ())
+        assert_size_stride(getitem_43, (), ())
+        assert_size_stride(view_515, (s27, 896), (896, 1))
+        assert_size_stride(mm_187, (s27, 32), (32, 1))
+        assert_size_stride(add_5334, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_21, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_521, (s27, 896), (896, 1))
+        assert_size_stride(mm_190, (s27, 32), (32, 1))
+        assert_size_stride(add_5402, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_193, (s27, 32), (32, 1))
+        assert_size_stride(add_5445, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_533, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_196, (s27, 32), (32, 1))
+        assert_size_stride(add_5492, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_22, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_539, (s27, 896), (896, 1))
+        assert_size_stride(mm_198, (s27, 32), (32, 1))
+        assert_size_stride(mm_200, (s27, 32), (32, 1))
+        assert_size_stride(mm_202, (s27, 32), (32, 1))
+        assert_size_stride(add_5691, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_558, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_559, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_44, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_45, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_46, (), ())
+        assert_size_stride(getitem_47, (), ())
+        assert_size_stride(view_563, (s27, 896), (896, 1))
+        assert_size_stride(mm_205, (s27, 32), (32, 1))
+        assert_size_stride(add_5826, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_23, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_569, (s27, 896), (896, 1))
+        assert_size_stride(mm_208, (s27, 32), (32, 1))
+        assert_size_stride(add_5894, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_211, (s27, 32), (32, 1))
+        assert_size_stride(add_5937, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_581, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_214, (s27, 32), (32, 1))
+        assert_size_stride(add_5984, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_24, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_587, (s27, 896), (896, 1))
+        assert_size_stride(mm_216, (s27, 32), (32, 1))
+        assert_size_stride(mm_218, (s27, 32), (32, 1))
+        assert_size_stride(mm_220, (s27, 32), (32, 1))
+        assert_size_stride(add_6183, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_606, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_607, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_48, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_49, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_50, (), ())
+        assert_size_stride(getitem_51, (), ())
+        assert_size_stride(view_611, (s27, 896), (896, 1))
+        assert_size_stride(mm_223, (s27, 32), (32, 1))
+        assert_size_stride(add_6318, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_25, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_617, (s27, 896), (896, 1))
+        assert_size_stride(mm_226, (s27, 32), (32, 1))
+        assert_size_stride(add_6386, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_229, (s27, 32), (32, 1))
+        assert_size_stride(add_6429, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_629, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_232, (s27, 32), (32, 1))
+        assert_size_stride(add_6476, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_26, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_635, (s27, 896), (896, 1))
+        assert_size_stride(mm_234, (s27, 32), (32, 1))
+        assert_size_stride(mm_236, (s27, 32), (32, 1))
+        assert_size_stride(mm_238, (s27, 32), (32, 1))
+        assert_size_stride(add_6675, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_654, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_655, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_52, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_53, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_54, (), ())
+        assert_size_stride(getitem_55, (), ())
+        assert_size_stride(view_659, (s27, 896), (896, 1))
+        assert_size_stride(mm_241, (s27, 32), (32, 1))
+        assert_size_stride(add_6810, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_27, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_665, (s27, 896), (896, 1))
+        assert_size_stride(mm_244, (s27, 32), (32, 1))
+        assert_size_stride(add_6878, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_247, (s27, 32), (32, 1))
+        assert_size_stride(add_6921, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_677, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_250, (s27, 32), (32, 1))
+        assert_size_stride(add_6968, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_28, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_683, (s27, 896), (896, 1))
+        assert_size_stride(mm_252, (s27, 32), (32, 1))
+        assert_size_stride(mm_254, (s27, 32), (32, 1))
+        assert_size_stride(mm_256, (s27, 32), (32, 1))
+        assert_size_stride(add_7167, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_702, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_703, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_56, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_57, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_58, (), ())
+        assert_size_stride(getitem_59, (), ())
+        assert_size_stride(view_707, (s27, 896), (896, 1))
+        assert_size_stride(mm_259, (s27, 32), (32, 1))
+        assert_size_stride(add_7302, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_29, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_713, (s27, 896), (896, 1))
+        assert_size_stride(mm_262, (s27, 32), (32, 1))
+        assert_size_stride(add_7370, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_265, (s27, 32), (32, 1))
+        assert_size_stride(add_7413, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_725, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_268, (s27, 32), (32, 1))
+        assert_size_stride(add_7460, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_30, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_731, (s27, 896), (896, 1))
+        assert_size_stride(mm_270, (s27, 32), (32, 1))
+        assert_size_stride(mm_272, (s27, 32), (32, 1))
+        assert_size_stride(mm_274, (s27, 32), (32, 1))
+        assert_size_stride(add_7659, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_750, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_751, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_60, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_61, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_62, (), ())
+        assert_size_stride(getitem_63, (), ())
+        assert_size_stride(view_755, (s27, 896), (896, 1))
+        assert_size_stride(mm_277, (s27, 32), (32, 1))
+        assert_size_stride(add_7794, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_31, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_761, (s27, 896), (896, 1))
+        assert_size_stride(mm_280, (s27, 32), (32, 1))
+        assert_size_stride(add_7862, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_283, (s27, 32), (32, 1))
+        assert_size_stride(add_7905, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_773, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_286, (s27, 32), (32, 1))
+        assert_size_stride(add_7952, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_32, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_779, (s27, 896), (896, 1))
+        assert_size_stride(mm_288, (s27, 32), (32, 1))
+        assert_size_stride(mm_290, (s27, 32), (32, 1))
+        assert_size_stride(mm_292, (s27, 32), (32, 1))
+        assert_size_stride(add_8151, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_798, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_799, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_64, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_65, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_66, (), ())
+        assert_size_stride(getitem_67, (), ())
+        assert_size_stride(view_803, (s27, 896), (896, 1))
+        assert_size_stride(mm_295, (s27, 32), (32, 1))
+        assert_size_stride(add_8286, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_33, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_809, (s27, 896), (896, 1))
+        assert_size_stride(mm_298, (s27, 32), (32, 1))
+        assert_size_stride(add_8354, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_301, (s27, 32), (32, 1))
+        assert_size_stride(add_8397, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_821, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_304, (s27, 32), (32, 1))
+        assert_size_stride(add_8444, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_34, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_827, (s27, 896), (896, 1))
+        assert_size_stride(mm_306, (s27, 32), (32, 1))
+        assert_size_stride(mm_308, (s27, 32), (32, 1))
+        assert_size_stride(mm_310, (s27, 32), (32, 1))
+        assert_size_stride(add_8643, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_846, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_847, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_68, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_69, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_70, (), ())
+        assert_size_stride(getitem_71, (), ())
+        assert_size_stride(view_851, (s27, 896), (896, 1))
+        assert_size_stride(mm_313, (s27, 32), (32, 1))
+        assert_size_stride(add_8778, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_35, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_857, (s27, 896), (896, 1))
+        assert_size_stride(mm_316, (s27, 32), (32, 1))
+        assert_size_stride(add_8846, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_319, (s27, 32), (32, 1))
+        assert_size_stride(add_8889, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_869, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_322, (s27, 32), (32, 1))
+        assert_size_stride(add_8936, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_36, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_875, (s27, 896), (896, 1))
+        assert_size_stride(mm_324, (s27, 32), (32, 1))
+        assert_size_stride(mm_326, (s27, 32), (32, 1))
+        assert_size_stride(mm_328, (s27, 32), (32, 1))
+        assert_size_stride(add_9135, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_894, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_895, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_72, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_73, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_74, (), ())
+        assert_size_stride(getitem_75, (), ())
+        assert_size_stride(view_899, (s27, 896), (896, 1))
+        assert_size_stride(mm_331, (s27, 32), (32, 1))
+        assert_size_stride(add_9270, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_37, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_905, (s27, 896), (896, 1))
+        assert_size_stride(mm_334, (s27, 32), (32, 1))
+        assert_size_stride(add_9338, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_337, (s27, 32), (32, 1))
+        assert_size_stride(add_9381, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_917, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_340, (s27, 32), (32, 1))
+        assert_size_stride(add_9428, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_38, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_923, (s27, 896), (896, 1))
+        assert_size_stride(mm_342, (s27, 32), (32, 1))
+        assert_size_stride(mm_344, (s27, 32), (32, 1))
+        assert_size_stride(mm_346, (s27, 32), (32, 1))
+        assert_size_stride(add_9627, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_942, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_943, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_76, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_77, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_78, (), ())
+        assert_size_stride(getitem_79, (), ())
+        assert_size_stride(view_947, (s27, 896), (896, 1))
+        assert_size_stride(mm_349, (s27, 32), (32, 1))
+        assert_size_stride(add_9762, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_39, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_953, (s27, 896), (896, 1))
+        assert_size_stride(mm_352, (s27, 32), (32, 1))
+        assert_size_stride(add_9830, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_355, (s27, 32), (32, 1))
+        assert_size_stride(add_9873, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_965, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_358, (s27, 32), (32, 1))
+        assert_size_stride(add_9920, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_40, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_971, (s27, 896), (896, 1))
+        assert_size_stride(mm_360, (s27, 32), (32, 1))
+        assert_size_stride(mm_362, (s27, 32), (32, 1))
+        assert_size_stride(mm_364, (s27, 32), (32, 1))
+        assert_size_stride(add_10119, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_990, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_991, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_80, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_81, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_82, (), ())
+        assert_size_stride(getitem_83, (), ())
+        assert_size_stride(view_995, (s27, 896), (896, 1))
+        assert_size_stride(mm_367, (s27, 32), (32, 1))
+        assert_size_stride(add_10254, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_41, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_1001, (s27, 896), (896, 1))
+        assert_size_stride(mm_370, (s27, 32), (32, 1))
+        assert_size_stride(add_10322, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_373, (s27, 32), (32, 1))
+        assert_size_stride(add_10365, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_1013, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_376, (s27, 32), (32, 1))
+        assert_size_stride(add_10412, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_42, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_1019, (s27, 896), (896, 1))
+        assert_size_stride(mm_378, (s27, 32), (32, 1))
+        assert_size_stride(mm_380, (s27, 32), (32, 1))
+        assert_size_stride(mm_382, (s27, 32), (32, 1))
+        assert_size_stride(add_10611, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_1038, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_1039, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_84, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_85, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_86, (), ())
+        assert_size_stride(getitem_87, (), ())
+        assert_size_stride(view_1043, (s27, 896), (896, 1))
+        assert_size_stride(mm_385, (s27, 32), (32, 1))
+        assert_size_stride(add_10746, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_43, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_1049, (s27, 896), (896, 1))
+        assert_size_stride(mm_388, (s27, 32), (32, 1))
+        assert_size_stride(add_10814, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_391, (s27, 32), (32, 1))
+        assert_size_stride(add_10857, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_1061, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_394, (s27, 32), (32, 1))
+        assert_size_stride(add_10904, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_44, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_1067, (s27, 896), (896, 1))
+        assert_size_stride(mm_396, (s27, 32), (32, 1))
+        assert_size_stride(mm_398, (s27, 32), (32, 1))
+        assert_size_stride(mm_400, (s27, 32), (32, 1))
+        assert_size_stride(add_11103, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_1086, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_1087, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_88, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_89, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_90, (), ())
+        assert_size_stride(getitem_91, (), ())
+        assert_size_stride(view_1091, (s27, 896), (896, 1))
+        assert_size_stride(mm_403, (s27, 32), (32, 1))
+        assert_size_stride(add_11238, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_45, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_1097, (s27, 896), (896, 1))
+        assert_size_stride(mm_406, (s27, 32), (32, 1))
+        assert_size_stride(add_11306, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_409, (s27, 32), (32, 1))
+        assert_size_stride(add_11349, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_1109, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_412, (s27, 32), (32, 1))
+        assert_size_stride(add_11396, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_46, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_1115, (s27, 896), (896, 1))
+        assert_size_stride(mm_414, (s27, 32), (32, 1))
+        assert_size_stride(mm_416, (s27, 32), (32, 1))
+        assert_size_stride(mm_418, (s27, 32), (32, 1))
+        assert_size_stride(add_11595, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(view_1134, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(view_1135, (1, 14, s27, 64), (896*s27, 64*s27, 64, 1))
+        assert_size_stride(getitem_92, (1, 14, s27, 64), (896*s27, 64, 896, 1))
+        assert_size_stride(getitem_93, (1, 14, 32*math.ceil(s27 / 32)), (14*max(1, 32*math.ceil(s27 / 32)), max(1, 32*math.ceil(s27 / 32)), 1))
+        assert_size_stride(getitem_94, (), ())
+        assert_size_stride(getitem_95, (), ())
+        assert_size_stride(view_1139, (s27, 896), (896, 1))
+        assert_size_stride(mm_421, (s27, 32), (32, 1))
+        assert_size_stride(add_11730, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_47, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_1145, (s27, 896), (896, 1))
+        assert_size_stride(mm_424, (s27, 32), (32, 1))
+        assert_size_stride(add_11798, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(mm_427, (s27, 32), (32, 1))
+        assert_size_stride(add_11841, (1, s27, 4864), (4864*s27, 4864, 1))
+        assert_size_stride(view_1157, (s27, 4864), (4864, 1))
+        assert_size_stride(mm_430, (s27, 32), (32, 1))
+        assert_size_stride(add_11888, (1, s27, 896), (896*s27, 896, 1))
+        assert_size_stride(rsqrt_48, (1, s27, 1), (s27, 1, 1))
+        assert_size_stride(view_1161, (s35, 896), (896, 1))
+        assert_size_stride(permute_608, (896, 32), (32, 1))
+        assert_size_stride(permute_612, (32, 4864), (4864, 1))
+        assert_size_stride(permute_617, (4864, 32), (32, 1))
+        assert_size_stride(permute_621, (32, 896), (896, 1))
+        assert_size_stride(permute_626, (4864, 32), (32, 1))
+        assert_size_stride(permute_630, (32, 896), (896, 1))
+        assert_size_stride(permute_635, (896, 32), (32, 1))
+        assert_size_stride(permute_639, (32, 896), (896, 1))
+        assert_size_stride(permute_646, (128, 32), (32, 1))
+        assert_size_stride(permute_650, (32, 896), (896, 1))
+        assert_size_stride(permute_656, (128, 32), (32, 1))
+        assert_size_stride(permute_660, (32, 896), (896, 1))
+        assert_size_stride(permute_666, (896, 32), (32, 1))
+        assert_size_stride(permute_670, (32, 896), (896, 1))
+        assert_size_stride(permute_675, (896, 32), (32, 1))
+        assert_size_stride(permute_679, (32, 4864), (4864, 1))
+        assert_size_stride(permute_684, (4864, 32), (32, 1))
+        assert_size_stride(permute_688, (32, 896), (896, 1))
+        assert_size_stride(permute_693, (4864, 32), (32, 1))
+        assert_size_stride(permute_697, (32, 896), (896, 1))
+        assert_size_stride(permute_702, (896, 32), (32, 1))
+        assert_size_stride(permute_706, (32, 896), (896, 1))
+        assert_size_stride(permute_713, (128, 32), (32, 1))
+        assert_size_stride(permute_717, (32, 896), (896, 1))
+        assert_size_stride(permute_723, (128, 32), (32, 1))
+        assert_size_stride(permute_727, (32, 896), (896, 1))
+        assert_size_stride(permute_733, (896, 32), (32, 1))
+        assert_size_stride(permute_737, (32, 896), (896, 1))
+        assert_size_stride(permute_742, (896, 32), (32, 1))
+        assert_size_stride(permute_746, (32, 4864), (4864, 1))
+        assert_size_stride(permute_751, (4864, 32), (32, 1))
+        assert_size_stride(permute_755, (32, 896), (896, 1))
+        assert_size_stride(permute_760, (4864, 32), (32, 1))
+        assert_size_stride(permute_764, (32, 896), (896, 1))
+        assert_size_stride(permute_769, (896, 32), (32, 1))
+        assert_size_stride(permute_773, (32, 896), (896, 1))
+        assert_size_stride(permute_780, (128, 32), (32, 1))
+        assert_size_stride(permute_784, (32, 896), (896, 1))
+        assert_size_stride(permute_790, (128, 32), (32, 1))
+        assert_size_stride(permute_794, (32, 896), (896, 1))
+        assert_size_stride(permute_800, (896, 32), (32, 1))
+        assert_size_stride(permute_804, (32, 896), (896, 1))
+        assert_size_stride(permute_809, (896, 32), (32, 1))
+        assert_size_stride(permute_813, (32, 4864), (4864, 1))
+        assert_size_stride(permute_818, (4864, 32), (32, 1))
+        assert_size_stride(permute_822, (32, 896), (896, 1))
+        assert_size_stride(permute_827, (4864, 32), (32, 1))
+        assert_size_stride(permute_831, (32, 896), (896, 1))
+        assert_size_stride(permute_836, (896, 32), (32, 1))
+        assert_size_stride(permute_840, (32, 896), (896, 1))
+        assert_size_stride(permute_847, (128, 32), (32, 1))
+        assert_size_stride(permute_851, (32, 896), (896, 1))
+        assert_size_stride(permute_857, (128, 32), (32, 1))
+        assert_size_stride(permute_861, (32, 896), (896, 1))
+        assert_size_stride(permute_867, (896, 32), (32, 1))
+        assert_size_stride(permute_871, (32, 896), (896, 1))
+        assert_size_stride(permute_876, (896, 32), (32, 1))
+        assert_size_stride(permute_880, (32, 4864), (4864, 1))
+        assert_size_stride(permute_885, (4864, 32), (32, 1))
+        assert_size_stride(permute_889, (32, 896), (896, 1))
+        assert_size_stride(permute_894, (4864, 32), (32, 1))
+        assert_size_stride(permute_898, (32, 896), (896, 1))
+        assert_size_stride(permute_903, (896, 32), (32, 1))
+        assert_size_stride(permute_907, (32, 896), (896, 1))
+        assert_size_stride(permute_914, (128, 32), (32, 1))
+        assert_size_stride(permute_918, (32, 896), (896, 1))
+        assert_size_stride(permute_924, (128, 32), (32, 1))
+        assert_size_stride(permute_928, (32, 896), (896, 1))
+        assert_size_stride(permute_934, (896, 32), (32, 1))
+        assert_size_stride(permute_938, (32, 896), (896, 1))
+        assert_size_stride(permute_943, (896, 32), (32, 1))
+        assert_size_stride(permute_947, (32, 4864), (4864, 1))
+        assert_size_stride(permute_952, (4864, 32), (32, 1))
+        assert_size_stride(permute_956, (32, 896), (896, 1))
+        assert_size_stride(permute_961, (4864, 32), (32, 1))
+        assert_size_stride(permute_965, (32, 896), (896, 1))
+        assert_size_stride(permute_970, (896, 32), (32, 1))
+        assert_size_stride(permute_974, (32, 896), (896, 1))
+        assert_size_stride(permute_981, (128, 32), (32, 1))
+        assert_size_stride(permute_985, (32, 896), (896, 1))
+        assert_size_stride(permute_991, (128, 32), (32, 1))
+        assert_size_stride(permute_995, (32, 896), (896, 1))
+        assert_size_stride(permute_1001, (896, 32), (32, 1))
+        assert_size_stride(permute_1005, (32, 896), (896, 1))
+        assert_size_stride(permute_1010, (896, 32), (32, 1))
+        assert_size_stride(permute_1014, (32, 4864), (4864, 1))
+        assert_size_stride(permute_1019, (4864, 32), (32, 1))
+        assert_size_stride(permute_1023, (32, 896), (896, 1))
+        assert_size_stride(permute_1028, (4864, 32), (32, 1))
+        assert_size_stride(permute_1032, (32, 896), (896, 1))
+        assert_size_stride(permute_1037, (896, 32), (32, 1))
+        assert_size_stride(permute_1041, (32, 896), (896, 1))
+        assert_size_stride(permute_1048, (128, 32), (32, 1))
+        assert_size_stride(permute_1052, (32, 896), (896, 1))
+        assert_size_stride(permute_1058, (128, 32), (32, 1))
+        assert_size_stride(permute_1062, (32, 896), (896, 1))
+        assert_size_stride(permute_1068, (896, 32), (32, 1))
+        assert_size_stride(permute_1072, (32, 896), (896, 1))
+        assert_size_stride(permute_1077, (896, 32), (32, 1))
+        assert_size_stride(permute_1081, (32, 4864), (4864, 1))
+        assert_size_stride(permute_1086, (4864, 32), (32, 1))
+        assert_size_stride(permute_1090, (32, 896), (896, 1))
+        assert_size_stride(permute_1095, (4864, 32), (32, 1))
+        assert_size_stride(permute_1099, (32, 896), (896, 1))
+        assert_size_stride(permute_1104, (896, 32), (32, 1))
+        assert_size_stride(permute_1108, (32, 896), (896, 1))
+        assert_size_stride(permute_1115, (128, 32), (32, 1))
+        assert_size_stride(permute_1119, (32, 896), (896, 1))
+        assert_size_stride(permute_1125, (128, 32), (32, 1))
+        assert_size_stride(permute_1129, (32, 896), (896, 1))
+        assert_size_stride(permute_1135, (896, 32), (32, 1))
+        assert_size_stride(permute_1139, (32, 896), (896, 1))
+        assert_size_stride(permute_1144, (896, 32), (32, 1))
+        assert_size_stride(permute_1148, (32, 4864), (4864, 1))
+        assert_size_stride(permute_1153, (4864, 32), (32, 1))
+        assert_size_stride(permute_1157, (32, 896), (896, 1))
+        assert_size_stride(permute_1162, (4864, 32), (32, 1))
+        assert_size_stride(permute_1166, (32, 896), (896, 1))
+        assert_size_stride(permute_1171, (896, 32), (32, 1))
+        assert_size_stride(permute_1175, (32, 896), (896, 1))
+        assert_size_stride(permute_1182, (128, 32), (32, 1))
+        assert_size_stride(permute_1186, (32, 896), (896, 1))
+        assert_size_stride(permute_1192, (128, 32), (32, 1))
+        assert_size_stride(permute_1196, (32, 896), (896, 1))
+        assert_size_stride(permute_1202, (896, 32), (32, 1))
+        assert_size_stride(permute_1206, (32, 896), (896, 1))
+        assert_size_stride(permute_1211, (896, 32), (32, 1))
+        assert_size_stride(permute_1215, (32, 4864), (4864, 1))
+        assert_size_stride(permute_1220, (4864, 32), (32, 1))
+        assert_size_stride(permute_1224, (32, 896), (896, 1))
+        assert_size_stride(permute_1229, (4864, 32), (32, 1))
+        assert_size_stride(permute_1233, (32, 896), (896, 1))
+        assert_size_stride(permute_1238, (896, 32), (32, 1))
+        assert_size_stride(permute_1242, (32, 896), (896, 1))
+        assert_size_stride(permute_1249, (128, 32), (32, 1))
+        assert_size_stride(permute_1253, (32, 896), (896, 1))
+        assert_size_stride(permute_1259, (128, 32), (32, 1))
+        assert_size_stride(permute_1263, (32, 896), (896, 1))
+        assert_size_stride(permute_1269, (896, 32), (32, 1))
+        assert_size_stride(permute_1273, (32, 896), (896, 1))
+        assert_size_stride(permute_1278, (896, 32), (32, 1))
+        assert_size_stride(permute_1282, (32, 4864), (4864, 1))
+        assert_size_stride(permute_1287, (4864, 32), (32, 1))
+        assert_size_stride(permute_1291, (32, 896), (896, 1))
+        assert_size_stride(permute_1296, (4864, 32), (32, 1))
+        assert_size_stride(permute_1300, (32, 896), (896, 1))
+        assert_size_stride(permute_1305, (896, 32), (32, 1))
+        assert_size_stride(permute_1309, (32, 896), (896, 1))
+        assert_size_stride(permute_1316, (128, 32), (32, 1))
+        assert_size_stride(permute_1320, (32, 896), (896, 1))
+        assert_size_stride(permute_1326, (128, 32), (32, 1))
+        assert_size_stride(permute_1330, (32, 896), (896, 1))
+        assert_size_stride(permute_1336, (896, 32), (32, 1))
+        assert_size_stride(permute_1340, (32, 896), (896, 1))
+        assert_size_stride(permute_1345, (896, 32), (32, 1))
+        assert_size_stride(permute_1349, (32, 4864), (4864, 1))
+        assert_size_stride(permute_1354, (4864, 32), (32, 1))
+        assert_size_stride(permute_1358, (32, 896), (896, 1))
+        assert_size_stride(permute_1363, (4864, 32), (32, 1))
+        assert_size_stride(permute_1367, (32, 896), (896, 1))
+        assert_size_stride(permute_1372, (896, 32), (32, 1))
+        assert_size_stride(permute_1376, (32, 896), (896, 1))
+        assert_size_stride(permute_1383, (128, 32), (32, 1))
+        assert_size_stride(permute_1387, (32, 896), (896, 1))
+        assert_size_stride(permute_1393, (128, 32), (32, 1))
+        assert_size_stride(permute_1397, (32, 896), (896, 1))
+        assert_size_stride(permute_1403, (896, 32), (32, 1))
+        assert_size_stride(permute_1407, (32, 896), (896, 1))
+        assert_size_stride(permute_1412, (896, 32), (32, 1))
+        assert_size_stride(permute_1416, (32, 4864), (4864, 1))
+        assert_size_stride(permute_1421, (4864, 32), (32, 1))
+        assert_size_stride(permute_1425, (32, 896), (896, 1))
+        assert_size_stride(permute_1430, (4864, 32), (32, 1))
+        assert_size_stride(permute_1434, (32, 896), (896, 1))
+        assert_size_stride(permute_1439, (896, 32), (32, 1))
+        assert_size_stride(permute_1443, (32, 896), (896, 1))
+        assert_size_stride(permute_1450, (128, 32), (32, 1))
+        assert_size_stride(permute_1454, (32, 896), (896, 1))
+        assert_size_stride(permute_1460, (128, 32), (32, 1))
+        assert_size_stride(permute_1464, (32, 896), (896, 1))
+        assert_size_stride(permute_1470, (896, 32), (32, 1))
+        assert_size_stride(permute_1474, (32, 896), (896, 1))
+        assert_size_stride(permute_1479, (896, 32), (32, 1))
+        assert_size_stride(permute_1483, (32, 4864), (4864, 1))
+        assert_size_stride(permute_1488, (4864, 32), (32, 1))
+        assert_size_stride(permute_1492, (32, 896), (896, 1))
+        assert_size_stride(permute_1497, (4864, 32), (32, 1))
+        assert_size_stride(permute_1501, (32, 896), (896, 1))
+        assert_size_stride(permute_1506, (896, 32), (32, 1))
+        assert_size_stride(permute_1510, (32, 896), (896, 1))
+        assert_size_stride(permute_1517, (128, 32), (32, 1))
+        assert_size_stride(permute_1521, (32, 896), (896, 1))
+        assert_size_stride(permute_1527, (128, 32), (32, 1))
+        assert_size_stride(permute_1531, (32, 896), (896, 1))
+        assert_size_stride(permute_1537, (896, 32), (32, 1))
+        assert_size_stride(permute_1541, (32, 896), (896, 1))
+        assert_size_stride(permute_1546, (896, 32), (32, 1))
+        assert_size_stride(permute_1550, (32, 4864), (4864, 1))
+        assert_size_stride(permute_1555, (4864, 32), (32, 1))
+        assert_size_stride(permute_1559, (32, 896), (896, 1))
+        assert_size_stride(permute_1564, (4864, 32), (32, 1))
+        assert_size_stride(permute_1568, (32, 896), (896, 1))
+        assert_size_stride(permute_1573, (896, 32), (32, 1))
+        assert_size_stride(permute_1577, (32, 896), (896, 1))
+        assert_size_stride(permute_1584, (128, 32), (32, 1))
+        assert_size_stride(permute_1588, (32, 896), (896, 1))
+        assert_size_stride(permute_1594, (128, 32), (32, 1))
+        assert_size_stride(permute_1598, (32, 896), (896, 1))
+        assert_size_stride(permute_1604, (896, 32), (32, 1))
+        assert_size_stride(permute_1608, (32, 896), (896, 1))
+        assert_size_stride(permute_1613, (896, 32), (32, 1))
+        assert_size_stride(permute_1617, (32, 4864), (4864, 1))
+        assert_size_stride(permute_1622, (4864, 32), (32, 1))
+        assert_size_stride(permute_1626, (32, 896), (896, 1))
+        assert_size_stride(permute_1631, (4864, 32), (32, 1))
+        assert_size_stride(permute_1635, (32, 896), (896, 1))
+        assert_size_stride(permute_1640, (896, 32), (32, 1))
+        assert_size_stride(permute_1644, (32, 896), (896, 1))
+        assert_size_stride(permute_1651, (128, 32), (32, 1))
+        assert_size_stride(permute_1655, (32, 896), (896, 1))
+        assert_size_stride(permute_1661, (128, 32), (32, 1))
+        assert_size_stride(permute_1665, (32, 896), (896, 1))
+        assert_size_stride(permute_1671, (896, 32), (32, 1))
+        assert_size_stride(permute_1675, (32, 896), (896, 1))
+        assert_size_stride(permute_1680, (896, 32), (32, 1))
+        assert_size_stride(permute_1684, (32, 4864), (4864, 1))
+        assert_size_stride(permute_1689, (4864, 32), (32, 1))
+        assert_size_stride(permute_1693, (32, 896), (896, 1))
+        assert_size_stride(permute_1698, (4864, 32), (32, 1))
+        assert_size_stride(permute_1702, (32, 896), (896, 1))
+        assert_size_stride(permute_1707, (896, 32), (32, 1))
+        assert_size_stride(permute_1711, (32, 896), (896, 1))
+        assert_size_stride(permute_1718, (128, 32), (32, 1))
+        assert_size_stride(permute_1722, (32, 896), (896, 1))
+        assert_size_stride(permute_1728, (128, 32), (32, 1))
+        assert_size_stride(permute_1732, (32, 896), (896, 1))
+        assert_size_stride(permute_1738, (896, 32), (32, 1))
+        assert_size_stride(permute_1742, (32, 896), (896, 1))
+        assert_size_stride(permute_1747, (896, 32), (32, 1))
+        assert_size_stride(permute_1751, (32, 4864), (4864, 1))
+        assert_size_stride(permute_1756, (4864, 32), (32, 1))
+        assert_size_stride(permute_1760, (32, 896), (896, 1))
+        assert_size_stride(permute_1765, (4864, 32), (32, 1))
+        assert_size_stride(permute_1769, (32, 896), (896, 1))
+        assert_size_stride(permute_1774, (896, 32), (32, 1))
+        assert_size_stride(permute_1778, (32, 896), (896, 1))
+        assert_size_stride(permute_1785, (128, 32), (32, 1))
+        assert_size_stride(permute_1789, (32, 896), (896, 1))
+        assert_size_stride(permute_1795, (128, 32), (32, 1))
+        assert_size_stride(permute_1799, (32, 896), (896, 1))
+        assert_size_stride(permute_1805, (896, 32), (32, 1))
+        assert_size_stride(permute_1809, (32, 896), (896, 1))
+        assert_size_stride(permute_1814, (896, 32), (32, 1))
+        assert_size_stride(permute_1818, (32, 4864), (4864, 1))
+        assert_size_stride(permute_1823, (4864, 32), (32, 1))
+        assert_size_stride(permute_1827, (32, 896), (896, 1))
+        assert_size_stride(permute_1832, (4864, 32), (32, 1))
+        assert_size_stride(permute_1836, (32, 896), (896, 1))
+        assert_size_stride(permute_1841, (896, 32), (32, 1))
+        assert_size_stride(permute_1845, (32, 896), (896, 1))
+        assert_size_stride(permute_1852, (128, 32), (32, 1))
+        assert_size_stride(permute_1856, (32, 896), (896, 1))
+        assert_size_stride(permute_1862, (128, 32), (32, 1))
+        assert_size_stride(permute_1866, (32, 896), (896, 1))
+        assert_size_stride(permute_1872, (896, 32), (32, 1))
+        assert_size_stride(permute_1876, (32, 896), (896, 1))
+        assert_size_stride(permute_1881, (896, 32), (32, 1))
+        assert_size_stride(permute_1885, (32, 4864), (4864, 1))
+        assert_size_stride(permute_1890, (4864, 32), (32, 1))
+        assert_size_stride(permute_1894, (32, 896), (896, 1))
+        assert_size_stride(permute_1899, (4864, 32), (32, 1))
+        assert_size_stride(permute_1903, (32, 896), (896, 1))
+        assert_size_stride(permute_1908, (896, 32), (32, 1))
+        assert_size_stride(permute_1912, (32, 896), (896, 1))
+        assert_size_stride(permute_1919, (128, 32), (32, 1))
+        assert_size_stride(permute_1923, (32, 896), (896, 1))
+        assert_size_stride(permute_1929, (128, 32), (32, 1))
+        assert_size_stride(permute_1933, (32, 896), (896, 1))
+        assert_size_stride(permute_1939, (896, 32), (32, 1))
+        assert_size_stride(permute_1943, (32, 896), (896, 1))
+        assert_size_stride(permute_1948, (896, 32), (32, 1))
+        assert_size_stride(permute_1952, (32, 4864), (4864, 1))
+        assert_size_stride(permute_1957, (4864, 32), (32, 1))
+        assert_size_stride(permute_1961, (32, 896), (896, 1))
+        assert_size_stride(permute_1966, (4864, 32), (32, 1))
+        assert_size_stride(permute_1970, (32, 896), (896, 1))
+        assert_size_stride(permute_1975, (896, 32), (32, 1))
+        assert_size_stride(permute_1979, (32, 896), (896, 1))
+        assert_size_stride(permute_1986, (128, 32), (32, 1))
+        assert_size_stride(permute_1990, (32, 896), (896, 1))
+        assert_size_stride(permute_1996, (128, 32), (32, 1))
+        assert_size_stride(permute_2000, (32, 896), (896, 1))
+        assert_size_stride(permute_2006, (896, 32), (32, 1))
+        assert_size_stride(permute_2010, (32, 896), (896, 1))
+        assert_size_stride(permute_2015, (896, 32), (32, 1))
+        assert_size_stride(permute_2019, (32, 4864), (4864, 1))
+        assert_size_stride(permute_2024, (4864, 32), (32, 1))
+        assert_size_stride(permute_2028, (32, 896), (896, 1))
+        assert_size_stride(permute_2033, (4864, 32), (32, 1))
+        assert_size_stride(permute_2037, (32, 896), (896, 1))
+        assert_size_stride(permute_2042, (896, 32), (32, 1))
+        assert_size_stride(permute_2046, (32, 896), (896, 1))
+        assert_size_stride(permute_2053, (128, 32), (32, 1))
+        assert_size_stride(permute_2057, (32, 896), (896, 1))
+        assert_size_stride(permute_2063, (128, 32), (32, 1))
+        assert_size_stride(permute_2067, (32, 896), (896, 1))
+        assert_size_stride(permute_2073, (896, 32), (32, 1))
+        assert_size_stride(permute_2077, (32, 896), (896, 1))
+        assert_size_stride(permute_2082, (896, 32), (32, 1))
+        assert_size_stride(permute_2086, (32, 4864), (4864, 1))
+        assert_size_stride(permute_2091, (4864, 32), (32, 1))
+        assert_size_stride(permute_2095, (32, 896), (896, 1))
+        assert_size_stride(permute_2100, (4864, 32), (32, 1))
+        assert_size_stride(permute_2104, (32, 896), (896, 1))
+        assert_size_stride(permute_2109, (896, 32), (32, 1))
+        assert_size_stride(permute_2113, (32, 896), (896, 1))
+        assert_size_stride(permute_2120, (128, 32), (32, 1))
+        assert_size_stride(permute_2124, (32, 896), (896, 1))
+        assert_size_stride(permute_2130, (128, 32), (32, 1))
+        assert_size_stride(permute_2134, (32, 896), (896, 1))
+        assert_size_stride(permute_2140, (896, 32), (32, 1))
+        assert_size_stride(permute_2144, (32, 896), (896, 1))
+        assert_size_stride(permute_2149, (896, 32), (32, 1))
+        assert_size_stride(permute_2153, (32, 4864), (4864, 1))
+        assert_size_stride(permute_2158, (4864, 32), (32, 1))
+        assert_size_stride(permute_2162, (32, 896), (896, 1))
+        assert_size_stride(permute_2167, (4864, 32), (32, 1))
+        assert_size_stride(permute_2171, (32, 896), (896, 1))
+        assert_size_stride(permute_2176, (896, 32), (32, 1))
+        assert_size_stride(permute_2180, (32, 896), (896, 1))
+        assert_size_stride(permute_2187, (128, 32), (32, 1))
+        assert_size_stride(permute_2195, (128, 32), (32, 1))
+        assert_size_stride(permute_2203, (896, 32), (32, 1))
+        assert_size_stride(tangents_1, (1, s35, 151936), (151936*s35, 151936, 1))
+        with torch.cuda._DeviceGuard(0):
+            torch.cuda.set_device(0)
+            buf0 = empty_strided_cuda((s35, 151936), (151936, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [convert_element_type_1905, view_1163], Original ATen: [aten._to_copy, aten.view]
+            triton_poi_fused__to_copy_view_0_xnumel = 151936*s35
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_view_0.run(tangents_1, buf0, triton_poi_fused__to_copy_view_0_xnumel, stream=stream0)
+            del tangents_1
+            buf2 = empty_strided_cuda((s35, 896), (896, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [logits, permute_604, mm_434], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(buf0, primals_633, out=buf2)
+            del primals_633
+            buf4 = add_11888; del add_11888  # reuse
+            buf5 = empty_strided_cuda((s27, 896), (896, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [view_1164, full_default_49, mul_15553, convert_element_type_1910, hidden_states_240, mul_15554, mul_15555, sum_1, pow_50, mul_15556, mul_15557, expand_77, div, pow_51, mul_15558, mul_15559, add_11935, convert_element_type_1911, mul_15560, view_1165], Original ATen: [aten.view, aten.slice_backward, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div, aten.add]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_slice_backward_sum_view_1.run(buf4, buf2, primals_631, rsqrt_48, buf5, s27, s35, s27, 896, stream=stream0)
+            del buf2
+            del primals_631
+            del rsqrt_48
+            buf7 = empty_strided_cuda((s27, 32), (32, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [mm_436], Original ATen: [aten.mm]
+            extern_kernels.mm(buf5, permute_608, out=buf7)
+            del permute_608
+            buf9 = empty_strided_cuda((32, 4864), (4864, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [permute_610, mm_437], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf7, (32, s27), (1, 32), 0), view_1157, out=buf9)
+            del view_1157
+            buf6 = empty_strided_cuda((896, 32), (32, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [permute_606, mm_435], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf5, (896, s27), (1, 896), 0), mm_430, out=buf6)
+            del buf5
+            del mm_430
+            buf8 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_1916], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf6, buf8, 28672, stream=stream0)
+            del buf6
+            buf11 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_1922], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf9, buf11, 155648, stream=stream0)
+            del buf9
+            buf10 = empty_strided_cuda((s27, 4864), (4864, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [mm_438], Original ATen: [aten.mm]
+            extern_kernels.mm(buf7, permute_612, out=buf10)
+            del buf7
+            del permute_612
+            buf12 = empty_strided_cuda((s27, 4864), (4864, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [view_1169, result_504, permute_614, mm_439], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf4, (s27, 896), (896, 1), 0), primals_628, out=buf12)
+            del primals_628
+            buf13 = empty_strided_cuda((1, s27, 4864), (4864*s27, 4864, 1), torch.bfloat16)
+            buf20 = empty_strided_cuda((1, s27, 4864), (4864*s27, 4864, 1), torch.bfloat16)
+            buf22 = empty_strided_cuda((1, s27, 4864), (4864*s27, 4864, 1), torch.bfloat16)
+            buf29 = empty_strided_cuda((1, s27, 4864), (4864*s27, 4864, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [view_1168, view_1170, add_11936, silu_23, mul_15561, mul_15562, mul_15563, convert_element_type_1940, neg_49, exp, add_11938, reciprocal, mul_15564, mul_15565, sub_3919, mul_15566, add_11939, mul_15567, convert_element_type_1942, mul_15568], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf10, buf12, add_11798, add_11841, buf13, buf20, buf22, buf29, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_11798
+            del add_11841
+            buf21 = empty_strided_cuda((s27, 896), (896, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [view_1168, view_1170, add_11936, silu_23, mul_15561, view_1175, result_501, permute_623, mm_444], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf20, (s27, 4864), (4864, 1), 0), primals_625, out=buf21)
+            del primals_625
+            buf30 = empty_strided_cuda((s27, 896), (896, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [view_1168, view_1170, add_11936, silu_23, mul_15562, convert_element_type_1940, neg_49, exp, add_11938, reciprocal, mul_15564, mul_15565, sub_3919, mul_15566, add_11939, mul_15567, convert_element_type_1942, view_1181, result_498, permute_632, mm_449], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf29, (s27, 4864), (4864, 1), 0), primals_622, out=buf30)
+            del primals_622
+            buf15 = empty_strided_cuda((s27, 32), (32, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [view_1168, view_1170, add_11936, silu_23, mul_15561, mul_15563, view_1171, mm_441], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf13, (s27, 4864), (4864, 1), 0), permute_617, out=buf15)
+            del permute_617
+            buf14 = empty_strided_cuda((4864, 32), (32, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [view_1168, view_1170, add_11936, silu_23, mul_15561, mul_15563, view_1171, permute_615, mm_440], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf13, (4864, s27), (1, 4864), 0), mm_427, out=buf14)
+            del mm_427
+            buf24 = empty_strided_cuda((s27, 32), (32, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [view_1168, view_1170, add_11936, silu_23, mul_15562, convert_element_type_1940, neg_49, exp, add_11938, reciprocal, mul_15564, mul_15565, sub_3919, mul_15566, add_11939, mul_15567, convert_element_type_1942, mul_15568, view_1177, mm_446], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf22, (s27, 4864), (4864, 1), 0), permute_626, out=buf24)
+            del permute_626
+            buf23 = empty_strided_cuda((4864, 32), (32, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [view_1168, view_1170, add_11936, silu_23, mul_15562, convert_element_type_1940, neg_49, exp, add_11938, reciprocal, mul_15564, mul_15565, sub_3919, mul_15566, add_11939, mul_15567, convert_element_type_1942, mul_15568, view_1177, permute_624, mm_445], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf22, (4864, s27), (1, 4864), 0), mm_424, out=buf23)
+            del mm_424
+            buf17 = empty_strided_cuda((32, 896), (896, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [permute_619, mm_442], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf15, (32, s27), (1, 32), 0), view_1145, out=buf17)
+            buf26 = empty_strided_cuda((32, 896), (896, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [permute_628, mm_447], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf24, (32, s27), (1, 32), 0), view_1145, out=buf26)
+            del view_1145
+            buf19 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_1936], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf17, buf19, 28672, stream=stream0)
+            buf28 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_1953], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf26, buf28, 28672, stream=stream0)
+            buf16 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_1930], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf14, buf16, 155648, stream=stream0)
+            buf25 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_1947], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf23, buf25, 155648, stream=stream0)
+            buf18 = empty_strided_cuda((s27, 896), (896, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [mm_443], Original ATen: [aten.mm]
+            extern_kernels.mm(buf15, permute_621, out=buf18)
+            del permute_621
+            buf27 = empty_strided_cuda((s27, 896), (896, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [mm_448], Original ATen: [aten.mm]
+            extern_kernels.mm(buf24, permute_630, out=buf27)
+            del permute_630
+            buf33 = buf4; del buf4  # reuse
+            buf34 = empty_strided_cuda((s27, 896), (896, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [view_1174, view_1176, add_11937, view_1180, add_11940, view_1182, add_11941, mul_15569, convert_element_type_1957, hidden_states_236, mul_15570, mul_15571, sum_2, pow_52, mul_15572, mul_15573, expand_78, div_1, pow_53, mul_15574, mul_15575, add_11942, convert_element_type_1958, add_11943, mul_15576, view_1183], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf33, buf18, buf21, buf27, buf30, primals_621, add_11730, rsqrt_47, buf34, s27, 896, stream=stream0)
+            del add_11730
+            del buf18
+            del primals_621
+            del rsqrt_47
+            buf36 = buf24; del buf24  # reuse
+            # Topologically Sorted Source Nodes: [mm_451], Original ATen: [aten.mm]
+            extern_kernels.mm(buf34, permute_635, out=buf36)
+            del permute_635
+            buf35 = reinterpret_tensor(buf26, (896, 32), (32, 1), 0); del buf26  # reuse
+            # Topologically Sorted Source Nodes: [permute_633, mm_450], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf34, (896, s27), (1, 896), 0), mm_421, out=buf35)
+            del mm_421
+            buf38 = buf17; del buf17  # reuse
+            # Topologically Sorted Source Nodes: [permute_637, mm_452], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf36, (32, s27), (1, 32), 0), view_1139, out=buf38)
+            del view_1139
+            buf37 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_1963], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf35, buf37, 28672, stream=stream0)
+            buf40 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_1969], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf38, buf40, 28672, stream=stream0)
+            buf39 = buf34; del buf34  # reuse
+            # Topologically Sorted Source Nodes: [mm_453], Original ATen: [aten.mm]
+            extern_kernels.mm(buf36, permute_639, out=buf39)
+            del permute_639
+            buf41 = buf30; del buf30  # reuse
+            # Topologically Sorted Source Nodes: [view_1187, result_495, permute_641, mm_454], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf33, (s27, 896), (896, 1), 0), primals_618, out=buf41)
+            del primals_618
+            buf42 = reinterpret_tensor(buf39, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf39  # reuse
+            # Topologically Sorted Source Nodes: [view_1186, view_1188, add_11944, view_1189, permute_642, attn_output, _scaled_dot_product_efficient_attention_backward], Original ATen: [aten.view, aten.add, aten.transpose, aten.slice, aten.expand, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf42, buf41, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [view_1186, view_1188, add_11944, view_1189, permute_642, attn_output, _scaled_dot_product_efficient_attention_backward], Original ATen: [aten.view, aten.add, aten.transpose, aten.slice, aten.expand, aten._scaled_dot_product_efficient_attention_backward]
+            buf43 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf42, add_11595, view_1134, view_1135, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_92, getitem_93, getitem_94, getitem_95, 0.0, [True, True, True, False], scale=0.125)
+            del add_11595
+            del getitem_92
+            del getitem_93
+            del getitem_94
+            del getitem_95
+            del view_1134
+            del view_1135
+            buf44 = buf43[0]
+            assert_size_stride(buf44, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf44, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf45 = buf43[1]
+            assert_size_stride(buf45, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf45, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf47 = empty_strided_cuda((1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [view_1191, sum_4], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf45, buf47, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf46 = buf43[2]
+            assert_size_stride(buf46, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf46, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf43
+            buf48 = empty_strided_cuda((1, s27, 2, 64), (128*s27, 128, 64, 1), torch.bfloat16)
+            buf49 = empty_strided_cuda((s27, 128), (128, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [view_1190, sum_3, squeeze, permute_643, clone_50, view_1192, mul_15581, view_1193], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf46, buf48, buf49, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf50 = empty_strided_cuda((128, 32), (32, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [permute_644, mm_455], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf49, (128, s27), (1, 128), 0), mm_418, out=buf50)
+            del mm_418
+            buf51 = buf36; del buf36  # reuse
+            # Topologically Sorted Source Nodes: [mm_456], Original ATen: [aten.mm]
+            extern_kernels.mm(buf49, permute_646, out=buf51)
+            del permute_646
+            buf52 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_1977], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf50, buf52, 4096, stream=stream0)
+            buf53 = buf38; del buf38  # reuse
+            # Topologically Sorted Source Nodes: [permute_648, mm_457], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf51, (32, s27), (1, 32), 0), view_1115, out=buf53)
+            buf55 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_1983], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf53, buf55, 28672, stream=stream0)
+            buf57 = reinterpret_tensor(buf49, (1, s27, 128), (128*s27, 128, 1), 0); del buf49  # reuse
+            buf64 = empty_strided_cuda((1, s27, 2, 64), (128*s27, 128, 64, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [view_1191, sum_4, squeeze_1, matmul, freqs, emb, sin, sin_1, sin_2, sin_3, mul_15577, slice_195, slice_196, neg_50, full_default_52, add_11945, cos, cos_1, cos_2, cos_3, mul_15578, add_11946, permute_653, clone_51, view_1199, mul_15582], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice, aten.neg, aten.slice_backward, aten.add, aten.cos, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf47, mm_default, buf57, buf64, s27, s27, 128, stream=stream0)
+            buf58 = buf50; del buf50  # reuse
+            # Topologically Sorted Source Nodes: [view_1191, sum_4, squeeze_1, matmul, freqs, emb, sin, sin_1, sin_2, sin_3, mul_15577, slice_195, slice_196, neg_50, full_default_52, add_11945, cos, cos_1, cos_2, cos_3, mul_15578, add_11946, permute_653, clone_51, view_1199, mul_15582, view_1200, permute_654, mm_460], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice, aten.neg, aten.slice_backward, aten.add, aten.cos, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf57, (128, s27), (1, 128), 0), mm_416, out=buf58)
+            del mm_416
+            buf59 = buf15; del buf15  # reuse
+            # Topologically Sorted Source Nodes: [view_1191, sum_4, squeeze_1, matmul, freqs, emb, sin, sin_1, sin_2, sin_3, mul_15577, slice_195, slice_196, neg_50, full_default_52, add_11945, cos, cos_1, cos_2, cos_3, mul_15578, add_11946, permute_653, clone_51, view_1199, mul_15582, view_1200, mm_461], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice, aten.neg, aten.slice_backward, aten.add, aten.cos, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf57, (s27, 128), (128, 1), 0), permute_656, out=buf59)
+            del permute_656
+            buf60 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_1991], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf58, buf60, 4096, stream=stream0)
+            buf61 = buf53; del buf53  # reuse
+            # Topologically Sorted Source Nodes: [permute_658, mm_462], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf59, (32, s27), (1, 32), 0), view_1115, out=buf61)
+            buf63 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_1997], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf61, buf63, 28672, stream=stream0)
+            buf56 = reinterpret_tensor(buf46, (s27, 896), (896, 1), 0); del buf46  # reuse
+            # Topologically Sorted Source Nodes: [view_1190, sum_3, squeeze, permute_643, clone_50, view_1192, view_1197, result_492, permute_652, mm_459], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf48, (s27, 128), (128, 1), 0), primals_614, out=buf56)
+            del primals_614
+            buf65 = reinterpret_tensor(buf45, (s27, 896), (896, 1), 0); del buf45  # reuse
+            # Topologically Sorted Source Nodes: [view_1191, sum_4, squeeze_1, matmul, freqs, emb, sin, sin_1, sin_2, sin_3, mul_15577, slice_195, slice_196, neg_50, full_default_52, add_11945, cos, cos_1, cos_2, cos_3, mul_15578, add_11946, permute_653, clone_51, view_1199, view_1204, result_489, permute_662, mm_464], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice, aten.neg, aten.slice_backward, aten.add, aten.cos, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf64, (s27, 128), (128, 1), 0), primals_610, out=buf65)
+            del primals_610
+            buf54 = reinterpret_tensor(buf42, (s27, 896), (896, 1), 0); del buf42  # reuse
+            # Topologically Sorted Source Nodes: [mm_458], Original ATen: [aten.mm]
+            extern_kernels.mm(buf51, permute_650, out=buf54)
+            del permute_650
+            buf62 = buf41; del buf41  # reuse
+            # Topologically Sorted Source Nodes: [mm_463], Original ATen: [aten.mm]
+            extern_kernels.mm(buf59, permute_660, out=buf62)
+            del permute_660
+            buf66 = reinterpret_tensor(buf27, (1, s27, 896), (896*s27, 896, 1), 0); del buf27  # reuse
+            buf73 = reinterpret_tensor(buf21, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf21  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, mul_15579, slice_197, slice_198, neg_51, full_default_54, add_11947, mul_15580, add_11948, permute_663, clone_52, view_1206, mul_15583], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice, aten.neg, aten.slice_backward, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf44, mm_default, buf66, buf73, s27, s27, 896, stream=stream0)
+            buf68 = buf59; del buf59  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, mul_15579, slice_197, slice_198, neg_51, full_default_54, add_11947, mul_15580, add_11948, permute_663, clone_52, view_1206, mul_15583, view_1207, mm_466], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice, aten.neg, aten.slice_backward, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf66, (s27, 896), (896, 1), 0), permute_666, out=buf68)
+            del permute_666
+            buf67 = reinterpret_tensor(buf61, (896, 32), (32, 1), 0); del buf61  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, mul_15579, slice_197, slice_198, neg_51, full_default_54, add_11947, mul_15580, add_11948, permute_663, clone_52, view_1206, mul_15583, view_1207, permute_664, mm_465], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice, aten.neg, aten.slice_backward, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf66, (896, s27), (1, 896), 0), mm_414, out=buf67)
+            del mm_414
+            buf70 = reinterpret_tensor(buf35, (32, 896), (896, 1), 0); del buf35  # reuse
+            # Topologically Sorted Source Nodes: [permute_668, mm_467], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf68, (32, s27), (1, 32), 0), view_1115, out=buf70)
+            del view_1115
+            buf74 = reinterpret_tensor(buf66, (s27, 896), (896, 1), 0); del buf66  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, mul_15579, slice_197, slice_198, neg_51, full_default_54, add_11947, mul_15580, add_11948, permute_663, clone_52, view_1206, view_1211, result_486, permute_672, mm_469], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice, aten.neg, aten.slice_backward, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf73, (s27, 896), (896, 1), 0), primals_606, out=buf74)
+            del primals_606
+            buf69 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2005], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf67, buf69, 28672, stream=stream0)
+            buf72 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2011], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf70, buf72, 28672, stream=stream0)
+            buf71 = reinterpret_tensor(buf73, (s27, 896), (896, 1), 0); del buf73  # reuse
+            # Topologically Sorted Source Nodes: [mm_468], Original ATen: [aten.mm]
+            extern_kernels.mm(buf68, permute_670, out=buf71)
+            del permute_670
+            buf77 = buf33; del buf33  # reuse
+            buf78 = reinterpret_tensor(buf44, (s27, 896), (896, 1), 0); del buf44  # reuse
+            # Topologically Sorted Source Nodes: [view_1196, view_1198, add_11949, view_1203, add_11950, view_1205, add_11951, view_1210, add_11952, view_1212, add_11953, mul_15584, convert_element_type_2015, hidden_states_230, mul_15585, mul_15586, sum_5, pow_54, mul_15587, mul_15588, expand_79, div_2, pow_55, mul_15589, mul_15590, add_11954, convert_element_type_2016, add_11955, mul_15591, view_1213], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf77, buf54, buf56, buf62, buf65, buf71, buf74, primals_605, add_11396, rsqrt_46, buf78, s27, 896, stream=stream0)
+            del add_11396
+            del buf54
+            del buf56
+            del primals_605
+            del rsqrt_46
+            buf80 = buf68; del buf68  # reuse
+            # Topologically Sorted Source Nodes: [mm_471], Original ATen: [aten.mm]
+            extern_kernels.mm(buf78, permute_675, out=buf80)
+            del permute_675
+            buf82 = reinterpret_tensor(buf23, (32, 4864), (4864, 1), 0); del buf23  # reuse
+            # Topologically Sorted Source Nodes: [permute_677, mm_472], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf80, (32, s27), (1, 32), 0), view_1109, out=buf82)
+            del view_1109
+            buf79 = reinterpret_tensor(buf70, (896, 32), (32, 1), 0); del buf70  # reuse
+            # Topologically Sorted Source Nodes: [permute_673, mm_470], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf78, (896, s27), (1, 896), 0), mm_412, out=buf79)
+            del mm_412
+            buf81 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2021], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf79, buf81, 28672, stream=stream0)
+            buf84 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2027], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf82, buf84, 155648, stream=stream0)
+            buf83 = reinterpret_tensor(buf22, (s27, 4864), (4864, 1), 0); del buf22  # reuse
+            # Topologically Sorted Source Nodes: [mm_473], Original ATen: [aten.mm]
+            extern_kernels.mm(buf80, permute_679, out=buf83)
+            del permute_679
+            buf85 = reinterpret_tensor(buf13, (s27, 4864), (4864, 1), 0); del buf13  # reuse
+            # Topologically Sorted Source Nodes: [view_1217, result_483, permute_681, mm_474], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf77, (s27, 896), (896, 1), 0), primals_602, out=buf85)
+            del primals_602
+            buf86 = buf29; del buf29  # reuse
+            buf93 = buf20; del buf20  # reuse
+            buf95 = reinterpret_tensor(buf12, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf12  # reuse
+            buf102 = reinterpret_tensor(buf10, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf10  # reuse
+            # Topologically Sorted Source Nodes: [view_1216, view_1218, add_11956, silu_22, mul_15592, mul_15593, mul_15594, convert_element_type_2045, neg_52, exp_1, add_11958, reciprocal_1, mul_15595, mul_15596, sub_3920, mul_15597, add_11959, mul_15598, convert_element_type_2047, mul_15599], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf83, buf85, add_11306, add_11349, buf86, buf93, buf95, buf102, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_11306
+            del add_11349
+            buf94 = buf78; del buf78  # reuse
+            # Topologically Sorted Source Nodes: [view_1216, view_1218, add_11956, silu_22, mul_15592, view_1223, result_480, permute_690, mm_479], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf93, (s27, 4864), (4864, 1), 0), primals_599, out=buf94)
+            del primals_599
+            buf103 = buf74; del buf74  # reuse
+            # Topologically Sorted Source Nodes: [view_1216, view_1218, add_11956, silu_22, mul_15593, convert_element_type_2045, neg_52, exp_1, add_11958, reciprocal_1, mul_15595, mul_15596, sub_3920, mul_15597, add_11959, mul_15598, convert_element_type_2047, view_1229, result_477, permute_699, mm_484], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf102, (s27, 4864), (4864, 1), 0), primals_596, out=buf103)
+            del primals_596
+            buf88 = buf80; del buf80  # reuse
+            # Topologically Sorted Source Nodes: [view_1216, view_1218, add_11956, silu_22, mul_15592, mul_15594, view_1219, mm_476], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf86, (s27, 4864), (4864, 1), 0), permute_684, out=buf88)
+            del permute_684
+            buf87 = reinterpret_tensor(buf82, (4864, 32), (32, 1), 0); del buf82  # reuse
+            # Topologically Sorted Source Nodes: [view_1216, view_1218, add_11956, silu_22, mul_15592, mul_15594, view_1219, permute_682, mm_475], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf86, (4864, s27), (1, 4864), 0), mm_409, out=buf87)
+            del mm_409
+            buf97 = buf51; del buf51  # reuse
+            # Topologically Sorted Source Nodes: [view_1216, view_1218, add_11956, silu_22, mul_15593, convert_element_type_2045, neg_52, exp_1, add_11958, reciprocal_1, mul_15595, mul_15596, sub_3920, mul_15597, add_11959, mul_15598, convert_element_type_2047, mul_15599, view_1225, mm_481], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf95, (s27, 4864), (4864, 1), 0), permute_693, out=buf97)
+            del permute_693
+            buf96 = buf14; del buf14  # reuse
+            # Topologically Sorted Source Nodes: [view_1216, view_1218, add_11956, silu_22, mul_15593, convert_element_type_2045, neg_52, exp_1, add_11958, reciprocal_1, mul_15595, mul_15596, sub_3920, mul_15597, add_11959, mul_15598, convert_element_type_2047, mul_15599, view_1225, permute_691, mm_480], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf95, (4864, s27), (1, 4864), 0), mm_406, out=buf96)
+            del mm_406
+            buf90 = reinterpret_tensor(buf79, (32, 896), (896, 1), 0); del buf79  # reuse
+            # Topologically Sorted Source Nodes: [permute_686, mm_477], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf88, (32, s27), (1, 32), 0), view_1097, out=buf90)
+            buf99 = reinterpret_tensor(buf67, (32, 896), (896, 1), 0); del buf67  # reuse
+            # Topologically Sorted Source Nodes: [permute_695, mm_482], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf97, (32, s27), (1, 32), 0), view_1097, out=buf99)
+            del view_1097
+            buf92 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2041], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf90, buf92, 28672, stream=stream0)
+            buf101 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2058], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf99, buf101, 28672, stream=stream0)
+            buf89 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2035], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf87, buf89, 155648, stream=stream0)
+            buf98 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2052], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf96, buf98, 155648, stream=stream0)
+            buf91 = buf71; del buf71  # reuse
+            # Topologically Sorted Source Nodes: [mm_478], Original ATen: [aten.mm]
+            extern_kernels.mm(buf88, permute_688, out=buf91)
+            del permute_688
+            buf100 = buf65; del buf65  # reuse
+            # Topologically Sorted Source Nodes: [mm_483], Original ATen: [aten.mm]
+            extern_kernels.mm(buf97, permute_697, out=buf100)
+            del permute_697
+            buf106 = buf77; del buf77  # reuse
+            buf107 = buf62; del buf62  # reuse
+            # Topologically Sorted Source Nodes: [view_1222, view_1224, add_11957, view_1228, add_11960, view_1230, add_11961, mul_15600, convert_element_type_2062, hidden_states_226, mul_15601, mul_15602, sum_6, pow_56, mul_15603, mul_15604, expand_80, div_3, pow_57, mul_15605, mul_15606, add_11962, convert_element_type_2063, add_11963, mul_15607, view_1231], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf106, buf91, buf94, buf100, buf103, primals_595, add_11238, rsqrt_45, buf107, s27, 896, stream=stream0)
+            del add_11238
+            del buf100
+            del primals_595
+            del rsqrt_45
+            buf109 = buf97; del buf97  # reuse
+            # Topologically Sorted Source Nodes: [mm_486], Original ATen: [aten.mm]
+            extern_kernels.mm(buf107, permute_702, out=buf109)
+            del permute_702
+            buf108 = reinterpret_tensor(buf99, (896, 32), (32, 1), 0); del buf99  # reuse
+            # Topologically Sorted Source Nodes: [permute_700, mm_485], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf107, (896, s27), (1, 896), 0), mm_403, out=buf108)
+            del mm_403
+            buf111 = buf90; del buf90  # reuse
+            # Topologically Sorted Source Nodes: [permute_704, mm_487], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf109, (32, s27), (1, 32), 0), view_1091, out=buf111)
+            del view_1091
+            buf110 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2068], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf108, buf110, 28672, stream=stream0)
+            buf113 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2074], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf111, buf113, 28672, stream=stream0)
+            buf112 = buf107; del buf107  # reuse
+            # Topologically Sorted Source Nodes: [mm_488], Original ATen: [aten.mm]
+            extern_kernels.mm(buf109, permute_706, out=buf112)
+            del permute_706
+            buf114 = buf94; del buf94  # reuse
+            # Topologically Sorted Source Nodes: [view_1235, result_474, permute_708, mm_489], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf106, (s27, 896), (896, 1), 0), primals_592, out=buf114)
+            del primals_592
+            buf115 = reinterpret_tensor(buf112, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf112  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_1234, view_1236, add_11964, view_1237, permute_709, _scaled_dot_product_efficient_attention_backward_1], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf115, buf114, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_1234, view_1236, add_11964, view_1237, permute_709, _scaled_dot_product_efficient_attention_backward_1], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf116 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf115, add_11103, view_1086, view_1087, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_88, getitem_89, getitem_90, getitem_91, 0.0, [True, True, True, False], scale=0.125)
+            del add_11103
+            del getitem_88
+            del getitem_89
+            del getitem_90
+            del getitem_91
+            del view_1086
+            del view_1087
+            buf117 = buf116[0]
+            assert_size_stride(buf117, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf117, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf118 = buf116[1]
+            assert_size_stride(buf118, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf118, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf120 = reinterpret_tensor(buf64, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf64  # reuse
+            # Topologically Sorted Source Nodes: [view_1239, sum_8], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf118, buf120, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf119 = buf116[2]
+            assert_size_stride(buf119, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf119, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf116
+            buf121 = buf48; del buf48  # reuse
+            buf122 = reinterpret_tensor(buf57, (s27, 128), (128, 1), 0); del buf57  # reuse
+            # Topologically Sorted Source Nodes: [view_1238, sum_7, squeeze_2, permute_710, clone_53, view_1240, mul_15612, view_1241], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf119, buf121, buf122, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf123 = buf58; del buf58  # reuse
+            # Topologically Sorted Source Nodes: [permute_711, mm_490], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf122, (128, s27), (1, 128), 0), mm_400, out=buf123)
+            del mm_400
+            buf124 = buf109; del buf109  # reuse
+            # Topologically Sorted Source Nodes: [mm_491], Original ATen: [aten.mm]
+            extern_kernels.mm(buf122, permute_713, out=buf124)
+            del permute_713
+            buf125 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2082], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf123, buf125, 4096, stream=stream0)
+            buf126 = buf111; del buf111  # reuse
+            # Topologically Sorted Source Nodes: [permute_715, mm_492], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf124, (32, s27), (1, 32), 0), view_1067, out=buf126)
+            buf128 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2088], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf126, buf128, 28672, stream=stream0)
+            buf130 = reinterpret_tensor(buf122, (1, s27, 128), (128*s27, 128, 1), 0); del buf122  # reuse
+            buf137 = reinterpret_tensor(buf47, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf47  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1239, sum_8, squeeze_3, mul_15608, slice_199, slice_200, neg_53, add_11965, mul_15609, add_11966, permute_720, clone_54, view_1247, mul_15613], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf120, mm_default, buf130, buf137, s27, s27, 128, stream=stream0)
+            buf131 = buf123; del buf123  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1239, sum_8, squeeze_3, mul_15608, slice_199, slice_200, neg_53, add_11965, mul_15609, add_11966, permute_720, clone_54, view_1247, mul_15613, view_1248, permute_721, mm_495], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf130, (128, s27), (1, 128), 0), mm_398, out=buf131)
+            del mm_398
+            buf132 = buf88; del buf88  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1239, sum_8, squeeze_3, mul_15608, slice_199, slice_200, neg_53, add_11965, mul_15609, add_11966, permute_720, clone_54, view_1247, mul_15613, view_1248, mm_496], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf130, (s27, 128), (128, 1), 0), permute_723, out=buf132)
+            del permute_723
+            buf133 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2096], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf131, buf133, 4096, stream=stream0)
+            buf134 = buf126; del buf126  # reuse
+            # Topologically Sorted Source Nodes: [permute_725, mm_497], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf132, (32, s27), (1, 32), 0), view_1067, out=buf134)
+            buf136 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2102], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf134, buf136, 28672, stream=stream0)
+            buf129 = reinterpret_tensor(buf119, (s27, 896), (896, 1), 0); del buf119  # reuse
+            # Topologically Sorted Source Nodes: [view_1238, sum_7, squeeze_2, permute_710, clone_53, view_1240, view_1245, result_471, permute_719, mm_494], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf121, (s27, 128), (128, 1), 0), primals_588, out=buf129)
+            del primals_588
+            buf138 = reinterpret_tensor(buf118, (s27, 896), (896, 1), 0); del buf118  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1239, sum_8, squeeze_3, mul_15608, slice_199, slice_200, neg_53, add_11965, mul_15609, add_11966, permute_720, clone_54, view_1247, view_1252, result_468, permute_729, mm_499], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf137, (s27, 128), (128, 1), 0), primals_584, out=buf138)
+            del primals_584
+            buf127 = reinterpret_tensor(buf115, (s27, 896), (896, 1), 0); del buf115  # reuse
+            # Topologically Sorted Source Nodes: [mm_493], Original ATen: [aten.mm]
+            extern_kernels.mm(buf124, permute_717, out=buf127)
+            del permute_717
+            buf135 = buf114; del buf114  # reuse
+            # Topologically Sorted Source Nodes: [mm_498], Original ATen: [aten.mm]
+            extern_kernels.mm(buf132, permute_727, out=buf135)
+            del permute_727
+            buf139 = reinterpret_tensor(buf91, (1, s27, 896), (896*s27, 896, 1), 0); del buf91  # reuse
+            buf146 = reinterpret_tensor(buf103, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf103  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15610, slice_201, slice_202, neg_54, add_11967, mul_15611, add_11968, permute_730, clone_55, view_1254, mul_15614], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf117, mm_default, buf139, buf146, s27, s27, 896, stream=stream0)
+            buf141 = buf132; del buf132  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15610, slice_201, slice_202, neg_54, add_11967, mul_15611, add_11968, permute_730, clone_55, view_1254, mul_15614, view_1255, mm_501], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf139, (s27, 896), (896, 1), 0), permute_733, out=buf141)
+            del permute_733
+            buf140 = reinterpret_tensor(buf134, (896, 32), (32, 1), 0); del buf134  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15610, slice_201, slice_202, neg_54, add_11967, mul_15611, add_11968, permute_730, clone_55, view_1254, mul_15614, view_1255, permute_731, mm_500], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf139, (896, s27), (1, 896), 0), mm_396, out=buf140)
+            del mm_396
+            buf143 = reinterpret_tensor(buf108, (32, 896), (896, 1), 0); del buf108  # reuse
+            # Topologically Sorted Source Nodes: [permute_735, mm_502], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf141, (32, s27), (1, 32), 0), view_1067, out=buf143)
+            del view_1067
+            buf147 = reinterpret_tensor(buf139, (s27, 896), (896, 1), 0); del buf139  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15610, slice_201, slice_202, neg_54, add_11967, mul_15611, add_11968, permute_730, clone_55, view_1254, view_1259, result_465, permute_739, mm_504], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf146, (s27, 896), (896, 1), 0), primals_580, out=buf147)
+            del primals_580
+            buf142 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2110], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf140, buf142, 28672, stream=stream0)
+            buf145 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2116], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf143, buf145, 28672, stream=stream0)
+            buf144 = reinterpret_tensor(buf146, (s27, 896), (896, 1), 0); del buf146  # reuse
+            # Topologically Sorted Source Nodes: [mm_503], Original ATen: [aten.mm]
+            extern_kernels.mm(buf141, permute_737, out=buf144)
+            del permute_737
+            buf150 = buf106; del buf106  # reuse
+            buf151 = reinterpret_tensor(buf117, (s27, 896), (896, 1), 0); del buf117  # reuse
+            # Topologically Sorted Source Nodes: [view_1244, view_1246, add_11969, view_1251, add_11970, view_1253, add_11971, view_1258, add_11972, view_1260, add_11973, mul_15615, convert_element_type_2120, hidden_states_220, mul_15616, mul_15617, sum_9, pow_58, mul_15618, mul_15619, expand_81, div_4, pow_59, mul_15620, mul_15621, add_11974, convert_element_type_2121, add_11975, mul_15622, view_1261], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf150, buf127, buf129, buf135, buf138, buf144, buf147, primals_579, add_10904, rsqrt_44, buf151, s27, 896, stream=stream0)
+            del add_10904
+            del buf127
+            del buf129
+            del primals_579
+            del rsqrt_44
+            buf153 = buf141; del buf141  # reuse
+            # Topologically Sorted Source Nodes: [mm_506], Original ATen: [aten.mm]
+            extern_kernels.mm(buf151, permute_742, out=buf153)
+            del permute_742
+            buf155 = reinterpret_tensor(buf96, (32, 4864), (4864, 1), 0); del buf96  # reuse
+            # Topologically Sorted Source Nodes: [permute_744, mm_507], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf153, (32, s27), (1, 32), 0), view_1061, out=buf155)
+            del view_1061
+            buf152 = reinterpret_tensor(buf143, (896, 32), (32, 1), 0); del buf143  # reuse
+            # Topologically Sorted Source Nodes: [permute_740, mm_505], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf151, (896, s27), (1, 896), 0), mm_394, out=buf152)
+            del mm_394
+            buf154 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2126], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf152, buf154, 28672, stream=stream0)
+            buf157 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2132], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf155, buf157, 155648, stream=stream0)
+            buf156 = reinterpret_tensor(buf95, (s27, 4864), (4864, 1), 0); del buf95  # reuse
+            # Topologically Sorted Source Nodes: [mm_508], Original ATen: [aten.mm]
+            extern_kernels.mm(buf153, permute_746, out=buf156)
+            del permute_746
+            buf158 = reinterpret_tensor(buf86, (s27, 4864), (4864, 1), 0); del buf86  # reuse
+            # Topologically Sorted Source Nodes: [view_1265, result_462, permute_748, mm_509], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf150, (s27, 896), (896, 1), 0), primals_576, out=buf158)
+            del primals_576
+            buf159 = buf102; del buf102  # reuse
+            buf166 = buf93; del buf93  # reuse
+            buf168 = reinterpret_tensor(buf85, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf85  # reuse
+            buf175 = reinterpret_tensor(buf83, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf83  # reuse
+            # Topologically Sorted Source Nodes: [view_1264, view_1266, add_11976, silu_21, mul_15623, mul_15624, mul_15625, convert_element_type_2150, neg_55, exp_2, add_11978, reciprocal_2, mul_15626, mul_15627, sub_3921, mul_15628, add_11979, mul_15629, convert_element_type_2152, mul_15630], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf156, buf158, add_10814, add_10857, buf159, buf166, buf168, buf175, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_10814
+            del add_10857
+            buf167 = buf151; del buf151  # reuse
+            # Topologically Sorted Source Nodes: [view_1264, view_1266, add_11976, silu_21, mul_15623, view_1271, result_459, permute_757, mm_514], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf166, (s27, 4864), (4864, 1), 0), primals_573, out=buf167)
+            del primals_573
+            buf176 = buf147; del buf147  # reuse
+            # Topologically Sorted Source Nodes: [view_1264, view_1266, add_11976, silu_21, mul_15624, convert_element_type_2150, neg_55, exp_2, add_11978, reciprocal_2, mul_15626, mul_15627, sub_3921, mul_15628, add_11979, mul_15629, convert_element_type_2152, view_1277, result_456, permute_766, mm_519], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf175, (s27, 4864), (4864, 1), 0), primals_570, out=buf176)
+            del primals_570
+            buf161 = buf153; del buf153  # reuse
+            # Topologically Sorted Source Nodes: [view_1264, view_1266, add_11976, silu_21, mul_15623, mul_15625, view_1267, mm_511], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf159, (s27, 4864), (4864, 1), 0), permute_751, out=buf161)
+            del permute_751
+            buf160 = reinterpret_tensor(buf155, (4864, 32), (32, 1), 0); del buf155  # reuse
+            # Topologically Sorted Source Nodes: [view_1264, view_1266, add_11976, silu_21, mul_15623, mul_15625, view_1267, permute_749, mm_510], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf159, (4864, s27), (1, 4864), 0), mm_391, out=buf160)
+            del mm_391
+            buf170 = buf124; del buf124  # reuse
+            # Topologically Sorted Source Nodes: [view_1264, view_1266, add_11976, silu_21, mul_15624, convert_element_type_2150, neg_55, exp_2, add_11978, reciprocal_2, mul_15626, mul_15627, sub_3921, mul_15628, add_11979, mul_15629, convert_element_type_2152, mul_15630, view_1273, mm_516], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf168, (s27, 4864), (4864, 1), 0), permute_760, out=buf170)
+            del permute_760
+            buf169 = buf87; del buf87  # reuse
+            # Topologically Sorted Source Nodes: [view_1264, view_1266, add_11976, silu_21, mul_15624, convert_element_type_2150, neg_55, exp_2, add_11978, reciprocal_2, mul_15626, mul_15627, sub_3921, mul_15628, add_11979, mul_15629, convert_element_type_2152, mul_15630, view_1273, permute_758, mm_515], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf168, (4864, s27), (1, 4864), 0), mm_388, out=buf169)
+            del mm_388
+            buf163 = reinterpret_tensor(buf152, (32, 896), (896, 1), 0); del buf152  # reuse
+            # Topologically Sorted Source Nodes: [permute_753, mm_512], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf161, (32, s27), (1, 32), 0), view_1049, out=buf163)
+            buf172 = reinterpret_tensor(buf140, (32, 896), (896, 1), 0); del buf140  # reuse
+            # Topologically Sorted Source Nodes: [permute_762, mm_517], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf170, (32, s27), (1, 32), 0), view_1049, out=buf172)
+            del view_1049
+            buf165 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2146], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf163, buf165, 28672, stream=stream0)
+            buf174 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2163], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf172, buf174, 28672, stream=stream0)
+            buf162 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2140], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf160, buf162, 155648, stream=stream0)
+            buf171 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2157], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf169, buf171, 155648, stream=stream0)
+            buf164 = buf144; del buf144  # reuse
+            # Topologically Sorted Source Nodes: [mm_513], Original ATen: [aten.mm]
+            extern_kernels.mm(buf161, permute_755, out=buf164)
+            del permute_755
+            buf173 = buf138; del buf138  # reuse
+            # Topologically Sorted Source Nodes: [mm_518], Original ATen: [aten.mm]
+            extern_kernels.mm(buf170, permute_764, out=buf173)
+            del permute_764
+            buf179 = buf150; del buf150  # reuse
+            buf180 = buf135; del buf135  # reuse
+            # Topologically Sorted Source Nodes: [view_1270, view_1272, add_11977, view_1276, add_11980, view_1278, add_11981, mul_15631, convert_element_type_2167, hidden_states_216, mul_15632, mul_15633, sum_10, pow_60, mul_15634, mul_15635, expand_82, div_5, pow_61, mul_15636, mul_15637, add_11982, convert_element_type_2168, add_11983, mul_15638, view_1279], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf179, buf164, buf167, buf173, buf176, primals_569, add_10746, rsqrt_43, buf180, s27, 896, stream=stream0)
+            del add_10746
+            del buf164
+            del primals_569
+            del rsqrt_43
+            buf182 = buf170; del buf170  # reuse
+            # Topologically Sorted Source Nodes: [mm_521], Original ATen: [aten.mm]
+            extern_kernels.mm(buf180, permute_769, out=buf182)
+            del permute_769
+            buf181 = reinterpret_tensor(buf172, (896, 32), (32, 1), 0); del buf172  # reuse
+            # Topologically Sorted Source Nodes: [permute_767, mm_520], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf180, (896, s27), (1, 896), 0), mm_385, out=buf181)
+            del mm_385
+            buf184 = buf163; del buf163  # reuse
+            # Topologically Sorted Source Nodes: [permute_771, mm_522], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf182, (32, s27), (1, 32), 0), view_1043, out=buf184)
+            del view_1043
+            buf183 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2173], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf181, buf183, 28672, stream=stream0)
+            buf186 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2179], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf184, buf186, 28672, stream=stream0)
+            buf185 = buf180; del buf180  # reuse
+            # Topologically Sorted Source Nodes: [mm_523], Original ATen: [aten.mm]
+            extern_kernels.mm(buf182, permute_773, out=buf185)
+            del permute_773
+            buf187 = buf176; del buf176  # reuse
+            # Topologically Sorted Source Nodes: [view_1283, result_453, permute_775, mm_524], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf179, (s27, 896), (896, 1), 0), primals_566, out=buf187)
+            del primals_566
+            buf188 = reinterpret_tensor(buf185, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf185  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_1282, view_1284, add_11984, view_1285, permute_776, _scaled_dot_product_efficient_attention_backward_2], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf188, buf187, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_1282, view_1284, add_11984, view_1285, permute_776, _scaled_dot_product_efficient_attention_backward_2], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf189 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf188, add_10611, view_1038, view_1039, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_84, getitem_85, getitem_86, getitem_87, 0.0, [True, True, True, False], scale=0.125)
+            del add_10611
+            del getitem_84
+            del getitem_85
+            del getitem_86
+            del getitem_87
+            del view_1038
+            del view_1039
+            buf190 = buf189[0]
+            assert_size_stride(buf190, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf190, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf191 = buf189[1]
+            assert_size_stride(buf191, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf191, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf193 = reinterpret_tensor(buf137, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf137  # reuse
+            # Topologically Sorted Source Nodes: [view_1287, sum_12], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf191, buf193, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf192 = buf189[2]
+            assert_size_stride(buf192, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf192, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf189
+            buf194 = buf121; del buf121  # reuse
+            buf195 = reinterpret_tensor(buf130, (s27, 128), (128, 1), 0); del buf130  # reuse
+            # Topologically Sorted Source Nodes: [view_1286, sum_11, squeeze_4, permute_777, clone_56, view_1288, mul_15643, view_1289], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf192, buf194, buf195, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf196 = buf131; del buf131  # reuse
+            # Topologically Sorted Source Nodes: [permute_778, mm_525], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf195, (128, s27), (1, 128), 0), mm_382, out=buf196)
+            del mm_382
+            buf197 = buf182; del buf182  # reuse
+            # Topologically Sorted Source Nodes: [mm_526], Original ATen: [aten.mm]
+            extern_kernels.mm(buf195, permute_780, out=buf197)
+            del permute_780
+            buf198 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2187], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf196, buf198, 4096, stream=stream0)
+            buf199 = buf184; del buf184  # reuse
+            # Topologically Sorted Source Nodes: [permute_782, mm_527], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf197, (32, s27), (1, 32), 0), view_1019, out=buf199)
+            buf201 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2193], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf199, buf201, 28672, stream=stream0)
+            buf203 = reinterpret_tensor(buf195, (1, s27, 128), (128*s27, 128, 1), 0); del buf195  # reuse
+            buf210 = reinterpret_tensor(buf120, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf120  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1287, sum_12, squeeze_5, mul_15639, slice_203, slice_204, neg_56, add_11985, mul_15640, add_11986, permute_787, clone_57, view_1295, mul_15644], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf193, mm_default, buf203, buf210, s27, s27, 128, stream=stream0)
+            buf204 = buf196; del buf196  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1287, sum_12, squeeze_5, mul_15639, slice_203, slice_204, neg_56, add_11985, mul_15640, add_11986, permute_787, clone_57, view_1295, mul_15644, view_1296, permute_788, mm_530], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf203, (128, s27), (1, 128), 0), mm_380, out=buf204)
+            del mm_380
+            buf205 = buf161; del buf161  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1287, sum_12, squeeze_5, mul_15639, slice_203, slice_204, neg_56, add_11985, mul_15640, add_11986, permute_787, clone_57, view_1295, mul_15644, view_1296, mm_531], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf203, (s27, 128), (128, 1), 0), permute_790, out=buf205)
+            del permute_790
+            buf206 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2201], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf204, buf206, 4096, stream=stream0)
+            buf207 = buf199; del buf199  # reuse
+            # Topologically Sorted Source Nodes: [permute_792, mm_532], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf205, (32, s27), (1, 32), 0), view_1019, out=buf207)
+            buf209 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2207], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf207, buf209, 28672, stream=stream0)
+            buf202 = reinterpret_tensor(buf192, (s27, 896), (896, 1), 0); del buf192  # reuse
+            # Topologically Sorted Source Nodes: [view_1286, sum_11, squeeze_4, permute_777, clone_56, view_1288, view_1293, result_450, permute_786, mm_529], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf194, (s27, 128), (128, 1), 0), primals_562, out=buf202)
+            del primals_562
+            buf211 = reinterpret_tensor(buf191, (s27, 896), (896, 1), 0); del buf191  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1287, sum_12, squeeze_5, mul_15639, slice_203, slice_204, neg_56, add_11985, mul_15640, add_11986, permute_787, clone_57, view_1295, view_1300, result_447, permute_796, mm_534], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf210, (s27, 128), (128, 1), 0), primals_558, out=buf211)
+            del primals_558
+            buf200 = reinterpret_tensor(buf188, (s27, 896), (896, 1), 0); del buf188  # reuse
+            # Topologically Sorted Source Nodes: [mm_528], Original ATen: [aten.mm]
+            extern_kernels.mm(buf197, permute_784, out=buf200)
+            del permute_784
+            buf208 = buf187; del buf187  # reuse
+            # Topologically Sorted Source Nodes: [mm_533], Original ATen: [aten.mm]
+            extern_kernels.mm(buf205, permute_794, out=buf208)
+            del permute_794
+            buf212 = reinterpret_tensor(buf173, (1, s27, 896), (896*s27, 896, 1), 0); del buf173  # reuse
+            buf219 = reinterpret_tensor(buf167, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf167  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15641, slice_205, slice_206, neg_57, add_11987, mul_15642, add_11988, permute_797, clone_58, view_1302, mul_15645], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf190, mm_default, buf212, buf219, s27, s27, 896, stream=stream0)
+            buf214 = buf205; del buf205  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15641, slice_205, slice_206, neg_57, add_11987, mul_15642, add_11988, permute_797, clone_58, view_1302, mul_15645, view_1303, mm_536], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf212, (s27, 896), (896, 1), 0), permute_800, out=buf214)
+            del permute_800
+            buf213 = reinterpret_tensor(buf207, (896, 32), (32, 1), 0); del buf207  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15641, slice_205, slice_206, neg_57, add_11987, mul_15642, add_11988, permute_797, clone_58, view_1302, mul_15645, view_1303, permute_798, mm_535], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf212, (896, s27), (1, 896), 0), mm_378, out=buf213)
+            del mm_378
+            buf216 = reinterpret_tensor(buf181, (32, 896), (896, 1), 0); del buf181  # reuse
+            # Topologically Sorted Source Nodes: [permute_802, mm_537], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf214, (32, s27), (1, 32), 0), view_1019, out=buf216)
+            del view_1019
+            buf220 = reinterpret_tensor(buf212, (s27, 896), (896, 1), 0); del buf212  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15641, slice_205, slice_206, neg_57, add_11987, mul_15642, add_11988, permute_797, clone_58, view_1302, view_1307, result_444, permute_806, mm_539], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf219, (s27, 896), (896, 1), 0), primals_554, out=buf220)
+            del primals_554
+            buf215 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2215], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf213, buf215, 28672, stream=stream0)
+            buf218 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2221], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf216, buf218, 28672, stream=stream0)
+            buf217 = reinterpret_tensor(buf219, (s27, 896), (896, 1), 0); del buf219  # reuse
+            # Topologically Sorted Source Nodes: [mm_538], Original ATen: [aten.mm]
+            extern_kernels.mm(buf214, permute_804, out=buf217)
+            del permute_804
+            buf223 = buf179; del buf179  # reuse
+            buf224 = reinterpret_tensor(buf190, (s27, 896), (896, 1), 0); del buf190  # reuse
+            # Topologically Sorted Source Nodes: [view_1292, view_1294, add_11989, view_1299, add_11990, view_1301, add_11991, view_1306, add_11992, view_1308, add_11993, mul_15646, convert_element_type_2225, hidden_states_210, mul_15647, mul_15648, sum_13, pow_62, mul_15649, mul_15650, expand_83, div_6, pow_63, mul_15651, mul_15652, add_11994, convert_element_type_2226, add_11995, mul_15653, view_1309], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf223, buf200, buf202, buf208, buf211, buf217, buf220, primals_553, add_10412, rsqrt_42, buf224, s27, 896, stream=stream0)
+            del add_10412
+            del buf200
+            del buf202
+            del primals_553
+            del rsqrt_42
+            buf226 = buf214; del buf214  # reuse
+            # Topologically Sorted Source Nodes: [mm_541], Original ATen: [aten.mm]
+            extern_kernels.mm(buf224, permute_809, out=buf226)
+            del permute_809
+            buf228 = reinterpret_tensor(buf169, (32, 4864), (4864, 1), 0); del buf169  # reuse
+            # Topologically Sorted Source Nodes: [permute_811, mm_542], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf226, (32, s27), (1, 32), 0), view_1013, out=buf228)
+            del view_1013
+            buf225 = reinterpret_tensor(buf216, (896, 32), (32, 1), 0); del buf216  # reuse
+            # Topologically Sorted Source Nodes: [permute_807, mm_540], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf224, (896, s27), (1, 896), 0), mm_376, out=buf225)
+            del mm_376
+            buf227 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2231], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf225, buf227, 28672, stream=stream0)
+            buf230 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2237], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf228, buf230, 155648, stream=stream0)
+            buf229 = reinterpret_tensor(buf168, (s27, 4864), (4864, 1), 0); del buf168  # reuse
+            # Topologically Sorted Source Nodes: [mm_543], Original ATen: [aten.mm]
+            extern_kernels.mm(buf226, permute_813, out=buf229)
+            del permute_813
+            buf231 = reinterpret_tensor(buf159, (s27, 4864), (4864, 1), 0); del buf159  # reuse
+            # Topologically Sorted Source Nodes: [view_1313, result_441, permute_815, mm_544], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf223, (s27, 896), (896, 1), 0), primals_550, out=buf231)
+            del primals_550
+            buf232 = buf175; del buf175  # reuse
+            buf239 = buf166; del buf166  # reuse
+            buf241 = reinterpret_tensor(buf158, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf158  # reuse
+            buf248 = reinterpret_tensor(buf156, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf156  # reuse
+            # Topologically Sorted Source Nodes: [view_1312, view_1314, add_11996, silu_20, mul_15654, mul_15655, mul_15656, convert_element_type_2255, neg_58, exp_3, add_11998, reciprocal_3, mul_15657, mul_15658, sub_3922, mul_15659, add_11999, mul_15660, convert_element_type_2257, mul_15661], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf229, buf231, add_10322, add_10365, buf232, buf239, buf241, buf248, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_10322
+            del add_10365
+            buf240 = buf224; del buf224  # reuse
+            # Topologically Sorted Source Nodes: [view_1312, view_1314, add_11996, silu_20, mul_15654, view_1319, result_438, permute_824, mm_549], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf239, (s27, 4864), (4864, 1), 0), primals_547, out=buf240)
+            del primals_547
+            buf249 = buf220; del buf220  # reuse
+            # Topologically Sorted Source Nodes: [view_1312, view_1314, add_11996, silu_20, mul_15655, convert_element_type_2255, neg_58, exp_3, add_11998, reciprocal_3, mul_15657, mul_15658, sub_3922, mul_15659, add_11999, mul_15660, convert_element_type_2257, view_1325, result_435, permute_833, mm_554], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf248, (s27, 4864), (4864, 1), 0), primals_544, out=buf249)
+            del primals_544
+            buf234 = buf226; del buf226  # reuse
+            # Topologically Sorted Source Nodes: [view_1312, view_1314, add_11996, silu_20, mul_15654, mul_15656, view_1315, mm_546], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf232, (s27, 4864), (4864, 1), 0), permute_818, out=buf234)
+            del permute_818
+            buf233 = reinterpret_tensor(buf228, (4864, 32), (32, 1), 0); del buf228  # reuse
+            # Topologically Sorted Source Nodes: [view_1312, view_1314, add_11996, silu_20, mul_15654, mul_15656, view_1315, permute_816, mm_545], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf232, (4864, s27), (1, 4864), 0), mm_373, out=buf233)
+            del mm_373
+            buf243 = buf197; del buf197  # reuse
+            # Topologically Sorted Source Nodes: [view_1312, view_1314, add_11996, silu_20, mul_15655, convert_element_type_2255, neg_58, exp_3, add_11998, reciprocal_3, mul_15657, mul_15658, sub_3922, mul_15659, add_11999, mul_15660, convert_element_type_2257, mul_15661, view_1321, mm_551], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf241, (s27, 4864), (4864, 1), 0), permute_827, out=buf243)
+            del permute_827
+            buf242 = buf160; del buf160  # reuse
+            # Topologically Sorted Source Nodes: [view_1312, view_1314, add_11996, silu_20, mul_15655, convert_element_type_2255, neg_58, exp_3, add_11998, reciprocal_3, mul_15657, mul_15658, sub_3922, mul_15659, add_11999, mul_15660, convert_element_type_2257, mul_15661, view_1321, permute_825, mm_550], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf241, (4864, s27), (1, 4864), 0), mm_370, out=buf242)
+            del mm_370
+            buf236 = reinterpret_tensor(buf225, (32, 896), (896, 1), 0); del buf225  # reuse
+            # Topologically Sorted Source Nodes: [permute_820, mm_547], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf234, (32, s27), (1, 32), 0), view_1001, out=buf236)
+            buf245 = reinterpret_tensor(buf213, (32, 896), (896, 1), 0); del buf213  # reuse
+            # Topologically Sorted Source Nodes: [permute_829, mm_552], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf243, (32, s27), (1, 32), 0), view_1001, out=buf245)
+            del view_1001
+            buf238 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2251], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf236, buf238, 28672, stream=stream0)
+            buf247 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2268], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf245, buf247, 28672, stream=stream0)
+            buf235 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2245], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf233, buf235, 155648, stream=stream0)
+            buf244 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2262], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf242, buf244, 155648, stream=stream0)
+            buf237 = buf217; del buf217  # reuse
+            # Topologically Sorted Source Nodes: [mm_548], Original ATen: [aten.mm]
+            extern_kernels.mm(buf234, permute_822, out=buf237)
+            del permute_822
+            buf246 = buf211; del buf211  # reuse
+            # Topologically Sorted Source Nodes: [mm_553], Original ATen: [aten.mm]
+            extern_kernels.mm(buf243, permute_831, out=buf246)
+            del permute_831
+            buf252 = buf223; del buf223  # reuse
+            buf253 = buf208; del buf208  # reuse
+            # Topologically Sorted Source Nodes: [view_1318, view_1320, add_11997, view_1324, add_12000, view_1326, add_12001, mul_15662, convert_element_type_2272, hidden_states_206, mul_15663, mul_15664, sum_14, pow_64, mul_15665, mul_15666, expand_84, div_7, pow_65, mul_15667, mul_15668, add_12002, convert_element_type_2273, add_12003, mul_15669, view_1327], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf252, buf237, buf240, buf246, buf249, primals_543, add_10254, rsqrt_41, buf253, s27, 896, stream=stream0)
+            del add_10254
+            del buf237
+            del primals_543
+            del rsqrt_41
+            buf255 = buf243; del buf243  # reuse
+            # Topologically Sorted Source Nodes: [mm_556], Original ATen: [aten.mm]
+            extern_kernels.mm(buf253, permute_836, out=buf255)
+            del permute_836
+            buf254 = reinterpret_tensor(buf245, (896, 32), (32, 1), 0); del buf245  # reuse
+            # Topologically Sorted Source Nodes: [permute_834, mm_555], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf253, (896, s27), (1, 896), 0), mm_367, out=buf254)
+            del mm_367
+            buf257 = buf236; del buf236  # reuse
+            # Topologically Sorted Source Nodes: [permute_838, mm_557], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf255, (32, s27), (1, 32), 0), view_995, out=buf257)
+            del view_995
+            buf256 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2278], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf254, buf256, 28672, stream=stream0)
+            buf259 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2284], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf257, buf259, 28672, stream=stream0)
+            buf258 = buf253; del buf253  # reuse
+            # Topologically Sorted Source Nodes: [mm_558], Original ATen: [aten.mm]
+            extern_kernels.mm(buf255, permute_840, out=buf258)
+            del permute_840
+            buf260 = buf249; del buf249  # reuse
+            # Topologically Sorted Source Nodes: [view_1331, result_432, permute_842, mm_559], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf252, (s27, 896), (896, 1), 0), primals_540, out=buf260)
+            del primals_540
+            buf261 = reinterpret_tensor(buf258, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf258  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_1330, view_1332, add_12004, view_1333, permute_843, _scaled_dot_product_efficient_attention_backward_3], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf261, buf260, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_1330, view_1332, add_12004, view_1333, permute_843, _scaled_dot_product_efficient_attention_backward_3], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf262 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf261, add_10119, view_990, view_991, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_80, getitem_81, getitem_82, getitem_83, 0.0, [True, True, True, False], scale=0.125)
+            del add_10119
+            del getitem_80
+            del getitem_81
+            del getitem_82
+            del getitem_83
+            del view_990
+            del view_991
+            buf263 = buf262[0]
+            assert_size_stride(buf263, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf263, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf264 = buf262[1]
+            assert_size_stride(buf264, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf264, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf266 = reinterpret_tensor(buf210, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf210  # reuse
+            # Topologically Sorted Source Nodes: [view_1335, sum_16], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf264, buf266, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf265 = buf262[2]
+            assert_size_stride(buf265, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf265, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf262
+            buf267 = buf194; del buf194  # reuse
+            buf268 = reinterpret_tensor(buf203, (s27, 128), (128, 1), 0); del buf203  # reuse
+            # Topologically Sorted Source Nodes: [view_1334, sum_15, squeeze_6, permute_844, clone_59, view_1336, mul_15674, view_1337], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf265, buf267, buf268, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf269 = buf204; del buf204  # reuse
+            # Topologically Sorted Source Nodes: [permute_845, mm_560], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf268, (128, s27), (1, 128), 0), mm_364, out=buf269)
+            del mm_364
+            buf270 = buf255; del buf255  # reuse
+            # Topologically Sorted Source Nodes: [mm_561], Original ATen: [aten.mm]
+            extern_kernels.mm(buf268, permute_847, out=buf270)
+            del permute_847
+            buf271 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2292], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf269, buf271, 4096, stream=stream0)
+            buf272 = buf257; del buf257  # reuse
+            # Topologically Sorted Source Nodes: [permute_849, mm_562], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf270, (32, s27), (1, 32), 0), view_971, out=buf272)
+            buf274 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2298], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf272, buf274, 28672, stream=stream0)
+            buf276 = reinterpret_tensor(buf268, (1, s27, 128), (128*s27, 128, 1), 0); del buf268  # reuse
+            buf283 = reinterpret_tensor(buf193, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf193  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1335, sum_16, squeeze_7, mul_15670, slice_207, slice_208, neg_59, add_12005, mul_15671, add_12006, permute_854, clone_60, view_1343, mul_15675], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf266, mm_default, buf276, buf283, s27, s27, 128, stream=stream0)
+            buf277 = buf269; del buf269  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1335, sum_16, squeeze_7, mul_15670, slice_207, slice_208, neg_59, add_12005, mul_15671, add_12006, permute_854, clone_60, view_1343, mul_15675, view_1344, permute_855, mm_565], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf276, (128, s27), (1, 128), 0), mm_362, out=buf277)
+            del mm_362
+            buf278 = buf234; del buf234  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1335, sum_16, squeeze_7, mul_15670, slice_207, slice_208, neg_59, add_12005, mul_15671, add_12006, permute_854, clone_60, view_1343, mul_15675, view_1344, mm_566], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf276, (s27, 128), (128, 1), 0), permute_857, out=buf278)
+            del permute_857
+            buf279 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2306], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf277, buf279, 4096, stream=stream0)
+            buf280 = buf272; del buf272  # reuse
+            # Topologically Sorted Source Nodes: [permute_859, mm_567], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf278, (32, s27), (1, 32), 0), view_971, out=buf280)
+            buf282 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2312], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf280, buf282, 28672, stream=stream0)
+            buf275 = reinterpret_tensor(buf265, (s27, 896), (896, 1), 0); del buf265  # reuse
+            # Topologically Sorted Source Nodes: [view_1334, sum_15, squeeze_6, permute_844, clone_59, view_1336, view_1341, result_429, permute_853, mm_564], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf267, (s27, 128), (128, 1), 0), primals_536, out=buf275)
+            del primals_536
+            buf284 = reinterpret_tensor(buf264, (s27, 896), (896, 1), 0); del buf264  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1335, sum_16, squeeze_7, mul_15670, slice_207, slice_208, neg_59, add_12005, mul_15671, add_12006, permute_854, clone_60, view_1343, view_1348, result_426, permute_863, mm_569], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf283, (s27, 128), (128, 1), 0), primals_532, out=buf284)
+            del primals_532
+            buf273 = reinterpret_tensor(buf261, (s27, 896), (896, 1), 0); del buf261  # reuse
+            # Topologically Sorted Source Nodes: [mm_563], Original ATen: [aten.mm]
+            extern_kernels.mm(buf270, permute_851, out=buf273)
+            del permute_851
+            buf281 = buf260; del buf260  # reuse
+            # Topologically Sorted Source Nodes: [mm_568], Original ATen: [aten.mm]
+            extern_kernels.mm(buf278, permute_861, out=buf281)
+            del permute_861
+            buf285 = reinterpret_tensor(buf246, (1, s27, 896), (896*s27, 896, 1), 0); del buf246  # reuse
+            buf292 = reinterpret_tensor(buf240, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf240  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15672, slice_209, slice_210, neg_60, add_12007, mul_15673, add_12008, permute_864, clone_61, view_1350, mul_15676], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf263, mm_default, buf285, buf292, s27, s27, 896, stream=stream0)
+            buf287 = buf278; del buf278  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15672, slice_209, slice_210, neg_60, add_12007, mul_15673, add_12008, permute_864, clone_61, view_1350, mul_15676, view_1351, mm_571], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf285, (s27, 896), (896, 1), 0), permute_867, out=buf287)
+            del permute_867
+            buf286 = reinterpret_tensor(buf280, (896, 32), (32, 1), 0); del buf280  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15672, slice_209, slice_210, neg_60, add_12007, mul_15673, add_12008, permute_864, clone_61, view_1350, mul_15676, view_1351, permute_865, mm_570], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf285, (896, s27), (1, 896), 0), mm_360, out=buf286)
+            del mm_360
+            buf289 = reinterpret_tensor(buf254, (32, 896), (896, 1), 0); del buf254  # reuse
+            # Topologically Sorted Source Nodes: [permute_869, mm_572], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf287, (32, s27), (1, 32), 0), view_971, out=buf289)
+            del view_971
+            buf293 = reinterpret_tensor(buf285, (s27, 896), (896, 1), 0); del buf285  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15672, slice_209, slice_210, neg_60, add_12007, mul_15673, add_12008, permute_864, clone_61, view_1350, view_1355, result_423, permute_873, mm_574], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf292, (s27, 896), (896, 1), 0), primals_528, out=buf293)
+            del primals_528
+            buf288 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2320], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf286, buf288, 28672, stream=stream0)
+            buf291 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2326], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf289, buf291, 28672, stream=stream0)
+            buf290 = reinterpret_tensor(buf292, (s27, 896), (896, 1), 0); del buf292  # reuse
+            # Topologically Sorted Source Nodes: [mm_573], Original ATen: [aten.mm]
+            extern_kernels.mm(buf287, permute_871, out=buf290)
+            del permute_871
+            buf296 = buf252; del buf252  # reuse
+            buf297 = reinterpret_tensor(buf263, (s27, 896), (896, 1), 0); del buf263  # reuse
+            # Topologically Sorted Source Nodes: [view_1340, view_1342, add_12009, view_1347, add_12010, view_1349, add_12011, view_1354, add_12012, view_1356, add_12013, mul_15677, convert_element_type_2330, hidden_states_200, mul_15678, mul_15679, sum_17, pow_66, mul_15680, mul_15681, expand_85, div_8, pow_67, mul_15682, mul_15683, add_12014, convert_element_type_2331, add_12015, mul_15684, view_1357], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf296, buf273, buf275, buf281, buf284, buf290, buf293, primals_527, add_9920, rsqrt_40, buf297, s27, 896, stream=stream0)
+            del add_9920
+            del buf273
+            del buf275
+            del primals_527
+            del rsqrt_40
+            buf299 = buf287; del buf287  # reuse
+            # Topologically Sorted Source Nodes: [mm_576], Original ATen: [aten.mm]
+            extern_kernels.mm(buf297, permute_876, out=buf299)
+            del permute_876
+            buf301 = reinterpret_tensor(buf242, (32, 4864), (4864, 1), 0); del buf242  # reuse
+            # Topologically Sorted Source Nodes: [permute_878, mm_577], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf299, (32, s27), (1, 32), 0), view_965, out=buf301)
+            del view_965
+            buf298 = reinterpret_tensor(buf289, (896, 32), (32, 1), 0); del buf289  # reuse
+            # Topologically Sorted Source Nodes: [permute_874, mm_575], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf297, (896, s27), (1, 896), 0), mm_358, out=buf298)
+            del mm_358
+            buf300 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2336], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf298, buf300, 28672, stream=stream0)
+            buf303 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2342], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf301, buf303, 155648, stream=stream0)
+            buf302 = reinterpret_tensor(buf241, (s27, 4864), (4864, 1), 0); del buf241  # reuse
+            # Topologically Sorted Source Nodes: [mm_578], Original ATen: [aten.mm]
+            extern_kernels.mm(buf299, permute_880, out=buf302)
+            del permute_880
+            buf304 = reinterpret_tensor(buf232, (s27, 4864), (4864, 1), 0); del buf232  # reuse
+            # Topologically Sorted Source Nodes: [view_1361, result_420, permute_882, mm_579], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf296, (s27, 896), (896, 1), 0), primals_524, out=buf304)
+            del primals_524
+            buf305 = buf248; del buf248  # reuse
+            buf312 = buf239; del buf239  # reuse
+            buf314 = reinterpret_tensor(buf231, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf231  # reuse
+            buf321 = reinterpret_tensor(buf229, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf229  # reuse
+            # Topologically Sorted Source Nodes: [view_1360, view_1362, add_12016, silu_19, mul_15685, mul_15686, mul_15687, convert_element_type_2360, neg_61, exp_4, add_12018, reciprocal_4, mul_15688, mul_15689, sub_3923, mul_15690, add_12019, mul_15691, convert_element_type_2362, mul_15692], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf302, buf304, add_9830, add_9873, buf305, buf312, buf314, buf321, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_9830
+            del add_9873
+            buf313 = buf297; del buf297  # reuse
+            # Topologically Sorted Source Nodes: [view_1360, view_1362, add_12016, silu_19, mul_15685, view_1367, result_417, permute_891, mm_584], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf312, (s27, 4864), (4864, 1), 0), primals_521, out=buf313)
+            del primals_521
+            buf322 = buf293; del buf293  # reuse
+            # Topologically Sorted Source Nodes: [view_1360, view_1362, add_12016, silu_19, mul_15686, convert_element_type_2360, neg_61, exp_4, add_12018, reciprocal_4, mul_15688, mul_15689, sub_3923, mul_15690, add_12019, mul_15691, convert_element_type_2362, view_1373, result_414, permute_900, mm_589], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf321, (s27, 4864), (4864, 1), 0), primals_518, out=buf322)
+            del primals_518
+            buf307 = buf299; del buf299  # reuse
+            # Topologically Sorted Source Nodes: [view_1360, view_1362, add_12016, silu_19, mul_15685, mul_15687, view_1363, mm_581], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf305, (s27, 4864), (4864, 1), 0), permute_885, out=buf307)
+            del permute_885
+            buf306 = reinterpret_tensor(buf301, (4864, 32), (32, 1), 0); del buf301  # reuse
+            # Topologically Sorted Source Nodes: [view_1360, view_1362, add_12016, silu_19, mul_15685, mul_15687, view_1363, permute_883, mm_580], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf305, (4864, s27), (1, 4864), 0), mm_355, out=buf306)
+            del mm_355
+            buf316 = buf270; del buf270  # reuse
+            # Topologically Sorted Source Nodes: [view_1360, view_1362, add_12016, silu_19, mul_15686, convert_element_type_2360, neg_61, exp_4, add_12018, reciprocal_4, mul_15688, mul_15689, sub_3923, mul_15690, add_12019, mul_15691, convert_element_type_2362, mul_15692, view_1369, mm_586], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf314, (s27, 4864), (4864, 1), 0), permute_894, out=buf316)
+            del permute_894
+            buf315 = buf233; del buf233  # reuse
+            # Topologically Sorted Source Nodes: [view_1360, view_1362, add_12016, silu_19, mul_15686, convert_element_type_2360, neg_61, exp_4, add_12018, reciprocal_4, mul_15688, mul_15689, sub_3923, mul_15690, add_12019, mul_15691, convert_element_type_2362, mul_15692, view_1369, permute_892, mm_585], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf314, (4864, s27), (1, 4864), 0), mm_352, out=buf315)
+            del mm_352
+            buf309 = reinterpret_tensor(buf298, (32, 896), (896, 1), 0); del buf298  # reuse
+            # Topologically Sorted Source Nodes: [permute_887, mm_582], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf307, (32, s27), (1, 32), 0), view_953, out=buf309)
+            buf318 = reinterpret_tensor(buf286, (32, 896), (896, 1), 0); del buf286  # reuse
+            # Topologically Sorted Source Nodes: [permute_896, mm_587], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf316, (32, s27), (1, 32), 0), view_953, out=buf318)
+            del view_953
+            buf311 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2356], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf309, buf311, 28672, stream=stream0)
+            buf320 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2373], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf318, buf320, 28672, stream=stream0)
+            buf308 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2350], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf306, buf308, 155648, stream=stream0)
+            buf317 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2367], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf315, buf317, 155648, stream=stream0)
+            buf310 = buf290; del buf290  # reuse
+            # Topologically Sorted Source Nodes: [mm_583], Original ATen: [aten.mm]
+            extern_kernels.mm(buf307, permute_889, out=buf310)
+            del permute_889
+            buf319 = buf284; del buf284  # reuse
+            # Topologically Sorted Source Nodes: [mm_588], Original ATen: [aten.mm]
+            extern_kernels.mm(buf316, permute_898, out=buf319)
+            del permute_898
+            buf325 = buf296; del buf296  # reuse
+            buf326 = buf281; del buf281  # reuse
+            # Topologically Sorted Source Nodes: [view_1366, view_1368, add_12017, view_1372, add_12020, view_1374, add_12021, mul_15693, convert_element_type_2377, hidden_states_196, mul_15694, mul_15695, sum_18, pow_68, mul_15696, mul_15697, expand_86, div_9, pow_69, mul_15698, mul_15699, add_12022, convert_element_type_2378, add_12023, mul_15700, view_1375], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf325, buf310, buf313, buf319, buf322, primals_517, add_9762, rsqrt_39, buf326, s27, 896, stream=stream0)
+            del add_9762
+            del buf310
+            del primals_517
+            del rsqrt_39
+            buf328 = buf316; del buf316  # reuse
+            # Topologically Sorted Source Nodes: [mm_591], Original ATen: [aten.mm]
+            extern_kernels.mm(buf326, permute_903, out=buf328)
+            del permute_903
+            buf327 = reinterpret_tensor(buf318, (896, 32), (32, 1), 0); del buf318  # reuse
+            # Topologically Sorted Source Nodes: [permute_901, mm_590], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf326, (896, s27), (1, 896), 0), mm_349, out=buf327)
+            del mm_349
+            buf330 = buf309; del buf309  # reuse
+            # Topologically Sorted Source Nodes: [permute_905, mm_592], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf328, (32, s27), (1, 32), 0), view_947, out=buf330)
+            del view_947
+            buf329 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2383], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf327, buf329, 28672, stream=stream0)
+            buf332 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2389], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf330, buf332, 28672, stream=stream0)
+            buf331 = buf326; del buf326  # reuse
+            # Topologically Sorted Source Nodes: [mm_593], Original ATen: [aten.mm]
+            extern_kernels.mm(buf328, permute_907, out=buf331)
+            del permute_907
+            buf333 = buf322; del buf322  # reuse
+            # Topologically Sorted Source Nodes: [view_1379, result_411, permute_909, mm_594], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf325, (s27, 896), (896, 1), 0), primals_514, out=buf333)
+            del primals_514
+            buf334 = reinterpret_tensor(buf331, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf331  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_1378, view_1380, add_12024, view_1381, permute_910, _scaled_dot_product_efficient_attention_backward_4], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf334, buf333, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_1378, view_1380, add_12024, view_1381, permute_910, _scaled_dot_product_efficient_attention_backward_4], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf335 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf334, add_9627, view_942, view_943, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_76, getitem_77, getitem_78, getitem_79, 0.0, [True, True, True, False], scale=0.125)
+            del add_9627
+            del getitem_76
+            del getitem_77
+            del getitem_78
+            del getitem_79
+            del view_942
+            del view_943
+            buf336 = buf335[0]
+            assert_size_stride(buf336, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf336, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf337 = buf335[1]
+            assert_size_stride(buf337, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf337, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf339 = reinterpret_tensor(buf283, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf283  # reuse
+            # Topologically Sorted Source Nodes: [view_1383, sum_20], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf337, buf339, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf338 = buf335[2]
+            assert_size_stride(buf338, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf338, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf335
+            buf340 = buf267; del buf267  # reuse
+            buf341 = reinterpret_tensor(buf276, (s27, 128), (128, 1), 0); del buf276  # reuse
+            # Topologically Sorted Source Nodes: [view_1382, sum_19, squeeze_8, permute_911, clone_62, view_1384, mul_15705, view_1385], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf338, buf340, buf341, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf342 = buf277; del buf277  # reuse
+            # Topologically Sorted Source Nodes: [permute_912, mm_595], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf341, (128, s27), (1, 128), 0), mm_346, out=buf342)
+            del mm_346
+            buf343 = buf328; del buf328  # reuse
+            # Topologically Sorted Source Nodes: [mm_596], Original ATen: [aten.mm]
+            extern_kernels.mm(buf341, permute_914, out=buf343)
+            del permute_914
+            buf344 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2397], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf342, buf344, 4096, stream=stream0)
+            buf345 = buf330; del buf330  # reuse
+            # Topologically Sorted Source Nodes: [permute_916, mm_597], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf343, (32, s27), (1, 32), 0), view_923, out=buf345)
+            buf347 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2403], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf345, buf347, 28672, stream=stream0)
+            buf349 = reinterpret_tensor(buf341, (1, s27, 128), (128*s27, 128, 1), 0); del buf341  # reuse
+            buf356 = reinterpret_tensor(buf266, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf266  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1383, sum_20, squeeze_9, mul_15701, slice_211, slice_212, neg_62, add_12025, mul_15702, add_12026, permute_921, clone_63, view_1391, mul_15706], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf339, mm_default, buf349, buf356, s27, s27, 128, stream=stream0)
+            buf350 = buf342; del buf342  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1383, sum_20, squeeze_9, mul_15701, slice_211, slice_212, neg_62, add_12025, mul_15702, add_12026, permute_921, clone_63, view_1391, mul_15706, view_1392, permute_922, mm_600], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf349, (128, s27), (1, 128), 0), mm_344, out=buf350)
+            del mm_344
+            buf351 = buf307; del buf307  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1383, sum_20, squeeze_9, mul_15701, slice_211, slice_212, neg_62, add_12025, mul_15702, add_12026, permute_921, clone_63, view_1391, mul_15706, view_1392, mm_601], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf349, (s27, 128), (128, 1), 0), permute_924, out=buf351)
+            del permute_924
+            buf352 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2411], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf350, buf352, 4096, stream=stream0)
+            buf353 = buf345; del buf345  # reuse
+            # Topologically Sorted Source Nodes: [permute_926, mm_602], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf351, (32, s27), (1, 32), 0), view_923, out=buf353)
+            buf355 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2417], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf353, buf355, 28672, stream=stream0)
+            buf348 = reinterpret_tensor(buf338, (s27, 896), (896, 1), 0); del buf338  # reuse
+            # Topologically Sorted Source Nodes: [view_1382, sum_19, squeeze_8, permute_911, clone_62, view_1384, view_1389, result_408, permute_920, mm_599], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf340, (s27, 128), (128, 1), 0), primals_510, out=buf348)
+            del primals_510
+            buf357 = reinterpret_tensor(buf337, (s27, 896), (896, 1), 0); del buf337  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1383, sum_20, squeeze_9, mul_15701, slice_211, slice_212, neg_62, add_12025, mul_15702, add_12026, permute_921, clone_63, view_1391, view_1396, result_405, permute_930, mm_604], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf356, (s27, 128), (128, 1), 0), primals_506, out=buf357)
+            del primals_506
+            buf346 = reinterpret_tensor(buf334, (s27, 896), (896, 1), 0); del buf334  # reuse
+            # Topologically Sorted Source Nodes: [mm_598], Original ATen: [aten.mm]
+            extern_kernels.mm(buf343, permute_918, out=buf346)
+            del permute_918
+            buf354 = buf333; del buf333  # reuse
+            # Topologically Sorted Source Nodes: [mm_603], Original ATen: [aten.mm]
+            extern_kernels.mm(buf351, permute_928, out=buf354)
+            del permute_928
+            buf358 = reinterpret_tensor(buf319, (1, s27, 896), (896*s27, 896, 1), 0); del buf319  # reuse
+            buf365 = reinterpret_tensor(buf313, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf313  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15703, slice_213, slice_214, neg_63, add_12027, mul_15704, add_12028, permute_931, clone_64, view_1398, mul_15707], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf336, mm_default, buf358, buf365, s27, s27, 896, stream=stream0)
+            buf360 = buf351; del buf351  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15703, slice_213, slice_214, neg_63, add_12027, mul_15704, add_12028, permute_931, clone_64, view_1398, mul_15707, view_1399, mm_606], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf358, (s27, 896), (896, 1), 0), permute_934, out=buf360)
+            del permute_934
+            buf359 = reinterpret_tensor(buf353, (896, 32), (32, 1), 0); del buf353  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15703, slice_213, slice_214, neg_63, add_12027, mul_15704, add_12028, permute_931, clone_64, view_1398, mul_15707, view_1399, permute_932, mm_605], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf358, (896, s27), (1, 896), 0), mm_342, out=buf359)
+            del mm_342
+            buf362 = reinterpret_tensor(buf327, (32, 896), (896, 1), 0); del buf327  # reuse
+            # Topologically Sorted Source Nodes: [permute_936, mm_607], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf360, (32, s27), (1, 32), 0), view_923, out=buf362)
+            del view_923
+            buf366 = reinterpret_tensor(buf358, (s27, 896), (896, 1), 0); del buf358  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15703, slice_213, slice_214, neg_63, add_12027, mul_15704, add_12028, permute_931, clone_64, view_1398, view_1403, result_402, permute_940, mm_609], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf365, (s27, 896), (896, 1), 0), primals_502, out=buf366)
+            del primals_502
+            buf361 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2425], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf359, buf361, 28672, stream=stream0)
+            buf364 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2431], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf362, buf364, 28672, stream=stream0)
+            buf363 = reinterpret_tensor(buf365, (s27, 896), (896, 1), 0); del buf365  # reuse
+            # Topologically Sorted Source Nodes: [mm_608], Original ATen: [aten.mm]
+            extern_kernels.mm(buf360, permute_938, out=buf363)
+            del permute_938
+            buf369 = buf325; del buf325  # reuse
+            buf370 = reinterpret_tensor(buf336, (s27, 896), (896, 1), 0); del buf336  # reuse
+            # Topologically Sorted Source Nodes: [view_1388, view_1390, add_12029, view_1395, add_12030, view_1397, add_12031, view_1402, add_12032, view_1404, add_12033, mul_15708, convert_element_type_2435, hidden_states_190, mul_15709, mul_15710, sum_21, pow_70, mul_15711, mul_15712, expand_87, div_10, pow_71, mul_15713, mul_15714, add_12034, convert_element_type_2436, add_12035, mul_15715, view_1405], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf369, buf346, buf348, buf354, buf357, buf363, buf366, primals_501, add_9428, rsqrt_38, buf370, s27, 896, stream=stream0)
+            del add_9428
+            del buf346
+            del buf348
+            del primals_501
+            del rsqrt_38
+            buf372 = buf360; del buf360  # reuse
+            # Topologically Sorted Source Nodes: [mm_611], Original ATen: [aten.mm]
+            extern_kernels.mm(buf370, permute_943, out=buf372)
+            del permute_943
+            buf374 = reinterpret_tensor(buf315, (32, 4864), (4864, 1), 0); del buf315  # reuse
+            # Topologically Sorted Source Nodes: [permute_945, mm_612], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf372, (32, s27), (1, 32), 0), view_917, out=buf374)
+            del view_917
+            buf371 = reinterpret_tensor(buf362, (896, 32), (32, 1), 0); del buf362  # reuse
+            # Topologically Sorted Source Nodes: [permute_941, mm_610], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf370, (896, s27), (1, 896), 0), mm_340, out=buf371)
+            del mm_340
+            buf373 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2441], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf371, buf373, 28672, stream=stream0)
+            buf376 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2447], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf374, buf376, 155648, stream=stream0)
+            buf375 = reinterpret_tensor(buf314, (s27, 4864), (4864, 1), 0); del buf314  # reuse
+            # Topologically Sorted Source Nodes: [mm_613], Original ATen: [aten.mm]
+            extern_kernels.mm(buf372, permute_947, out=buf375)
+            del permute_947
+            buf377 = reinterpret_tensor(buf305, (s27, 4864), (4864, 1), 0); del buf305  # reuse
+            # Topologically Sorted Source Nodes: [view_1409, result_399, permute_949, mm_614], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf369, (s27, 896), (896, 1), 0), primals_498, out=buf377)
+            del primals_498
+            buf378 = buf321; del buf321  # reuse
+            buf385 = buf312; del buf312  # reuse
+            buf387 = reinterpret_tensor(buf304, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf304  # reuse
+            buf394 = reinterpret_tensor(buf302, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf302  # reuse
+            # Topologically Sorted Source Nodes: [view_1408, view_1410, add_12036, silu_18, mul_15716, mul_15717, mul_15718, convert_element_type_2465, neg_64, exp_5, add_12038, reciprocal_5, mul_15719, mul_15720, sub_3924, mul_15721, add_12039, mul_15722, convert_element_type_2467, mul_15723], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf375, buf377, add_9338, add_9381, buf378, buf385, buf387, buf394, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_9338
+            del add_9381
+            buf386 = buf370; del buf370  # reuse
+            # Topologically Sorted Source Nodes: [view_1408, view_1410, add_12036, silu_18, mul_15716, view_1415, result_396, permute_958, mm_619], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf385, (s27, 4864), (4864, 1), 0), primals_495, out=buf386)
+            del primals_495
+            buf395 = buf366; del buf366  # reuse
+            # Topologically Sorted Source Nodes: [view_1408, view_1410, add_12036, silu_18, mul_15717, convert_element_type_2465, neg_64, exp_5, add_12038, reciprocal_5, mul_15719, mul_15720, sub_3924, mul_15721, add_12039, mul_15722, convert_element_type_2467, view_1421, result_393, permute_967, mm_624], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf394, (s27, 4864), (4864, 1), 0), primals_492, out=buf395)
+            del primals_492
+            buf380 = buf372; del buf372  # reuse
+            # Topologically Sorted Source Nodes: [view_1408, view_1410, add_12036, silu_18, mul_15716, mul_15718, view_1411, mm_616], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf378, (s27, 4864), (4864, 1), 0), permute_952, out=buf380)
+            del permute_952
+            buf379 = reinterpret_tensor(buf374, (4864, 32), (32, 1), 0); del buf374  # reuse
+            # Topologically Sorted Source Nodes: [view_1408, view_1410, add_12036, silu_18, mul_15716, mul_15718, view_1411, permute_950, mm_615], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf378, (4864, s27), (1, 4864), 0), mm_337, out=buf379)
+            del mm_337
+            buf389 = buf343; del buf343  # reuse
+            # Topologically Sorted Source Nodes: [view_1408, view_1410, add_12036, silu_18, mul_15717, convert_element_type_2465, neg_64, exp_5, add_12038, reciprocal_5, mul_15719, mul_15720, sub_3924, mul_15721, add_12039, mul_15722, convert_element_type_2467, mul_15723, view_1417, mm_621], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf387, (s27, 4864), (4864, 1), 0), permute_961, out=buf389)
+            del permute_961
+            buf388 = buf306; del buf306  # reuse
+            # Topologically Sorted Source Nodes: [view_1408, view_1410, add_12036, silu_18, mul_15717, convert_element_type_2465, neg_64, exp_5, add_12038, reciprocal_5, mul_15719, mul_15720, sub_3924, mul_15721, add_12039, mul_15722, convert_element_type_2467, mul_15723, view_1417, permute_959, mm_620], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf387, (4864, s27), (1, 4864), 0), mm_334, out=buf388)
+            del mm_334
+            buf382 = reinterpret_tensor(buf371, (32, 896), (896, 1), 0); del buf371  # reuse
+            # Topologically Sorted Source Nodes: [permute_954, mm_617], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf380, (32, s27), (1, 32), 0), view_905, out=buf382)
+            buf391 = reinterpret_tensor(buf359, (32, 896), (896, 1), 0); del buf359  # reuse
+            # Topologically Sorted Source Nodes: [permute_963, mm_622], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf389, (32, s27), (1, 32), 0), view_905, out=buf391)
+            del view_905
+            buf384 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2461], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf382, buf384, 28672, stream=stream0)
+            buf393 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2478], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf391, buf393, 28672, stream=stream0)
+            buf381 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2455], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf379, buf381, 155648, stream=stream0)
+            buf390 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2472], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf388, buf390, 155648, stream=stream0)
+            buf383 = buf363; del buf363  # reuse
+            # Topologically Sorted Source Nodes: [mm_618], Original ATen: [aten.mm]
+            extern_kernels.mm(buf380, permute_956, out=buf383)
+            del permute_956
+            buf392 = buf357; del buf357  # reuse
+            # Topologically Sorted Source Nodes: [mm_623], Original ATen: [aten.mm]
+            extern_kernels.mm(buf389, permute_965, out=buf392)
+            del permute_965
+            buf398 = buf369; del buf369  # reuse
+            buf399 = buf354; del buf354  # reuse
+            # Topologically Sorted Source Nodes: [view_1414, view_1416, add_12037, view_1420, add_12040, view_1422, add_12041, mul_15724, convert_element_type_2482, hidden_states_186, mul_15725, mul_15726, sum_22, pow_72, mul_15727, mul_15728, expand_88, div_11, pow_73, mul_15729, mul_15730, add_12042, convert_element_type_2483, add_12043, mul_15731, view_1423], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf398, buf383, buf386, buf392, buf395, primals_491, add_9270, rsqrt_37, buf399, s27, 896, stream=stream0)
+            del add_9270
+            del buf383
+            del primals_491
+            del rsqrt_37
+            buf401 = buf389; del buf389  # reuse
+            # Topologically Sorted Source Nodes: [mm_626], Original ATen: [aten.mm]
+            extern_kernels.mm(buf399, permute_970, out=buf401)
+            del permute_970
+            buf400 = reinterpret_tensor(buf391, (896, 32), (32, 1), 0); del buf391  # reuse
+            # Topologically Sorted Source Nodes: [permute_968, mm_625], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf399, (896, s27), (1, 896), 0), mm_331, out=buf400)
+            del mm_331
+            buf403 = buf382; del buf382  # reuse
+            # Topologically Sorted Source Nodes: [permute_972, mm_627], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf401, (32, s27), (1, 32), 0), view_899, out=buf403)
+            del view_899
+            buf402 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2488], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf400, buf402, 28672, stream=stream0)
+            buf405 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2494], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf403, buf405, 28672, stream=stream0)
+            buf404 = buf399; del buf399  # reuse
+            # Topologically Sorted Source Nodes: [mm_628], Original ATen: [aten.mm]
+            extern_kernels.mm(buf401, permute_974, out=buf404)
+            del permute_974
+            buf406 = buf395; del buf395  # reuse
+            # Topologically Sorted Source Nodes: [view_1427, result_390, permute_976, mm_629], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf398, (s27, 896), (896, 1), 0), primals_488, out=buf406)
+            del primals_488
+            buf407 = reinterpret_tensor(buf404, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf404  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_1426, view_1428, add_12044, view_1429, permute_977, _scaled_dot_product_efficient_attention_backward_5], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf407, buf406, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_1426, view_1428, add_12044, view_1429, permute_977, _scaled_dot_product_efficient_attention_backward_5], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf408 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf407, add_9135, view_894, view_895, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_72, getitem_73, getitem_74, getitem_75, 0.0, [True, True, True, False], scale=0.125)
+            del add_9135
+            del getitem_72
+            del getitem_73
+            del getitem_74
+            del getitem_75
+            del view_894
+            del view_895
+            buf409 = buf408[0]
+            assert_size_stride(buf409, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf409, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf410 = buf408[1]
+            assert_size_stride(buf410, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf410, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf412 = reinterpret_tensor(buf356, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf356  # reuse
+            # Topologically Sorted Source Nodes: [view_1431, sum_24], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf410, buf412, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf411 = buf408[2]
+            assert_size_stride(buf411, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf411, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf408
+            buf413 = buf340; del buf340  # reuse
+            buf414 = reinterpret_tensor(buf349, (s27, 128), (128, 1), 0); del buf349  # reuse
+            # Topologically Sorted Source Nodes: [view_1430, sum_23, squeeze_10, permute_978, clone_65, view_1432, mul_15736, view_1433], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf411, buf413, buf414, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf415 = buf350; del buf350  # reuse
+            # Topologically Sorted Source Nodes: [permute_979, mm_630], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf414, (128, s27), (1, 128), 0), mm_328, out=buf415)
+            del mm_328
+            buf416 = buf401; del buf401  # reuse
+            # Topologically Sorted Source Nodes: [mm_631], Original ATen: [aten.mm]
+            extern_kernels.mm(buf414, permute_981, out=buf416)
+            del permute_981
+            buf417 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2502], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf415, buf417, 4096, stream=stream0)
+            buf418 = buf403; del buf403  # reuse
+            # Topologically Sorted Source Nodes: [permute_983, mm_632], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf416, (32, s27), (1, 32), 0), view_875, out=buf418)
+            buf420 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2508], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf418, buf420, 28672, stream=stream0)
+            buf422 = reinterpret_tensor(buf414, (1, s27, 128), (128*s27, 128, 1), 0); del buf414  # reuse
+            buf429 = reinterpret_tensor(buf339, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf339  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1431, sum_24, squeeze_11, mul_15732, slice_215, slice_216, neg_65, add_12045, mul_15733, add_12046, permute_988, clone_66, view_1439, mul_15737], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf412, mm_default, buf422, buf429, s27, s27, 128, stream=stream0)
+            buf423 = buf415; del buf415  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1431, sum_24, squeeze_11, mul_15732, slice_215, slice_216, neg_65, add_12045, mul_15733, add_12046, permute_988, clone_66, view_1439, mul_15737, view_1440, permute_989, mm_635], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf422, (128, s27), (1, 128), 0), mm_326, out=buf423)
+            del mm_326
+            buf424 = buf380; del buf380  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1431, sum_24, squeeze_11, mul_15732, slice_215, slice_216, neg_65, add_12045, mul_15733, add_12046, permute_988, clone_66, view_1439, mul_15737, view_1440, mm_636], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf422, (s27, 128), (128, 1), 0), permute_991, out=buf424)
+            del permute_991
+            buf425 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2516], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf423, buf425, 4096, stream=stream0)
+            buf426 = buf418; del buf418  # reuse
+            # Topologically Sorted Source Nodes: [permute_993, mm_637], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf424, (32, s27), (1, 32), 0), view_875, out=buf426)
+            buf428 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2522], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf426, buf428, 28672, stream=stream0)
+            buf421 = reinterpret_tensor(buf411, (s27, 896), (896, 1), 0); del buf411  # reuse
+            # Topologically Sorted Source Nodes: [view_1430, sum_23, squeeze_10, permute_978, clone_65, view_1432, view_1437, result_387, permute_987, mm_634], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf413, (s27, 128), (128, 1), 0), primals_484, out=buf421)
+            del primals_484
+            buf430 = reinterpret_tensor(buf410, (s27, 896), (896, 1), 0); del buf410  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1431, sum_24, squeeze_11, mul_15732, slice_215, slice_216, neg_65, add_12045, mul_15733, add_12046, permute_988, clone_66, view_1439, view_1444, result_384, permute_997, mm_639], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf429, (s27, 128), (128, 1), 0), primals_480, out=buf430)
+            del primals_480
+            buf419 = reinterpret_tensor(buf407, (s27, 896), (896, 1), 0); del buf407  # reuse
+            # Topologically Sorted Source Nodes: [mm_633], Original ATen: [aten.mm]
+            extern_kernels.mm(buf416, permute_985, out=buf419)
+            del permute_985
+            buf427 = buf406; del buf406  # reuse
+            # Topologically Sorted Source Nodes: [mm_638], Original ATen: [aten.mm]
+            extern_kernels.mm(buf424, permute_995, out=buf427)
+            del permute_995
+            buf431 = reinterpret_tensor(buf392, (1, s27, 896), (896*s27, 896, 1), 0); del buf392  # reuse
+            buf438 = reinterpret_tensor(buf386, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf386  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15734, slice_217, slice_218, neg_66, add_12047, mul_15735, add_12048, permute_998, clone_67, view_1446, mul_15738], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf409, mm_default, buf431, buf438, s27, s27, 896, stream=stream0)
+            buf433 = buf424; del buf424  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15734, slice_217, slice_218, neg_66, add_12047, mul_15735, add_12048, permute_998, clone_67, view_1446, mul_15738, view_1447, mm_641], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf431, (s27, 896), (896, 1), 0), permute_1001, out=buf433)
+            del permute_1001
+            buf432 = reinterpret_tensor(buf426, (896, 32), (32, 1), 0); del buf426  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15734, slice_217, slice_218, neg_66, add_12047, mul_15735, add_12048, permute_998, clone_67, view_1446, mul_15738, view_1447, permute_999, mm_640], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf431, (896, s27), (1, 896), 0), mm_324, out=buf432)
+            del mm_324
+            buf435 = reinterpret_tensor(buf400, (32, 896), (896, 1), 0); del buf400  # reuse
+            # Topologically Sorted Source Nodes: [permute_1003, mm_642], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf433, (32, s27), (1, 32), 0), view_875, out=buf435)
+            del view_875
+            buf439 = reinterpret_tensor(buf431, (s27, 896), (896, 1), 0); del buf431  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15734, slice_217, slice_218, neg_66, add_12047, mul_15735, add_12048, permute_998, clone_67, view_1446, view_1451, result_381, permute_1007, mm_644], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf438, (s27, 896), (896, 1), 0), primals_476, out=buf439)
+            del primals_476
+            buf434 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2530], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf432, buf434, 28672, stream=stream0)
+            buf437 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2536], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf435, buf437, 28672, stream=stream0)
+            buf436 = reinterpret_tensor(buf438, (s27, 896), (896, 1), 0); del buf438  # reuse
+            # Topologically Sorted Source Nodes: [mm_643], Original ATen: [aten.mm]
+            extern_kernels.mm(buf433, permute_1005, out=buf436)
+            del permute_1005
+            buf442 = buf398; del buf398  # reuse
+            buf443 = reinterpret_tensor(buf409, (s27, 896), (896, 1), 0); del buf409  # reuse
+            # Topologically Sorted Source Nodes: [view_1436, view_1438, add_12049, view_1443, add_12050, view_1445, add_12051, view_1450, add_12052, view_1452, add_12053, mul_15739, convert_element_type_2540, hidden_states_180, mul_15740, mul_15741, sum_25, pow_74, mul_15742, mul_15743, expand_89, div_12, pow_75, mul_15744, mul_15745, add_12054, convert_element_type_2541, add_12055, mul_15746, view_1453], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf442, buf419, buf421, buf427, buf430, buf436, buf439, primals_475, add_8936, rsqrt_36, buf443, s27, 896, stream=stream0)
+            del add_8936
+            del buf419
+            del buf421
+            del primals_475
+            del rsqrt_36
+            buf445 = buf433; del buf433  # reuse
+            # Topologically Sorted Source Nodes: [mm_646], Original ATen: [aten.mm]
+            extern_kernels.mm(buf443, permute_1010, out=buf445)
+            del permute_1010
+            buf447 = reinterpret_tensor(buf388, (32, 4864), (4864, 1), 0); del buf388  # reuse
+            # Topologically Sorted Source Nodes: [permute_1012, mm_647], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf445, (32, s27), (1, 32), 0), view_869, out=buf447)
+            del view_869
+            buf444 = reinterpret_tensor(buf435, (896, 32), (32, 1), 0); del buf435  # reuse
+            # Topologically Sorted Source Nodes: [permute_1008, mm_645], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf443, (896, s27), (1, 896), 0), mm_322, out=buf444)
+            del mm_322
+            buf446 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2546], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf444, buf446, 28672, stream=stream0)
+            buf449 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2552], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf447, buf449, 155648, stream=stream0)
+            buf448 = reinterpret_tensor(buf387, (s27, 4864), (4864, 1), 0); del buf387  # reuse
+            # Topologically Sorted Source Nodes: [mm_648], Original ATen: [aten.mm]
+            extern_kernels.mm(buf445, permute_1014, out=buf448)
+            del permute_1014
+            buf450 = reinterpret_tensor(buf378, (s27, 4864), (4864, 1), 0); del buf378  # reuse
+            # Topologically Sorted Source Nodes: [view_1457, result_378, permute_1016, mm_649], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf442, (s27, 896), (896, 1), 0), primals_472, out=buf450)
+            del primals_472
+            buf451 = buf394; del buf394  # reuse
+            buf458 = buf385; del buf385  # reuse
+            buf460 = reinterpret_tensor(buf377, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf377  # reuse
+            buf467 = reinterpret_tensor(buf375, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf375  # reuse
+            # Topologically Sorted Source Nodes: [view_1456, view_1458, add_12056, silu_17, mul_15747, mul_15748, mul_15749, convert_element_type_2570, neg_67, exp_6, add_12058, reciprocal_6, mul_15750, mul_15751, sub_3925, mul_15752, add_12059, mul_15753, convert_element_type_2572, mul_15754], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf448, buf450, add_8846, add_8889, buf451, buf458, buf460, buf467, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_8846
+            del add_8889
+            buf459 = buf443; del buf443  # reuse
+            # Topologically Sorted Source Nodes: [view_1456, view_1458, add_12056, silu_17, mul_15747, view_1463, result_375, permute_1025, mm_654], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf458, (s27, 4864), (4864, 1), 0), primals_469, out=buf459)
+            del primals_469
+            buf468 = buf439; del buf439  # reuse
+            # Topologically Sorted Source Nodes: [view_1456, view_1458, add_12056, silu_17, mul_15748, convert_element_type_2570, neg_67, exp_6, add_12058, reciprocal_6, mul_15750, mul_15751, sub_3925, mul_15752, add_12059, mul_15753, convert_element_type_2572, view_1469, result_372, permute_1034, mm_659], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf467, (s27, 4864), (4864, 1), 0), primals_466, out=buf468)
+            del primals_466
+            buf453 = buf445; del buf445  # reuse
+            # Topologically Sorted Source Nodes: [view_1456, view_1458, add_12056, silu_17, mul_15747, mul_15749, view_1459, mm_651], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf451, (s27, 4864), (4864, 1), 0), permute_1019, out=buf453)
+            del permute_1019
+            buf452 = reinterpret_tensor(buf447, (4864, 32), (32, 1), 0); del buf447  # reuse
+            # Topologically Sorted Source Nodes: [view_1456, view_1458, add_12056, silu_17, mul_15747, mul_15749, view_1459, permute_1017, mm_650], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf451, (4864, s27), (1, 4864), 0), mm_319, out=buf452)
+            del mm_319
+            buf462 = buf416; del buf416  # reuse
+            # Topologically Sorted Source Nodes: [view_1456, view_1458, add_12056, silu_17, mul_15748, convert_element_type_2570, neg_67, exp_6, add_12058, reciprocal_6, mul_15750, mul_15751, sub_3925, mul_15752, add_12059, mul_15753, convert_element_type_2572, mul_15754, view_1465, mm_656], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf460, (s27, 4864), (4864, 1), 0), permute_1028, out=buf462)
+            del permute_1028
+            buf461 = buf379; del buf379  # reuse
+            # Topologically Sorted Source Nodes: [view_1456, view_1458, add_12056, silu_17, mul_15748, convert_element_type_2570, neg_67, exp_6, add_12058, reciprocal_6, mul_15750, mul_15751, sub_3925, mul_15752, add_12059, mul_15753, convert_element_type_2572, mul_15754, view_1465, permute_1026, mm_655], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf460, (4864, s27), (1, 4864), 0), mm_316, out=buf461)
+            del mm_316
+            buf455 = reinterpret_tensor(buf444, (32, 896), (896, 1), 0); del buf444  # reuse
+            # Topologically Sorted Source Nodes: [permute_1021, mm_652], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf453, (32, s27), (1, 32), 0), view_857, out=buf455)
+            buf464 = reinterpret_tensor(buf432, (32, 896), (896, 1), 0); del buf432  # reuse
+            # Topologically Sorted Source Nodes: [permute_1030, mm_657], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf462, (32, s27), (1, 32), 0), view_857, out=buf464)
+            del view_857
+            buf457 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2566], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf455, buf457, 28672, stream=stream0)
+            buf466 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2583], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf464, buf466, 28672, stream=stream0)
+            buf454 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2560], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf452, buf454, 155648, stream=stream0)
+            buf463 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2577], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf461, buf463, 155648, stream=stream0)
+            buf456 = buf436; del buf436  # reuse
+            # Topologically Sorted Source Nodes: [mm_653], Original ATen: [aten.mm]
+            extern_kernels.mm(buf453, permute_1023, out=buf456)
+            del permute_1023
+            buf465 = buf430; del buf430  # reuse
+            # Topologically Sorted Source Nodes: [mm_658], Original ATen: [aten.mm]
+            extern_kernels.mm(buf462, permute_1032, out=buf465)
+            del permute_1032
+            buf471 = buf442; del buf442  # reuse
+            buf472 = buf427; del buf427  # reuse
+            # Topologically Sorted Source Nodes: [view_1462, view_1464, add_12057, view_1468, add_12060, view_1470, add_12061, mul_15755, convert_element_type_2587, hidden_states_176, mul_15756, mul_15757, sum_26, pow_76, mul_15758, mul_15759, expand_90, div_13, pow_77, mul_15760, mul_15761, add_12062, convert_element_type_2588, add_12063, mul_15762, view_1471], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf471, buf456, buf459, buf465, buf468, primals_465, add_8778, rsqrt_35, buf472, s27, 896, stream=stream0)
+            del add_8778
+            del buf456
+            del primals_465
+            del rsqrt_35
+            buf474 = buf462; del buf462  # reuse
+            # Topologically Sorted Source Nodes: [mm_661], Original ATen: [aten.mm]
+            extern_kernels.mm(buf472, permute_1037, out=buf474)
+            del permute_1037
+            buf473 = reinterpret_tensor(buf464, (896, 32), (32, 1), 0); del buf464  # reuse
+            # Topologically Sorted Source Nodes: [permute_1035, mm_660], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf472, (896, s27), (1, 896), 0), mm_313, out=buf473)
+            del mm_313
+            buf476 = buf455; del buf455  # reuse
+            # Topologically Sorted Source Nodes: [permute_1039, mm_662], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf474, (32, s27), (1, 32), 0), view_851, out=buf476)
+            del view_851
+            buf475 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2593], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf473, buf475, 28672, stream=stream0)
+            buf478 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2599], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf476, buf478, 28672, stream=stream0)
+            buf477 = buf472; del buf472  # reuse
+            # Topologically Sorted Source Nodes: [mm_663], Original ATen: [aten.mm]
+            extern_kernels.mm(buf474, permute_1041, out=buf477)
+            del permute_1041
+            buf479 = buf468; del buf468  # reuse
+            # Topologically Sorted Source Nodes: [view_1475, result_369, permute_1043, mm_664], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf471, (s27, 896), (896, 1), 0), primals_462, out=buf479)
+            del primals_462
+            buf480 = reinterpret_tensor(buf477, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf477  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_1474, view_1476, add_12064, view_1477, permute_1044, _scaled_dot_product_efficient_attention_backward_6], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf480, buf479, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_1474, view_1476, add_12064, view_1477, permute_1044, _scaled_dot_product_efficient_attention_backward_6], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf481 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf480, add_8643, view_846, view_847, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_68, getitem_69, getitem_70, getitem_71, 0.0, [True, True, True, False], scale=0.125)
+            del add_8643
+            del getitem_68
+            del getitem_69
+            del getitem_70
+            del getitem_71
+            del view_846
+            del view_847
+            buf482 = buf481[0]
+            assert_size_stride(buf482, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf482, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf483 = buf481[1]
+            assert_size_stride(buf483, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf483, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf485 = reinterpret_tensor(buf429, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf429  # reuse
+            # Topologically Sorted Source Nodes: [view_1479, sum_28], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf483, buf485, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf484 = buf481[2]
+            assert_size_stride(buf484, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf484, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf481
+            buf486 = buf413; del buf413  # reuse
+            buf487 = reinterpret_tensor(buf422, (s27, 128), (128, 1), 0); del buf422  # reuse
+            # Topologically Sorted Source Nodes: [view_1478, sum_27, squeeze_12, permute_1045, clone_68, view_1480, mul_15767, view_1481], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf484, buf486, buf487, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf488 = buf423; del buf423  # reuse
+            # Topologically Sorted Source Nodes: [permute_1046, mm_665], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf487, (128, s27), (1, 128), 0), mm_310, out=buf488)
+            del mm_310
+            buf489 = buf474; del buf474  # reuse
+            # Topologically Sorted Source Nodes: [mm_666], Original ATen: [aten.mm]
+            extern_kernels.mm(buf487, permute_1048, out=buf489)
+            del permute_1048
+            buf490 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2607], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf488, buf490, 4096, stream=stream0)
+            buf491 = buf476; del buf476  # reuse
+            # Topologically Sorted Source Nodes: [permute_1050, mm_667], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf489, (32, s27), (1, 32), 0), view_827, out=buf491)
+            buf493 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2613], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf491, buf493, 28672, stream=stream0)
+            buf495 = reinterpret_tensor(buf487, (1, s27, 128), (128*s27, 128, 1), 0); del buf487  # reuse
+            buf502 = reinterpret_tensor(buf412, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf412  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1479, sum_28, squeeze_13, mul_15763, slice_219, slice_220, neg_68, add_12065, mul_15764, add_12066, permute_1055, clone_69, view_1487, mul_15768], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf485, mm_default, buf495, buf502, s27, s27, 128, stream=stream0)
+            buf496 = buf488; del buf488  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1479, sum_28, squeeze_13, mul_15763, slice_219, slice_220, neg_68, add_12065, mul_15764, add_12066, permute_1055, clone_69, view_1487, mul_15768, view_1488, permute_1056, mm_670], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf495, (128, s27), (1, 128), 0), mm_308, out=buf496)
+            del mm_308
+            buf497 = buf453; del buf453  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1479, sum_28, squeeze_13, mul_15763, slice_219, slice_220, neg_68, add_12065, mul_15764, add_12066, permute_1055, clone_69, view_1487, mul_15768, view_1488, mm_671], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf495, (s27, 128), (128, 1), 0), permute_1058, out=buf497)
+            del permute_1058
+            buf498 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2621], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf496, buf498, 4096, stream=stream0)
+            buf499 = buf491; del buf491  # reuse
+            # Topologically Sorted Source Nodes: [permute_1060, mm_672], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf497, (32, s27), (1, 32), 0), view_827, out=buf499)
+            buf501 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2627], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf499, buf501, 28672, stream=stream0)
+            buf494 = reinterpret_tensor(buf484, (s27, 896), (896, 1), 0); del buf484  # reuse
+            # Topologically Sorted Source Nodes: [view_1478, sum_27, squeeze_12, permute_1045, clone_68, view_1480, view_1485, result_366, permute_1054, mm_669], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf486, (s27, 128), (128, 1), 0), primals_458, out=buf494)
+            del primals_458
+            buf503 = reinterpret_tensor(buf483, (s27, 896), (896, 1), 0); del buf483  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1479, sum_28, squeeze_13, mul_15763, slice_219, slice_220, neg_68, add_12065, mul_15764, add_12066, permute_1055, clone_69, view_1487, view_1492, result_363, permute_1064, mm_674], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf502, (s27, 128), (128, 1), 0), primals_454, out=buf503)
+            del primals_454
+            buf492 = reinterpret_tensor(buf480, (s27, 896), (896, 1), 0); del buf480  # reuse
+            # Topologically Sorted Source Nodes: [mm_668], Original ATen: [aten.mm]
+            extern_kernels.mm(buf489, permute_1052, out=buf492)
+            del permute_1052
+            buf500 = buf479; del buf479  # reuse
+            # Topologically Sorted Source Nodes: [mm_673], Original ATen: [aten.mm]
+            extern_kernels.mm(buf497, permute_1062, out=buf500)
+            del permute_1062
+            buf504 = reinterpret_tensor(buf465, (1, s27, 896), (896*s27, 896, 1), 0); del buf465  # reuse
+            buf511 = reinterpret_tensor(buf459, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf459  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15765, slice_221, slice_222, neg_69, add_12067, mul_15766, add_12068, permute_1065, clone_70, view_1494, mul_15769], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf482, mm_default, buf504, buf511, s27, s27, 896, stream=stream0)
+            buf506 = buf497; del buf497  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15765, slice_221, slice_222, neg_69, add_12067, mul_15766, add_12068, permute_1065, clone_70, view_1494, mul_15769, view_1495, mm_676], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf504, (s27, 896), (896, 1), 0), permute_1068, out=buf506)
+            del permute_1068
+            buf505 = reinterpret_tensor(buf499, (896, 32), (32, 1), 0); del buf499  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15765, slice_221, slice_222, neg_69, add_12067, mul_15766, add_12068, permute_1065, clone_70, view_1494, mul_15769, view_1495, permute_1066, mm_675], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf504, (896, s27), (1, 896), 0), mm_306, out=buf505)
+            del mm_306
+            buf508 = reinterpret_tensor(buf473, (32, 896), (896, 1), 0); del buf473  # reuse
+            # Topologically Sorted Source Nodes: [permute_1070, mm_677], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf506, (32, s27), (1, 32), 0), view_827, out=buf508)
+            del view_827
+            buf512 = reinterpret_tensor(buf504, (s27, 896), (896, 1), 0); del buf504  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15765, slice_221, slice_222, neg_69, add_12067, mul_15766, add_12068, permute_1065, clone_70, view_1494, view_1499, result_360, permute_1074, mm_679], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf511, (s27, 896), (896, 1), 0), primals_450, out=buf512)
+            del primals_450
+            buf507 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2635], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf505, buf507, 28672, stream=stream0)
+            buf510 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2641], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf508, buf510, 28672, stream=stream0)
+            buf509 = reinterpret_tensor(buf511, (s27, 896), (896, 1), 0); del buf511  # reuse
+            # Topologically Sorted Source Nodes: [mm_678], Original ATen: [aten.mm]
+            extern_kernels.mm(buf506, permute_1072, out=buf509)
+            del permute_1072
+            buf515 = buf471; del buf471  # reuse
+            buf516 = reinterpret_tensor(buf482, (s27, 896), (896, 1), 0); del buf482  # reuse
+            # Topologically Sorted Source Nodes: [view_1484, view_1486, add_12069, view_1491, add_12070, view_1493, add_12071, view_1498, add_12072, view_1500, add_12073, mul_15770, convert_element_type_2645, hidden_states_170, mul_15771, mul_15772, sum_29, pow_78, mul_15773, mul_15774, expand_91, div_14, pow_79, mul_15775, mul_15776, add_12074, convert_element_type_2646, add_12075, mul_15777, view_1501], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf515, buf492, buf494, buf500, buf503, buf509, buf512, primals_449, add_8444, rsqrt_34, buf516, s27, 896, stream=stream0)
+            del add_8444
+            del buf492
+            del buf494
+            del primals_449
+            del rsqrt_34
+            buf518 = buf506; del buf506  # reuse
+            # Topologically Sorted Source Nodes: [mm_681], Original ATen: [aten.mm]
+            extern_kernels.mm(buf516, permute_1077, out=buf518)
+            del permute_1077
+            buf520 = reinterpret_tensor(buf461, (32, 4864), (4864, 1), 0); del buf461  # reuse
+            # Topologically Sorted Source Nodes: [permute_1079, mm_682], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf518, (32, s27), (1, 32), 0), view_821, out=buf520)
+            del view_821
+            buf517 = reinterpret_tensor(buf508, (896, 32), (32, 1), 0); del buf508  # reuse
+            # Topologically Sorted Source Nodes: [permute_1075, mm_680], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf516, (896, s27), (1, 896), 0), mm_304, out=buf517)
+            del mm_304
+            buf519 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2651], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf517, buf519, 28672, stream=stream0)
+            buf522 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2657], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf520, buf522, 155648, stream=stream0)
+            buf521 = reinterpret_tensor(buf460, (s27, 4864), (4864, 1), 0); del buf460  # reuse
+            # Topologically Sorted Source Nodes: [mm_683], Original ATen: [aten.mm]
+            extern_kernels.mm(buf518, permute_1081, out=buf521)
+            del permute_1081
+            buf523 = reinterpret_tensor(buf451, (s27, 4864), (4864, 1), 0); del buf451  # reuse
+            # Topologically Sorted Source Nodes: [view_1505, result_357, permute_1083, mm_684], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf515, (s27, 896), (896, 1), 0), primals_446, out=buf523)
+            del primals_446
+            buf524 = buf467; del buf467  # reuse
+            buf531 = buf458; del buf458  # reuse
+            buf533 = reinterpret_tensor(buf450, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf450  # reuse
+            buf540 = reinterpret_tensor(buf448, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf448  # reuse
+            # Topologically Sorted Source Nodes: [view_1504, view_1506, add_12076, silu_16, mul_15778, mul_15779, mul_15780, convert_element_type_2675, neg_70, exp_7, add_12078, reciprocal_7, mul_15781, mul_15782, sub_3926, mul_15783, add_12079, mul_15784, convert_element_type_2677, mul_15785], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf521, buf523, add_8354, add_8397, buf524, buf531, buf533, buf540, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_8354
+            del add_8397
+            buf532 = buf516; del buf516  # reuse
+            # Topologically Sorted Source Nodes: [view_1504, view_1506, add_12076, silu_16, mul_15778, view_1511, result_354, permute_1092, mm_689], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf531, (s27, 4864), (4864, 1), 0), primals_443, out=buf532)
+            del primals_443
+            buf541 = buf512; del buf512  # reuse
+            # Topologically Sorted Source Nodes: [view_1504, view_1506, add_12076, silu_16, mul_15779, convert_element_type_2675, neg_70, exp_7, add_12078, reciprocal_7, mul_15781, mul_15782, sub_3926, mul_15783, add_12079, mul_15784, convert_element_type_2677, view_1517, result_351, permute_1101, mm_694], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf540, (s27, 4864), (4864, 1), 0), primals_440, out=buf541)
+            del primals_440
+            buf526 = buf518; del buf518  # reuse
+            # Topologically Sorted Source Nodes: [view_1504, view_1506, add_12076, silu_16, mul_15778, mul_15780, view_1507, mm_686], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf524, (s27, 4864), (4864, 1), 0), permute_1086, out=buf526)
+            del permute_1086
+            buf525 = reinterpret_tensor(buf520, (4864, 32), (32, 1), 0); del buf520  # reuse
+            # Topologically Sorted Source Nodes: [view_1504, view_1506, add_12076, silu_16, mul_15778, mul_15780, view_1507, permute_1084, mm_685], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf524, (4864, s27), (1, 4864), 0), mm_301, out=buf525)
+            del mm_301
+            buf535 = buf489; del buf489  # reuse
+            # Topologically Sorted Source Nodes: [view_1504, view_1506, add_12076, silu_16, mul_15779, convert_element_type_2675, neg_70, exp_7, add_12078, reciprocal_7, mul_15781, mul_15782, sub_3926, mul_15783, add_12079, mul_15784, convert_element_type_2677, mul_15785, view_1513, mm_691], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf533, (s27, 4864), (4864, 1), 0), permute_1095, out=buf535)
+            del permute_1095
+            buf534 = buf452; del buf452  # reuse
+            # Topologically Sorted Source Nodes: [view_1504, view_1506, add_12076, silu_16, mul_15779, convert_element_type_2675, neg_70, exp_7, add_12078, reciprocal_7, mul_15781, mul_15782, sub_3926, mul_15783, add_12079, mul_15784, convert_element_type_2677, mul_15785, view_1513, permute_1093, mm_690], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf533, (4864, s27), (1, 4864), 0), mm_298, out=buf534)
+            del mm_298
+            buf528 = reinterpret_tensor(buf517, (32, 896), (896, 1), 0); del buf517  # reuse
+            # Topologically Sorted Source Nodes: [permute_1088, mm_687], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf526, (32, s27), (1, 32), 0), view_809, out=buf528)
+            buf537 = reinterpret_tensor(buf505, (32, 896), (896, 1), 0); del buf505  # reuse
+            # Topologically Sorted Source Nodes: [permute_1097, mm_692], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf535, (32, s27), (1, 32), 0), view_809, out=buf537)
+            del view_809
+            buf530 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2671], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf528, buf530, 28672, stream=stream0)
+            buf539 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2688], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf537, buf539, 28672, stream=stream0)
+            buf527 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2665], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf525, buf527, 155648, stream=stream0)
+            buf536 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2682], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf534, buf536, 155648, stream=stream0)
+            buf529 = buf509; del buf509  # reuse
+            # Topologically Sorted Source Nodes: [mm_688], Original ATen: [aten.mm]
+            extern_kernels.mm(buf526, permute_1090, out=buf529)
+            del permute_1090
+            buf538 = buf503; del buf503  # reuse
+            # Topologically Sorted Source Nodes: [mm_693], Original ATen: [aten.mm]
+            extern_kernels.mm(buf535, permute_1099, out=buf538)
+            del permute_1099
+            buf544 = buf515; del buf515  # reuse
+            buf545 = buf500; del buf500  # reuse
+            # Topologically Sorted Source Nodes: [view_1510, view_1512, add_12077, view_1516, add_12080, view_1518, add_12081, mul_15786, convert_element_type_2692, hidden_states_166, mul_15787, mul_15788, sum_30, pow_80, mul_15789, mul_15790, expand_92, div_15, pow_81, mul_15791, mul_15792, add_12082, convert_element_type_2693, add_12083, mul_15793, view_1519], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf544, buf529, buf532, buf538, buf541, primals_439, add_8286, rsqrt_33, buf545, s27, 896, stream=stream0)
+            del add_8286
+            del buf529
+            del primals_439
+            del rsqrt_33
+            buf547 = buf535; del buf535  # reuse
+            # Topologically Sorted Source Nodes: [mm_696], Original ATen: [aten.mm]
+            extern_kernels.mm(buf545, permute_1104, out=buf547)
+            del permute_1104
+            buf546 = reinterpret_tensor(buf537, (896, 32), (32, 1), 0); del buf537  # reuse
+            # Topologically Sorted Source Nodes: [permute_1102, mm_695], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf545, (896, s27), (1, 896), 0), mm_295, out=buf546)
+            del mm_295
+            buf549 = buf528; del buf528  # reuse
+            # Topologically Sorted Source Nodes: [permute_1106, mm_697], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf547, (32, s27), (1, 32), 0), view_803, out=buf549)
+            del view_803
+            buf548 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2698], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf546, buf548, 28672, stream=stream0)
+            buf551 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2704], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf549, buf551, 28672, stream=stream0)
+            buf550 = buf545; del buf545  # reuse
+            # Topologically Sorted Source Nodes: [mm_698], Original ATen: [aten.mm]
+            extern_kernels.mm(buf547, permute_1108, out=buf550)
+            del permute_1108
+            buf552 = buf541; del buf541  # reuse
+            # Topologically Sorted Source Nodes: [view_1523, result_348, permute_1110, mm_699], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf544, (s27, 896), (896, 1), 0), primals_436, out=buf552)
+            del primals_436
+            buf553 = reinterpret_tensor(buf550, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf550  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_1522, view_1524, add_12084, view_1525, permute_1111, _scaled_dot_product_efficient_attention_backward_7], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf553, buf552, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_1522, view_1524, add_12084, view_1525, permute_1111, _scaled_dot_product_efficient_attention_backward_7], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf554 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf553, add_8151, view_798, view_799, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_64, getitem_65, getitem_66, getitem_67, 0.0, [True, True, True, False], scale=0.125)
+            del add_8151
+            del getitem_64
+            del getitem_65
+            del getitem_66
+            del getitem_67
+            del view_798
+            del view_799
+            buf555 = buf554[0]
+            assert_size_stride(buf555, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf555, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf556 = buf554[1]
+            assert_size_stride(buf556, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf556, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf558 = reinterpret_tensor(buf502, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf502  # reuse
+            # Topologically Sorted Source Nodes: [view_1527, sum_32], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf556, buf558, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf557 = buf554[2]
+            assert_size_stride(buf557, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf557, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf554
+            buf559 = buf486; del buf486  # reuse
+            buf560 = reinterpret_tensor(buf495, (s27, 128), (128, 1), 0); del buf495  # reuse
+            # Topologically Sorted Source Nodes: [view_1526, sum_31, squeeze_14, permute_1112, clone_71, view_1528, mul_15798, view_1529], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf557, buf559, buf560, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf561 = buf496; del buf496  # reuse
+            # Topologically Sorted Source Nodes: [permute_1113, mm_700], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf560, (128, s27), (1, 128), 0), mm_292, out=buf561)
+            del mm_292
+            buf562 = buf547; del buf547  # reuse
+            # Topologically Sorted Source Nodes: [mm_701], Original ATen: [aten.mm]
+            extern_kernels.mm(buf560, permute_1115, out=buf562)
+            del permute_1115
+            buf563 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2712], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf561, buf563, 4096, stream=stream0)
+            buf564 = buf549; del buf549  # reuse
+            # Topologically Sorted Source Nodes: [permute_1117, mm_702], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf562, (32, s27), (1, 32), 0), view_779, out=buf564)
+            buf566 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2718], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf564, buf566, 28672, stream=stream0)
+            buf568 = reinterpret_tensor(buf560, (1, s27, 128), (128*s27, 128, 1), 0); del buf560  # reuse
+            buf575 = reinterpret_tensor(buf485, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf485  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1527, sum_32, squeeze_15, mul_15794, slice_223, slice_224, neg_71, add_12085, mul_15795, add_12086, permute_1122, clone_72, view_1535, mul_15799], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf558, mm_default, buf568, buf575, s27, s27, 128, stream=stream0)
+            buf569 = buf561; del buf561  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1527, sum_32, squeeze_15, mul_15794, slice_223, slice_224, neg_71, add_12085, mul_15795, add_12086, permute_1122, clone_72, view_1535, mul_15799, view_1536, permute_1123, mm_705], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf568, (128, s27), (1, 128), 0), mm_290, out=buf569)
+            del mm_290
+            buf570 = buf526; del buf526  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1527, sum_32, squeeze_15, mul_15794, slice_223, slice_224, neg_71, add_12085, mul_15795, add_12086, permute_1122, clone_72, view_1535, mul_15799, view_1536, mm_706], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf568, (s27, 128), (128, 1), 0), permute_1125, out=buf570)
+            del permute_1125
+            buf571 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2726], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf569, buf571, 4096, stream=stream0)
+            buf572 = buf564; del buf564  # reuse
+            # Topologically Sorted Source Nodes: [permute_1127, mm_707], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf570, (32, s27), (1, 32), 0), view_779, out=buf572)
+            buf574 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2732], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf572, buf574, 28672, stream=stream0)
+            buf567 = reinterpret_tensor(buf557, (s27, 896), (896, 1), 0); del buf557  # reuse
+            # Topologically Sorted Source Nodes: [view_1526, sum_31, squeeze_14, permute_1112, clone_71, view_1528, view_1533, result_345, permute_1121, mm_704], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf559, (s27, 128), (128, 1), 0), primals_432, out=buf567)
+            del primals_432
+            buf576 = reinterpret_tensor(buf556, (s27, 896), (896, 1), 0); del buf556  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1527, sum_32, squeeze_15, mul_15794, slice_223, slice_224, neg_71, add_12085, mul_15795, add_12086, permute_1122, clone_72, view_1535, view_1540, result_342, permute_1131, mm_709], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf575, (s27, 128), (128, 1), 0), primals_428, out=buf576)
+            del primals_428
+            buf565 = reinterpret_tensor(buf553, (s27, 896), (896, 1), 0); del buf553  # reuse
+            # Topologically Sorted Source Nodes: [mm_703], Original ATen: [aten.mm]
+            extern_kernels.mm(buf562, permute_1119, out=buf565)
+            del permute_1119
+            buf573 = buf552; del buf552  # reuse
+            # Topologically Sorted Source Nodes: [mm_708], Original ATen: [aten.mm]
+            extern_kernels.mm(buf570, permute_1129, out=buf573)
+            del permute_1129
+            buf577 = reinterpret_tensor(buf538, (1, s27, 896), (896*s27, 896, 1), 0); del buf538  # reuse
+            buf584 = reinterpret_tensor(buf532, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf532  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15796, slice_225, slice_226, neg_72, add_12087, mul_15797, add_12088, permute_1132, clone_73, view_1542, mul_15800], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf555, mm_default, buf577, buf584, s27, s27, 896, stream=stream0)
+            buf579 = buf570; del buf570  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15796, slice_225, slice_226, neg_72, add_12087, mul_15797, add_12088, permute_1132, clone_73, view_1542, mul_15800, view_1543, mm_711], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf577, (s27, 896), (896, 1), 0), permute_1135, out=buf579)
+            del permute_1135
+            buf578 = reinterpret_tensor(buf572, (896, 32), (32, 1), 0); del buf572  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15796, slice_225, slice_226, neg_72, add_12087, mul_15797, add_12088, permute_1132, clone_73, view_1542, mul_15800, view_1543, permute_1133, mm_710], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf577, (896, s27), (1, 896), 0), mm_288, out=buf578)
+            del mm_288
+            buf581 = reinterpret_tensor(buf546, (32, 896), (896, 1), 0); del buf546  # reuse
+            # Topologically Sorted Source Nodes: [permute_1137, mm_712], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf579, (32, s27), (1, 32), 0), view_779, out=buf581)
+            del view_779
+            buf585 = reinterpret_tensor(buf577, (s27, 896), (896, 1), 0); del buf577  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15796, slice_225, slice_226, neg_72, add_12087, mul_15797, add_12088, permute_1132, clone_73, view_1542, view_1547, result_339, permute_1141, mm_714], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf584, (s27, 896), (896, 1), 0), primals_424, out=buf585)
+            del primals_424
+            buf580 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2740], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf578, buf580, 28672, stream=stream0)
+            buf583 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2746], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf581, buf583, 28672, stream=stream0)
+            buf582 = reinterpret_tensor(buf584, (s27, 896), (896, 1), 0); del buf584  # reuse
+            # Topologically Sorted Source Nodes: [mm_713], Original ATen: [aten.mm]
+            extern_kernels.mm(buf579, permute_1139, out=buf582)
+            del permute_1139
+            buf588 = buf544; del buf544  # reuse
+            buf589 = reinterpret_tensor(buf555, (s27, 896), (896, 1), 0); del buf555  # reuse
+            # Topologically Sorted Source Nodes: [view_1532, view_1534, add_12089, view_1539, add_12090, view_1541, add_12091, view_1546, add_12092, view_1548, add_12093, mul_15801, convert_element_type_2750, hidden_states_160, mul_15802, mul_15803, sum_33, pow_82, mul_15804, mul_15805, expand_93, div_16, pow_83, mul_15806, mul_15807, add_12094, convert_element_type_2751, add_12095, mul_15808, view_1549], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf588, buf565, buf567, buf573, buf576, buf582, buf585, primals_423, add_7952, rsqrt_32, buf589, s27, 896, stream=stream0)
+            del add_7952
+            del buf565
+            del buf567
+            del primals_423
+            del rsqrt_32
+            buf591 = buf579; del buf579  # reuse
+            # Topologically Sorted Source Nodes: [mm_716], Original ATen: [aten.mm]
+            extern_kernels.mm(buf589, permute_1144, out=buf591)
+            del permute_1144
+            buf593 = reinterpret_tensor(buf534, (32, 4864), (4864, 1), 0); del buf534  # reuse
+            # Topologically Sorted Source Nodes: [permute_1146, mm_717], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf591, (32, s27), (1, 32), 0), view_773, out=buf593)
+            del view_773
+            buf590 = reinterpret_tensor(buf581, (896, 32), (32, 1), 0); del buf581  # reuse
+            # Topologically Sorted Source Nodes: [permute_1142, mm_715], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf589, (896, s27), (1, 896), 0), mm_286, out=buf590)
+            del mm_286
+            buf592 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2756], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf590, buf592, 28672, stream=stream0)
+            buf595 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2762], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf593, buf595, 155648, stream=stream0)
+            buf594 = reinterpret_tensor(buf533, (s27, 4864), (4864, 1), 0); del buf533  # reuse
+            # Topologically Sorted Source Nodes: [mm_718], Original ATen: [aten.mm]
+            extern_kernels.mm(buf591, permute_1148, out=buf594)
+            del permute_1148
+            buf596 = reinterpret_tensor(buf524, (s27, 4864), (4864, 1), 0); del buf524  # reuse
+            # Topologically Sorted Source Nodes: [view_1553, result_336, permute_1150, mm_719], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf588, (s27, 896), (896, 1), 0), primals_420, out=buf596)
+            del primals_420
+            buf597 = buf540; del buf540  # reuse
+            buf604 = buf531; del buf531  # reuse
+            buf606 = reinterpret_tensor(buf523, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf523  # reuse
+            buf613 = reinterpret_tensor(buf521, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf521  # reuse
+            # Topologically Sorted Source Nodes: [view_1552, view_1554, add_12096, silu_15, mul_15809, mul_15810, mul_15811, convert_element_type_2780, neg_73, exp_8, add_12098, reciprocal_8, mul_15812, mul_15813, sub_3927, mul_15814, add_12099, mul_15815, convert_element_type_2782, mul_15816], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf594, buf596, add_7862, add_7905, buf597, buf604, buf606, buf613, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_7862
+            del add_7905
+            buf605 = buf589; del buf589  # reuse
+            # Topologically Sorted Source Nodes: [view_1552, view_1554, add_12096, silu_15, mul_15809, view_1559, result_333, permute_1159, mm_724], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf604, (s27, 4864), (4864, 1), 0), primals_417, out=buf605)
+            del primals_417
+            buf614 = buf585; del buf585  # reuse
+            # Topologically Sorted Source Nodes: [view_1552, view_1554, add_12096, silu_15, mul_15810, convert_element_type_2780, neg_73, exp_8, add_12098, reciprocal_8, mul_15812, mul_15813, sub_3927, mul_15814, add_12099, mul_15815, convert_element_type_2782, view_1565, result_330, permute_1168, mm_729], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf613, (s27, 4864), (4864, 1), 0), primals_414, out=buf614)
+            del primals_414
+            buf599 = buf591; del buf591  # reuse
+            # Topologically Sorted Source Nodes: [view_1552, view_1554, add_12096, silu_15, mul_15809, mul_15811, view_1555, mm_721], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf597, (s27, 4864), (4864, 1), 0), permute_1153, out=buf599)
+            del permute_1153
+            buf598 = reinterpret_tensor(buf593, (4864, 32), (32, 1), 0); del buf593  # reuse
+            # Topologically Sorted Source Nodes: [view_1552, view_1554, add_12096, silu_15, mul_15809, mul_15811, view_1555, permute_1151, mm_720], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf597, (4864, s27), (1, 4864), 0), mm_283, out=buf598)
+            del mm_283
+            buf608 = buf562; del buf562  # reuse
+            # Topologically Sorted Source Nodes: [view_1552, view_1554, add_12096, silu_15, mul_15810, convert_element_type_2780, neg_73, exp_8, add_12098, reciprocal_8, mul_15812, mul_15813, sub_3927, mul_15814, add_12099, mul_15815, convert_element_type_2782, mul_15816, view_1561, mm_726], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf606, (s27, 4864), (4864, 1), 0), permute_1162, out=buf608)
+            del permute_1162
+            buf607 = buf525; del buf525  # reuse
+            # Topologically Sorted Source Nodes: [view_1552, view_1554, add_12096, silu_15, mul_15810, convert_element_type_2780, neg_73, exp_8, add_12098, reciprocal_8, mul_15812, mul_15813, sub_3927, mul_15814, add_12099, mul_15815, convert_element_type_2782, mul_15816, view_1561, permute_1160, mm_725], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf606, (4864, s27), (1, 4864), 0), mm_280, out=buf607)
+            del mm_280
+            buf601 = reinterpret_tensor(buf590, (32, 896), (896, 1), 0); del buf590  # reuse
+            # Topologically Sorted Source Nodes: [permute_1155, mm_722], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf599, (32, s27), (1, 32), 0), view_761, out=buf601)
+            buf610 = reinterpret_tensor(buf578, (32, 896), (896, 1), 0); del buf578  # reuse
+            # Topologically Sorted Source Nodes: [permute_1164, mm_727], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf608, (32, s27), (1, 32), 0), view_761, out=buf610)
+            del view_761
+            buf603 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2776], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf601, buf603, 28672, stream=stream0)
+            buf612 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2793], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf610, buf612, 28672, stream=stream0)
+            buf600 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2770], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf598, buf600, 155648, stream=stream0)
+            buf609 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2787], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf607, buf609, 155648, stream=stream0)
+            buf602 = buf582; del buf582  # reuse
+            # Topologically Sorted Source Nodes: [mm_723], Original ATen: [aten.mm]
+            extern_kernels.mm(buf599, permute_1157, out=buf602)
+            del permute_1157
+            buf611 = buf576; del buf576  # reuse
+            # Topologically Sorted Source Nodes: [mm_728], Original ATen: [aten.mm]
+            extern_kernels.mm(buf608, permute_1166, out=buf611)
+            del permute_1166
+            buf617 = buf588; del buf588  # reuse
+            buf618 = buf573; del buf573  # reuse
+            # Topologically Sorted Source Nodes: [view_1558, view_1560, add_12097, view_1564, add_12100, view_1566, add_12101, mul_15817, convert_element_type_2797, hidden_states_156, mul_15818, mul_15819, sum_34, pow_84, mul_15820, mul_15821, expand_94, div_17, pow_85, mul_15822, mul_15823, add_12102, convert_element_type_2798, add_12103, mul_15824, view_1567], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf617, buf602, buf605, buf611, buf614, primals_413, add_7794, rsqrt_31, buf618, s27, 896, stream=stream0)
+            del add_7794
+            del buf602
+            del primals_413
+            del rsqrt_31
+            buf620 = buf608; del buf608  # reuse
+            # Topologically Sorted Source Nodes: [mm_731], Original ATen: [aten.mm]
+            extern_kernels.mm(buf618, permute_1171, out=buf620)
+            del permute_1171
+            buf619 = reinterpret_tensor(buf610, (896, 32), (32, 1), 0); del buf610  # reuse
+            # Topologically Sorted Source Nodes: [permute_1169, mm_730], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf618, (896, s27), (1, 896), 0), mm_277, out=buf619)
+            del mm_277
+            buf622 = buf601; del buf601  # reuse
+            # Topologically Sorted Source Nodes: [permute_1173, mm_732], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf620, (32, s27), (1, 32), 0), view_755, out=buf622)
+            del view_755
+            buf621 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2803], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf619, buf621, 28672, stream=stream0)
+            buf624 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2809], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf622, buf624, 28672, stream=stream0)
+            buf623 = buf618; del buf618  # reuse
+            # Topologically Sorted Source Nodes: [mm_733], Original ATen: [aten.mm]
+            extern_kernels.mm(buf620, permute_1175, out=buf623)
+            del permute_1175
+            buf625 = buf614; del buf614  # reuse
+            # Topologically Sorted Source Nodes: [view_1571, result_327, permute_1177, mm_734], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf617, (s27, 896), (896, 1), 0), primals_410, out=buf625)
+            del primals_410
+            buf626 = reinterpret_tensor(buf623, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf623  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_1570, view_1572, add_12104, view_1573, permute_1178, _scaled_dot_product_efficient_attention_backward_8], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf626, buf625, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_1570, view_1572, add_12104, view_1573, permute_1178, _scaled_dot_product_efficient_attention_backward_8], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf627 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf626, add_7659, view_750, view_751, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_60, getitem_61, getitem_62, getitem_63, 0.0, [True, True, True, False], scale=0.125)
+            del add_7659
+            del getitem_60
+            del getitem_61
+            del getitem_62
+            del getitem_63
+            del view_750
+            del view_751
+            buf628 = buf627[0]
+            assert_size_stride(buf628, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf628, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf629 = buf627[1]
+            assert_size_stride(buf629, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf629, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf631 = reinterpret_tensor(buf575, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf575  # reuse
+            # Topologically Sorted Source Nodes: [view_1575, sum_36], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf629, buf631, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf630 = buf627[2]
+            assert_size_stride(buf630, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf630, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf627
+            buf632 = buf559; del buf559  # reuse
+            buf633 = reinterpret_tensor(buf568, (s27, 128), (128, 1), 0); del buf568  # reuse
+            # Topologically Sorted Source Nodes: [view_1574, sum_35, squeeze_16, permute_1179, clone_74, view_1576, mul_15829, view_1577], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf630, buf632, buf633, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf634 = buf569; del buf569  # reuse
+            # Topologically Sorted Source Nodes: [permute_1180, mm_735], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf633, (128, s27), (1, 128), 0), mm_274, out=buf634)
+            del mm_274
+            buf635 = buf620; del buf620  # reuse
+            # Topologically Sorted Source Nodes: [mm_736], Original ATen: [aten.mm]
+            extern_kernels.mm(buf633, permute_1182, out=buf635)
+            del permute_1182
+            buf636 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2817], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf634, buf636, 4096, stream=stream0)
+            buf637 = buf622; del buf622  # reuse
+            # Topologically Sorted Source Nodes: [permute_1184, mm_737], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf635, (32, s27), (1, 32), 0), view_731, out=buf637)
+            buf639 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2823], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf637, buf639, 28672, stream=stream0)
+            buf641 = reinterpret_tensor(buf633, (1, s27, 128), (128*s27, 128, 1), 0); del buf633  # reuse
+            buf648 = reinterpret_tensor(buf558, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf558  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1575, sum_36, squeeze_17, mul_15825, slice_227, slice_228, neg_74, add_12105, mul_15826, add_12106, permute_1189, clone_75, view_1583, mul_15830], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf631, mm_default, buf641, buf648, s27, s27, 128, stream=stream0)
+            buf642 = buf634; del buf634  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1575, sum_36, squeeze_17, mul_15825, slice_227, slice_228, neg_74, add_12105, mul_15826, add_12106, permute_1189, clone_75, view_1583, mul_15830, view_1584, permute_1190, mm_740], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf641, (128, s27), (1, 128), 0), mm_272, out=buf642)
+            del mm_272
+            buf643 = buf599; del buf599  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1575, sum_36, squeeze_17, mul_15825, slice_227, slice_228, neg_74, add_12105, mul_15826, add_12106, permute_1189, clone_75, view_1583, mul_15830, view_1584, mm_741], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf641, (s27, 128), (128, 1), 0), permute_1192, out=buf643)
+            del permute_1192
+            buf644 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2831], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf642, buf644, 4096, stream=stream0)
+            buf645 = buf637; del buf637  # reuse
+            # Topologically Sorted Source Nodes: [permute_1194, mm_742], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf643, (32, s27), (1, 32), 0), view_731, out=buf645)
+            buf647 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2837], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf645, buf647, 28672, stream=stream0)
+            buf640 = reinterpret_tensor(buf630, (s27, 896), (896, 1), 0); del buf630  # reuse
+            # Topologically Sorted Source Nodes: [view_1574, sum_35, squeeze_16, permute_1179, clone_74, view_1576, view_1581, result_324, permute_1188, mm_739], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf632, (s27, 128), (128, 1), 0), primals_406, out=buf640)
+            del primals_406
+            buf649 = reinterpret_tensor(buf629, (s27, 896), (896, 1), 0); del buf629  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1575, sum_36, squeeze_17, mul_15825, slice_227, slice_228, neg_74, add_12105, mul_15826, add_12106, permute_1189, clone_75, view_1583, view_1588, result_321, permute_1198, mm_744], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf648, (s27, 128), (128, 1), 0), primals_402, out=buf649)
+            del primals_402
+            buf638 = reinterpret_tensor(buf626, (s27, 896), (896, 1), 0); del buf626  # reuse
+            # Topologically Sorted Source Nodes: [mm_738], Original ATen: [aten.mm]
+            extern_kernels.mm(buf635, permute_1186, out=buf638)
+            del permute_1186
+            buf646 = buf625; del buf625  # reuse
+            # Topologically Sorted Source Nodes: [mm_743], Original ATen: [aten.mm]
+            extern_kernels.mm(buf643, permute_1196, out=buf646)
+            del permute_1196
+            buf650 = reinterpret_tensor(buf611, (1, s27, 896), (896*s27, 896, 1), 0); del buf611  # reuse
+            buf657 = reinterpret_tensor(buf605, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf605  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15827, slice_229, slice_230, neg_75, add_12107, mul_15828, add_12108, permute_1199, clone_76, view_1590, mul_15831], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf628, mm_default, buf650, buf657, s27, s27, 896, stream=stream0)
+            buf652 = buf643; del buf643  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15827, slice_229, slice_230, neg_75, add_12107, mul_15828, add_12108, permute_1199, clone_76, view_1590, mul_15831, view_1591, mm_746], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf650, (s27, 896), (896, 1), 0), permute_1202, out=buf652)
+            del permute_1202
+            buf651 = reinterpret_tensor(buf645, (896, 32), (32, 1), 0); del buf645  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15827, slice_229, slice_230, neg_75, add_12107, mul_15828, add_12108, permute_1199, clone_76, view_1590, mul_15831, view_1591, permute_1200, mm_745], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf650, (896, s27), (1, 896), 0), mm_270, out=buf651)
+            del mm_270
+            buf654 = reinterpret_tensor(buf619, (32, 896), (896, 1), 0); del buf619  # reuse
+            # Topologically Sorted Source Nodes: [permute_1204, mm_747], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf652, (32, s27), (1, 32), 0), view_731, out=buf654)
+            del view_731
+            buf658 = reinterpret_tensor(buf650, (s27, 896), (896, 1), 0); del buf650  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15827, slice_229, slice_230, neg_75, add_12107, mul_15828, add_12108, permute_1199, clone_76, view_1590, view_1595, result_318, permute_1208, mm_749], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf657, (s27, 896), (896, 1), 0), primals_398, out=buf658)
+            del primals_398
+            buf653 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2845], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf651, buf653, 28672, stream=stream0)
+            buf656 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2851], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf654, buf656, 28672, stream=stream0)
+            buf655 = reinterpret_tensor(buf657, (s27, 896), (896, 1), 0); del buf657  # reuse
+            # Topologically Sorted Source Nodes: [mm_748], Original ATen: [aten.mm]
+            extern_kernels.mm(buf652, permute_1206, out=buf655)
+            del permute_1206
+            buf661 = buf617; del buf617  # reuse
+            buf662 = reinterpret_tensor(buf628, (s27, 896), (896, 1), 0); del buf628  # reuse
+            # Topologically Sorted Source Nodes: [view_1580, view_1582, add_12109, view_1587, add_12110, view_1589, add_12111, view_1594, add_12112, view_1596, add_12113, mul_15832, convert_element_type_2855, hidden_states_150, mul_15833, mul_15834, sum_37, pow_86, mul_15835, mul_15836, expand_95, div_18, pow_87, mul_15837, mul_15838, add_12114, convert_element_type_2856, add_12115, mul_15839, view_1597], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf661, buf638, buf640, buf646, buf649, buf655, buf658, primals_397, add_7460, rsqrt_30, buf662, s27, 896, stream=stream0)
+            del add_7460
+            del buf638
+            del buf640
+            del primals_397
+            del rsqrt_30
+            buf664 = buf652; del buf652  # reuse
+            # Topologically Sorted Source Nodes: [mm_751], Original ATen: [aten.mm]
+            extern_kernels.mm(buf662, permute_1211, out=buf664)
+            del permute_1211
+            buf666 = reinterpret_tensor(buf607, (32, 4864), (4864, 1), 0); del buf607  # reuse
+            # Topologically Sorted Source Nodes: [permute_1213, mm_752], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf664, (32, s27), (1, 32), 0), view_725, out=buf666)
+            del view_725
+            buf663 = reinterpret_tensor(buf654, (896, 32), (32, 1), 0); del buf654  # reuse
+            # Topologically Sorted Source Nodes: [permute_1209, mm_750], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf662, (896, s27), (1, 896), 0), mm_268, out=buf663)
+            del mm_268
+            buf665 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2861], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf663, buf665, 28672, stream=stream0)
+            buf668 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2867], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf666, buf668, 155648, stream=stream0)
+            buf667 = reinterpret_tensor(buf606, (s27, 4864), (4864, 1), 0); del buf606  # reuse
+            # Topologically Sorted Source Nodes: [mm_753], Original ATen: [aten.mm]
+            extern_kernels.mm(buf664, permute_1215, out=buf667)
+            del permute_1215
+            buf669 = reinterpret_tensor(buf597, (s27, 4864), (4864, 1), 0); del buf597  # reuse
+            # Topologically Sorted Source Nodes: [view_1601, result_315, permute_1217, mm_754], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf661, (s27, 896), (896, 1), 0), primals_394, out=buf669)
+            del primals_394
+            buf670 = buf613; del buf613  # reuse
+            buf677 = buf604; del buf604  # reuse
+            buf679 = reinterpret_tensor(buf596, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf596  # reuse
+            buf686 = reinterpret_tensor(buf594, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf594  # reuse
+            # Topologically Sorted Source Nodes: [view_1600, view_1602, add_12116, silu_14, mul_15840, mul_15841, mul_15842, convert_element_type_2885, neg_76, exp_9, add_12118, reciprocal_9, mul_15843, mul_15844, sub_3928, mul_15845, add_12119, mul_15846, convert_element_type_2887, mul_15847], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf667, buf669, add_7370, add_7413, buf670, buf677, buf679, buf686, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_7370
+            del add_7413
+            buf678 = buf662; del buf662  # reuse
+            # Topologically Sorted Source Nodes: [view_1600, view_1602, add_12116, silu_14, mul_15840, view_1607, result_312, permute_1226, mm_759], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf677, (s27, 4864), (4864, 1), 0), primals_391, out=buf678)
+            del primals_391
+            buf687 = buf658; del buf658  # reuse
+            # Topologically Sorted Source Nodes: [view_1600, view_1602, add_12116, silu_14, mul_15841, convert_element_type_2885, neg_76, exp_9, add_12118, reciprocal_9, mul_15843, mul_15844, sub_3928, mul_15845, add_12119, mul_15846, convert_element_type_2887, view_1613, result_309, permute_1235, mm_764], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf686, (s27, 4864), (4864, 1), 0), primals_388, out=buf687)
+            del primals_388
+            buf672 = buf664; del buf664  # reuse
+            # Topologically Sorted Source Nodes: [view_1600, view_1602, add_12116, silu_14, mul_15840, mul_15842, view_1603, mm_756], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf670, (s27, 4864), (4864, 1), 0), permute_1220, out=buf672)
+            del permute_1220
+            buf671 = reinterpret_tensor(buf666, (4864, 32), (32, 1), 0); del buf666  # reuse
+            # Topologically Sorted Source Nodes: [view_1600, view_1602, add_12116, silu_14, mul_15840, mul_15842, view_1603, permute_1218, mm_755], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf670, (4864, s27), (1, 4864), 0), mm_265, out=buf671)
+            del mm_265
+            buf681 = buf635; del buf635  # reuse
+            # Topologically Sorted Source Nodes: [view_1600, view_1602, add_12116, silu_14, mul_15841, convert_element_type_2885, neg_76, exp_9, add_12118, reciprocal_9, mul_15843, mul_15844, sub_3928, mul_15845, add_12119, mul_15846, convert_element_type_2887, mul_15847, view_1609, mm_761], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf679, (s27, 4864), (4864, 1), 0), permute_1229, out=buf681)
+            del permute_1229
+            buf680 = buf598; del buf598  # reuse
+            # Topologically Sorted Source Nodes: [view_1600, view_1602, add_12116, silu_14, mul_15841, convert_element_type_2885, neg_76, exp_9, add_12118, reciprocal_9, mul_15843, mul_15844, sub_3928, mul_15845, add_12119, mul_15846, convert_element_type_2887, mul_15847, view_1609, permute_1227, mm_760], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf679, (4864, s27), (1, 4864), 0), mm_262, out=buf680)
+            del mm_262
+            buf674 = reinterpret_tensor(buf663, (32, 896), (896, 1), 0); del buf663  # reuse
+            # Topologically Sorted Source Nodes: [permute_1222, mm_757], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf672, (32, s27), (1, 32), 0), view_713, out=buf674)
+            buf683 = reinterpret_tensor(buf651, (32, 896), (896, 1), 0); del buf651  # reuse
+            # Topologically Sorted Source Nodes: [permute_1231, mm_762], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf681, (32, s27), (1, 32), 0), view_713, out=buf683)
+            del view_713
+            buf676 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2881], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf674, buf676, 28672, stream=stream0)
+            buf685 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2898], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf683, buf685, 28672, stream=stream0)
+            buf673 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2875], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf671, buf673, 155648, stream=stream0)
+            buf682 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2892], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf680, buf682, 155648, stream=stream0)
+            buf675 = buf655; del buf655  # reuse
+            # Topologically Sorted Source Nodes: [mm_758], Original ATen: [aten.mm]
+            extern_kernels.mm(buf672, permute_1224, out=buf675)
+            del permute_1224
+            buf684 = buf649; del buf649  # reuse
+            # Topologically Sorted Source Nodes: [mm_763], Original ATen: [aten.mm]
+            extern_kernels.mm(buf681, permute_1233, out=buf684)
+            del permute_1233
+            buf690 = buf661; del buf661  # reuse
+            buf691 = buf646; del buf646  # reuse
+            # Topologically Sorted Source Nodes: [view_1606, view_1608, add_12117, view_1612, add_12120, view_1614, add_12121, mul_15848, convert_element_type_2902, hidden_states_146, mul_15849, mul_15850, sum_38, pow_88, mul_15851, mul_15852, expand_96, div_19, pow_89, mul_15853, mul_15854, add_12122, convert_element_type_2903, add_12123, mul_15855, view_1615], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf690, buf675, buf678, buf684, buf687, primals_387, add_7302, rsqrt_29, buf691, s27, 896, stream=stream0)
+            del add_7302
+            del buf675
+            del primals_387
+            del rsqrt_29
+            buf693 = buf681; del buf681  # reuse
+            # Topologically Sorted Source Nodes: [mm_766], Original ATen: [aten.mm]
+            extern_kernels.mm(buf691, permute_1238, out=buf693)
+            del permute_1238
+            buf692 = reinterpret_tensor(buf683, (896, 32), (32, 1), 0); del buf683  # reuse
+            # Topologically Sorted Source Nodes: [permute_1236, mm_765], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf691, (896, s27), (1, 896), 0), mm_259, out=buf692)
+            del mm_259
+            buf695 = buf674; del buf674  # reuse
+            # Topologically Sorted Source Nodes: [permute_1240, mm_767], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf693, (32, s27), (1, 32), 0), view_707, out=buf695)
+            del view_707
+            buf694 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2908], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf692, buf694, 28672, stream=stream0)
+            buf697 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2914], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf695, buf697, 28672, stream=stream0)
+            buf696 = buf691; del buf691  # reuse
+            # Topologically Sorted Source Nodes: [mm_768], Original ATen: [aten.mm]
+            extern_kernels.mm(buf693, permute_1242, out=buf696)
+            del permute_1242
+            buf698 = buf687; del buf687  # reuse
+            # Topologically Sorted Source Nodes: [view_1619, result_306, permute_1244, mm_769], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf690, (s27, 896), (896, 1), 0), primals_384, out=buf698)
+            del primals_384
+            buf699 = reinterpret_tensor(buf696, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf696  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_1618, view_1620, add_12124, view_1621, permute_1245, _scaled_dot_product_efficient_attention_backward_9], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf699, buf698, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_1618, view_1620, add_12124, view_1621, permute_1245, _scaled_dot_product_efficient_attention_backward_9], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf700 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf699, add_7167, view_702, view_703, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_56, getitem_57, getitem_58, getitem_59, 0.0, [True, True, True, False], scale=0.125)
+            del add_7167
+            del getitem_56
+            del getitem_57
+            del getitem_58
+            del getitem_59
+            del view_702
+            del view_703
+            buf701 = buf700[0]
+            assert_size_stride(buf701, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf701, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf702 = buf700[1]
+            assert_size_stride(buf702, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf702, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf704 = reinterpret_tensor(buf648, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf648  # reuse
+            # Topologically Sorted Source Nodes: [view_1623, sum_40], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf702, buf704, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf703 = buf700[2]
+            assert_size_stride(buf703, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf703, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf700
+            buf705 = buf632; del buf632  # reuse
+            buf706 = reinterpret_tensor(buf641, (s27, 128), (128, 1), 0); del buf641  # reuse
+            # Topologically Sorted Source Nodes: [view_1622, sum_39, squeeze_18, permute_1246, clone_77, view_1624, mul_15860, view_1625], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf703, buf705, buf706, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf707 = buf642; del buf642  # reuse
+            # Topologically Sorted Source Nodes: [permute_1247, mm_770], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf706, (128, s27), (1, 128), 0), mm_256, out=buf707)
+            del mm_256
+            buf708 = buf693; del buf693  # reuse
+            # Topologically Sorted Source Nodes: [mm_771], Original ATen: [aten.mm]
+            extern_kernels.mm(buf706, permute_1249, out=buf708)
+            del permute_1249
+            buf709 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2922], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf707, buf709, 4096, stream=stream0)
+            buf710 = buf695; del buf695  # reuse
+            # Topologically Sorted Source Nodes: [permute_1251, mm_772], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf708, (32, s27), (1, 32), 0), view_683, out=buf710)
+            buf712 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2928], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf710, buf712, 28672, stream=stream0)
+            buf714 = reinterpret_tensor(buf706, (1, s27, 128), (128*s27, 128, 1), 0); del buf706  # reuse
+            buf721 = reinterpret_tensor(buf631, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf631  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1623, sum_40, squeeze_19, mul_15856, slice_231, slice_232, neg_77, add_12125, mul_15857, add_12126, permute_1256, clone_78, view_1631, mul_15861], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf704, mm_default, buf714, buf721, s27, s27, 128, stream=stream0)
+            buf715 = buf707; del buf707  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1623, sum_40, squeeze_19, mul_15856, slice_231, slice_232, neg_77, add_12125, mul_15857, add_12126, permute_1256, clone_78, view_1631, mul_15861, view_1632, permute_1257, mm_775], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf714, (128, s27), (1, 128), 0), mm_254, out=buf715)
+            del mm_254
+            buf716 = buf672; del buf672  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1623, sum_40, squeeze_19, mul_15856, slice_231, slice_232, neg_77, add_12125, mul_15857, add_12126, permute_1256, clone_78, view_1631, mul_15861, view_1632, mm_776], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf714, (s27, 128), (128, 1), 0), permute_1259, out=buf716)
+            del permute_1259
+            buf717 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2936], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf715, buf717, 4096, stream=stream0)
+            buf718 = buf710; del buf710  # reuse
+            # Topologically Sorted Source Nodes: [permute_1261, mm_777], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf716, (32, s27), (1, 32), 0), view_683, out=buf718)
+            buf720 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2942], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf718, buf720, 28672, stream=stream0)
+            buf713 = reinterpret_tensor(buf703, (s27, 896), (896, 1), 0); del buf703  # reuse
+            # Topologically Sorted Source Nodes: [view_1622, sum_39, squeeze_18, permute_1246, clone_77, view_1624, view_1629, result_303, permute_1255, mm_774], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf705, (s27, 128), (128, 1), 0), primals_380, out=buf713)
+            del primals_380
+            buf722 = reinterpret_tensor(buf702, (s27, 896), (896, 1), 0); del buf702  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1623, sum_40, squeeze_19, mul_15856, slice_231, slice_232, neg_77, add_12125, mul_15857, add_12126, permute_1256, clone_78, view_1631, view_1636, result_300, permute_1265, mm_779], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf721, (s27, 128), (128, 1), 0), primals_376, out=buf722)
+            del primals_376
+            buf711 = reinterpret_tensor(buf699, (s27, 896), (896, 1), 0); del buf699  # reuse
+            # Topologically Sorted Source Nodes: [mm_773], Original ATen: [aten.mm]
+            extern_kernels.mm(buf708, permute_1253, out=buf711)
+            del permute_1253
+            buf719 = buf698; del buf698  # reuse
+            # Topologically Sorted Source Nodes: [mm_778], Original ATen: [aten.mm]
+            extern_kernels.mm(buf716, permute_1263, out=buf719)
+            del permute_1263
+            buf723 = reinterpret_tensor(buf684, (1, s27, 896), (896*s27, 896, 1), 0); del buf684  # reuse
+            buf730 = reinterpret_tensor(buf678, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf678  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15858, slice_233, slice_234, neg_78, add_12127, mul_15859, add_12128, permute_1266, clone_79, view_1638, mul_15862], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf701, mm_default, buf723, buf730, s27, s27, 896, stream=stream0)
+            buf725 = buf716; del buf716  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15858, slice_233, slice_234, neg_78, add_12127, mul_15859, add_12128, permute_1266, clone_79, view_1638, mul_15862, view_1639, mm_781], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf723, (s27, 896), (896, 1), 0), permute_1269, out=buf725)
+            del permute_1269
+            buf724 = reinterpret_tensor(buf718, (896, 32), (32, 1), 0); del buf718  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15858, slice_233, slice_234, neg_78, add_12127, mul_15859, add_12128, permute_1266, clone_79, view_1638, mul_15862, view_1639, permute_1267, mm_780], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf723, (896, s27), (1, 896), 0), mm_252, out=buf724)
+            del mm_252
+            buf727 = reinterpret_tensor(buf692, (32, 896), (896, 1), 0); del buf692  # reuse
+            # Topologically Sorted Source Nodes: [permute_1271, mm_782], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf725, (32, s27), (1, 32), 0), view_683, out=buf727)
+            del view_683
+            buf731 = reinterpret_tensor(buf723, (s27, 896), (896, 1), 0); del buf723  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15858, slice_233, slice_234, neg_78, add_12127, mul_15859, add_12128, permute_1266, clone_79, view_1638, view_1643, result_297, permute_1275, mm_784], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf730, (s27, 896), (896, 1), 0), primals_372, out=buf731)
+            del primals_372
+            buf726 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2950], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf724, buf726, 28672, stream=stream0)
+            buf729 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2956], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf727, buf729, 28672, stream=stream0)
+            buf728 = reinterpret_tensor(buf730, (s27, 896), (896, 1), 0); del buf730  # reuse
+            # Topologically Sorted Source Nodes: [mm_783], Original ATen: [aten.mm]
+            extern_kernels.mm(buf725, permute_1273, out=buf728)
+            del permute_1273
+            buf734 = buf690; del buf690  # reuse
+            buf735 = reinterpret_tensor(buf701, (s27, 896), (896, 1), 0); del buf701  # reuse
+            # Topologically Sorted Source Nodes: [view_1628, view_1630, add_12129, view_1635, add_12130, view_1637, add_12131, view_1642, add_12132, view_1644, add_12133, mul_15863, convert_element_type_2960, hidden_states_140, mul_15864, mul_15865, sum_41, pow_90, mul_15866, mul_15867, expand_97, div_20, pow_91, mul_15868, mul_15869, add_12134, convert_element_type_2961, add_12135, mul_15870, view_1645], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf734, buf711, buf713, buf719, buf722, buf728, buf731, primals_371, add_6968, rsqrt_28, buf735, s27, 896, stream=stream0)
+            del add_6968
+            del buf711
+            del buf713
+            del primals_371
+            del rsqrt_28
+            buf737 = buf725; del buf725  # reuse
+            # Topologically Sorted Source Nodes: [mm_786], Original ATen: [aten.mm]
+            extern_kernels.mm(buf735, permute_1278, out=buf737)
+            del permute_1278
+            buf739 = reinterpret_tensor(buf680, (32, 4864), (4864, 1), 0); del buf680  # reuse
+            # Topologically Sorted Source Nodes: [permute_1280, mm_787], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf737, (32, s27), (1, 32), 0), view_677, out=buf739)
+            del view_677
+            buf736 = reinterpret_tensor(buf727, (896, 32), (32, 1), 0); del buf727  # reuse
+            # Topologically Sorted Source Nodes: [permute_1276, mm_785], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf735, (896, s27), (1, 896), 0), mm_250, out=buf736)
+            del mm_250
+            buf738 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2966], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf736, buf738, 28672, stream=stream0)
+            buf741 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2972], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf739, buf741, 155648, stream=stream0)
+            buf740 = reinterpret_tensor(buf679, (s27, 4864), (4864, 1), 0); del buf679  # reuse
+            # Topologically Sorted Source Nodes: [mm_788], Original ATen: [aten.mm]
+            extern_kernels.mm(buf737, permute_1282, out=buf740)
+            del permute_1282
+            buf742 = reinterpret_tensor(buf670, (s27, 4864), (4864, 1), 0); del buf670  # reuse
+            # Topologically Sorted Source Nodes: [view_1649, result_294, permute_1284, mm_789], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf734, (s27, 896), (896, 1), 0), primals_368, out=buf742)
+            del primals_368
+            buf743 = buf686; del buf686  # reuse
+            buf750 = buf677; del buf677  # reuse
+            buf752 = reinterpret_tensor(buf669, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf669  # reuse
+            buf759 = reinterpret_tensor(buf667, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf667  # reuse
+            # Topologically Sorted Source Nodes: [view_1648, view_1650, add_12136, silu_13, mul_15871, mul_15872, mul_15873, convert_element_type_2990, neg_79, exp_10, add_12138, reciprocal_10, mul_15874, mul_15875, sub_3929, mul_15876, add_12139, mul_15877, convert_element_type_2992, mul_15878], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf740, buf742, add_6878, add_6921, buf743, buf750, buf752, buf759, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_6878
+            del add_6921
+            buf751 = buf735; del buf735  # reuse
+            # Topologically Sorted Source Nodes: [view_1648, view_1650, add_12136, silu_13, mul_15871, view_1655, result_291, permute_1293, mm_794], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf750, (s27, 4864), (4864, 1), 0), primals_365, out=buf751)
+            del primals_365
+            buf760 = buf731; del buf731  # reuse
+            # Topologically Sorted Source Nodes: [view_1648, view_1650, add_12136, silu_13, mul_15872, convert_element_type_2990, neg_79, exp_10, add_12138, reciprocal_10, mul_15874, mul_15875, sub_3929, mul_15876, add_12139, mul_15877, convert_element_type_2992, view_1661, result_288, permute_1302, mm_799], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf759, (s27, 4864), (4864, 1), 0), primals_362, out=buf760)
+            del primals_362
+            buf745 = buf737; del buf737  # reuse
+            # Topologically Sorted Source Nodes: [view_1648, view_1650, add_12136, silu_13, mul_15871, mul_15873, view_1651, mm_791], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf743, (s27, 4864), (4864, 1), 0), permute_1287, out=buf745)
+            del permute_1287
+            buf744 = reinterpret_tensor(buf739, (4864, 32), (32, 1), 0); del buf739  # reuse
+            # Topologically Sorted Source Nodes: [view_1648, view_1650, add_12136, silu_13, mul_15871, mul_15873, view_1651, permute_1285, mm_790], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf743, (4864, s27), (1, 4864), 0), mm_247, out=buf744)
+            del mm_247
+            buf754 = buf708; del buf708  # reuse
+            # Topologically Sorted Source Nodes: [view_1648, view_1650, add_12136, silu_13, mul_15872, convert_element_type_2990, neg_79, exp_10, add_12138, reciprocal_10, mul_15874, mul_15875, sub_3929, mul_15876, add_12139, mul_15877, convert_element_type_2992, mul_15878, view_1657, mm_796], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf752, (s27, 4864), (4864, 1), 0), permute_1296, out=buf754)
+            del permute_1296
+            buf753 = buf671; del buf671  # reuse
+            # Topologically Sorted Source Nodes: [view_1648, view_1650, add_12136, silu_13, mul_15872, convert_element_type_2990, neg_79, exp_10, add_12138, reciprocal_10, mul_15874, mul_15875, sub_3929, mul_15876, add_12139, mul_15877, convert_element_type_2992, mul_15878, view_1657, permute_1294, mm_795], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf752, (4864, s27), (1, 4864), 0), mm_244, out=buf753)
+            del mm_244
+            buf747 = reinterpret_tensor(buf736, (32, 896), (896, 1), 0); del buf736  # reuse
+            # Topologically Sorted Source Nodes: [permute_1289, mm_792], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf745, (32, s27), (1, 32), 0), view_665, out=buf747)
+            buf756 = reinterpret_tensor(buf724, (32, 896), (896, 1), 0); del buf724  # reuse
+            # Topologically Sorted Source Nodes: [permute_1298, mm_797], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf754, (32, s27), (1, 32), 0), view_665, out=buf756)
+            del view_665
+            buf749 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2986], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf747, buf749, 28672, stream=stream0)
+            buf758 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3003], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf756, buf758, 28672, stream=stream0)
+            buf746 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2980], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf744, buf746, 155648, stream=stream0)
+            buf755 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_2997], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf753, buf755, 155648, stream=stream0)
+            buf748 = buf728; del buf728  # reuse
+            # Topologically Sorted Source Nodes: [mm_793], Original ATen: [aten.mm]
+            extern_kernels.mm(buf745, permute_1291, out=buf748)
+            del permute_1291
+            buf757 = buf722; del buf722  # reuse
+            # Topologically Sorted Source Nodes: [mm_798], Original ATen: [aten.mm]
+            extern_kernels.mm(buf754, permute_1300, out=buf757)
+            del permute_1300
+            buf763 = buf734; del buf734  # reuse
+            buf764 = buf719; del buf719  # reuse
+            # Topologically Sorted Source Nodes: [view_1654, view_1656, add_12137, view_1660, add_12140, view_1662, add_12141, mul_15879, convert_element_type_3007, hidden_states_136, mul_15880, mul_15881, sum_42, pow_92, mul_15882, mul_15883, expand_98, div_21, pow_93, mul_15884, mul_15885, add_12142, convert_element_type_3008, add_12143, mul_15886, view_1663], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf763, buf748, buf751, buf757, buf760, primals_361, add_6810, rsqrt_27, buf764, s27, 896, stream=stream0)
+            del add_6810
+            del buf748
+            del primals_361
+            del rsqrt_27
+            buf766 = buf754; del buf754  # reuse
+            # Topologically Sorted Source Nodes: [mm_801], Original ATen: [aten.mm]
+            extern_kernels.mm(buf764, permute_1305, out=buf766)
+            del permute_1305
+            buf765 = reinterpret_tensor(buf756, (896, 32), (32, 1), 0); del buf756  # reuse
+            # Topologically Sorted Source Nodes: [permute_1303, mm_800], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf764, (896, s27), (1, 896), 0), mm_241, out=buf765)
+            del mm_241
+            buf768 = buf747; del buf747  # reuse
+            # Topologically Sorted Source Nodes: [permute_1307, mm_802], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf766, (32, s27), (1, 32), 0), view_659, out=buf768)
+            del view_659
+            buf767 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3013], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf765, buf767, 28672, stream=stream0)
+            buf770 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3019], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf768, buf770, 28672, stream=stream0)
+            buf769 = buf764; del buf764  # reuse
+            # Topologically Sorted Source Nodes: [mm_803], Original ATen: [aten.mm]
+            extern_kernels.mm(buf766, permute_1309, out=buf769)
+            del permute_1309
+            buf771 = buf760; del buf760  # reuse
+            # Topologically Sorted Source Nodes: [view_1667, result_285, permute_1311, mm_804], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf763, (s27, 896), (896, 1), 0), primals_358, out=buf771)
+            del primals_358
+            buf772 = reinterpret_tensor(buf769, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf769  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_1666, view_1668, add_12144, view_1669, permute_1312, _scaled_dot_product_efficient_attention_backward_10], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf772, buf771, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_1666, view_1668, add_12144, view_1669, permute_1312, _scaled_dot_product_efficient_attention_backward_10], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf773 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf772, add_6675, view_654, view_655, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_52, getitem_53, getitem_54, getitem_55, 0.0, [True, True, True, False], scale=0.125)
+            del add_6675
+            del getitem_52
+            del getitem_53
+            del getitem_54
+            del getitem_55
+            del view_654
+            del view_655
+            buf774 = buf773[0]
+            assert_size_stride(buf774, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf774, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf775 = buf773[1]
+            assert_size_stride(buf775, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf775, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf777 = reinterpret_tensor(buf721, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf721  # reuse
+            # Topologically Sorted Source Nodes: [view_1671, sum_44], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf775, buf777, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf776 = buf773[2]
+            assert_size_stride(buf776, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf776, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf773
+            buf778 = buf705; del buf705  # reuse
+            buf779 = reinterpret_tensor(buf714, (s27, 128), (128, 1), 0); del buf714  # reuse
+            # Topologically Sorted Source Nodes: [view_1670, sum_43, squeeze_20, permute_1313, clone_80, view_1672, mul_15891, view_1673], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf776, buf778, buf779, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf780 = buf715; del buf715  # reuse
+            # Topologically Sorted Source Nodes: [permute_1314, mm_805], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf779, (128, s27), (1, 128), 0), mm_238, out=buf780)
+            del mm_238
+            buf781 = buf766; del buf766  # reuse
+            # Topologically Sorted Source Nodes: [mm_806], Original ATen: [aten.mm]
+            extern_kernels.mm(buf779, permute_1316, out=buf781)
+            del permute_1316
+            buf782 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3027], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf780, buf782, 4096, stream=stream0)
+            buf783 = buf768; del buf768  # reuse
+            # Topologically Sorted Source Nodes: [permute_1318, mm_807], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf781, (32, s27), (1, 32), 0), view_635, out=buf783)
+            buf785 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3033], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf783, buf785, 28672, stream=stream0)
+            buf787 = reinterpret_tensor(buf779, (1, s27, 128), (128*s27, 128, 1), 0); del buf779  # reuse
+            buf794 = reinterpret_tensor(buf704, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf704  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1671, sum_44, squeeze_21, mul_15887, slice_235, slice_236, neg_80, add_12145, mul_15888, add_12146, permute_1323, clone_81, view_1679, mul_15892], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf777, mm_default, buf787, buf794, s27, s27, 128, stream=stream0)
+            buf788 = buf780; del buf780  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1671, sum_44, squeeze_21, mul_15887, slice_235, slice_236, neg_80, add_12145, mul_15888, add_12146, permute_1323, clone_81, view_1679, mul_15892, view_1680, permute_1324, mm_810], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf787, (128, s27), (1, 128), 0), mm_236, out=buf788)
+            del mm_236
+            buf789 = buf745; del buf745  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1671, sum_44, squeeze_21, mul_15887, slice_235, slice_236, neg_80, add_12145, mul_15888, add_12146, permute_1323, clone_81, view_1679, mul_15892, view_1680, mm_811], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf787, (s27, 128), (128, 1), 0), permute_1326, out=buf789)
+            del permute_1326
+            buf790 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3041], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf788, buf790, 4096, stream=stream0)
+            buf791 = buf783; del buf783  # reuse
+            # Topologically Sorted Source Nodes: [permute_1328, mm_812], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf789, (32, s27), (1, 32), 0), view_635, out=buf791)
+            buf793 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3047], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf791, buf793, 28672, stream=stream0)
+            buf786 = reinterpret_tensor(buf776, (s27, 896), (896, 1), 0); del buf776  # reuse
+            # Topologically Sorted Source Nodes: [view_1670, sum_43, squeeze_20, permute_1313, clone_80, view_1672, view_1677, result_282, permute_1322, mm_809], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf778, (s27, 128), (128, 1), 0), primals_354, out=buf786)
+            del primals_354
+            buf795 = reinterpret_tensor(buf775, (s27, 896), (896, 1), 0); del buf775  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1671, sum_44, squeeze_21, mul_15887, slice_235, slice_236, neg_80, add_12145, mul_15888, add_12146, permute_1323, clone_81, view_1679, view_1684, result_279, permute_1332, mm_814], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf794, (s27, 128), (128, 1), 0), primals_350, out=buf795)
+            del primals_350
+            buf784 = reinterpret_tensor(buf772, (s27, 896), (896, 1), 0); del buf772  # reuse
+            # Topologically Sorted Source Nodes: [mm_808], Original ATen: [aten.mm]
+            extern_kernels.mm(buf781, permute_1320, out=buf784)
+            del permute_1320
+            buf792 = buf771; del buf771  # reuse
+            # Topologically Sorted Source Nodes: [mm_813], Original ATen: [aten.mm]
+            extern_kernels.mm(buf789, permute_1330, out=buf792)
+            del permute_1330
+            buf796 = reinterpret_tensor(buf757, (1, s27, 896), (896*s27, 896, 1), 0); del buf757  # reuse
+            buf803 = reinterpret_tensor(buf751, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf751  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15889, slice_237, slice_238, neg_81, add_12147, mul_15890, add_12148, permute_1333, clone_82, view_1686, mul_15893], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf774, mm_default, buf796, buf803, s27, s27, 896, stream=stream0)
+            buf798 = buf789; del buf789  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15889, slice_237, slice_238, neg_81, add_12147, mul_15890, add_12148, permute_1333, clone_82, view_1686, mul_15893, view_1687, mm_816], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf796, (s27, 896), (896, 1), 0), permute_1336, out=buf798)
+            del permute_1336
+            buf797 = reinterpret_tensor(buf791, (896, 32), (32, 1), 0); del buf791  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15889, slice_237, slice_238, neg_81, add_12147, mul_15890, add_12148, permute_1333, clone_82, view_1686, mul_15893, view_1687, permute_1334, mm_815], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf796, (896, s27), (1, 896), 0), mm_234, out=buf797)
+            del mm_234
+            buf800 = reinterpret_tensor(buf765, (32, 896), (896, 1), 0); del buf765  # reuse
+            # Topologically Sorted Source Nodes: [permute_1338, mm_817], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf798, (32, s27), (1, 32), 0), view_635, out=buf800)
+            del view_635
+            buf804 = reinterpret_tensor(buf796, (s27, 896), (896, 1), 0); del buf796  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15889, slice_237, slice_238, neg_81, add_12147, mul_15890, add_12148, permute_1333, clone_82, view_1686, view_1691, result_276, permute_1342, mm_819], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf803, (s27, 896), (896, 1), 0), primals_346, out=buf804)
+            del primals_346
+            buf799 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3055], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf797, buf799, 28672, stream=stream0)
+            buf802 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3061], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf800, buf802, 28672, stream=stream0)
+            buf801 = reinterpret_tensor(buf803, (s27, 896), (896, 1), 0); del buf803  # reuse
+            # Topologically Sorted Source Nodes: [mm_818], Original ATen: [aten.mm]
+            extern_kernels.mm(buf798, permute_1340, out=buf801)
+            del permute_1340
+            buf807 = buf763; del buf763  # reuse
+            buf808 = reinterpret_tensor(buf774, (s27, 896), (896, 1), 0); del buf774  # reuse
+            # Topologically Sorted Source Nodes: [view_1676, view_1678, add_12149, view_1683, add_12150, view_1685, add_12151, view_1690, add_12152, view_1692, add_12153, mul_15894, convert_element_type_3065, hidden_states_130, mul_15895, mul_15896, sum_45, pow_94, mul_15897, mul_15898, expand_99, div_22, pow_95, mul_15899, mul_15900, add_12154, convert_element_type_3066, add_12155, mul_15901, view_1693], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf807, buf784, buf786, buf792, buf795, buf801, buf804, primals_345, add_6476, rsqrt_26, buf808, s27, 896, stream=stream0)
+            del add_6476
+            del buf784
+            del buf786
+            del primals_345
+            del rsqrt_26
+            buf810 = buf798; del buf798  # reuse
+            # Topologically Sorted Source Nodes: [mm_821], Original ATen: [aten.mm]
+            extern_kernels.mm(buf808, permute_1345, out=buf810)
+            del permute_1345
+            buf812 = reinterpret_tensor(buf753, (32, 4864), (4864, 1), 0); del buf753  # reuse
+            # Topologically Sorted Source Nodes: [permute_1347, mm_822], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf810, (32, s27), (1, 32), 0), view_629, out=buf812)
+            del view_629
+            buf809 = reinterpret_tensor(buf800, (896, 32), (32, 1), 0); del buf800  # reuse
+            # Topologically Sorted Source Nodes: [permute_1343, mm_820], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf808, (896, s27), (1, 896), 0), mm_232, out=buf809)
+            del mm_232
+            buf811 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3071], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf809, buf811, 28672, stream=stream0)
+            buf814 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3077], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf812, buf814, 155648, stream=stream0)
+            buf813 = reinterpret_tensor(buf752, (s27, 4864), (4864, 1), 0); del buf752  # reuse
+            # Topologically Sorted Source Nodes: [mm_823], Original ATen: [aten.mm]
+            extern_kernels.mm(buf810, permute_1349, out=buf813)
+            del permute_1349
+            buf815 = reinterpret_tensor(buf743, (s27, 4864), (4864, 1), 0); del buf743  # reuse
+            # Topologically Sorted Source Nodes: [view_1697, result_273, permute_1351, mm_824], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf807, (s27, 896), (896, 1), 0), primals_342, out=buf815)
+            del primals_342
+            buf816 = buf759; del buf759  # reuse
+            buf823 = buf750; del buf750  # reuse
+            buf825 = reinterpret_tensor(buf742, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf742  # reuse
+            buf832 = reinterpret_tensor(buf740, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf740  # reuse
+            # Topologically Sorted Source Nodes: [view_1696, view_1698, add_12156, silu_12, mul_15902, mul_15903, mul_15904, convert_element_type_3095, neg_82, exp_11, add_12158, reciprocal_11, mul_15905, mul_15906, sub_3930, mul_15907, add_12159, mul_15908, convert_element_type_3097, mul_15909], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf813, buf815, add_6386, add_6429, buf816, buf823, buf825, buf832, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_6386
+            del add_6429
+            buf824 = buf808; del buf808  # reuse
+            # Topologically Sorted Source Nodes: [view_1696, view_1698, add_12156, silu_12, mul_15902, view_1703, result_270, permute_1360, mm_829], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf823, (s27, 4864), (4864, 1), 0), primals_339, out=buf824)
+            del primals_339
+            buf833 = buf804; del buf804  # reuse
+            # Topologically Sorted Source Nodes: [view_1696, view_1698, add_12156, silu_12, mul_15903, convert_element_type_3095, neg_82, exp_11, add_12158, reciprocal_11, mul_15905, mul_15906, sub_3930, mul_15907, add_12159, mul_15908, convert_element_type_3097, view_1709, result_267, permute_1369, mm_834], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf832, (s27, 4864), (4864, 1), 0), primals_336, out=buf833)
+            del primals_336
+            buf818 = buf810; del buf810  # reuse
+            # Topologically Sorted Source Nodes: [view_1696, view_1698, add_12156, silu_12, mul_15902, mul_15904, view_1699, mm_826], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf816, (s27, 4864), (4864, 1), 0), permute_1354, out=buf818)
+            del permute_1354
+            buf817 = reinterpret_tensor(buf812, (4864, 32), (32, 1), 0); del buf812  # reuse
+            # Topologically Sorted Source Nodes: [view_1696, view_1698, add_12156, silu_12, mul_15902, mul_15904, view_1699, permute_1352, mm_825], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf816, (4864, s27), (1, 4864), 0), mm_229, out=buf817)
+            del mm_229
+            buf827 = buf781; del buf781  # reuse
+            # Topologically Sorted Source Nodes: [view_1696, view_1698, add_12156, silu_12, mul_15903, convert_element_type_3095, neg_82, exp_11, add_12158, reciprocal_11, mul_15905, mul_15906, sub_3930, mul_15907, add_12159, mul_15908, convert_element_type_3097, mul_15909, view_1705, mm_831], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf825, (s27, 4864), (4864, 1), 0), permute_1363, out=buf827)
+            del permute_1363
+            buf826 = buf744; del buf744  # reuse
+            # Topologically Sorted Source Nodes: [view_1696, view_1698, add_12156, silu_12, mul_15903, convert_element_type_3095, neg_82, exp_11, add_12158, reciprocal_11, mul_15905, mul_15906, sub_3930, mul_15907, add_12159, mul_15908, convert_element_type_3097, mul_15909, view_1705, permute_1361, mm_830], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf825, (4864, s27), (1, 4864), 0), mm_226, out=buf826)
+            del mm_226
+            buf820 = reinterpret_tensor(buf809, (32, 896), (896, 1), 0); del buf809  # reuse
+            # Topologically Sorted Source Nodes: [permute_1356, mm_827], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf818, (32, s27), (1, 32), 0), view_617, out=buf820)
+            buf829 = reinterpret_tensor(buf797, (32, 896), (896, 1), 0); del buf797  # reuse
+            # Topologically Sorted Source Nodes: [permute_1365, mm_832], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf827, (32, s27), (1, 32), 0), view_617, out=buf829)
+            del view_617
+            buf822 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3091], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf820, buf822, 28672, stream=stream0)
+            buf831 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3108], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf829, buf831, 28672, stream=stream0)
+            buf819 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3085], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf817, buf819, 155648, stream=stream0)
+            buf828 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3102], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf826, buf828, 155648, stream=stream0)
+            buf821 = buf801; del buf801  # reuse
+            # Topologically Sorted Source Nodes: [mm_828], Original ATen: [aten.mm]
+            extern_kernels.mm(buf818, permute_1358, out=buf821)
+            del permute_1358
+            buf830 = buf795; del buf795  # reuse
+            # Topologically Sorted Source Nodes: [mm_833], Original ATen: [aten.mm]
+            extern_kernels.mm(buf827, permute_1367, out=buf830)
+            del permute_1367
+            buf836 = buf807; del buf807  # reuse
+            buf837 = buf792; del buf792  # reuse
+            # Topologically Sorted Source Nodes: [view_1702, view_1704, add_12157, view_1708, add_12160, view_1710, add_12161, mul_15910, convert_element_type_3112, hidden_states_126, mul_15911, mul_15912, sum_46, pow_96, mul_15913, mul_15914, expand_100, div_23, pow_97, mul_15915, mul_15916, add_12162, convert_element_type_3113, add_12163, mul_15917, view_1711], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf836, buf821, buf824, buf830, buf833, primals_335, add_6318, rsqrt_25, buf837, s27, 896, stream=stream0)
+            del add_6318
+            del buf821
+            del primals_335
+            del rsqrt_25
+            buf839 = buf827; del buf827  # reuse
+            # Topologically Sorted Source Nodes: [mm_836], Original ATen: [aten.mm]
+            extern_kernels.mm(buf837, permute_1372, out=buf839)
+            del permute_1372
+            buf838 = reinterpret_tensor(buf829, (896, 32), (32, 1), 0); del buf829  # reuse
+            # Topologically Sorted Source Nodes: [permute_1370, mm_835], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf837, (896, s27), (1, 896), 0), mm_223, out=buf838)
+            del mm_223
+            buf841 = buf820; del buf820  # reuse
+            # Topologically Sorted Source Nodes: [permute_1374, mm_837], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf839, (32, s27), (1, 32), 0), view_611, out=buf841)
+            del view_611
+            buf840 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3118], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf838, buf840, 28672, stream=stream0)
+            buf843 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3124], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf841, buf843, 28672, stream=stream0)
+            buf842 = buf837; del buf837  # reuse
+            # Topologically Sorted Source Nodes: [mm_838], Original ATen: [aten.mm]
+            extern_kernels.mm(buf839, permute_1376, out=buf842)
+            del permute_1376
+            buf844 = buf833; del buf833  # reuse
+            # Topologically Sorted Source Nodes: [view_1715, result_264, permute_1378, mm_839], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf836, (s27, 896), (896, 1), 0), primals_332, out=buf844)
+            del primals_332
+            buf845 = reinterpret_tensor(buf842, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf842  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_1714, view_1716, add_12164, view_1717, permute_1379, _scaled_dot_product_efficient_attention_backward_11], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf845, buf844, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_1714, view_1716, add_12164, view_1717, permute_1379, _scaled_dot_product_efficient_attention_backward_11], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf846 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf845, add_6183, view_606, view_607, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_48, getitem_49, getitem_50, getitem_51, 0.0, [True, True, True, False], scale=0.125)
+            del add_6183
+            del getitem_48
+            del getitem_49
+            del getitem_50
+            del getitem_51
+            del view_606
+            del view_607
+            buf847 = buf846[0]
+            assert_size_stride(buf847, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf847, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf848 = buf846[1]
+            assert_size_stride(buf848, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf848, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf850 = reinterpret_tensor(buf794, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf794  # reuse
+            # Topologically Sorted Source Nodes: [view_1719, sum_48], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf848, buf850, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf849 = buf846[2]
+            assert_size_stride(buf849, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf849, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf846
+            buf851 = buf778; del buf778  # reuse
+            buf852 = reinterpret_tensor(buf787, (s27, 128), (128, 1), 0); del buf787  # reuse
+            # Topologically Sorted Source Nodes: [view_1718, sum_47, squeeze_22, permute_1380, clone_83, view_1720, mul_15922, view_1721], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf849, buf851, buf852, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf853 = buf788; del buf788  # reuse
+            # Topologically Sorted Source Nodes: [permute_1381, mm_840], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf852, (128, s27), (1, 128), 0), mm_220, out=buf853)
+            del mm_220
+            buf854 = buf839; del buf839  # reuse
+            # Topologically Sorted Source Nodes: [mm_841], Original ATen: [aten.mm]
+            extern_kernels.mm(buf852, permute_1383, out=buf854)
+            del permute_1383
+            buf855 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3132], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf853, buf855, 4096, stream=stream0)
+            buf856 = buf841; del buf841  # reuse
+            # Topologically Sorted Source Nodes: [permute_1385, mm_842], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf854, (32, s27), (1, 32), 0), view_587, out=buf856)
+            buf858 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3138], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf856, buf858, 28672, stream=stream0)
+            buf860 = reinterpret_tensor(buf852, (1, s27, 128), (128*s27, 128, 1), 0); del buf852  # reuse
+            buf867 = reinterpret_tensor(buf777, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf777  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1719, sum_48, squeeze_23, mul_15918, slice_239, slice_240, neg_83, add_12165, mul_15919, add_12166, permute_1390, clone_84, view_1727, mul_15923], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf850, mm_default, buf860, buf867, s27, s27, 128, stream=stream0)
+            buf861 = buf853; del buf853  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1719, sum_48, squeeze_23, mul_15918, slice_239, slice_240, neg_83, add_12165, mul_15919, add_12166, permute_1390, clone_84, view_1727, mul_15923, view_1728, permute_1391, mm_845], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf860, (128, s27), (1, 128), 0), mm_218, out=buf861)
+            del mm_218
+            buf862 = buf818; del buf818  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1719, sum_48, squeeze_23, mul_15918, slice_239, slice_240, neg_83, add_12165, mul_15919, add_12166, permute_1390, clone_84, view_1727, mul_15923, view_1728, mm_846], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf860, (s27, 128), (128, 1), 0), permute_1393, out=buf862)
+            del permute_1393
+            buf863 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3146], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf861, buf863, 4096, stream=stream0)
+            buf864 = buf856; del buf856  # reuse
+            # Topologically Sorted Source Nodes: [permute_1395, mm_847], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf862, (32, s27), (1, 32), 0), view_587, out=buf864)
+            buf866 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3152], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf864, buf866, 28672, stream=stream0)
+            buf859 = reinterpret_tensor(buf849, (s27, 896), (896, 1), 0); del buf849  # reuse
+            # Topologically Sorted Source Nodes: [view_1718, sum_47, squeeze_22, permute_1380, clone_83, view_1720, view_1725, result_261, permute_1389, mm_844], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf851, (s27, 128), (128, 1), 0), primals_328, out=buf859)
+            del primals_328
+            buf868 = reinterpret_tensor(buf848, (s27, 896), (896, 1), 0); del buf848  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1719, sum_48, squeeze_23, mul_15918, slice_239, slice_240, neg_83, add_12165, mul_15919, add_12166, permute_1390, clone_84, view_1727, view_1732, result_258, permute_1399, mm_849], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf867, (s27, 128), (128, 1), 0), primals_324, out=buf868)
+            del primals_324
+            buf857 = reinterpret_tensor(buf845, (s27, 896), (896, 1), 0); del buf845  # reuse
+            # Topologically Sorted Source Nodes: [mm_843], Original ATen: [aten.mm]
+            extern_kernels.mm(buf854, permute_1387, out=buf857)
+            del permute_1387
+            buf865 = buf844; del buf844  # reuse
+            # Topologically Sorted Source Nodes: [mm_848], Original ATen: [aten.mm]
+            extern_kernels.mm(buf862, permute_1397, out=buf865)
+            del permute_1397
+            buf869 = reinterpret_tensor(buf830, (1, s27, 896), (896*s27, 896, 1), 0); del buf830  # reuse
+            buf876 = reinterpret_tensor(buf824, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf824  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15920, slice_241, slice_242, neg_84, add_12167, mul_15921, add_12168, permute_1400, clone_85, view_1734, mul_15924], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf847, mm_default, buf869, buf876, s27, s27, 896, stream=stream0)
+            buf871 = buf862; del buf862  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15920, slice_241, slice_242, neg_84, add_12167, mul_15921, add_12168, permute_1400, clone_85, view_1734, mul_15924, view_1735, mm_851], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf869, (s27, 896), (896, 1), 0), permute_1403, out=buf871)
+            del permute_1403
+            buf870 = reinterpret_tensor(buf864, (896, 32), (32, 1), 0); del buf864  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15920, slice_241, slice_242, neg_84, add_12167, mul_15921, add_12168, permute_1400, clone_85, view_1734, mul_15924, view_1735, permute_1401, mm_850], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf869, (896, s27), (1, 896), 0), mm_216, out=buf870)
+            del mm_216
+            buf873 = reinterpret_tensor(buf838, (32, 896), (896, 1), 0); del buf838  # reuse
+            # Topologically Sorted Source Nodes: [permute_1405, mm_852], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf871, (32, s27), (1, 32), 0), view_587, out=buf873)
+            del view_587
+            buf877 = reinterpret_tensor(buf869, (s27, 896), (896, 1), 0); del buf869  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15920, slice_241, slice_242, neg_84, add_12167, mul_15921, add_12168, permute_1400, clone_85, view_1734, view_1739, result_255, permute_1409, mm_854], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf876, (s27, 896), (896, 1), 0), primals_320, out=buf877)
+            del primals_320
+            buf872 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3160], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf870, buf872, 28672, stream=stream0)
+            buf875 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3166], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf873, buf875, 28672, stream=stream0)
+            buf874 = reinterpret_tensor(buf876, (s27, 896), (896, 1), 0); del buf876  # reuse
+            # Topologically Sorted Source Nodes: [mm_853], Original ATen: [aten.mm]
+            extern_kernels.mm(buf871, permute_1407, out=buf874)
+            del permute_1407
+            buf880 = buf836; del buf836  # reuse
+            buf881 = reinterpret_tensor(buf847, (s27, 896), (896, 1), 0); del buf847  # reuse
+            # Topologically Sorted Source Nodes: [view_1724, view_1726, add_12169, view_1731, add_12170, view_1733, add_12171, view_1738, add_12172, view_1740, add_12173, mul_15925, convert_element_type_3170, hidden_states_120, mul_15926, mul_15927, sum_49, pow_98, mul_15928, mul_15929, expand_101, div_24, pow_99, mul_15930, mul_15931, add_12174, convert_element_type_3171, add_12175, mul_15932, view_1741], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf880, buf857, buf859, buf865, buf868, buf874, buf877, primals_319, add_5984, rsqrt_24, buf881, s27, 896, stream=stream0)
+            del add_5984
+            del buf857
+            del buf859
+            del primals_319
+            del rsqrt_24
+            buf883 = buf871; del buf871  # reuse
+            # Topologically Sorted Source Nodes: [mm_856], Original ATen: [aten.mm]
+            extern_kernels.mm(buf881, permute_1412, out=buf883)
+            del permute_1412
+            buf885 = reinterpret_tensor(buf826, (32, 4864), (4864, 1), 0); del buf826  # reuse
+            # Topologically Sorted Source Nodes: [permute_1414, mm_857], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf883, (32, s27), (1, 32), 0), view_581, out=buf885)
+            del view_581
+            buf882 = reinterpret_tensor(buf873, (896, 32), (32, 1), 0); del buf873  # reuse
+            # Topologically Sorted Source Nodes: [permute_1410, mm_855], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf881, (896, s27), (1, 896), 0), mm_214, out=buf882)
+            del mm_214
+            buf884 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3176], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf882, buf884, 28672, stream=stream0)
+            buf887 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3182], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf885, buf887, 155648, stream=stream0)
+            buf886 = reinterpret_tensor(buf825, (s27, 4864), (4864, 1), 0); del buf825  # reuse
+            # Topologically Sorted Source Nodes: [mm_858], Original ATen: [aten.mm]
+            extern_kernels.mm(buf883, permute_1416, out=buf886)
+            del permute_1416
+            buf888 = reinterpret_tensor(buf816, (s27, 4864), (4864, 1), 0); del buf816  # reuse
+            # Topologically Sorted Source Nodes: [view_1745, result_252, permute_1418, mm_859], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf880, (s27, 896), (896, 1), 0), primals_316, out=buf888)
+            del primals_316
+            buf889 = buf832; del buf832  # reuse
+            buf896 = buf823; del buf823  # reuse
+            buf898 = reinterpret_tensor(buf815, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf815  # reuse
+            buf905 = reinterpret_tensor(buf813, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf813  # reuse
+            # Topologically Sorted Source Nodes: [view_1744, view_1746, add_12176, silu_11, mul_15933, mul_15934, mul_15935, convert_element_type_3200, neg_85, exp_12, add_12178, reciprocal_12, mul_15936, mul_15937, sub_3931, mul_15938, add_12179, mul_15939, convert_element_type_3202, mul_15940], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf886, buf888, add_5894, add_5937, buf889, buf896, buf898, buf905, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_5894
+            del add_5937
+            buf897 = buf881; del buf881  # reuse
+            # Topologically Sorted Source Nodes: [view_1744, view_1746, add_12176, silu_11, mul_15933, view_1751, result_249, permute_1427, mm_864], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf896, (s27, 4864), (4864, 1), 0), primals_313, out=buf897)
+            del primals_313
+            buf906 = buf877; del buf877  # reuse
+            # Topologically Sorted Source Nodes: [view_1744, view_1746, add_12176, silu_11, mul_15934, convert_element_type_3200, neg_85, exp_12, add_12178, reciprocal_12, mul_15936, mul_15937, sub_3931, mul_15938, add_12179, mul_15939, convert_element_type_3202, view_1757, result_246, permute_1436, mm_869], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf905, (s27, 4864), (4864, 1), 0), primals_310, out=buf906)
+            del primals_310
+            buf891 = buf883; del buf883  # reuse
+            # Topologically Sorted Source Nodes: [view_1744, view_1746, add_12176, silu_11, mul_15933, mul_15935, view_1747, mm_861], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf889, (s27, 4864), (4864, 1), 0), permute_1421, out=buf891)
+            del permute_1421
+            buf890 = reinterpret_tensor(buf885, (4864, 32), (32, 1), 0); del buf885  # reuse
+            # Topologically Sorted Source Nodes: [view_1744, view_1746, add_12176, silu_11, mul_15933, mul_15935, view_1747, permute_1419, mm_860], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf889, (4864, s27), (1, 4864), 0), mm_211, out=buf890)
+            del mm_211
+            buf900 = buf854; del buf854  # reuse
+            # Topologically Sorted Source Nodes: [view_1744, view_1746, add_12176, silu_11, mul_15934, convert_element_type_3200, neg_85, exp_12, add_12178, reciprocal_12, mul_15936, mul_15937, sub_3931, mul_15938, add_12179, mul_15939, convert_element_type_3202, mul_15940, view_1753, mm_866], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf898, (s27, 4864), (4864, 1), 0), permute_1430, out=buf900)
+            del permute_1430
+            buf899 = buf817; del buf817  # reuse
+            # Topologically Sorted Source Nodes: [view_1744, view_1746, add_12176, silu_11, mul_15934, convert_element_type_3200, neg_85, exp_12, add_12178, reciprocal_12, mul_15936, mul_15937, sub_3931, mul_15938, add_12179, mul_15939, convert_element_type_3202, mul_15940, view_1753, permute_1428, mm_865], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf898, (4864, s27), (1, 4864), 0), mm_208, out=buf899)
+            del mm_208
+            buf893 = reinterpret_tensor(buf882, (32, 896), (896, 1), 0); del buf882  # reuse
+            # Topologically Sorted Source Nodes: [permute_1423, mm_862], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf891, (32, s27), (1, 32), 0), view_569, out=buf893)
+            buf902 = reinterpret_tensor(buf870, (32, 896), (896, 1), 0); del buf870  # reuse
+            # Topologically Sorted Source Nodes: [permute_1432, mm_867], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf900, (32, s27), (1, 32), 0), view_569, out=buf902)
+            del view_569
+            buf895 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3196], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf893, buf895, 28672, stream=stream0)
+            buf904 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3213], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf902, buf904, 28672, stream=stream0)
+            buf892 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3190], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf890, buf892, 155648, stream=stream0)
+            buf901 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3207], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf899, buf901, 155648, stream=stream0)
+            buf894 = buf874; del buf874  # reuse
+            # Topologically Sorted Source Nodes: [mm_863], Original ATen: [aten.mm]
+            extern_kernels.mm(buf891, permute_1425, out=buf894)
+            del permute_1425
+            buf903 = buf868; del buf868  # reuse
+            # Topologically Sorted Source Nodes: [mm_868], Original ATen: [aten.mm]
+            extern_kernels.mm(buf900, permute_1434, out=buf903)
+            del permute_1434
+            buf909 = buf880; del buf880  # reuse
+            buf910 = buf865; del buf865  # reuse
+            # Topologically Sorted Source Nodes: [view_1750, view_1752, add_12177, view_1756, add_12180, view_1758, add_12181, mul_15941, convert_element_type_3217, hidden_states_116, mul_15942, mul_15943, sum_50, pow_100, mul_15944, mul_15945, expand_102, div_25, pow_101, mul_15946, mul_15947, add_12182, convert_element_type_3218, add_12183, mul_15948, view_1759], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf909, buf894, buf897, buf903, buf906, primals_309, add_5826, rsqrt_23, buf910, s27, 896, stream=stream0)
+            del add_5826
+            del buf894
+            del primals_309
+            del rsqrt_23
+            buf912 = buf900; del buf900  # reuse
+            # Topologically Sorted Source Nodes: [mm_871], Original ATen: [aten.mm]
+            extern_kernels.mm(buf910, permute_1439, out=buf912)
+            del permute_1439
+            buf911 = reinterpret_tensor(buf902, (896, 32), (32, 1), 0); del buf902  # reuse
+            # Topologically Sorted Source Nodes: [permute_1437, mm_870], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf910, (896, s27), (1, 896), 0), mm_205, out=buf911)
+            del mm_205
+            buf914 = buf893; del buf893  # reuse
+            # Topologically Sorted Source Nodes: [permute_1441, mm_872], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf912, (32, s27), (1, 32), 0), view_563, out=buf914)
+            del view_563
+            buf913 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3223], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf911, buf913, 28672, stream=stream0)
+            buf916 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3229], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf914, buf916, 28672, stream=stream0)
+            buf915 = buf910; del buf910  # reuse
+            # Topologically Sorted Source Nodes: [mm_873], Original ATen: [aten.mm]
+            extern_kernels.mm(buf912, permute_1443, out=buf915)
+            del permute_1443
+            buf917 = buf906; del buf906  # reuse
+            # Topologically Sorted Source Nodes: [view_1763, result_243, permute_1445, mm_874], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf909, (s27, 896), (896, 1), 0), primals_306, out=buf917)
+            del primals_306
+            buf918 = reinterpret_tensor(buf915, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf915  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_1762, view_1764, add_12184, view_1765, permute_1446, _scaled_dot_product_efficient_attention_backward_12], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf918, buf917, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_1762, view_1764, add_12184, view_1765, permute_1446, _scaled_dot_product_efficient_attention_backward_12], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf919 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf918, add_5691, view_558, view_559, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_44, getitem_45, getitem_46, getitem_47, 0.0, [True, True, True, False], scale=0.125)
+            del add_5691
+            del getitem_44
+            del getitem_45
+            del getitem_46
+            del getitem_47
+            del view_558
+            del view_559
+            buf920 = buf919[0]
+            assert_size_stride(buf920, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf920, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf921 = buf919[1]
+            assert_size_stride(buf921, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf921, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf923 = reinterpret_tensor(buf867, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf867  # reuse
+            # Topologically Sorted Source Nodes: [view_1767, sum_52], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf921, buf923, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf922 = buf919[2]
+            assert_size_stride(buf922, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf922, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf919
+            buf924 = buf851; del buf851  # reuse
+            buf925 = reinterpret_tensor(buf860, (s27, 128), (128, 1), 0); del buf860  # reuse
+            # Topologically Sorted Source Nodes: [view_1766, sum_51, squeeze_24, permute_1447, clone_86, view_1768, mul_15953, view_1769], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf922, buf924, buf925, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf926 = buf861; del buf861  # reuse
+            # Topologically Sorted Source Nodes: [permute_1448, mm_875], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf925, (128, s27), (1, 128), 0), mm_202, out=buf926)
+            del mm_202
+            buf927 = buf912; del buf912  # reuse
+            # Topologically Sorted Source Nodes: [mm_876], Original ATen: [aten.mm]
+            extern_kernels.mm(buf925, permute_1450, out=buf927)
+            del permute_1450
+            buf928 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3237], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf926, buf928, 4096, stream=stream0)
+            buf929 = buf914; del buf914  # reuse
+            # Topologically Sorted Source Nodes: [permute_1452, mm_877], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf927, (32, s27), (1, 32), 0), view_539, out=buf929)
+            buf931 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3243], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf929, buf931, 28672, stream=stream0)
+            buf933 = reinterpret_tensor(buf925, (1, s27, 128), (128*s27, 128, 1), 0); del buf925  # reuse
+            buf940 = reinterpret_tensor(buf850, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf850  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1767, sum_52, squeeze_25, mul_15949, slice_243, slice_244, neg_86, add_12185, mul_15950, add_12186, permute_1457, clone_87, view_1775, mul_15954], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf923, mm_default, buf933, buf940, s27, s27, 128, stream=stream0)
+            buf934 = buf926; del buf926  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1767, sum_52, squeeze_25, mul_15949, slice_243, slice_244, neg_86, add_12185, mul_15950, add_12186, permute_1457, clone_87, view_1775, mul_15954, view_1776, permute_1458, mm_880], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf933, (128, s27), (1, 128), 0), mm_200, out=buf934)
+            del mm_200
+            buf935 = buf891; del buf891  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1767, sum_52, squeeze_25, mul_15949, slice_243, slice_244, neg_86, add_12185, mul_15950, add_12186, permute_1457, clone_87, view_1775, mul_15954, view_1776, mm_881], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf933, (s27, 128), (128, 1), 0), permute_1460, out=buf935)
+            del permute_1460
+            buf936 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3251], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf934, buf936, 4096, stream=stream0)
+            buf937 = buf929; del buf929  # reuse
+            # Topologically Sorted Source Nodes: [permute_1462, mm_882], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf935, (32, s27), (1, 32), 0), view_539, out=buf937)
+            buf939 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3257], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf937, buf939, 28672, stream=stream0)
+            buf932 = reinterpret_tensor(buf922, (s27, 896), (896, 1), 0); del buf922  # reuse
+            # Topologically Sorted Source Nodes: [view_1766, sum_51, squeeze_24, permute_1447, clone_86, view_1768, view_1773, result_240, permute_1456, mm_879], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf924, (s27, 128), (128, 1), 0), primals_302, out=buf932)
+            del primals_302
+            buf941 = reinterpret_tensor(buf921, (s27, 896), (896, 1), 0); del buf921  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1767, sum_52, squeeze_25, mul_15949, slice_243, slice_244, neg_86, add_12185, mul_15950, add_12186, permute_1457, clone_87, view_1775, view_1780, result_237, permute_1466, mm_884], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf940, (s27, 128), (128, 1), 0), primals_298, out=buf941)
+            del primals_298
+            buf930 = reinterpret_tensor(buf918, (s27, 896), (896, 1), 0); del buf918  # reuse
+            # Topologically Sorted Source Nodes: [mm_878], Original ATen: [aten.mm]
+            extern_kernels.mm(buf927, permute_1454, out=buf930)
+            del permute_1454
+            buf938 = buf917; del buf917  # reuse
+            # Topologically Sorted Source Nodes: [mm_883], Original ATen: [aten.mm]
+            extern_kernels.mm(buf935, permute_1464, out=buf938)
+            del permute_1464
+            buf942 = reinterpret_tensor(buf903, (1, s27, 896), (896*s27, 896, 1), 0); del buf903  # reuse
+            buf949 = reinterpret_tensor(buf897, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf897  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15951, slice_245, slice_246, neg_87, add_12187, mul_15952, add_12188, permute_1467, clone_88, view_1782, mul_15955], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf920, mm_default, buf942, buf949, s27, s27, 896, stream=stream0)
+            buf944 = buf935; del buf935  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15951, slice_245, slice_246, neg_87, add_12187, mul_15952, add_12188, permute_1467, clone_88, view_1782, mul_15955, view_1783, mm_886], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf942, (s27, 896), (896, 1), 0), permute_1470, out=buf944)
+            del permute_1470
+            buf943 = reinterpret_tensor(buf937, (896, 32), (32, 1), 0); del buf937  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15951, slice_245, slice_246, neg_87, add_12187, mul_15952, add_12188, permute_1467, clone_88, view_1782, mul_15955, view_1783, permute_1468, mm_885], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf942, (896, s27), (1, 896), 0), mm_198, out=buf943)
+            del mm_198
+            buf946 = reinterpret_tensor(buf911, (32, 896), (896, 1), 0); del buf911  # reuse
+            # Topologically Sorted Source Nodes: [permute_1472, mm_887], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf944, (32, s27), (1, 32), 0), view_539, out=buf946)
+            del view_539
+            buf950 = reinterpret_tensor(buf942, (s27, 896), (896, 1), 0); del buf942  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15951, slice_245, slice_246, neg_87, add_12187, mul_15952, add_12188, permute_1467, clone_88, view_1782, view_1787, result_234, permute_1476, mm_889], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf949, (s27, 896), (896, 1), 0), primals_294, out=buf950)
+            del primals_294
+            buf945 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3265], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf943, buf945, 28672, stream=stream0)
+            buf948 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3271], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf946, buf948, 28672, stream=stream0)
+            buf947 = reinterpret_tensor(buf949, (s27, 896), (896, 1), 0); del buf949  # reuse
+            # Topologically Sorted Source Nodes: [mm_888], Original ATen: [aten.mm]
+            extern_kernels.mm(buf944, permute_1474, out=buf947)
+            del permute_1474
+            buf953 = buf909; del buf909  # reuse
+            buf954 = reinterpret_tensor(buf920, (s27, 896), (896, 1), 0); del buf920  # reuse
+            # Topologically Sorted Source Nodes: [view_1772, view_1774, add_12189, view_1779, add_12190, view_1781, add_12191, view_1786, add_12192, view_1788, add_12193, mul_15956, convert_element_type_3275, hidden_states_110, mul_15957, mul_15958, sum_53, pow_102, mul_15959, mul_15960, expand_103, div_26, pow_103, mul_15961, mul_15962, add_12194, convert_element_type_3276, add_12195, mul_15963, view_1789], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf953, buf930, buf932, buf938, buf941, buf947, buf950, primals_293, add_5492, rsqrt_22, buf954, s27, 896, stream=stream0)
+            del add_5492
+            del buf930
+            del buf932
+            del primals_293
+            del rsqrt_22
+            buf956 = buf944; del buf944  # reuse
+            # Topologically Sorted Source Nodes: [mm_891], Original ATen: [aten.mm]
+            extern_kernels.mm(buf954, permute_1479, out=buf956)
+            del permute_1479
+            buf958 = reinterpret_tensor(buf899, (32, 4864), (4864, 1), 0); del buf899  # reuse
+            # Topologically Sorted Source Nodes: [permute_1481, mm_892], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf956, (32, s27), (1, 32), 0), view_533, out=buf958)
+            del view_533
+            buf955 = reinterpret_tensor(buf946, (896, 32), (32, 1), 0); del buf946  # reuse
+            # Topologically Sorted Source Nodes: [permute_1477, mm_890], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf954, (896, s27), (1, 896), 0), mm_196, out=buf955)
+            del mm_196
+            buf957 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3281], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf955, buf957, 28672, stream=stream0)
+            buf960 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3287], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf958, buf960, 155648, stream=stream0)
+            buf959 = reinterpret_tensor(buf898, (s27, 4864), (4864, 1), 0); del buf898  # reuse
+            # Topologically Sorted Source Nodes: [mm_893], Original ATen: [aten.mm]
+            extern_kernels.mm(buf956, permute_1483, out=buf959)
+            del permute_1483
+            buf961 = reinterpret_tensor(buf889, (s27, 4864), (4864, 1), 0); del buf889  # reuse
+            # Topologically Sorted Source Nodes: [view_1793, result_231, permute_1485, mm_894], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf953, (s27, 896), (896, 1), 0), primals_290, out=buf961)
+            del primals_290
+            buf962 = buf905; del buf905  # reuse
+            buf969 = buf896; del buf896  # reuse
+            buf971 = reinterpret_tensor(buf888, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf888  # reuse
+            buf978 = reinterpret_tensor(buf886, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf886  # reuse
+            # Topologically Sorted Source Nodes: [view_1792, view_1794, add_12196, silu_10, mul_15964, mul_15965, mul_15966, convert_element_type_3305, neg_88, exp_13, add_12198, reciprocal_13, mul_15967, mul_15968, sub_3932, mul_15969, add_12199, mul_15970, convert_element_type_3307, mul_15971], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf959, buf961, add_5402, add_5445, buf962, buf969, buf971, buf978, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_5402
+            del add_5445
+            buf970 = buf954; del buf954  # reuse
+            # Topologically Sorted Source Nodes: [view_1792, view_1794, add_12196, silu_10, mul_15964, view_1799, result_228, permute_1494, mm_899], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf969, (s27, 4864), (4864, 1), 0), primals_287, out=buf970)
+            del primals_287
+            buf979 = buf950; del buf950  # reuse
+            # Topologically Sorted Source Nodes: [view_1792, view_1794, add_12196, silu_10, mul_15965, convert_element_type_3305, neg_88, exp_13, add_12198, reciprocal_13, mul_15967, mul_15968, sub_3932, mul_15969, add_12199, mul_15970, convert_element_type_3307, view_1805, result_225, permute_1503, mm_904], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf978, (s27, 4864), (4864, 1), 0), primals_284, out=buf979)
+            del primals_284
+            buf964 = buf956; del buf956  # reuse
+            # Topologically Sorted Source Nodes: [view_1792, view_1794, add_12196, silu_10, mul_15964, mul_15966, view_1795, mm_896], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf962, (s27, 4864), (4864, 1), 0), permute_1488, out=buf964)
+            del permute_1488
+            buf963 = reinterpret_tensor(buf958, (4864, 32), (32, 1), 0); del buf958  # reuse
+            # Topologically Sorted Source Nodes: [view_1792, view_1794, add_12196, silu_10, mul_15964, mul_15966, view_1795, permute_1486, mm_895], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf962, (4864, s27), (1, 4864), 0), mm_193, out=buf963)
+            del mm_193
+            buf973 = buf927; del buf927  # reuse
+            # Topologically Sorted Source Nodes: [view_1792, view_1794, add_12196, silu_10, mul_15965, convert_element_type_3305, neg_88, exp_13, add_12198, reciprocal_13, mul_15967, mul_15968, sub_3932, mul_15969, add_12199, mul_15970, convert_element_type_3307, mul_15971, view_1801, mm_901], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf971, (s27, 4864), (4864, 1), 0), permute_1497, out=buf973)
+            del permute_1497
+            buf972 = buf890; del buf890  # reuse
+            # Topologically Sorted Source Nodes: [view_1792, view_1794, add_12196, silu_10, mul_15965, convert_element_type_3305, neg_88, exp_13, add_12198, reciprocal_13, mul_15967, mul_15968, sub_3932, mul_15969, add_12199, mul_15970, convert_element_type_3307, mul_15971, view_1801, permute_1495, mm_900], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf971, (4864, s27), (1, 4864), 0), mm_190, out=buf972)
+            del mm_190
+            buf966 = reinterpret_tensor(buf955, (32, 896), (896, 1), 0); del buf955  # reuse
+            # Topologically Sorted Source Nodes: [permute_1490, mm_897], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf964, (32, s27), (1, 32), 0), view_521, out=buf966)
+            buf975 = reinterpret_tensor(buf943, (32, 896), (896, 1), 0); del buf943  # reuse
+            # Topologically Sorted Source Nodes: [permute_1499, mm_902], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf973, (32, s27), (1, 32), 0), view_521, out=buf975)
+            del view_521
+            buf968 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3301], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf966, buf968, 28672, stream=stream0)
+            buf977 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3318], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf975, buf977, 28672, stream=stream0)
+            buf965 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3295], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf963, buf965, 155648, stream=stream0)
+            buf974 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3312], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf972, buf974, 155648, stream=stream0)
+            buf967 = buf947; del buf947  # reuse
+            # Topologically Sorted Source Nodes: [mm_898], Original ATen: [aten.mm]
+            extern_kernels.mm(buf964, permute_1492, out=buf967)
+            del permute_1492
+            buf976 = buf941; del buf941  # reuse
+            # Topologically Sorted Source Nodes: [mm_903], Original ATen: [aten.mm]
+            extern_kernels.mm(buf973, permute_1501, out=buf976)
+            del permute_1501
+            buf982 = buf953; del buf953  # reuse
+            buf983 = buf938; del buf938  # reuse
+            # Topologically Sorted Source Nodes: [view_1798, view_1800, add_12197, view_1804, add_12200, view_1806, add_12201, mul_15972, convert_element_type_3322, hidden_states_106, mul_15973, mul_15974, sum_54, pow_104, mul_15975, mul_15976, expand_104, div_27, pow_105, mul_15977, mul_15978, add_12202, convert_element_type_3323, add_12203, mul_15979, view_1807], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf982, buf967, buf970, buf976, buf979, primals_283, add_5334, rsqrt_21, buf983, s27, 896, stream=stream0)
+            del add_5334
+            del buf967
+            del primals_283
+            del rsqrt_21
+            buf985 = buf973; del buf973  # reuse
+            # Topologically Sorted Source Nodes: [mm_906], Original ATen: [aten.mm]
+            extern_kernels.mm(buf983, permute_1506, out=buf985)
+            del permute_1506
+            buf984 = reinterpret_tensor(buf975, (896, 32), (32, 1), 0); del buf975  # reuse
+            # Topologically Sorted Source Nodes: [permute_1504, mm_905], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf983, (896, s27), (1, 896), 0), mm_187, out=buf984)
+            del mm_187
+            buf987 = buf966; del buf966  # reuse
+            # Topologically Sorted Source Nodes: [permute_1508, mm_907], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf985, (32, s27), (1, 32), 0), view_515, out=buf987)
+            del view_515
+            buf986 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3328], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf984, buf986, 28672, stream=stream0)
+            buf989 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3334], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf987, buf989, 28672, stream=stream0)
+            buf988 = buf983; del buf983  # reuse
+            # Topologically Sorted Source Nodes: [mm_908], Original ATen: [aten.mm]
+            extern_kernels.mm(buf985, permute_1510, out=buf988)
+            del permute_1510
+            buf990 = buf979; del buf979  # reuse
+            # Topologically Sorted Source Nodes: [view_1811, result_222, permute_1512, mm_909], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf982, (s27, 896), (896, 1), 0), primals_280, out=buf990)
+            del primals_280
+            buf991 = reinterpret_tensor(buf988, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf988  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_1810, view_1812, add_12204, view_1813, permute_1513, _scaled_dot_product_efficient_attention_backward_13], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf991, buf990, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_1810, view_1812, add_12204, view_1813, permute_1513, _scaled_dot_product_efficient_attention_backward_13], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf992 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf991, add_5199, view_510, view_511, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_40, getitem_41, getitem_42, getitem_43, 0.0, [True, True, True, False], scale=0.125)
+            del add_5199
+            del getitem_40
+            del getitem_41
+            del getitem_42
+            del getitem_43
+            del view_510
+            del view_511
+            buf993 = buf992[0]
+            assert_size_stride(buf993, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf993, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf994 = buf992[1]
+            assert_size_stride(buf994, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf994, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf996 = reinterpret_tensor(buf940, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf940  # reuse
+            # Topologically Sorted Source Nodes: [view_1815, sum_56], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf994, buf996, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf995 = buf992[2]
+            assert_size_stride(buf995, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf995, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf992
+            buf997 = buf924; del buf924  # reuse
+            buf998 = reinterpret_tensor(buf933, (s27, 128), (128, 1), 0); del buf933  # reuse
+            # Topologically Sorted Source Nodes: [view_1814, sum_55, squeeze_26, permute_1514, clone_89, view_1816, mul_15984, view_1817], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf995, buf997, buf998, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf999 = buf934; del buf934  # reuse
+            # Topologically Sorted Source Nodes: [permute_1515, mm_910], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf998, (128, s27), (1, 128), 0), mm_184, out=buf999)
+            del mm_184
+            buf1000 = buf985; del buf985  # reuse
+            # Topologically Sorted Source Nodes: [mm_911], Original ATen: [aten.mm]
+            extern_kernels.mm(buf998, permute_1517, out=buf1000)
+            del permute_1517
+            buf1001 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3342], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf999, buf1001, 4096, stream=stream0)
+            buf1002 = buf987; del buf987  # reuse
+            # Topologically Sorted Source Nodes: [permute_1519, mm_912], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1000, (32, s27), (1, 32), 0), view_491, out=buf1002)
+            buf1004 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3348], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1002, buf1004, 28672, stream=stream0)
+            buf1006 = reinterpret_tensor(buf998, (1, s27, 128), (128*s27, 128, 1), 0); del buf998  # reuse
+            buf1013 = reinterpret_tensor(buf923, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf923  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1815, sum_56, squeeze_27, mul_15980, slice_247, slice_248, neg_89, add_12205, mul_15981, add_12206, permute_1524, clone_90, view_1823, mul_15985], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf996, mm_default, buf1006, buf1013, s27, s27, 128, stream=stream0)
+            buf1007 = buf999; del buf999  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1815, sum_56, squeeze_27, mul_15980, slice_247, slice_248, neg_89, add_12205, mul_15981, add_12206, permute_1524, clone_90, view_1823, mul_15985, view_1824, permute_1525, mm_915], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1006, (128, s27), (1, 128), 0), mm_182, out=buf1007)
+            del mm_182
+            buf1008 = buf964; del buf964  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1815, sum_56, squeeze_27, mul_15980, slice_247, slice_248, neg_89, add_12205, mul_15981, add_12206, permute_1524, clone_90, view_1823, mul_15985, view_1824, mm_916], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1006, (s27, 128), (128, 1), 0), permute_1527, out=buf1008)
+            del permute_1527
+            buf1009 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3356], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1007, buf1009, 4096, stream=stream0)
+            buf1010 = buf1002; del buf1002  # reuse
+            # Topologically Sorted Source Nodes: [permute_1529, mm_917], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1008, (32, s27), (1, 32), 0), view_491, out=buf1010)
+            buf1012 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3362], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1010, buf1012, 28672, stream=stream0)
+            buf1005 = reinterpret_tensor(buf995, (s27, 896), (896, 1), 0); del buf995  # reuse
+            # Topologically Sorted Source Nodes: [view_1814, sum_55, squeeze_26, permute_1514, clone_89, view_1816, view_1821, result_219, permute_1523, mm_914], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf997, (s27, 128), (128, 1), 0), primals_276, out=buf1005)
+            del primals_276
+            buf1014 = reinterpret_tensor(buf994, (s27, 896), (896, 1), 0); del buf994  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1815, sum_56, squeeze_27, mul_15980, slice_247, slice_248, neg_89, add_12205, mul_15981, add_12206, permute_1524, clone_90, view_1823, view_1828, result_216, permute_1533, mm_919], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1013, (s27, 128), (128, 1), 0), primals_272, out=buf1014)
+            del primals_272
+            buf1003 = reinterpret_tensor(buf991, (s27, 896), (896, 1), 0); del buf991  # reuse
+            # Topologically Sorted Source Nodes: [mm_913], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1000, permute_1521, out=buf1003)
+            del permute_1521
+            buf1011 = buf990; del buf990  # reuse
+            # Topologically Sorted Source Nodes: [mm_918], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1008, permute_1531, out=buf1011)
+            del permute_1531
+            buf1015 = reinterpret_tensor(buf976, (1, s27, 896), (896*s27, 896, 1), 0); del buf976  # reuse
+            buf1022 = reinterpret_tensor(buf970, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf970  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15982, slice_249, slice_250, neg_90, add_12207, mul_15983, add_12208, permute_1534, clone_91, view_1830, mul_15986], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf993, mm_default, buf1015, buf1022, s27, s27, 896, stream=stream0)
+            buf1017 = buf1008; del buf1008  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15982, slice_249, slice_250, neg_90, add_12207, mul_15983, add_12208, permute_1534, clone_91, view_1830, mul_15986, view_1831, mm_921], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1015, (s27, 896), (896, 1), 0), permute_1537, out=buf1017)
+            del permute_1537
+            buf1016 = reinterpret_tensor(buf1010, (896, 32), (32, 1), 0); del buf1010  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15982, slice_249, slice_250, neg_90, add_12207, mul_15983, add_12208, permute_1534, clone_91, view_1830, mul_15986, view_1831, permute_1535, mm_920], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1015, (896, s27), (1, 896), 0), mm_180, out=buf1016)
+            del mm_180
+            buf1019 = reinterpret_tensor(buf984, (32, 896), (896, 1), 0); del buf984  # reuse
+            # Topologically Sorted Source Nodes: [permute_1539, mm_922], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1017, (32, s27), (1, 32), 0), view_491, out=buf1019)
+            del view_491
+            buf1023 = reinterpret_tensor(buf1015, (s27, 896), (896, 1), 0); del buf1015  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_15982, slice_249, slice_250, neg_90, add_12207, mul_15983, add_12208, permute_1534, clone_91, view_1830, view_1835, result_213, permute_1543, mm_924], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1022, (s27, 896), (896, 1), 0), primals_268, out=buf1023)
+            del primals_268
+            buf1018 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3370], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1016, buf1018, 28672, stream=stream0)
+            buf1021 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3376], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1019, buf1021, 28672, stream=stream0)
+            buf1020 = reinterpret_tensor(buf1022, (s27, 896), (896, 1), 0); del buf1022  # reuse
+            # Topologically Sorted Source Nodes: [mm_923], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1017, permute_1541, out=buf1020)
+            del permute_1541
+            buf1026 = buf982; del buf982  # reuse
+            buf1027 = reinterpret_tensor(buf993, (s27, 896), (896, 1), 0); del buf993  # reuse
+            # Topologically Sorted Source Nodes: [view_1820, view_1822, add_12209, view_1827, add_12210, view_1829, add_12211, view_1834, add_12212, view_1836, add_12213, mul_15987, convert_element_type_3380, hidden_states_100, mul_15988, mul_15989, sum_57, pow_106, mul_15990, mul_15991, expand_105, div_28, pow_107, mul_15992, mul_15993, add_12214, convert_element_type_3381, add_12215, mul_15994, view_1837], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf1026, buf1003, buf1005, buf1011, buf1014, buf1020, buf1023, primals_267, add_5000, rsqrt_20, buf1027, s27, 896, stream=stream0)
+            del add_5000
+            del buf1003
+            del buf1005
+            del primals_267
+            del rsqrt_20
+            buf1029 = buf1017; del buf1017  # reuse
+            # Topologically Sorted Source Nodes: [mm_926], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1027, permute_1546, out=buf1029)
+            del permute_1546
+            buf1031 = reinterpret_tensor(buf972, (32, 4864), (4864, 1), 0); del buf972  # reuse
+            # Topologically Sorted Source Nodes: [permute_1548, mm_927], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1029, (32, s27), (1, 32), 0), view_485, out=buf1031)
+            del view_485
+            buf1028 = reinterpret_tensor(buf1019, (896, 32), (32, 1), 0); del buf1019  # reuse
+            # Topologically Sorted Source Nodes: [permute_1544, mm_925], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1027, (896, s27), (1, 896), 0), mm_178, out=buf1028)
+            del mm_178
+            buf1030 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3386], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1028, buf1030, 28672, stream=stream0)
+            buf1033 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3392], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1031, buf1033, 155648, stream=stream0)
+            buf1032 = reinterpret_tensor(buf971, (s27, 4864), (4864, 1), 0); del buf971  # reuse
+            # Topologically Sorted Source Nodes: [mm_928], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1029, permute_1550, out=buf1032)
+            del permute_1550
+            buf1034 = reinterpret_tensor(buf962, (s27, 4864), (4864, 1), 0); del buf962  # reuse
+            # Topologically Sorted Source Nodes: [view_1841, result_210, permute_1552, mm_929], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1026, (s27, 896), (896, 1), 0), primals_264, out=buf1034)
+            del primals_264
+            buf1035 = buf978; del buf978  # reuse
+            buf1042 = buf969; del buf969  # reuse
+            buf1044 = reinterpret_tensor(buf961, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf961  # reuse
+            buf1051 = reinterpret_tensor(buf959, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf959  # reuse
+            # Topologically Sorted Source Nodes: [view_1840, view_1842, add_12216, silu_9, mul_15995, mul_15996, mul_15997, convert_element_type_3410, neg_91, exp_14, add_12218, reciprocal_14, mul_15998, mul_15999, sub_3933, mul_16000, add_12219, mul_16001, convert_element_type_3412, mul_16002], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf1032, buf1034, add_4910, add_4953, buf1035, buf1042, buf1044, buf1051, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_4910
+            del add_4953
+            buf1043 = buf1027; del buf1027  # reuse
+            # Topologically Sorted Source Nodes: [view_1840, view_1842, add_12216, silu_9, mul_15995, view_1847, result_207, permute_1561, mm_934], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1042, (s27, 4864), (4864, 1), 0), primals_261, out=buf1043)
+            del primals_261
+            buf1052 = buf1023; del buf1023  # reuse
+            # Topologically Sorted Source Nodes: [view_1840, view_1842, add_12216, silu_9, mul_15996, convert_element_type_3410, neg_91, exp_14, add_12218, reciprocal_14, mul_15998, mul_15999, sub_3933, mul_16000, add_12219, mul_16001, convert_element_type_3412, view_1853, result_204, permute_1570, mm_939], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1051, (s27, 4864), (4864, 1), 0), primals_258, out=buf1052)
+            del primals_258
+            buf1037 = buf1029; del buf1029  # reuse
+            # Topologically Sorted Source Nodes: [view_1840, view_1842, add_12216, silu_9, mul_15995, mul_15997, view_1843, mm_931], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1035, (s27, 4864), (4864, 1), 0), permute_1555, out=buf1037)
+            del permute_1555
+            buf1036 = reinterpret_tensor(buf1031, (4864, 32), (32, 1), 0); del buf1031  # reuse
+            # Topologically Sorted Source Nodes: [view_1840, view_1842, add_12216, silu_9, mul_15995, mul_15997, view_1843, permute_1553, mm_930], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1035, (4864, s27), (1, 4864), 0), mm_175, out=buf1036)
+            del mm_175
+            buf1046 = buf1000; del buf1000  # reuse
+            # Topologically Sorted Source Nodes: [view_1840, view_1842, add_12216, silu_9, mul_15996, convert_element_type_3410, neg_91, exp_14, add_12218, reciprocal_14, mul_15998, mul_15999, sub_3933, mul_16000, add_12219, mul_16001, convert_element_type_3412, mul_16002, view_1849, mm_936], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1044, (s27, 4864), (4864, 1), 0), permute_1564, out=buf1046)
+            del permute_1564
+            buf1045 = buf963; del buf963  # reuse
+            # Topologically Sorted Source Nodes: [view_1840, view_1842, add_12216, silu_9, mul_15996, convert_element_type_3410, neg_91, exp_14, add_12218, reciprocal_14, mul_15998, mul_15999, sub_3933, mul_16000, add_12219, mul_16001, convert_element_type_3412, mul_16002, view_1849, permute_1562, mm_935], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1044, (4864, s27), (1, 4864), 0), mm_172, out=buf1045)
+            del mm_172
+            buf1039 = reinterpret_tensor(buf1028, (32, 896), (896, 1), 0); del buf1028  # reuse
+            # Topologically Sorted Source Nodes: [permute_1557, mm_932], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1037, (32, s27), (1, 32), 0), view_473, out=buf1039)
+            buf1048 = reinterpret_tensor(buf1016, (32, 896), (896, 1), 0); del buf1016  # reuse
+            # Topologically Sorted Source Nodes: [permute_1566, mm_937], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1046, (32, s27), (1, 32), 0), view_473, out=buf1048)
+            del view_473
+            buf1041 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3406], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1039, buf1041, 28672, stream=stream0)
+            buf1050 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3423], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1048, buf1050, 28672, stream=stream0)
+            buf1038 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3400], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1036, buf1038, 155648, stream=stream0)
+            buf1047 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3417], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1045, buf1047, 155648, stream=stream0)
+            buf1040 = buf1020; del buf1020  # reuse
+            # Topologically Sorted Source Nodes: [mm_933], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1037, permute_1559, out=buf1040)
+            del permute_1559
+            buf1049 = buf1014; del buf1014  # reuse
+            # Topologically Sorted Source Nodes: [mm_938], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1046, permute_1568, out=buf1049)
+            del permute_1568
+            buf1055 = buf1026; del buf1026  # reuse
+            buf1056 = buf1011; del buf1011  # reuse
+            # Topologically Sorted Source Nodes: [view_1846, view_1848, add_12217, view_1852, add_12220, view_1854, add_12221, mul_16003, convert_element_type_3427, hidden_states_96, mul_16004, mul_16005, sum_58, pow_108, mul_16006, mul_16007, expand_106, div_29, pow_109, mul_16008, mul_16009, add_12222, convert_element_type_3428, add_12223, mul_16010, view_1855], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf1055, buf1040, buf1043, buf1049, buf1052, primals_257, add_4842, rsqrt_19, buf1056, s27, 896, stream=stream0)
+            del add_4842
+            del buf1040
+            del primals_257
+            del rsqrt_19
+            buf1058 = buf1046; del buf1046  # reuse
+            # Topologically Sorted Source Nodes: [mm_941], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1056, permute_1573, out=buf1058)
+            del permute_1573
+            buf1057 = reinterpret_tensor(buf1048, (896, 32), (32, 1), 0); del buf1048  # reuse
+            # Topologically Sorted Source Nodes: [permute_1571, mm_940], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1056, (896, s27), (1, 896), 0), mm_169, out=buf1057)
+            del mm_169
+            buf1060 = buf1039; del buf1039  # reuse
+            # Topologically Sorted Source Nodes: [permute_1575, mm_942], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1058, (32, s27), (1, 32), 0), view_467, out=buf1060)
+            del view_467
+            buf1059 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3433], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1057, buf1059, 28672, stream=stream0)
+            buf1062 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3439], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1060, buf1062, 28672, stream=stream0)
+            buf1061 = buf1056; del buf1056  # reuse
+            # Topologically Sorted Source Nodes: [mm_943], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1058, permute_1577, out=buf1061)
+            del permute_1577
+            buf1063 = buf1052; del buf1052  # reuse
+            # Topologically Sorted Source Nodes: [view_1859, result_201, permute_1579, mm_944], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1055, (s27, 896), (896, 1), 0), primals_254, out=buf1063)
+            del primals_254
+            buf1064 = reinterpret_tensor(buf1061, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf1061  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_1858, view_1860, add_12224, view_1861, permute_1580, _scaled_dot_product_efficient_attention_backward_14], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf1064, buf1063, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_1858, view_1860, add_12224, view_1861, permute_1580, _scaled_dot_product_efficient_attention_backward_14], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf1065 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf1064, add_4707, view_462, view_463, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_36, getitem_37, getitem_38, getitem_39, 0.0, [True, True, True, False], scale=0.125)
+            del add_4707
+            del getitem_36
+            del getitem_37
+            del getitem_38
+            del getitem_39
+            del view_462
+            del view_463
+            buf1066 = buf1065[0]
+            assert_size_stride(buf1066, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1066, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1067 = buf1065[1]
+            assert_size_stride(buf1067, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1067, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1069 = reinterpret_tensor(buf1013, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf1013  # reuse
+            # Topologically Sorted Source Nodes: [view_1863, sum_60], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf1067, buf1069, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf1068 = buf1065[2]
+            assert_size_stride(buf1068, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1068, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf1065
+            buf1070 = buf997; del buf997  # reuse
+            buf1071 = reinterpret_tensor(buf1006, (s27, 128), (128, 1), 0); del buf1006  # reuse
+            # Topologically Sorted Source Nodes: [view_1862, sum_59, squeeze_28, permute_1581, clone_92, view_1864, mul_16015, view_1865], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf1068, buf1070, buf1071, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf1072 = buf1007; del buf1007  # reuse
+            # Topologically Sorted Source Nodes: [permute_1582, mm_945], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1071, (128, s27), (1, 128), 0), mm_166, out=buf1072)
+            del mm_166
+            buf1073 = buf1058; del buf1058  # reuse
+            # Topologically Sorted Source Nodes: [mm_946], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1071, permute_1584, out=buf1073)
+            del permute_1584
+            buf1074 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3447], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1072, buf1074, 4096, stream=stream0)
+            buf1075 = buf1060; del buf1060  # reuse
+            # Topologically Sorted Source Nodes: [permute_1586, mm_947], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1073, (32, s27), (1, 32), 0), view_443, out=buf1075)
+            buf1077 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3453], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1075, buf1077, 28672, stream=stream0)
+            buf1079 = reinterpret_tensor(buf1071, (1, s27, 128), (128*s27, 128, 1), 0); del buf1071  # reuse
+            buf1086 = reinterpret_tensor(buf996, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf996  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1863, sum_60, squeeze_29, mul_16011, slice_251, slice_252, neg_92, add_12225, mul_16012, add_12226, permute_1591, clone_93, view_1871, mul_16016], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf1069, mm_default, buf1079, buf1086, s27, s27, 128, stream=stream0)
+            buf1080 = buf1072; del buf1072  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1863, sum_60, squeeze_29, mul_16011, slice_251, slice_252, neg_92, add_12225, mul_16012, add_12226, permute_1591, clone_93, view_1871, mul_16016, view_1872, permute_1592, mm_950], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1079, (128, s27), (1, 128), 0), mm_164, out=buf1080)
+            del mm_164
+            buf1081 = buf1037; del buf1037  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1863, sum_60, squeeze_29, mul_16011, slice_251, slice_252, neg_92, add_12225, mul_16012, add_12226, permute_1591, clone_93, view_1871, mul_16016, view_1872, mm_951], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1079, (s27, 128), (128, 1), 0), permute_1594, out=buf1081)
+            del permute_1594
+            buf1082 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3461], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1080, buf1082, 4096, stream=stream0)
+            buf1083 = buf1075; del buf1075  # reuse
+            # Topologically Sorted Source Nodes: [permute_1596, mm_952], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1081, (32, s27), (1, 32), 0), view_443, out=buf1083)
+            buf1085 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3467], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1083, buf1085, 28672, stream=stream0)
+            buf1078 = reinterpret_tensor(buf1068, (s27, 896), (896, 1), 0); del buf1068  # reuse
+            # Topologically Sorted Source Nodes: [view_1862, sum_59, squeeze_28, permute_1581, clone_92, view_1864, view_1869, result_198, permute_1590, mm_949], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1070, (s27, 128), (128, 1), 0), primals_250, out=buf1078)
+            del primals_250
+            buf1087 = reinterpret_tensor(buf1067, (s27, 896), (896, 1), 0); del buf1067  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1863, sum_60, squeeze_29, mul_16011, slice_251, slice_252, neg_92, add_12225, mul_16012, add_12226, permute_1591, clone_93, view_1871, view_1876, result_195, permute_1600, mm_954], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1086, (s27, 128), (128, 1), 0), primals_246, out=buf1087)
+            del primals_246
+            buf1076 = reinterpret_tensor(buf1064, (s27, 896), (896, 1), 0); del buf1064  # reuse
+            # Topologically Sorted Source Nodes: [mm_948], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1073, permute_1588, out=buf1076)
+            del permute_1588
+            buf1084 = buf1063; del buf1063  # reuse
+            # Topologically Sorted Source Nodes: [mm_953], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1081, permute_1598, out=buf1084)
+            del permute_1598
+            buf1088 = reinterpret_tensor(buf1049, (1, s27, 896), (896*s27, 896, 1), 0); del buf1049  # reuse
+            buf1095 = reinterpret_tensor(buf1043, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf1043  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16013, slice_253, slice_254, neg_93, add_12227, mul_16014, add_12228, permute_1601, clone_94, view_1878, mul_16017], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf1066, mm_default, buf1088, buf1095, s27, s27, 896, stream=stream0)
+            buf1090 = buf1081; del buf1081  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16013, slice_253, slice_254, neg_93, add_12227, mul_16014, add_12228, permute_1601, clone_94, view_1878, mul_16017, view_1879, mm_956], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1088, (s27, 896), (896, 1), 0), permute_1604, out=buf1090)
+            del permute_1604
+            buf1089 = reinterpret_tensor(buf1083, (896, 32), (32, 1), 0); del buf1083  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16013, slice_253, slice_254, neg_93, add_12227, mul_16014, add_12228, permute_1601, clone_94, view_1878, mul_16017, view_1879, permute_1602, mm_955], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1088, (896, s27), (1, 896), 0), mm_162, out=buf1089)
+            del mm_162
+            buf1092 = reinterpret_tensor(buf1057, (32, 896), (896, 1), 0); del buf1057  # reuse
+            # Topologically Sorted Source Nodes: [permute_1606, mm_957], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1090, (32, s27), (1, 32), 0), view_443, out=buf1092)
+            del view_443
+            buf1096 = reinterpret_tensor(buf1088, (s27, 896), (896, 1), 0); del buf1088  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16013, slice_253, slice_254, neg_93, add_12227, mul_16014, add_12228, permute_1601, clone_94, view_1878, view_1883, result_192, permute_1610, mm_959], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1095, (s27, 896), (896, 1), 0), primals_242, out=buf1096)
+            del primals_242
+            buf1091 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3475], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1089, buf1091, 28672, stream=stream0)
+            buf1094 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3481], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1092, buf1094, 28672, stream=stream0)
+            buf1093 = reinterpret_tensor(buf1095, (s27, 896), (896, 1), 0); del buf1095  # reuse
+            # Topologically Sorted Source Nodes: [mm_958], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1090, permute_1608, out=buf1093)
+            del permute_1608
+            buf1099 = buf1055; del buf1055  # reuse
+            buf1100 = reinterpret_tensor(buf1066, (s27, 896), (896, 1), 0); del buf1066  # reuse
+            # Topologically Sorted Source Nodes: [view_1868, view_1870, add_12229, view_1875, add_12230, view_1877, add_12231, view_1882, add_12232, view_1884, add_12233, mul_16018, convert_element_type_3485, hidden_states_90, mul_16019, mul_16020, sum_61, pow_110, mul_16021, mul_16022, expand_107, div_30, pow_111, mul_16023, mul_16024, add_12234, convert_element_type_3486, add_12235, mul_16025, view_1885], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf1099, buf1076, buf1078, buf1084, buf1087, buf1093, buf1096, primals_241, add_4508, rsqrt_18, buf1100, s27, 896, stream=stream0)
+            del add_4508
+            del buf1076
+            del buf1078
+            del primals_241
+            del rsqrt_18
+            buf1102 = buf1090; del buf1090  # reuse
+            # Topologically Sorted Source Nodes: [mm_961], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1100, permute_1613, out=buf1102)
+            del permute_1613
+            buf1104 = reinterpret_tensor(buf1045, (32, 4864), (4864, 1), 0); del buf1045  # reuse
+            # Topologically Sorted Source Nodes: [permute_1615, mm_962], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1102, (32, s27), (1, 32), 0), view_437, out=buf1104)
+            del view_437
+            buf1101 = reinterpret_tensor(buf1092, (896, 32), (32, 1), 0); del buf1092  # reuse
+            # Topologically Sorted Source Nodes: [permute_1611, mm_960], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1100, (896, s27), (1, 896), 0), mm_160, out=buf1101)
+            del mm_160
+            buf1103 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3491], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1101, buf1103, 28672, stream=stream0)
+            buf1106 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3497], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1104, buf1106, 155648, stream=stream0)
+            buf1105 = reinterpret_tensor(buf1044, (s27, 4864), (4864, 1), 0); del buf1044  # reuse
+            # Topologically Sorted Source Nodes: [mm_963], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1102, permute_1617, out=buf1105)
+            del permute_1617
+            buf1107 = reinterpret_tensor(buf1035, (s27, 4864), (4864, 1), 0); del buf1035  # reuse
+            # Topologically Sorted Source Nodes: [view_1889, result_189, permute_1619, mm_964], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1099, (s27, 896), (896, 1), 0), primals_238, out=buf1107)
+            del primals_238
+            buf1108 = buf1051; del buf1051  # reuse
+            buf1115 = buf1042; del buf1042  # reuse
+            buf1117 = reinterpret_tensor(buf1034, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf1034  # reuse
+            buf1124 = reinterpret_tensor(buf1032, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf1032  # reuse
+            # Topologically Sorted Source Nodes: [view_1888, view_1890, add_12236, silu_8, mul_16026, mul_16027, mul_16028, convert_element_type_3515, neg_94, exp_15, add_12238, reciprocal_15, mul_16029, mul_16030, sub_3934, mul_16031, add_12239, mul_16032, convert_element_type_3517, mul_16033], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf1105, buf1107, add_4418, add_4461, buf1108, buf1115, buf1117, buf1124, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_4418
+            del add_4461
+            buf1116 = buf1100; del buf1100  # reuse
+            # Topologically Sorted Source Nodes: [view_1888, view_1890, add_12236, silu_8, mul_16026, view_1895, result_186, permute_1628, mm_969], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1115, (s27, 4864), (4864, 1), 0), primals_235, out=buf1116)
+            del primals_235
+            buf1125 = buf1096; del buf1096  # reuse
+            # Topologically Sorted Source Nodes: [view_1888, view_1890, add_12236, silu_8, mul_16027, convert_element_type_3515, neg_94, exp_15, add_12238, reciprocal_15, mul_16029, mul_16030, sub_3934, mul_16031, add_12239, mul_16032, convert_element_type_3517, view_1901, result_183, permute_1637, mm_974], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1124, (s27, 4864), (4864, 1), 0), primals_232, out=buf1125)
+            del primals_232
+            buf1110 = buf1102; del buf1102  # reuse
+            # Topologically Sorted Source Nodes: [view_1888, view_1890, add_12236, silu_8, mul_16026, mul_16028, view_1891, mm_966], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1108, (s27, 4864), (4864, 1), 0), permute_1622, out=buf1110)
+            del permute_1622
+            buf1109 = reinterpret_tensor(buf1104, (4864, 32), (32, 1), 0); del buf1104  # reuse
+            # Topologically Sorted Source Nodes: [view_1888, view_1890, add_12236, silu_8, mul_16026, mul_16028, view_1891, permute_1620, mm_965], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1108, (4864, s27), (1, 4864), 0), mm_157, out=buf1109)
+            del mm_157
+            buf1119 = buf1073; del buf1073  # reuse
+            # Topologically Sorted Source Nodes: [view_1888, view_1890, add_12236, silu_8, mul_16027, convert_element_type_3515, neg_94, exp_15, add_12238, reciprocal_15, mul_16029, mul_16030, sub_3934, mul_16031, add_12239, mul_16032, convert_element_type_3517, mul_16033, view_1897, mm_971], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1117, (s27, 4864), (4864, 1), 0), permute_1631, out=buf1119)
+            del permute_1631
+            buf1118 = buf1036; del buf1036  # reuse
+            # Topologically Sorted Source Nodes: [view_1888, view_1890, add_12236, silu_8, mul_16027, convert_element_type_3515, neg_94, exp_15, add_12238, reciprocal_15, mul_16029, mul_16030, sub_3934, mul_16031, add_12239, mul_16032, convert_element_type_3517, mul_16033, view_1897, permute_1629, mm_970], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1117, (4864, s27), (1, 4864), 0), mm_154, out=buf1118)
+            del mm_154
+            buf1112 = reinterpret_tensor(buf1101, (32, 896), (896, 1), 0); del buf1101  # reuse
+            # Topologically Sorted Source Nodes: [permute_1624, mm_967], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1110, (32, s27), (1, 32), 0), view_425, out=buf1112)
+            buf1121 = reinterpret_tensor(buf1089, (32, 896), (896, 1), 0); del buf1089  # reuse
+            # Topologically Sorted Source Nodes: [permute_1633, mm_972], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1119, (32, s27), (1, 32), 0), view_425, out=buf1121)
+            del view_425
+            buf1114 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3511], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1112, buf1114, 28672, stream=stream0)
+            buf1123 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3528], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1121, buf1123, 28672, stream=stream0)
+            buf1111 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3505], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1109, buf1111, 155648, stream=stream0)
+            buf1120 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3522], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1118, buf1120, 155648, stream=stream0)
+            buf1113 = buf1093; del buf1093  # reuse
+            # Topologically Sorted Source Nodes: [mm_968], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1110, permute_1626, out=buf1113)
+            del permute_1626
+            buf1122 = buf1087; del buf1087  # reuse
+            # Topologically Sorted Source Nodes: [mm_973], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1119, permute_1635, out=buf1122)
+            del permute_1635
+            buf1128 = buf1099; del buf1099  # reuse
+            buf1129 = buf1084; del buf1084  # reuse
+            # Topologically Sorted Source Nodes: [view_1894, view_1896, add_12237, view_1900, add_12240, view_1902, add_12241, mul_16034, convert_element_type_3532, hidden_states_86, mul_16035, mul_16036, sum_62, pow_112, mul_16037, mul_16038, expand_108, div_31, pow_113, mul_16039, mul_16040, add_12242, convert_element_type_3533, add_12243, mul_16041, view_1903], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf1128, buf1113, buf1116, buf1122, buf1125, primals_231, add_4350, rsqrt_17, buf1129, s27, 896, stream=stream0)
+            del add_4350
+            del buf1113
+            del primals_231
+            del rsqrt_17
+            buf1131 = buf1119; del buf1119  # reuse
+            # Topologically Sorted Source Nodes: [mm_976], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1129, permute_1640, out=buf1131)
+            del permute_1640
+            buf1130 = reinterpret_tensor(buf1121, (896, 32), (32, 1), 0); del buf1121  # reuse
+            # Topologically Sorted Source Nodes: [permute_1638, mm_975], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1129, (896, s27), (1, 896), 0), mm_151, out=buf1130)
+            del mm_151
+            buf1133 = buf1112; del buf1112  # reuse
+            # Topologically Sorted Source Nodes: [permute_1642, mm_977], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1131, (32, s27), (1, 32), 0), view_419, out=buf1133)
+            del view_419
+            buf1132 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3538], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1130, buf1132, 28672, stream=stream0)
+            buf1135 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3544], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1133, buf1135, 28672, stream=stream0)
+            buf1134 = buf1129; del buf1129  # reuse
+            # Topologically Sorted Source Nodes: [mm_978], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1131, permute_1644, out=buf1134)
+            del permute_1644
+            buf1136 = buf1125; del buf1125  # reuse
+            # Topologically Sorted Source Nodes: [view_1907, result_180, permute_1646, mm_979], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1128, (s27, 896), (896, 1), 0), primals_228, out=buf1136)
+            del primals_228
+            buf1137 = reinterpret_tensor(buf1134, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf1134  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_1906, view_1908, add_12244, view_1909, permute_1647, _scaled_dot_product_efficient_attention_backward_15], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf1137, buf1136, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_1906, view_1908, add_12244, view_1909, permute_1647, _scaled_dot_product_efficient_attention_backward_15], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf1138 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf1137, add_4215, view_414, view_415, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_32, getitem_33, getitem_34, getitem_35, 0.0, [True, True, True, False], scale=0.125)
+            del add_4215
+            del getitem_32
+            del getitem_33
+            del getitem_34
+            del getitem_35
+            del view_414
+            del view_415
+            buf1139 = buf1138[0]
+            assert_size_stride(buf1139, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1139, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1140 = buf1138[1]
+            assert_size_stride(buf1140, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1140, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1142 = reinterpret_tensor(buf1086, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf1086  # reuse
+            # Topologically Sorted Source Nodes: [view_1911, sum_64], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf1140, buf1142, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf1141 = buf1138[2]
+            assert_size_stride(buf1141, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1141, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf1138
+            buf1143 = buf1070; del buf1070  # reuse
+            buf1144 = reinterpret_tensor(buf1079, (s27, 128), (128, 1), 0); del buf1079  # reuse
+            # Topologically Sorted Source Nodes: [view_1910, sum_63, squeeze_30, permute_1648, clone_95, view_1912, mul_16046, view_1913], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf1141, buf1143, buf1144, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf1145 = buf1080; del buf1080  # reuse
+            # Topologically Sorted Source Nodes: [permute_1649, mm_980], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1144, (128, s27), (1, 128), 0), mm_148, out=buf1145)
+            del mm_148
+            buf1146 = buf1131; del buf1131  # reuse
+            # Topologically Sorted Source Nodes: [mm_981], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1144, permute_1651, out=buf1146)
+            del permute_1651
+            buf1147 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3552], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1145, buf1147, 4096, stream=stream0)
+            buf1148 = buf1133; del buf1133  # reuse
+            # Topologically Sorted Source Nodes: [permute_1653, mm_982], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1146, (32, s27), (1, 32), 0), view_395, out=buf1148)
+            buf1150 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3558], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1148, buf1150, 28672, stream=stream0)
+            buf1152 = reinterpret_tensor(buf1144, (1, s27, 128), (128*s27, 128, 1), 0); del buf1144  # reuse
+            buf1159 = reinterpret_tensor(buf1069, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf1069  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1911, sum_64, squeeze_31, mul_16042, slice_255, slice_256, neg_95, add_12245, mul_16043, add_12246, permute_1658, clone_96, view_1919, mul_16047], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf1142, mm_default, buf1152, buf1159, s27, s27, 128, stream=stream0)
+            buf1153 = buf1145; del buf1145  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1911, sum_64, squeeze_31, mul_16042, slice_255, slice_256, neg_95, add_12245, mul_16043, add_12246, permute_1658, clone_96, view_1919, mul_16047, view_1920, permute_1659, mm_985], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1152, (128, s27), (1, 128), 0), mm_146, out=buf1153)
+            del mm_146
+            buf1154 = buf1110; del buf1110  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1911, sum_64, squeeze_31, mul_16042, slice_255, slice_256, neg_95, add_12245, mul_16043, add_12246, permute_1658, clone_96, view_1919, mul_16047, view_1920, mm_986], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1152, (s27, 128), (128, 1), 0), permute_1661, out=buf1154)
+            del permute_1661
+            buf1155 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3566], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1153, buf1155, 4096, stream=stream0)
+            buf1156 = buf1148; del buf1148  # reuse
+            # Topologically Sorted Source Nodes: [permute_1663, mm_987], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1154, (32, s27), (1, 32), 0), view_395, out=buf1156)
+            buf1158 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3572], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1156, buf1158, 28672, stream=stream0)
+            buf1151 = reinterpret_tensor(buf1141, (s27, 896), (896, 1), 0); del buf1141  # reuse
+            # Topologically Sorted Source Nodes: [view_1910, sum_63, squeeze_30, permute_1648, clone_95, view_1912, view_1917, result_177, permute_1657, mm_984], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1143, (s27, 128), (128, 1), 0), primals_224, out=buf1151)
+            del primals_224
+            buf1160 = reinterpret_tensor(buf1140, (s27, 896), (896, 1), 0); del buf1140  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1911, sum_64, squeeze_31, mul_16042, slice_255, slice_256, neg_95, add_12245, mul_16043, add_12246, permute_1658, clone_96, view_1919, view_1924, result_174, permute_1667, mm_989], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1159, (s27, 128), (128, 1), 0), primals_220, out=buf1160)
+            del primals_220
+            buf1149 = reinterpret_tensor(buf1137, (s27, 896), (896, 1), 0); del buf1137  # reuse
+            # Topologically Sorted Source Nodes: [mm_983], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1146, permute_1655, out=buf1149)
+            del permute_1655
+            buf1157 = buf1136; del buf1136  # reuse
+            # Topologically Sorted Source Nodes: [mm_988], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1154, permute_1665, out=buf1157)
+            del permute_1665
+            buf1161 = reinterpret_tensor(buf1122, (1, s27, 896), (896*s27, 896, 1), 0); del buf1122  # reuse
+            buf1168 = reinterpret_tensor(buf1116, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf1116  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16044, slice_257, slice_258, neg_96, add_12247, mul_16045, add_12248, permute_1668, clone_97, view_1926, mul_16048], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf1139, mm_default, buf1161, buf1168, s27, s27, 896, stream=stream0)
+            buf1163 = buf1154; del buf1154  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16044, slice_257, slice_258, neg_96, add_12247, mul_16045, add_12248, permute_1668, clone_97, view_1926, mul_16048, view_1927, mm_991], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1161, (s27, 896), (896, 1), 0), permute_1671, out=buf1163)
+            del permute_1671
+            buf1162 = reinterpret_tensor(buf1156, (896, 32), (32, 1), 0); del buf1156  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16044, slice_257, slice_258, neg_96, add_12247, mul_16045, add_12248, permute_1668, clone_97, view_1926, mul_16048, view_1927, permute_1669, mm_990], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1161, (896, s27), (1, 896), 0), mm_144, out=buf1162)
+            del mm_144
+            buf1165 = reinterpret_tensor(buf1130, (32, 896), (896, 1), 0); del buf1130  # reuse
+            # Topologically Sorted Source Nodes: [permute_1673, mm_992], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1163, (32, s27), (1, 32), 0), view_395, out=buf1165)
+            del view_395
+            buf1169 = reinterpret_tensor(buf1161, (s27, 896), (896, 1), 0); del buf1161  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16044, slice_257, slice_258, neg_96, add_12247, mul_16045, add_12248, permute_1668, clone_97, view_1926, view_1931, result_171, permute_1677, mm_994], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1168, (s27, 896), (896, 1), 0), primals_216, out=buf1169)
+            del primals_216
+            buf1164 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3580], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1162, buf1164, 28672, stream=stream0)
+            buf1167 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3586], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1165, buf1167, 28672, stream=stream0)
+            buf1166 = reinterpret_tensor(buf1168, (s27, 896), (896, 1), 0); del buf1168  # reuse
+            # Topologically Sorted Source Nodes: [mm_993], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1163, permute_1675, out=buf1166)
+            del permute_1675
+            buf1172 = buf1128; del buf1128  # reuse
+            buf1173 = reinterpret_tensor(buf1139, (s27, 896), (896, 1), 0); del buf1139  # reuse
+            # Topologically Sorted Source Nodes: [view_1916, view_1918, add_12249, view_1923, add_12250, view_1925, add_12251, view_1930, add_12252, view_1932, add_12253, mul_16049, convert_element_type_3590, hidden_states_80, mul_16050, mul_16051, sum_65, pow_114, mul_16052, mul_16053, expand_109, div_32, pow_115, mul_16054, mul_16055, add_12254, convert_element_type_3591, add_12255, mul_16056, view_1933], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf1172, buf1149, buf1151, buf1157, buf1160, buf1166, buf1169, primals_215, add_4016, rsqrt_16, buf1173, s27, 896, stream=stream0)
+            del add_4016
+            del buf1149
+            del buf1151
+            del primals_215
+            del rsqrt_16
+            buf1175 = buf1163; del buf1163  # reuse
+            # Topologically Sorted Source Nodes: [mm_996], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1173, permute_1680, out=buf1175)
+            del permute_1680
+            buf1177 = reinterpret_tensor(buf1118, (32, 4864), (4864, 1), 0); del buf1118  # reuse
+            # Topologically Sorted Source Nodes: [permute_1682, mm_997], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1175, (32, s27), (1, 32), 0), view_389, out=buf1177)
+            del view_389
+            buf1174 = reinterpret_tensor(buf1165, (896, 32), (32, 1), 0); del buf1165  # reuse
+            # Topologically Sorted Source Nodes: [permute_1678, mm_995], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1173, (896, s27), (1, 896), 0), mm_142, out=buf1174)
+            del mm_142
+            buf1176 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3596], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1174, buf1176, 28672, stream=stream0)
+            buf1179 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3602], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1177, buf1179, 155648, stream=stream0)
+            buf1178 = reinterpret_tensor(buf1117, (s27, 4864), (4864, 1), 0); del buf1117  # reuse
+            # Topologically Sorted Source Nodes: [mm_998], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1175, permute_1684, out=buf1178)
+            del permute_1684
+            buf1180 = reinterpret_tensor(buf1108, (s27, 4864), (4864, 1), 0); del buf1108  # reuse
+            # Topologically Sorted Source Nodes: [view_1937, result_168, permute_1686, mm_999], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1172, (s27, 896), (896, 1), 0), primals_212, out=buf1180)
+            del primals_212
+            buf1181 = buf1124; del buf1124  # reuse
+            buf1188 = buf1115; del buf1115  # reuse
+            buf1190 = reinterpret_tensor(buf1107, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf1107  # reuse
+            buf1197 = reinterpret_tensor(buf1105, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf1105  # reuse
+            # Topologically Sorted Source Nodes: [view_1936, view_1938, add_12256, silu_7, mul_16057, mul_16058, mul_16059, convert_element_type_3620, neg_97, exp_16, add_12258, reciprocal_16, mul_16060, mul_16061, sub_3935, mul_16062, add_12259, mul_16063, convert_element_type_3622, mul_16064], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf1178, buf1180, add_3926, add_3969, buf1181, buf1188, buf1190, buf1197, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_3926
+            del add_3969
+            buf1189 = buf1173; del buf1173  # reuse
+            # Topologically Sorted Source Nodes: [view_1936, view_1938, add_12256, silu_7, mul_16057, view_1943, result_165, permute_1695, mm_1004], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1188, (s27, 4864), (4864, 1), 0), primals_209, out=buf1189)
+            del primals_209
+            buf1198 = buf1169; del buf1169  # reuse
+            # Topologically Sorted Source Nodes: [view_1936, view_1938, add_12256, silu_7, mul_16058, convert_element_type_3620, neg_97, exp_16, add_12258, reciprocal_16, mul_16060, mul_16061, sub_3935, mul_16062, add_12259, mul_16063, convert_element_type_3622, view_1949, result_162, permute_1704, mm_1009], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1197, (s27, 4864), (4864, 1), 0), primals_206, out=buf1198)
+            del primals_206
+            buf1183 = buf1175; del buf1175  # reuse
+            # Topologically Sorted Source Nodes: [view_1936, view_1938, add_12256, silu_7, mul_16057, mul_16059, view_1939, mm_1001], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1181, (s27, 4864), (4864, 1), 0), permute_1689, out=buf1183)
+            del permute_1689
+            buf1182 = reinterpret_tensor(buf1177, (4864, 32), (32, 1), 0); del buf1177  # reuse
+            # Topologically Sorted Source Nodes: [view_1936, view_1938, add_12256, silu_7, mul_16057, mul_16059, view_1939, permute_1687, mm_1000], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1181, (4864, s27), (1, 4864), 0), mm_139, out=buf1182)
+            del mm_139
+            buf1192 = buf1146; del buf1146  # reuse
+            # Topologically Sorted Source Nodes: [view_1936, view_1938, add_12256, silu_7, mul_16058, convert_element_type_3620, neg_97, exp_16, add_12258, reciprocal_16, mul_16060, mul_16061, sub_3935, mul_16062, add_12259, mul_16063, convert_element_type_3622, mul_16064, view_1945, mm_1006], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1190, (s27, 4864), (4864, 1), 0), permute_1698, out=buf1192)
+            del permute_1698
+            buf1191 = buf1109; del buf1109  # reuse
+            # Topologically Sorted Source Nodes: [view_1936, view_1938, add_12256, silu_7, mul_16058, convert_element_type_3620, neg_97, exp_16, add_12258, reciprocal_16, mul_16060, mul_16061, sub_3935, mul_16062, add_12259, mul_16063, convert_element_type_3622, mul_16064, view_1945, permute_1696, mm_1005], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1190, (4864, s27), (1, 4864), 0), mm_136, out=buf1191)
+            del mm_136
+            buf1185 = reinterpret_tensor(buf1174, (32, 896), (896, 1), 0); del buf1174  # reuse
+            # Topologically Sorted Source Nodes: [permute_1691, mm_1002], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1183, (32, s27), (1, 32), 0), view_377, out=buf1185)
+            buf1194 = reinterpret_tensor(buf1162, (32, 896), (896, 1), 0); del buf1162  # reuse
+            # Topologically Sorted Source Nodes: [permute_1700, mm_1007], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1192, (32, s27), (1, 32), 0), view_377, out=buf1194)
+            del view_377
+            buf1187 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3616], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1185, buf1187, 28672, stream=stream0)
+            buf1196 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3633], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1194, buf1196, 28672, stream=stream0)
+            buf1184 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3610], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1182, buf1184, 155648, stream=stream0)
+            buf1193 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3627], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1191, buf1193, 155648, stream=stream0)
+            buf1186 = buf1166; del buf1166  # reuse
+            # Topologically Sorted Source Nodes: [mm_1003], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1183, permute_1693, out=buf1186)
+            del permute_1693
+            buf1195 = buf1160; del buf1160  # reuse
+            # Topologically Sorted Source Nodes: [mm_1008], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1192, permute_1702, out=buf1195)
+            del permute_1702
+            buf1201 = buf1172; del buf1172  # reuse
+            buf1202 = buf1157; del buf1157  # reuse
+            # Topologically Sorted Source Nodes: [view_1942, view_1944, add_12257, view_1948, add_12260, view_1950, add_12261, mul_16065, convert_element_type_3637, hidden_states_76, mul_16066, mul_16067, sum_66, pow_116, mul_16068, mul_16069, expand_110, div_33, pow_117, mul_16070, mul_16071, add_12262, convert_element_type_3638, add_12263, mul_16072, view_1951], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf1201, buf1186, buf1189, buf1195, buf1198, primals_205, add_3858, rsqrt_15, buf1202, s27, 896, stream=stream0)
+            del add_3858
+            del buf1186
+            del primals_205
+            del rsqrt_15
+            buf1204 = buf1192; del buf1192  # reuse
+            # Topologically Sorted Source Nodes: [mm_1011], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1202, permute_1707, out=buf1204)
+            del permute_1707
+            buf1203 = reinterpret_tensor(buf1194, (896, 32), (32, 1), 0); del buf1194  # reuse
+            # Topologically Sorted Source Nodes: [permute_1705, mm_1010], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1202, (896, s27), (1, 896), 0), mm_133, out=buf1203)
+            del mm_133
+            buf1206 = buf1185; del buf1185  # reuse
+            # Topologically Sorted Source Nodes: [permute_1709, mm_1012], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1204, (32, s27), (1, 32), 0), view_371, out=buf1206)
+            del view_371
+            buf1205 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3643], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1203, buf1205, 28672, stream=stream0)
+            buf1208 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3649], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1206, buf1208, 28672, stream=stream0)
+            buf1207 = buf1202; del buf1202  # reuse
+            # Topologically Sorted Source Nodes: [mm_1013], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1204, permute_1711, out=buf1207)
+            del permute_1711
+            buf1209 = buf1198; del buf1198  # reuse
+            # Topologically Sorted Source Nodes: [view_1955, result_159, permute_1713, mm_1014], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1201, (s27, 896), (896, 1), 0), primals_202, out=buf1209)
+            del primals_202
+            buf1210 = reinterpret_tensor(buf1207, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf1207  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_1954, view_1956, add_12264, view_1957, permute_1714, _scaled_dot_product_efficient_attention_backward_16], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf1210, buf1209, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_1954, view_1956, add_12264, view_1957, permute_1714, _scaled_dot_product_efficient_attention_backward_16], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf1211 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf1210, add_3723, view_366, view_367, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_28, getitem_29, getitem_30, getitem_31, 0.0, [True, True, True, False], scale=0.125)
+            del add_3723
+            del getitem_28
+            del getitem_29
+            del getitem_30
+            del getitem_31
+            del view_366
+            del view_367
+            buf1212 = buf1211[0]
+            assert_size_stride(buf1212, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1212, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1213 = buf1211[1]
+            assert_size_stride(buf1213, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1213, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1215 = reinterpret_tensor(buf1159, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf1159  # reuse
+            # Topologically Sorted Source Nodes: [view_1959, sum_68], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf1213, buf1215, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf1214 = buf1211[2]
+            assert_size_stride(buf1214, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1214, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf1211
+            buf1216 = buf1143; del buf1143  # reuse
+            buf1217 = reinterpret_tensor(buf1152, (s27, 128), (128, 1), 0); del buf1152  # reuse
+            # Topologically Sorted Source Nodes: [view_1958, sum_67, squeeze_32, permute_1715, clone_98, view_1960, mul_16077, view_1961], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf1214, buf1216, buf1217, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf1218 = buf1153; del buf1153  # reuse
+            # Topologically Sorted Source Nodes: [permute_1716, mm_1015], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1217, (128, s27), (1, 128), 0), mm_130, out=buf1218)
+            del mm_130
+            buf1219 = buf1204; del buf1204  # reuse
+            # Topologically Sorted Source Nodes: [mm_1016], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1217, permute_1718, out=buf1219)
+            del permute_1718
+            buf1220 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3657], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1218, buf1220, 4096, stream=stream0)
+            buf1221 = buf1206; del buf1206  # reuse
+            # Topologically Sorted Source Nodes: [permute_1720, mm_1017], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1219, (32, s27), (1, 32), 0), view_347, out=buf1221)
+            buf1223 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3663], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1221, buf1223, 28672, stream=stream0)
+            buf1225 = reinterpret_tensor(buf1217, (1, s27, 128), (128*s27, 128, 1), 0); del buf1217  # reuse
+            buf1232 = reinterpret_tensor(buf1142, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf1142  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1959, sum_68, squeeze_33, mul_16073, slice_259, slice_260, neg_98, add_12265, mul_16074, add_12266, permute_1725, clone_99, view_1967, mul_16078], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf1215, mm_default, buf1225, buf1232, s27, s27, 128, stream=stream0)
+            buf1226 = buf1218; del buf1218  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1959, sum_68, squeeze_33, mul_16073, slice_259, slice_260, neg_98, add_12265, mul_16074, add_12266, permute_1725, clone_99, view_1967, mul_16078, view_1968, permute_1726, mm_1020], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1225, (128, s27), (1, 128), 0), mm_128, out=buf1226)
+            del mm_128
+            buf1227 = buf1183; del buf1183  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1959, sum_68, squeeze_33, mul_16073, slice_259, slice_260, neg_98, add_12265, mul_16074, add_12266, permute_1725, clone_99, view_1967, mul_16078, view_1968, mm_1021], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1225, (s27, 128), (128, 1), 0), permute_1728, out=buf1227)
+            del permute_1728
+            buf1228 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3671], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1226, buf1228, 4096, stream=stream0)
+            buf1229 = buf1221; del buf1221  # reuse
+            # Topologically Sorted Source Nodes: [permute_1730, mm_1022], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1227, (32, s27), (1, 32), 0), view_347, out=buf1229)
+            buf1231 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3677], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1229, buf1231, 28672, stream=stream0)
+            buf1224 = reinterpret_tensor(buf1214, (s27, 896), (896, 1), 0); del buf1214  # reuse
+            # Topologically Sorted Source Nodes: [view_1958, sum_67, squeeze_32, permute_1715, clone_98, view_1960, view_1965, result_156, permute_1724, mm_1019], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1216, (s27, 128), (128, 1), 0), primals_198, out=buf1224)
+            del primals_198
+            buf1233 = reinterpret_tensor(buf1213, (s27, 896), (896, 1), 0); del buf1213  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_1959, sum_68, squeeze_33, mul_16073, slice_259, slice_260, neg_98, add_12265, mul_16074, add_12266, permute_1725, clone_99, view_1967, view_1972, result_153, permute_1734, mm_1024], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1232, (s27, 128), (128, 1), 0), primals_194, out=buf1233)
+            del primals_194
+            buf1222 = reinterpret_tensor(buf1210, (s27, 896), (896, 1), 0); del buf1210  # reuse
+            # Topologically Sorted Source Nodes: [mm_1018], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1219, permute_1722, out=buf1222)
+            del permute_1722
+            buf1230 = buf1209; del buf1209  # reuse
+            # Topologically Sorted Source Nodes: [mm_1023], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1227, permute_1732, out=buf1230)
+            del permute_1732
+            buf1234 = reinterpret_tensor(buf1195, (1, s27, 896), (896*s27, 896, 1), 0); del buf1195  # reuse
+            buf1241 = reinterpret_tensor(buf1189, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf1189  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16075, slice_261, slice_262, neg_99, add_12267, mul_16076, add_12268, permute_1735, clone_100, view_1974, mul_16079], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf1212, mm_default, buf1234, buf1241, s27, s27, 896, stream=stream0)
+            buf1236 = buf1227; del buf1227  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16075, slice_261, slice_262, neg_99, add_12267, mul_16076, add_12268, permute_1735, clone_100, view_1974, mul_16079, view_1975, mm_1026], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1234, (s27, 896), (896, 1), 0), permute_1738, out=buf1236)
+            del permute_1738
+            buf1235 = reinterpret_tensor(buf1229, (896, 32), (32, 1), 0); del buf1229  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16075, slice_261, slice_262, neg_99, add_12267, mul_16076, add_12268, permute_1735, clone_100, view_1974, mul_16079, view_1975, permute_1736, mm_1025], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1234, (896, s27), (1, 896), 0), mm_126, out=buf1235)
+            del mm_126
+            buf1238 = reinterpret_tensor(buf1203, (32, 896), (896, 1), 0); del buf1203  # reuse
+            # Topologically Sorted Source Nodes: [permute_1740, mm_1027], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1236, (32, s27), (1, 32), 0), view_347, out=buf1238)
+            del view_347
+            buf1242 = reinterpret_tensor(buf1234, (s27, 896), (896, 1), 0); del buf1234  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16075, slice_261, slice_262, neg_99, add_12267, mul_16076, add_12268, permute_1735, clone_100, view_1974, view_1979, result_150, permute_1744, mm_1029], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1241, (s27, 896), (896, 1), 0), primals_190, out=buf1242)
+            del primals_190
+            buf1237 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3685], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1235, buf1237, 28672, stream=stream0)
+            buf1240 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3691], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1238, buf1240, 28672, stream=stream0)
+            buf1239 = reinterpret_tensor(buf1241, (s27, 896), (896, 1), 0); del buf1241  # reuse
+            # Topologically Sorted Source Nodes: [mm_1028], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1236, permute_1742, out=buf1239)
+            del permute_1742
+            buf1245 = buf1201; del buf1201  # reuse
+            buf1246 = reinterpret_tensor(buf1212, (s27, 896), (896, 1), 0); del buf1212  # reuse
+            # Topologically Sorted Source Nodes: [view_1964, view_1966, add_12269, view_1971, add_12270, view_1973, add_12271, view_1978, add_12272, view_1980, add_12273, mul_16080, convert_element_type_3695, hidden_states_70, mul_16081, mul_16082, sum_69, pow_118, mul_16083, mul_16084, expand_111, div_34, pow_119, mul_16085, mul_16086, add_12274, convert_element_type_3696, add_12275, mul_16087, view_1981], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf1245, buf1222, buf1224, buf1230, buf1233, buf1239, buf1242, primals_189, add_3524, rsqrt_14, buf1246, s27, 896, stream=stream0)
+            del add_3524
+            del buf1222
+            del buf1224
+            del primals_189
+            del rsqrt_14
+            buf1248 = buf1236; del buf1236  # reuse
+            # Topologically Sorted Source Nodes: [mm_1031], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1246, permute_1747, out=buf1248)
+            del permute_1747
+            buf1250 = reinterpret_tensor(buf1191, (32, 4864), (4864, 1), 0); del buf1191  # reuse
+            # Topologically Sorted Source Nodes: [permute_1749, mm_1032], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1248, (32, s27), (1, 32), 0), view_341, out=buf1250)
+            del view_341
+            buf1247 = reinterpret_tensor(buf1238, (896, 32), (32, 1), 0); del buf1238  # reuse
+            # Topologically Sorted Source Nodes: [permute_1745, mm_1030], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1246, (896, s27), (1, 896), 0), mm_124, out=buf1247)
+            del mm_124
+            buf1249 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3701], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1247, buf1249, 28672, stream=stream0)
+            buf1252 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3707], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1250, buf1252, 155648, stream=stream0)
+            buf1251 = reinterpret_tensor(buf1190, (s27, 4864), (4864, 1), 0); del buf1190  # reuse
+            # Topologically Sorted Source Nodes: [mm_1033], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1248, permute_1751, out=buf1251)
+            del permute_1751
+            buf1253 = reinterpret_tensor(buf1181, (s27, 4864), (4864, 1), 0); del buf1181  # reuse
+            # Topologically Sorted Source Nodes: [view_1985, result_147, permute_1753, mm_1034], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1245, (s27, 896), (896, 1), 0), primals_186, out=buf1253)
+            del primals_186
+            buf1254 = buf1197; del buf1197  # reuse
+            buf1261 = buf1188; del buf1188  # reuse
+            buf1263 = reinterpret_tensor(buf1180, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf1180  # reuse
+            buf1270 = reinterpret_tensor(buf1178, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf1178  # reuse
+            # Topologically Sorted Source Nodes: [view_1984, view_1986, add_12276, silu_6, mul_16088, mul_16089, mul_16090, convert_element_type_3725, neg_100, exp_17, add_12278, reciprocal_17, mul_16091, mul_16092, sub_3936, mul_16093, add_12279, mul_16094, convert_element_type_3727, mul_16095], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf1251, buf1253, add_3434, add_3477, buf1254, buf1261, buf1263, buf1270, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_3434
+            del add_3477
+            buf1262 = buf1246; del buf1246  # reuse
+            # Topologically Sorted Source Nodes: [view_1984, view_1986, add_12276, silu_6, mul_16088, view_1991, result_144, permute_1762, mm_1039], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1261, (s27, 4864), (4864, 1), 0), primals_183, out=buf1262)
+            del primals_183
+            buf1271 = buf1242; del buf1242  # reuse
+            # Topologically Sorted Source Nodes: [view_1984, view_1986, add_12276, silu_6, mul_16089, convert_element_type_3725, neg_100, exp_17, add_12278, reciprocal_17, mul_16091, mul_16092, sub_3936, mul_16093, add_12279, mul_16094, convert_element_type_3727, view_1997, result_141, permute_1771, mm_1044], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1270, (s27, 4864), (4864, 1), 0), primals_180, out=buf1271)
+            del primals_180
+            buf1256 = buf1248; del buf1248  # reuse
+            # Topologically Sorted Source Nodes: [view_1984, view_1986, add_12276, silu_6, mul_16088, mul_16090, view_1987, mm_1036], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1254, (s27, 4864), (4864, 1), 0), permute_1756, out=buf1256)
+            del permute_1756
+            buf1255 = reinterpret_tensor(buf1250, (4864, 32), (32, 1), 0); del buf1250  # reuse
+            # Topologically Sorted Source Nodes: [view_1984, view_1986, add_12276, silu_6, mul_16088, mul_16090, view_1987, permute_1754, mm_1035], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1254, (4864, s27), (1, 4864), 0), mm_121, out=buf1255)
+            del mm_121
+            buf1265 = buf1219; del buf1219  # reuse
+            # Topologically Sorted Source Nodes: [view_1984, view_1986, add_12276, silu_6, mul_16089, convert_element_type_3725, neg_100, exp_17, add_12278, reciprocal_17, mul_16091, mul_16092, sub_3936, mul_16093, add_12279, mul_16094, convert_element_type_3727, mul_16095, view_1993, mm_1041], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1263, (s27, 4864), (4864, 1), 0), permute_1765, out=buf1265)
+            del permute_1765
+            buf1264 = buf1182; del buf1182  # reuse
+            # Topologically Sorted Source Nodes: [view_1984, view_1986, add_12276, silu_6, mul_16089, convert_element_type_3725, neg_100, exp_17, add_12278, reciprocal_17, mul_16091, mul_16092, sub_3936, mul_16093, add_12279, mul_16094, convert_element_type_3727, mul_16095, view_1993, permute_1763, mm_1040], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1263, (4864, s27), (1, 4864), 0), mm_118, out=buf1264)
+            del mm_118
+            buf1258 = reinterpret_tensor(buf1247, (32, 896), (896, 1), 0); del buf1247  # reuse
+            # Topologically Sorted Source Nodes: [permute_1758, mm_1037], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1256, (32, s27), (1, 32), 0), view_329, out=buf1258)
+            buf1267 = reinterpret_tensor(buf1235, (32, 896), (896, 1), 0); del buf1235  # reuse
+            # Topologically Sorted Source Nodes: [permute_1767, mm_1042], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1265, (32, s27), (1, 32), 0), view_329, out=buf1267)
+            del view_329
+            buf1260 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3721], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1258, buf1260, 28672, stream=stream0)
+            buf1269 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3738], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1267, buf1269, 28672, stream=stream0)
+            buf1257 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3715], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1255, buf1257, 155648, stream=stream0)
+            buf1266 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3732], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1264, buf1266, 155648, stream=stream0)
+            buf1259 = buf1239; del buf1239  # reuse
+            # Topologically Sorted Source Nodes: [mm_1038], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1256, permute_1760, out=buf1259)
+            del permute_1760
+            buf1268 = buf1233; del buf1233  # reuse
+            # Topologically Sorted Source Nodes: [mm_1043], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1265, permute_1769, out=buf1268)
+            del permute_1769
+            buf1274 = buf1245; del buf1245  # reuse
+            buf1275 = buf1230; del buf1230  # reuse
+            # Topologically Sorted Source Nodes: [view_1990, view_1992, add_12277, view_1996, add_12280, view_1998, add_12281, mul_16096, convert_element_type_3742, hidden_states_66, mul_16097, mul_16098, sum_70, pow_120, mul_16099, mul_16100, expand_112, div_35, pow_121, mul_16101, mul_16102, add_12282, convert_element_type_3743, add_12283, mul_16103, view_1999], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf1274, buf1259, buf1262, buf1268, buf1271, primals_179, add_3366, rsqrt_13, buf1275, s27, 896, stream=stream0)
+            del add_3366
+            del buf1259
+            del primals_179
+            del rsqrt_13
+            buf1277 = buf1265; del buf1265  # reuse
+            # Topologically Sorted Source Nodes: [mm_1046], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1275, permute_1774, out=buf1277)
+            del permute_1774
+            buf1276 = reinterpret_tensor(buf1267, (896, 32), (32, 1), 0); del buf1267  # reuse
+            # Topologically Sorted Source Nodes: [permute_1772, mm_1045], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1275, (896, s27), (1, 896), 0), mm_115, out=buf1276)
+            del mm_115
+            buf1279 = buf1258; del buf1258  # reuse
+            # Topologically Sorted Source Nodes: [permute_1776, mm_1047], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1277, (32, s27), (1, 32), 0), view_323, out=buf1279)
+            del view_323
+            buf1278 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3748], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1276, buf1278, 28672, stream=stream0)
+            buf1281 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3754], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1279, buf1281, 28672, stream=stream0)
+            buf1280 = buf1275; del buf1275  # reuse
+            # Topologically Sorted Source Nodes: [mm_1048], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1277, permute_1778, out=buf1280)
+            del permute_1778
+            buf1282 = buf1271; del buf1271  # reuse
+            # Topologically Sorted Source Nodes: [view_2003, result_138, permute_1780, mm_1049], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1274, (s27, 896), (896, 1), 0), primals_176, out=buf1282)
+            del primals_176
+            buf1283 = reinterpret_tensor(buf1280, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf1280  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_2002, view_2004, add_12284, view_2005, permute_1781, _scaled_dot_product_efficient_attention_backward_17], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf1283, buf1282, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_2002, view_2004, add_12284, view_2005, permute_1781, _scaled_dot_product_efficient_attention_backward_17], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf1284 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf1283, add_3231, view_318, view_319, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_24, getitem_25, getitem_26, getitem_27, 0.0, [True, True, True, False], scale=0.125)
+            del add_3231
+            del getitem_24
+            del getitem_25
+            del getitem_26
+            del getitem_27
+            del view_318
+            del view_319
+            buf1285 = buf1284[0]
+            assert_size_stride(buf1285, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1285, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1286 = buf1284[1]
+            assert_size_stride(buf1286, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1286, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1288 = reinterpret_tensor(buf1232, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf1232  # reuse
+            # Topologically Sorted Source Nodes: [view_2007, sum_72], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf1286, buf1288, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf1287 = buf1284[2]
+            assert_size_stride(buf1287, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1287, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf1284
+            buf1289 = buf1216; del buf1216  # reuse
+            buf1290 = reinterpret_tensor(buf1225, (s27, 128), (128, 1), 0); del buf1225  # reuse
+            # Topologically Sorted Source Nodes: [view_2006, sum_71, squeeze_34, permute_1782, clone_101, view_2008, mul_16108, view_2009], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf1287, buf1289, buf1290, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf1291 = buf1226; del buf1226  # reuse
+            # Topologically Sorted Source Nodes: [permute_1783, mm_1050], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1290, (128, s27), (1, 128), 0), mm_112, out=buf1291)
+            del mm_112
+            buf1292 = buf1277; del buf1277  # reuse
+            # Topologically Sorted Source Nodes: [mm_1051], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1290, permute_1785, out=buf1292)
+            del permute_1785
+            buf1293 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3762], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1291, buf1293, 4096, stream=stream0)
+            buf1294 = buf1279; del buf1279  # reuse
+            # Topologically Sorted Source Nodes: [permute_1787, mm_1052], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1292, (32, s27), (1, 32), 0), view_299, out=buf1294)
+            buf1296 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3768], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1294, buf1296, 28672, stream=stream0)
+            buf1298 = reinterpret_tensor(buf1290, (1, s27, 128), (128*s27, 128, 1), 0); del buf1290  # reuse
+            buf1305 = reinterpret_tensor(buf1215, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf1215  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2007, sum_72, squeeze_35, mul_16104, slice_263, slice_264, neg_101, add_12285, mul_16105, add_12286, permute_1792, clone_102, view_2015, mul_16109], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf1288, mm_default, buf1298, buf1305, s27, s27, 128, stream=stream0)
+            buf1299 = buf1291; del buf1291  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2007, sum_72, squeeze_35, mul_16104, slice_263, slice_264, neg_101, add_12285, mul_16105, add_12286, permute_1792, clone_102, view_2015, mul_16109, view_2016, permute_1793, mm_1055], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1298, (128, s27), (1, 128), 0), mm_110, out=buf1299)
+            del mm_110
+            buf1300 = buf1256; del buf1256  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2007, sum_72, squeeze_35, mul_16104, slice_263, slice_264, neg_101, add_12285, mul_16105, add_12286, permute_1792, clone_102, view_2015, mul_16109, view_2016, mm_1056], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1298, (s27, 128), (128, 1), 0), permute_1795, out=buf1300)
+            del permute_1795
+            buf1301 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3776], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1299, buf1301, 4096, stream=stream0)
+            buf1302 = buf1294; del buf1294  # reuse
+            # Topologically Sorted Source Nodes: [permute_1797, mm_1057], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1300, (32, s27), (1, 32), 0), view_299, out=buf1302)
+            buf1304 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3782], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1302, buf1304, 28672, stream=stream0)
+            buf1297 = reinterpret_tensor(buf1287, (s27, 896), (896, 1), 0); del buf1287  # reuse
+            # Topologically Sorted Source Nodes: [view_2006, sum_71, squeeze_34, permute_1782, clone_101, view_2008, view_2013, result_135, permute_1791, mm_1054], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1289, (s27, 128), (128, 1), 0), primals_172, out=buf1297)
+            del primals_172
+            buf1306 = reinterpret_tensor(buf1286, (s27, 896), (896, 1), 0); del buf1286  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2007, sum_72, squeeze_35, mul_16104, slice_263, slice_264, neg_101, add_12285, mul_16105, add_12286, permute_1792, clone_102, view_2015, view_2020, result_132, permute_1801, mm_1059], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1305, (s27, 128), (128, 1), 0), primals_168, out=buf1306)
+            del primals_168
+            buf1295 = reinterpret_tensor(buf1283, (s27, 896), (896, 1), 0); del buf1283  # reuse
+            # Topologically Sorted Source Nodes: [mm_1053], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1292, permute_1789, out=buf1295)
+            del permute_1789
+            buf1303 = buf1282; del buf1282  # reuse
+            # Topologically Sorted Source Nodes: [mm_1058], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1300, permute_1799, out=buf1303)
+            del permute_1799
+            buf1307 = reinterpret_tensor(buf1268, (1, s27, 896), (896*s27, 896, 1), 0); del buf1268  # reuse
+            buf1314 = reinterpret_tensor(buf1262, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf1262  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16106, slice_265, slice_266, neg_102, add_12287, mul_16107, add_12288, permute_1802, clone_103, view_2022, mul_16110], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf1285, mm_default, buf1307, buf1314, s27, s27, 896, stream=stream0)
+            buf1309 = buf1300; del buf1300  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16106, slice_265, slice_266, neg_102, add_12287, mul_16107, add_12288, permute_1802, clone_103, view_2022, mul_16110, view_2023, mm_1061], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1307, (s27, 896), (896, 1), 0), permute_1805, out=buf1309)
+            del permute_1805
+            buf1308 = reinterpret_tensor(buf1302, (896, 32), (32, 1), 0); del buf1302  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16106, slice_265, slice_266, neg_102, add_12287, mul_16107, add_12288, permute_1802, clone_103, view_2022, mul_16110, view_2023, permute_1803, mm_1060], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1307, (896, s27), (1, 896), 0), mm_108, out=buf1308)
+            del mm_108
+            buf1311 = reinterpret_tensor(buf1276, (32, 896), (896, 1), 0); del buf1276  # reuse
+            # Topologically Sorted Source Nodes: [permute_1807, mm_1062], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1309, (32, s27), (1, 32), 0), view_299, out=buf1311)
+            del view_299
+            buf1315 = reinterpret_tensor(buf1307, (s27, 896), (896, 1), 0); del buf1307  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16106, slice_265, slice_266, neg_102, add_12287, mul_16107, add_12288, permute_1802, clone_103, view_2022, view_2027, result_129, permute_1811, mm_1064], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1314, (s27, 896), (896, 1), 0), primals_164, out=buf1315)
+            del primals_164
+            buf1310 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3790], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1308, buf1310, 28672, stream=stream0)
+            buf1313 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3796], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1311, buf1313, 28672, stream=stream0)
+            buf1312 = reinterpret_tensor(buf1314, (s27, 896), (896, 1), 0); del buf1314  # reuse
+            # Topologically Sorted Source Nodes: [mm_1063], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1309, permute_1809, out=buf1312)
+            del permute_1809
+            buf1318 = buf1274; del buf1274  # reuse
+            buf1319 = reinterpret_tensor(buf1285, (s27, 896), (896, 1), 0); del buf1285  # reuse
+            # Topologically Sorted Source Nodes: [view_2012, view_2014, add_12289, view_2019, add_12290, view_2021, add_12291, view_2026, add_12292, view_2028, add_12293, mul_16111, convert_element_type_3800, hidden_states_60, mul_16112, mul_16113, sum_73, pow_122, mul_16114, mul_16115, expand_113, div_36, pow_123, mul_16116, mul_16117, add_12294, convert_element_type_3801, add_12295, mul_16118, view_2029], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf1318, buf1295, buf1297, buf1303, buf1306, buf1312, buf1315, primals_163, add_3032, rsqrt_12, buf1319, s27, 896, stream=stream0)
+            del add_3032
+            del buf1295
+            del buf1297
+            del primals_163
+            del rsqrt_12
+            buf1321 = buf1309; del buf1309  # reuse
+            # Topologically Sorted Source Nodes: [mm_1066], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1319, permute_1814, out=buf1321)
+            del permute_1814
+            buf1323 = reinterpret_tensor(buf1264, (32, 4864), (4864, 1), 0); del buf1264  # reuse
+            # Topologically Sorted Source Nodes: [permute_1816, mm_1067], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1321, (32, s27), (1, 32), 0), view_293, out=buf1323)
+            del view_293
+            buf1320 = reinterpret_tensor(buf1311, (896, 32), (32, 1), 0); del buf1311  # reuse
+            # Topologically Sorted Source Nodes: [permute_1812, mm_1065], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1319, (896, s27), (1, 896), 0), mm_106, out=buf1320)
+            del mm_106
+            buf1322 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3806], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1320, buf1322, 28672, stream=stream0)
+            buf1325 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3812], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1323, buf1325, 155648, stream=stream0)
+            buf1324 = reinterpret_tensor(buf1263, (s27, 4864), (4864, 1), 0); del buf1263  # reuse
+            # Topologically Sorted Source Nodes: [mm_1068], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1321, permute_1818, out=buf1324)
+            del permute_1818
+            buf1326 = reinterpret_tensor(buf1254, (s27, 4864), (4864, 1), 0); del buf1254  # reuse
+            # Topologically Sorted Source Nodes: [view_2033, result_126, permute_1820, mm_1069], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1318, (s27, 896), (896, 1), 0), primals_160, out=buf1326)
+            del primals_160
+            buf1327 = buf1270; del buf1270  # reuse
+            buf1334 = buf1261; del buf1261  # reuse
+            buf1336 = reinterpret_tensor(buf1253, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf1253  # reuse
+            buf1343 = reinterpret_tensor(buf1251, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf1251  # reuse
+            # Topologically Sorted Source Nodes: [view_2032, view_2034, add_12296, silu_5, mul_16119, mul_16120, mul_16121, convert_element_type_3830, neg_103, exp_18, add_12298, reciprocal_18, mul_16122, mul_16123, sub_3937, mul_16124, add_12299, mul_16125, convert_element_type_3832, mul_16126], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf1324, buf1326, add_2942, add_2985, buf1327, buf1334, buf1336, buf1343, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_2942
+            del add_2985
+            buf1335 = buf1319; del buf1319  # reuse
+            # Topologically Sorted Source Nodes: [view_2032, view_2034, add_12296, silu_5, mul_16119, view_2039, result_123, permute_1829, mm_1074], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1334, (s27, 4864), (4864, 1), 0), primals_157, out=buf1335)
+            del primals_157
+            buf1344 = buf1315; del buf1315  # reuse
+            # Topologically Sorted Source Nodes: [view_2032, view_2034, add_12296, silu_5, mul_16120, convert_element_type_3830, neg_103, exp_18, add_12298, reciprocal_18, mul_16122, mul_16123, sub_3937, mul_16124, add_12299, mul_16125, convert_element_type_3832, view_2045, result_120, permute_1838, mm_1079], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1343, (s27, 4864), (4864, 1), 0), primals_154, out=buf1344)
+            del primals_154
+            buf1329 = buf1321; del buf1321  # reuse
+            # Topologically Sorted Source Nodes: [view_2032, view_2034, add_12296, silu_5, mul_16119, mul_16121, view_2035, mm_1071], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1327, (s27, 4864), (4864, 1), 0), permute_1823, out=buf1329)
+            del permute_1823
+            buf1328 = reinterpret_tensor(buf1323, (4864, 32), (32, 1), 0); del buf1323  # reuse
+            # Topologically Sorted Source Nodes: [view_2032, view_2034, add_12296, silu_5, mul_16119, mul_16121, view_2035, permute_1821, mm_1070], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1327, (4864, s27), (1, 4864), 0), mm_103, out=buf1328)
+            del mm_103
+            buf1338 = buf1292; del buf1292  # reuse
+            # Topologically Sorted Source Nodes: [view_2032, view_2034, add_12296, silu_5, mul_16120, convert_element_type_3830, neg_103, exp_18, add_12298, reciprocal_18, mul_16122, mul_16123, sub_3937, mul_16124, add_12299, mul_16125, convert_element_type_3832, mul_16126, view_2041, mm_1076], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1336, (s27, 4864), (4864, 1), 0), permute_1832, out=buf1338)
+            del permute_1832
+            buf1337 = buf1255; del buf1255  # reuse
+            # Topologically Sorted Source Nodes: [view_2032, view_2034, add_12296, silu_5, mul_16120, convert_element_type_3830, neg_103, exp_18, add_12298, reciprocal_18, mul_16122, mul_16123, sub_3937, mul_16124, add_12299, mul_16125, convert_element_type_3832, mul_16126, view_2041, permute_1830, mm_1075], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1336, (4864, s27), (1, 4864), 0), mm_100, out=buf1337)
+            del mm_100
+            buf1331 = reinterpret_tensor(buf1320, (32, 896), (896, 1), 0); del buf1320  # reuse
+            # Topologically Sorted Source Nodes: [permute_1825, mm_1072], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1329, (32, s27), (1, 32), 0), view_281, out=buf1331)
+            buf1340 = reinterpret_tensor(buf1308, (32, 896), (896, 1), 0); del buf1308  # reuse
+            # Topologically Sorted Source Nodes: [permute_1834, mm_1077], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1338, (32, s27), (1, 32), 0), view_281, out=buf1340)
+            del view_281
+            buf1333 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3826], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1331, buf1333, 28672, stream=stream0)
+            buf1342 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3843], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1340, buf1342, 28672, stream=stream0)
+            buf1330 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3820], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1328, buf1330, 155648, stream=stream0)
+            buf1339 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3837], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1337, buf1339, 155648, stream=stream0)
+            buf1332 = buf1312; del buf1312  # reuse
+            # Topologically Sorted Source Nodes: [mm_1073], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1329, permute_1827, out=buf1332)
+            del permute_1827
+            buf1341 = buf1306; del buf1306  # reuse
+            # Topologically Sorted Source Nodes: [mm_1078], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1338, permute_1836, out=buf1341)
+            del permute_1836
+            buf1347 = buf1318; del buf1318  # reuse
+            buf1348 = buf1303; del buf1303  # reuse
+            # Topologically Sorted Source Nodes: [view_2038, view_2040, add_12297, view_2044, add_12300, view_2046, add_12301, mul_16127, convert_element_type_3847, hidden_states_56, mul_16128, mul_16129, sum_74, pow_124, mul_16130, mul_16131, expand_114, div_37, pow_125, mul_16132, mul_16133, add_12302, convert_element_type_3848, add_12303, mul_16134, view_2047], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf1347, buf1332, buf1335, buf1341, buf1344, primals_153, add_2874, rsqrt_11, buf1348, s27, 896, stream=stream0)
+            del add_2874
+            del buf1332
+            del primals_153
+            del rsqrt_11
+            buf1350 = buf1338; del buf1338  # reuse
+            # Topologically Sorted Source Nodes: [mm_1081], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1348, permute_1841, out=buf1350)
+            del permute_1841
+            buf1349 = reinterpret_tensor(buf1340, (896, 32), (32, 1), 0); del buf1340  # reuse
+            # Topologically Sorted Source Nodes: [permute_1839, mm_1080], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1348, (896, s27), (1, 896), 0), mm_97, out=buf1349)
+            del mm_97
+            buf1352 = buf1331; del buf1331  # reuse
+            # Topologically Sorted Source Nodes: [permute_1843, mm_1082], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1350, (32, s27), (1, 32), 0), view_275, out=buf1352)
+            del view_275
+            buf1351 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3853], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1349, buf1351, 28672, stream=stream0)
+            buf1354 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3859], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1352, buf1354, 28672, stream=stream0)
+            buf1353 = buf1348; del buf1348  # reuse
+            # Topologically Sorted Source Nodes: [mm_1083], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1350, permute_1845, out=buf1353)
+            del permute_1845
+            buf1355 = buf1344; del buf1344  # reuse
+            # Topologically Sorted Source Nodes: [view_2051, result_117, permute_1847, mm_1084], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1347, (s27, 896), (896, 1), 0), primals_150, out=buf1355)
+            del primals_150
+            buf1356 = reinterpret_tensor(buf1353, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf1353  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_2050, view_2052, add_12304, view_2053, permute_1848, _scaled_dot_product_efficient_attention_backward_18], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf1356, buf1355, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_2050, view_2052, add_12304, view_2053, permute_1848, _scaled_dot_product_efficient_attention_backward_18], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf1357 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf1356, add_2739, view_270, view_271, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_20, getitem_21, getitem_22, getitem_23, 0.0, [True, True, True, False], scale=0.125)
+            del add_2739
+            del getitem_20
+            del getitem_21
+            del getitem_22
+            del getitem_23
+            del view_270
+            del view_271
+            buf1358 = buf1357[0]
+            assert_size_stride(buf1358, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1358, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1359 = buf1357[1]
+            assert_size_stride(buf1359, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1359, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1361 = reinterpret_tensor(buf1305, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf1305  # reuse
+            # Topologically Sorted Source Nodes: [view_2055, sum_76], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf1359, buf1361, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf1360 = buf1357[2]
+            assert_size_stride(buf1360, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1360, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf1357
+            buf1362 = buf1289; del buf1289  # reuse
+            buf1363 = reinterpret_tensor(buf1298, (s27, 128), (128, 1), 0); del buf1298  # reuse
+            # Topologically Sorted Source Nodes: [view_2054, sum_75, squeeze_36, permute_1849, clone_104, view_2056, mul_16139, view_2057], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf1360, buf1362, buf1363, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf1364 = buf1299; del buf1299  # reuse
+            # Topologically Sorted Source Nodes: [permute_1850, mm_1085], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1363, (128, s27), (1, 128), 0), mm_94, out=buf1364)
+            del mm_94
+            buf1365 = buf1350; del buf1350  # reuse
+            # Topologically Sorted Source Nodes: [mm_1086], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1363, permute_1852, out=buf1365)
+            del permute_1852
+            buf1366 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3867], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1364, buf1366, 4096, stream=stream0)
+            buf1367 = buf1352; del buf1352  # reuse
+            # Topologically Sorted Source Nodes: [permute_1854, mm_1087], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1365, (32, s27), (1, 32), 0), view_251, out=buf1367)
+            buf1369 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3873], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1367, buf1369, 28672, stream=stream0)
+            buf1371 = reinterpret_tensor(buf1363, (1, s27, 128), (128*s27, 128, 1), 0); del buf1363  # reuse
+            buf1378 = reinterpret_tensor(buf1288, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf1288  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2055, sum_76, squeeze_37, mul_16135, slice_267, slice_268, neg_104, add_12305, mul_16136, add_12306, permute_1859, clone_105, view_2063, mul_16140], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf1361, mm_default, buf1371, buf1378, s27, s27, 128, stream=stream0)
+            buf1372 = buf1364; del buf1364  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2055, sum_76, squeeze_37, mul_16135, slice_267, slice_268, neg_104, add_12305, mul_16136, add_12306, permute_1859, clone_105, view_2063, mul_16140, view_2064, permute_1860, mm_1090], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1371, (128, s27), (1, 128), 0), mm_92, out=buf1372)
+            del mm_92
+            buf1373 = buf1329; del buf1329  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2055, sum_76, squeeze_37, mul_16135, slice_267, slice_268, neg_104, add_12305, mul_16136, add_12306, permute_1859, clone_105, view_2063, mul_16140, view_2064, mm_1091], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1371, (s27, 128), (128, 1), 0), permute_1862, out=buf1373)
+            del permute_1862
+            buf1374 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3881], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1372, buf1374, 4096, stream=stream0)
+            buf1375 = buf1367; del buf1367  # reuse
+            # Topologically Sorted Source Nodes: [permute_1864, mm_1092], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1373, (32, s27), (1, 32), 0), view_251, out=buf1375)
+            buf1377 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3887], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1375, buf1377, 28672, stream=stream0)
+            buf1370 = reinterpret_tensor(buf1360, (s27, 896), (896, 1), 0); del buf1360  # reuse
+            # Topologically Sorted Source Nodes: [view_2054, sum_75, squeeze_36, permute_1849, clone_104, view_2056, view_2061, result_114, permute_1858, mm_1089], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1362, (s27, 128), (128, 1), 0), primals_146, out=buf1370)
+            del primals_146
+            buf1379 = reinterpret_tensor(buf1359, (s27, 896), (896, 1), 0); del buf1359  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2055, sum_76, squeeze_37, mul_16135, slice_267, slice_268, neg_104, add_12305, mul_16136, add_12306, permute_1859, clone_105, view_2063, view_2068, result_111, permute_1868, mm_1094], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1378, (s27, 128), (128, 1), 0), primals_142, out=buf1379)
+            del primals_142
+            buf1368 = reinterpret_tensor(buf1356, (s27, 896), (896, 1), 0); del buf1356  # reuse
+            # Topologically Sorted Source Nodes: [mm_1088], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1365, permute_1856, out=buf1368)
+            del permute_1856
+            buf1376 = buf1355; del buf1355  # reuse
+            # Topologically Sorted Source Nodes: [mm_1093], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1373, permute_1866, out=buf1376)
+            del permute_1866
+            buf1380 = reinterpret_tensor(buf1341, (1, s27, 896), (896*s27, 896, 1), 0); del buf1341  # reuse
+            buf1387 = reinterpret_tensor(buf1335, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf1335  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16137, slice_269, slice_270, neg_105, add_12307, mul_16138, add_12308, permute_1869, clone_106, view_2070, mul_16141], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf1358, mm_default, buf1380, buf1387, s27, s27, 896, stream=stream0)
+            buf1382 = buf1373; del buf1373  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16137, slice_269, slice_270, neg_105, add_12307, mul_16138, add_12308, permute_1869, clone_106, view_2070, mul_16141, view_2071, mm_1096], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1380, (s27, 896), (896, 1), 0), permute_1872, out=buf1382)
+            del permute_1872
+            buf1381 = reinterpret_tensor(buf1375, (896, 32), (32, 1), 0); del buf1375  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16137, slice_269, slice_270, neg_105, add_12307, mul_16138, add_12308, permute_1869, clone_106, view_2070, mul_16141, view_2071, permute_1870, mm_1095], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1380, (896, s27), (1, 896), 0), mm_90, out=buf1381)
+            del mm_90
+            buf1384 = reinterpret_tensor(buf1349, (32, 896), (896, 1), 0); del buf1349  # reuse
+            # Topologically Sorted Source Nodes: [permute_1874, mm_1097], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1382, (32, s27), (1, 32), 0), view_251, out=buf1384)
+            del view_251
+            buf1388 = reinterpret_tensor(buf1380, (s27, 896), (896, 1), 0); del buf1380  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16137, slice_269, slice_270, neg_105, add_12307, mul_16138, add_12308, permute_1869, clone_106, view_2070, view_2075, result_108, permute_1878, mm_1099], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1387, (s27, 896), (896, 1), 0), primals_138, out=buf1388)
+            del primals_138
+            buf1383 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3895], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1381, buf1383, 28672, stream=stream0)
+            buf1386 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3901], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1384, buf1386, 28672, stream=stream0)
+            buf1385 = reinterpret_tensor(buf1387, (s27, 896), (896, 1), 0); del buf1387  # reuse
+            # Topologically Sorted Source Nodes: [mm_1098], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1382, permute_1876, out=buf1385)
+            del permute_1876
+            buf1391 = buf1347; del buf1347  # reuse
+            buf1392 = reinterpret_tensor(buf1358, (s27, 896), (896, 1), 0); del buf1358  # reuse
+            # Topologically Sorted Source Nodes: [view_2060, view_2062, add_12309, view_2067, add_12310, view_2069, add_12311, view_2074, add_12312, view_2076, add_12313, mul_16142, convert_element_type_3905, hidden_states_50, mul_16143, mul_16144, sum_77, pow_126, mul_16145, mul_16146, expand_115, div_38, pow_127, mul_16147, mul_16148, add_12314, convert_element_type_3906, add_12315, mul_16149, view_2077], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf1391, buf1368, buf1370, buf1376, buf1379, buf1385, buf1388, primals_137, add_2540, rsqrt_10, buf1392, s27, 896, stream=stream0)
+            del add_2540
+            del buf1368
+            del buf1370
+            del primals_137
+            del rsqrt_10
+            buf1394 = buf1382; del buf1382  # reuse
+            # Topologically Sorted Source Nodes: [mm_1101], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1392, permute_1881, out=buf1394)
+            del permute_1881
+            buf1396 = reinterpret_tensor(buf1337, (32, 4864), (4864, 1), 0); del buf1337  # reuse
+            # Topologically Sorted Source Nodes: [permute_1883, mm_1102], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1394, (32, s27), (1, 32), 0), view_245, out=buf1396)
+            del view_245
+            buf1393 = reinterpret_tensor(buf1384, (896, 32), (32, 1), 0); del buf1384  # reuse
+            # Topologically Sorted Source Nodes: [permute_1879, mm_1100], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1392, (896, s27), (1, 896), 0), mm_88, out=buf1393)
+            del mm_88
+            buf1395 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3911], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1393, buf1395, 28672, stream=stream0)
+            buf1398 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3917], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1396, buf1398, 155648, stream=stream0)
+            buf1397 = reinterpret_tensor(buf1336, (s27, 4864), (4864, 1), 0); del buf1336  # reuse
+            # Topologically Sorted Source Nodes: [mm_1103], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1394, permute_1885, out=buf1397)
+            del permute_1885
+            buf1399 = reinterpret_tensor(buf1327, (s27, 4864), (4864, 1), 0); del buf1327  # reuse
+            # Topologically Sorted Source Nodes: [view_2081, result_105, permute_1887, mm_1104], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1391, (s27, 896), (896, 1), 0), primals_134, out=buf1399)
+            del primals_134
+            buf1400 = buf1343; del buf1343  # reuse
+            buf1407 = buf1334; del buf1334  # reuse
+            buf1409 = reinterpret_tensor(buf1326, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf1326  # reuse
+            buf1416 = reinterpret_tensor(buf1324, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf1324  # reuse
+            # Topologically Sorted Source Nodes: [view_2080, view_2082, add_12316, silu_4, mul_16150, mul_16151, mul_16152, convert_element_type_3935, neg_106, exp_19, add_12318, reciprocal_19, mul_16153, mul_16154, sub_3938, mul_16155, add_12319, mul_16156, convert_element_type_3937, mul_16157], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf1397, buf1399, add_2450, add_2493, buf1400, buf1407, buf1409, buf1416, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_2450
+            del add_2493
+            buf1408 = buf1392; del buf1392  # reuse
+            # Topologically Sorted Source Nodes: [view_2080, view_2082, add_12316, silu_4, mul_16150, view_2087, result_102, permute_1896, mm_1109], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1407, (s27, 4864), (4864, 1), 0), primals_131, out=buf1408)
+            del primals_131
+            buf1417 = buf1388; del buf1388  # reuse
+            # Topologically Sorted Source Nodes: [view_2080, view_2082, add_12316, silu_4, mul_16151, convert_element_type_3935, neg_106, exp_19, add_12318, reciprocal_19, mul_16153, mul_16154, sub_3938, mul_16155, add_12319, mul_16156, convert_element_type_3937, view_2093, result_99, permute_1905, mm_1114], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1416, (s27, 4864), (4864, 1), 0), primals_128, out=buf1417)
+            del primals_128
+            buf1402 = buf1394; del buf1394  # reuse
+            # Topologically Sorted Source Nodes: [view_2080, view_2082, add_12316, silu_4, mul_16150, mul_16152, view_2083, mm_1106], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1400, (s27, 4864), (4864, 1), 0), permute_1890, out=buf1402)
+            del permute_1890
+            buf1401 = reinterpret_tensor(buf1396, (4864, 32), (32, 1), 0); del buf1396  # reuse
+            # Topologically Sorted Source Nodes: [view_2080, view_2082, add_12316, silu_4, mul_16150, mul_16152, view_2083, permute_1888, mm_1105], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1400, (4864, s27), (1, 4864), 0), mm_85, out=buf1401)
+            del mm_85
+            buf1411 = buf1365; del buf1365  # reuse
+            # Topologically Sorted Source Nodes: [view_2080, view_2082, add_12316, silu_4, mul_16151, convert_element_type_3935, neg_106, exp_19, add_12318, reciprocal_19, mul_16153, mul_16154, sub_3938, mul_16155, add_12319, mul_16156, convert_element_type_3937, mul_16157, view_2089, mm_1111], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1409, (s27, 4864), (4864, 1), 0), permute_1899, out=buf1411)
+            del permute_1899
+            buf1410 = buf1328; del buf1328  # reuse
+            # Topologically Sorted Source Nodes: [view_2080, view_2082, add_12316, silu_4, mul_16151, convert_element_type_3935, neg_106, exp_19, add_12318, reciprocal_19, mul_16153, mul_16154, sub_3938, mul_16155, add_12319, mul_16156, convert_element_type_3937, mul_16157, view_2089, permute_1897, mm_1110], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1409, (4864, s27), (1, 4864), 0), mm_82, out=buf1410)
+            del mm_82
+            buf1404 = reinterpret_tensor(buf1393, (32, 896), (896, 1), 0); del buf1393  # reuse
+            # Topologically Sorted Source Nodes: [permute_1892, mm_1107], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1402, (32, s27), (1, 32), 0), view_233, out=buf1404)
+            buf1413 = reinterpret_tensor(buf1381, (32, 896), (896, 1), 0); del buf1381  # reuse
+            # Topologically Sorted Source Nodes: [permute_1901, mm_1112], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1411, (32, s27), (1, 32), 0), view_233, out=buf1413)
+            del view_233
+            buf1406 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3931], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1404, buf1406, 28672, stream=stream0)
+            buf1415 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3948], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1413, buf1415, 28672, stream=stream0)
+            buf1403 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3925], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1401, buf1403, 155648, stream=stream0)
+            buf1412 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3942], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1410, buf1412, 155648, stream=stream0)
+            buf1405 = buf1385; del buf1385  # reuse
+            # Topologically Sorted Source Nodes: [mm_1108], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1402, permute_1894, out=buf1405)
+            del permute_1894
+            buf1414 = buf1379; del buf1379  # reuse
+            # Topologically Sorted Source Nodes: [mm_1113], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1411, permute_1903, out=buf1414)
+            del permute_1903
+            buf1420 = buf1391; del buf1391  # reuse
+            buf1421 = buf1376; del buf1376  # reuse
+            # Topologically Sorted Source Nodes: [view_2086, view_2088, add_12317, view_2092, add_12320, view_2094, add_12321, mul_16158, convert_element_type_3952, hidden_states_46, mul_16159, mul_16160, sum_78, pow_128, mul_16161, mul_16162, expand_116, div_39, pow_129, mul_16163, mul_16164, add_12322, convert_element_type_3953, add_12323, mul_16165, view_2095], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf1420, buf1405, buf1408, buf1414, buf1417, primals_127, add_2382, rsqrt_9, buf1421, s27, 896, stream=stream0)
+            del add_2382
+            del buf1405
+            del primals_127
+            del rsqrt_9
+            buf1423 = buf1411; del buf1411  # reuse
+            # Topologically Sorted Source Nodes: [mm_1116], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1421, permute_1908, out=buf1423)
+            del permute_1908
+            buf1422 = reinterpret_tensor(buf1413, (896, 32), (32, 1), 0); del buf1413  # reuse
+            # Topologically Sorted Source Nodes: [permute_1906, mm_1115], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1421, (896, s27), (1, 896), 0), mm_79, out=buf1422)
+            del mm_79
+            buf1425 = buf1404; del buf1404  # reuse
+            # Topologically Sorted Source Nodes: [permute_1910, mm_1117], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1423, (32, s27), (1, 32), 0), view_227, out=buf1425)
+            del view_227
+            buf1424 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3958], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1422, buf1424, 28672, stream=stream0)
+            buf1427 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3964], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1425, buf1427, 28672, stream=stream0)
+            buf1426 = buf1421; del buf1421  # reuse
+            # Topologically Sorted Source Nodes: [mm_1118], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1423, permute_1912, out=buf1426)
+            del permute_1912
+            buf1428 = buf1417; del buf1417  # reuse
+            # Topologically Sorted Source Nodes: [view_2099, result_96, permute_1914, mm_1119], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1420, (s27, 896), (896, 1), 0), primals_124, out=buf1428)
+            del primals_124
+            buf1429 = reinterpret_tensor(buf1426, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf1426  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_2098, view_2100, add_12324, view_2101, permute_1915, _scaled_dot_product_efficient_attention_backward_19], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf1429, buf1428, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_2098, view_2100, add_12324, view_2101, permute_1915, _scaled_dot_product_efficient_attention_backward_19], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf1430 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf1429, add_2247, view_222, view_223, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_16, getitem_17, getitem_18, getitem_19, 0.0, [True, True, True, False], scale=0.125)
+            del add_2247
+            del getitem_16
+            del getitem_17
+            del getitem_18
+            del getitem_19
+            del view_222
+            del view_223
+            buf1431 = buf1430[0]
+            assert_size_stride(buf1431, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1431, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1432 = buf1430[1]
+            assert_size_stride(buf1432, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1432, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1434 = reinterpret_tensor(buf1378, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf1378  # reuse
+            # Topologically Sorted Source Nodes: [view_2103, sum_80], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf1432, buf1434, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf1433 = buf1430[2]
+            assert_size_stride(buf1433, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1433, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf1430
+            buf1435 = buf1362; del buf1362  # reuse
+            buf1436 = reinterpret_tensor(buf1371, (s27, 128), (128, 1), 0); del buf1371  # reuse
+            # Topologically Sorted Source Nodes: [view_2102, sum_79, squeeze_38, permute_1916, clone_107, view_2104, mul_16170, view_2105], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf1433, buf1435, buf1436, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf1437 = buf1372; del buf1372  # reuse
+            # Topologically Sorted Source Nodes: [permute_1917, mm_1120], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1436, (128, s27), (1, 128), 0), mm_76, out=buf1437)
+            del mm_76
+            buf1438 = buf1423; del buf1423  # reuse
+            # Topologically Sorted Source Nodes: [mm_1121], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1436, permute_1919, out=buf1438)
+            del permute_1919
+            buf1439 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3972], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1437, buf1439, 4096, stream=stream0)
+            buf1440 = buf1425; del buf1425  # reuse
+            # Topologically Sorted Source Nodes: [permute_1921, mm_1122], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1438, (32, s27), (1, 32), 0), view_203, out=buf1440)
+            buf1442 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3978], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1440, buf1442, 28672, stream=stream0)
+            buf1444 = reinterpret_tensor(buf1436, (1, s27, 128), (128*s27, 128, 1), 0); del buf1436  # reuse
+            buf1451 = reinterpret_tensor(buf1361, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf1361  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2103, sum_80, squeeze_39, mul_16166, slice_271, slice_272, neg_107, add_12325, mul_16167, add_12326, permute_1926, clone_108, view_2111, mul_16171], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf1434, mm_default, buf1444, buf1451, s27, s27, 128, stream=stream0)
+            buf1445 = buf1437; del buf1437  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2103, sum_80, squeeze_39, mul_16166, slice_271, slice_272, neg_107, add_12325, mul_16167, add_12326, permute_1926, clone_108, view_2111, mul_16171, view_2112, permute_1927, mm_1125], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1444, (128, s27), (1, 128), 0), mm_74, out=buf1445)
+            del mm_74
+            buf1446 = buf1402; del buf1402  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2103, sum_80, squeeze_39, mul_16166, slice_271, slice_272, neg_107, add_12325, mul_16167, add_12326, permute_1926, clone_108, view_2111, mul_16171, view_2112, mm_1126], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1444, (s27, 128), (128, 1), 0), permute_1929, out=buf1446)
+            del permute_1929
+            buf1447 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3986], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1445, buf1447, 4096, stream=stream0)
+            buf1448 = buf1440; del buf1440  # reuse
+            # Topologically Sorted Source Nodes: [permute_1931, mm_1127], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1446, (32, s27), (1, 32), 0), view_203, out=buf1448)
+            buf1450 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_3992], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1448, buf1450, 28672, stream=stream0)
+            buf1443 = reinterpret_tensor(buf1433, (s27, 896), (896, 1), 0); del buf1433  # reuse
+            # Topologically Sorted Source Nodes: [view_2102, sum_79, squeeze_38, permute_1916, clone_107, view_2104, view_2109, result_93, permute_1925, mm_1124], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1435, (s27, 128), (128, 1), 0), primals_120, out=buf1443)
+            del primals_120
+            buf1452 = reinterpret_tensor(buf1432, (s27, 896), (896, 1), 0); del buf1432  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2103, sum_80, squeeze_39, mul_16166, slice_271, slice_272, neg_107, add_12325, mul_16167, add_12326, permute_1926, clone_108, view_2111, view_2116, result_90, permute_1935, mm_1129], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1451, (s27, 128), (128, 1), 0), primals_116, out=buf1452)
+            del primals_116
+            buf1441 = reinterpret_tensor(buf1429, (s27, 896), (896, 1), 0); del buf1429  # reuse
+            # Topologically Sorted Source Nodes: [mm_1123], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1438, permute_1923, out=buf1441)
+            del permute_1923
+            buf1449 = buf1428; del buf1428  # reuse
+            # Topologically Sorted Source Nodes: [mm_1128], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1446, permute_1933, out=buf1449)
+            del permute_1933
+            buf1453 = reinterpret_tensor(buf1414, (1, s27, 896), (896*s27, 896, 1), 0); del buf1414  # reuse
+            buf1460 = reinterpret_tensor(buf1408, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf1408  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16168, slice_273, slice_274, neg_108, add_12327, mul_16169, add_12328, permute_1936, clone_109, view_2118, mul_16172], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf1431, mm_default, buf1453, buf1460, s27, s27, 896, stream=stream0)
+            buf1455 = buf1446; del buf1446  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16168, slice_273, slice_274, neg_108, add_12327, mul_16169, add_12328, permute_1936, clone_109, view_2118, mul_16172, view_2119, mm_1131], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1453, (s27, 896), (896, 1), 0), permute_1939, out=buf1455)
+            del permute_1939
+            buf1454 = reinterpret_tensor(buf1448, (896, 32), (32, 1), 0); del buf1448  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16168, slice_273, slice_274, neg_108, add_12327, mul_16169, add_12328, permute_1936, clone_109, view_2118, mul_16172, view_2119, permute_1937, mm_1130], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1453, (896, s27), (1, 896), 0), mm_72, out=buf1454)
+            del mm_72
+            buf1457 = reinterpret_tensor(buf1422, (32, 896), (896, 1), 0); del buf1422  # reuse
+            # Topologically Sorted Source Nodes: [permute_1941, mm_1132], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1455, (32, s27), (1, 32), 0), view_203, out=buf1457)
+            del view_203
+            buf1461 = reinterpret_tensor(buf1453, (s27, 896), (896, 1), 0); del buf1453  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16168, slice_273, slice_274, neg_108, add_12327, mul_16169, add_12328, permute_1936, clone_109, view_2118, view_2123, result_87, permute_1945, mm_1134], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1460, (s27, 896), (896, 1), 0), primals_112, out=buf1461)
+            del primals_112
+            buf1456 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4000], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1454, buf1456, 28672, stream=stream0)
+            buf1459 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4006], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1457, buf1459, 28672, stream=stream0)
+            buf1458 = reinterpret_tensor(buf1460, (s27, 896), (896, 1), 0); del buf1460  # reuse
+            # Topologically Sorted Source Nodes: [mm_1133], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1455, permute_1943, out=buf1458)
+            del permute_1943
+            buf1464 = buf1420; del buf1420  # reuse
+            buf1465 = reinterpret_tensor(buf1431, (s27, 896), (896, 1), 0); del buf1431  # reuse
+            # Topologically Sorted Source Nodes: [view_2108, view_2110, add_12329, view_2115, add_12330, view_2117, add_12331, view_2122, add_12332, view_2124, add_12333, mul_16173, convert_element_type_4010, hidden_states_40, mul_16174, mul_16175, sum_81, pow_130, mul_16176, mul_16177, expand_117, div_40, pow_131, mul_16178, mul_16179, add_12334, convert_element_type_4011, add_12335, mul_16180, view_2125], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf1464, buf1441, buf1443, buf1449, buf1452, buf1458, buf1461, primals_111, add_2048, rsqrt_8, buf1465, s27, 896, stream=stream0)
+            del add_2048
+            del buf1441
+            del buf1443
+            del primals_111
+            del rsqrt_8
+            buf1467 = buf1455; del buf1455  # reuse
+            # Topologically Sorted Source Nodes: [mm_1136], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1465, permute_1948, out=buf1467)
+            del permute_1948
+            buf1469 = reinterpret_tensor(buf1410, (32, 4864), (4864, 1), 0); del buf1410  # reuse
+            # Topologically Sorted Source Nodes: [permute_1950, mm_1137], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1467, (32, s27), (1, 32), 0), view_197, out=buf1469)
+            del view_197
+            buf1466 = reinterpret_tensor(buf1457, (896, 32), (32, 1), 0); del buf1457  # reuse
+            # Topologically Sorted Source Nodes: [permute_1946, mm_1135], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1465, (896, s27), (1, 896), 0), mm_70, out=buf1466)
+            del mm_70
+            buf1468 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4016], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1466, buf1468, 28672, stream=stream0)
+            buf1471 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4022], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1469, buf1471, 155648, stream=stream0)
+            buf1470 = reinterpret_tensor(buf1409, (s27, 4864), (4864, 1), 0); del buf1409  # reuse
+            # Topologically Sorted Source Nodes: [mm_1138], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1467, permute_1952, out=buf1470)
+            del permute_1952
+            buf1472 = reinterpret_tensor(buf1400, (s27, 4864), (4864, 1), 0); del buf1400  # reuse
+            # Topologically Sorted Source Nodes: [view_2129, result_84, permute_1954, mm_1139], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1464, (s27, 896), (896, 1), 0), primals_108, out=buf1472)
+            del primals_108
+            buf1473 = buf1416; del buf1416  # reuse
+            buf1480 = buf1407; del buf1407  # reuse
+            buf1482 = reinterpret_tensor(buf1399, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf1399  # reuse
+            buf1489 = reinterpret_tensor(buf1397, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf1397  # reuse
+            # Topologically Sorted Source Nodes: [view_2128, view_2130, add_12336, silu_3, mul_16181, mul_16182, mul_16183, convert_element_type_4040, neg_109, exp_20, add_12338, reciprocal_20, mul_16184, mul_16185, sub_3939, mul_16186, add_12339, mul_16187, convert_element_type_4042, mul_16188], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf1470, buf1472, add_1958, add_2001, buf1473, buf1480, buf1482, buf1489, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_1958
+            del add_2001
+            buf1481 = buf1465; del buf1465  # reuse
+            # Topologically Sorted Source Nodes: [view_2128, view_2130, add_12336, silu_3, mul_16181, view_2135, result_81, permute_1963, mm_1144], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1480, (s27, 4864), (4864, 1), 0), primals_105, out=buf1481)
+            del primals_105
+            buf1490 = buf1461; del buf1461  # reuse
+            # Topologically Sorted Source Nodes: [view_2128, view_2130, add_12336, silu_3, mul_16182, convert_element_type_4040, neg_109, exp_20, add_12338, reciprocal_20, mul_16184, mul_16185, sub_3939, mul_16186, add_12339, mul_16187, convert_element_type_4042, view_2141, result_78, permute_1972, mm_1149], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1489, (s27, 4864), (4864, 1), 0), primals_102, out=buf1490)
+            del primals_102
+            buf1475 = buf1467; del buf1467  # reuse
+            # Topologically Sorted Source Nodes: [view_2128, view_2130, add_12336, silu_3, mul_16181, mul_16183, view_2131, mm_1141], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1473, (s27, 4864), (4864, 1), 0), permute_1957, out=buf1475)
+            del permute_1957
+            buf1474 = reinterpret_tensor(buf1469, (4864, 32), (32, 1), 0); del buf1469  # reuse
+            # Topologically Sorted Source Nodes: [view_2128, view_2130, add_12336, silu_3, mul_16181, mul_16183, view_2131, permute_1955, mm_1140], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1473, (4864, s27), (1, 4864), 0), mm_67, out=buf1474)
+            del mm_67
+            buf1484 = buf1438; del buf1438  # reuse
+            # Topologically Sorted Source Nodes: [view_2128, view_2130, add_12336, silu_3, mul_16182, convert_element_type_4040, neg_109, exp_20, add_12338, reciprocal_20, mul_16184, mul_16185, sub_3939, mul_16186, add_12339, mul_16187, convert_element_type_4042, mul_16188, view_2137, mm_1146], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1482, (s27, 4864), (4864, 1), 0), permute_1966, out=buf1484)
+            del permute_1966
+            buf1483 = buf1401; del buf1401  # reuse
+            # Topologically Sorted Source Nodes: [view_2128, view_2130, add_12336, silu_3, mul_16182, convert_element_type_4040, neg_109, exp_20, add_12338, reciprocal_20, mul_16184, mul_16185, sub_3939, mul_16186, add_12339, mul_16187, convert_element_type_4042, mul_16188, view_2137, permute_1964, mm_1145], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1482, (4864, s27), (1, 4864), 0), mm_64, out=buf1483)
+            del mm_64
+            buf1477 = reinterpret_tensor(buf1466, (32, 896), (896, 1), 0); del buf1466  # reuse
+            # Topologically Sorted Source Nodes: [permute_1959, mm_1142], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1475, (32, s27), (1, 32), 0), view_185, out=buf1477)
+            buf1486 = reinterpret_tensor(buf1454, (32, 896), (896, 1), 0); del buf1454  # reuse
+            # Topologically Sorted Source Nodes: [permute_1968, mm_1147], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1484, (32, s27), (1, 32), 0), view_185, out=buf1486)
+            del view_185
+            buf1479 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4036], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1477, buf1479, 28672, stream=stream0)
+            buf1488 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4053], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1486, buf1488, 28672, stream=stream0)
+            buf1476 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4030], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1474, buf1476, 155648, stream=stream0)
+            buf1485 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4047], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1483, buf1485, 155648, stream=stream0)
+            buf1478 = buf1458; del buf1458  # reuse
+            # Topologically Sorted Source Nodes: [mm_1143], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1475, permute_1961, out=buf1478)
+            del permute_1961
+            buf1487 = buf1452; del buf1452  # reuse
+            # Topologically Sorted Source Nodes: [mm_1148], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1484, permute_1970, out=buf1487)
+            del permute_1970
+            buf1493 = buf1464; del buf1464  # reuse
+            buf1494 = buf1449; del buf1449  # reuse
+            # Topologically Sorted Source Nodes: [view_2134, view_2136, add_12337, view_2140, add_12340, view_2142, add_12341, mul_16189, convert_element_type_4057, hidden_states_36, mul_16190, mul_16191, sum_82, pow_132, mul_16192, mul_16193, expand_118, div_41, pow_133, mul_16194, mul_16195, add_12342, convert_element_type_4058, add_12343, mul_16196, view_2143], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf1493, buf1478, buf1481, buf1487, buf1490, primals_101, add_1890, rsqrt_7, buf1494, s27, 896, stream=stream0)
+            del add_1890
+            del buf1478
+            del primals_101
+            del rsqrt_7
+            buf1496 = buf1484; del buf1484  # reuse
+            # Topologically Sorted Source Nodes: [mm_1151], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1494, permute_1975, out=buf1496)
+            del permute_1975
+            buf1495 = reinterpret_tensor(buf1486, (896, 32), (32, 1), 0); del buf1486  # reuse
+            # Topologically Sorted Source Nodes: [permute_1973, mm_1150], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1494, (896, s27), (1, 896), 0), mm_61, out=buf1495)
+            del mm_61
+            buf1498 = buf1477; del buf1477  # reuse
+            # Topologically Sorted Source Nodes: [permute_1977, mm_1152], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1496, (32, s27), (1, 32), 0), view_179, out=buf1498)
+            del view_179
+            buf1497 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4063], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1495, buf1497, 28672, stream=stream0)
+            buf1500 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4069], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1498, buf1500, 28672, stream=stream0)
+            buf1499 = buf1494; del buf1494  # reuse
+            # Topologically Sorted Source Nodes: [mm_1153], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1496, permute_1979, out=buf1499)
+            del permute_1979
+            buf1501 = buf1490; del buf1490  # reuse
+            # Topologically Sorted Source Nodes: [view_2147, result_75, permute_1981, mm_1154], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1493, (s27, 896), (896, 1), 0), primals_98, out=buf1501)
+            del primals_98
+            buf1502 = reinterpret_tensor(buf1499, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf1499  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_2146, view_2148, add_12344, view_2149, permute_1982, _scaled_dot_product_efficient_attention_backward_20], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf1502, buf1501, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_2146, view_2148, add_12344, view_2149, permute_1982, _scaled_dot_product_efficient_attention_backward_20], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf1503 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf1502, add_1755, view_174, view_175, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_12, getitem_13, getitem_14, getitem_15, 0.0, [True, True, True, False], scale=0.125)
+            del add_1755
+            del getitem_12
+            del getitem_13
+            del getitem_14
+            del getitem_15
+            del view_174
+            del view_175
+            buf1504 = buf1503[0]
+            assert_size_stride(buf1504, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1504, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1505 = buf1503[1]
+            assert_size_stride(buf1505, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1505, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1507 = reinterpret_tensor(buf1451, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf1451  # reuse
+            # Topologically Sorted Source Nodes: [view_2151, sum_84], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf1505, buf1507, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf1506 = buf1503[2]
+            assert_size_stride(buf1506, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1506, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf1503
+            buf1508 = buf1435; del buf1435  # reuse
+            buf1509 = reinterpret_tensor(buf1444, (s27, 128), (128, 1), 0); del buf1444  # reuse
+            # Topologically Sorted Source Nodes: [view_2150, sum_83, squeeze_40, permute_1983, clone_110, view_2152, mul_16201, view_2153], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf1506, buf1508, buf1509, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf1510 = buf1445; del buf1445  # reuse
+            # Topologically Sorted Source Nodes: [permute_1984, mm_1155], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1509, (128, s27), (1, 128), 0), mm_58, out=buf1510)
+            del mm_58
+            buf1511 = buf1496; del buf1496  # reuse
+            # Topologically Sorted Source Nodes: [mm_1156], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1509, permute_1986, out=buf1511)
+            del permute_1986
+            buf1512 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4077], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1510, buf1512, 4096, stream=stream0)
+            buf1513 = buf1498; del buf1498  # reuse
+            # Topologically Sorted Source Nodes: [permute_1988, mm_1157], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1511, (32, s27), (1, 32), 0), view_155, out=buf1513)
+            buf1515 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4083], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1513, buf1515, 28672, stream=stream0)
+            buf1517 = reinterpret_tensor(buf1509, (1, s27, 128), (128*s27, 128, 1), 0); del buf1509  # reuse
+            buf1524 = reinterpret_tensor(buf1434, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf1434  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2151, sum_84, squeeze_41, mul_16197, slice_275, slice_276, neg_110, add_12345, mul_16198, add_12346, permute_1993, clone_111, view_2159, mul_16202], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf1507, mm_default, buf1517, buf1524, s27, s27, 128, stream=stream0)
+            buf1518 = buf1510; del buf1510  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2151, sum_84, squeeze_41, mul_16197, slice_275, slice_276, neg_110, add_12345, mul_16198, add_12346, permute_1993, clone_111, view_2159, mul_16202, view_2160, permute_1994, mm_1160], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1517, (128, s27), (1, 128), 0), mm_56, out=buf1518)
+            del mm_56
+            buf1519 = buf1475; del buf1475  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2151, sum_84, squeeze_41, mul_16197, slice_275, slice_276, neg_110, add_12345, mul_16198, add_12346, permute_1993, clone_111, view_2159, mul_16202, view_2160, mm_1161], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1517, (s27, 128), (128, 1), 0), permute_1996, out=buf1519)
+            del permute_1996
+            buf1520 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4091], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1518, buf1520, 4096, stream=stream0)
+            buf1521 = buf1513; del buf1513  # reuse
+            # Topologically Sorted Source Nodes: [permute_1998, mm_1162], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1519, (32, s27), (1, 32), 0), view_155, out=buf1521)
+            buf1523 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4097], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1521, buf1523, 28672, stream=stream0)
+            buf1516 = reinterpret_tensor(buf1506, (s27, 896), (896, 1), 0); del buf1506  # reuse
+            # Topologically Sorted Source Nodes: [view_2150, sum_83, squeeze_40, permute_1983, clone_110, view_2152, view_2157, result_72, permute_1992, mm_1159], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1508, (s27, 128), (128, 1), 0), primals_94, out=buf1516)
+            del primals_94
+            buf1525 = reinterpret_tensor(buf1505, (s27, 896), (896, 1), 0); del buf1505  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2151, sum_84, squeeze_41, mul_16197, slice_275, slice_276, neg_110, add_12345, mul_16198, add_12346, permute_1993, clone_111, view_2159, view_2164, result_69, permute_2002, mm_1164], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1524, (s27, 128), (128, 1), 0), primals_90, out=buf1525)
+            del primals_90
+            buf1514 = reinterpret_tensor(buf1502, (s27, 896), (896, 1), 0); del buf1502  # reuse
+            # Topologically Sorted Source Nodes: [mm_1158], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1511, permute_1990, out=buf1514)
+            del permute_1990
+            buf1522 = buf1501; del buf1501  # reuse
+            # Topologically Sorted Source Nodes: [mm_1163], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1519, permute_2000, out=buf1522)
+            del permute_2000
+            buf1526 = reinterpret_tensor(buf1487, (1, s27, 896), (896*s27, 896, 1), 0); del buf1487  # reuse
+            buf1533 = reinterpret_tensor(buf1481, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf1481  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16199, slice_277, slice_278, neg_111, add_12347, mul_16200, add_12348, permute_2003, clone_112, view_2166, mul_16203], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf1504, mm_default, buf1526, buf1533, s27, s27, 896, stream=stream0)
+            buf1528 = buf1519; del buf1519  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16199, slice_277, slice_278, neg_111, add_12347, mul_16200, add_12348, permute_2003, clone_112, view_2166, mul_16203, view_2167, mm_1166], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1526, (s27, 896), (896, 1), 0), permute_2006, out=buf1528)
+            del permute_2006
+            buf1527 = reinterpret_tensor(buf1521, (896, 32), (32, 1), 0); del buf1521  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16199, slice_277, slice_278, neg_111, add_12347, mul_16200, add_12348, permute_2003, clone_112, view_2166, mul_16203, view_2167, permute_2004, mm_1165], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1526, (896, s27), (1, 896), 0), mm_54, out=buf1527)
+            del mm_54
+            buf1530 = reinterpret_tensor(buf1495, (32, 896), (896, 1), 0); del buf1495  # reuse
+            # Topologically Sorted Source Nodes: [permute_2008, mm_1167], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1528, (32, s27), (1, 32), 0), view_155, out=buf1530)
+            del view_155
+            buf1534 = reinterpret_tensor(buf1526, (s27, 896), (896, 1), 0); del buf1526  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16199, slice_277, slice_278, neg_111, add_12347, mul_16200, add_12348, permute_2003, clone_112, view_2166, view_2171, result_66, permute_2012, mm_1169], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1533, (s27, 896), (896, 1), 0), primals_86, out=buf1534)
+            del primals_86
+            buf1529 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4105], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1527, buf1529, 28672, stream=stream0)
+            buf1532 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4111], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1530, buf1532, 28672, stream=stream0)
+            buf1531 = reinterpret_tensor(buf1533, (s27, 896), (896, 1), 0); del buf1533  # reuse
+            # Topologically Sorted Source Nodes: [mm_1168], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1528, permute_2010, out=buf1531)
+            del permute_2010
+            buf1537 = buf1493; del buf1493  # reuse
+            buf1538 = reinterpret_tensor(buf1504, (s27, 896), (896, 1), 0); del buf1504  # reuse
+            # Topologically Sorted Source Nodes: [view_2156, view_2158, add_12349, view_2163, add_12350, view_2165, add_12351, view_2170, add_12352, view_2172, add_12353, mul_16204, convert_element_type_4115, hidden_states_30, mul_16205, mul_16206, sum_85, pow_134, mul_16207, mul_16208, expand_119, div_42, pow_135, mul_16209, mul_16210, add_12354, convert_element_type_4116, add_12355, mul_16211, view_2173], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf1537, buf1514, buf1516, buf1522, buf1525, buf1531, buf1534, primals_85, add_1556, rsqrt_6, buf1538, s27, 896, stream=stream0)
+            del add_1556
+            del buf1514
+            del buf1516
+            del primals_85
+            del rsqrt_6
+            buf1540 = buf1528; del buf1528  # reuse
+            # Topologically Sorted Source Nodes: [mm_1171], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1538, permute_2015, out=buf1540)
+            del permute_2015
+            buf1542 = reinterpret_tensor(buf1483, (32, 4864), (4864, 1), 0); del buf1483  # reuse
+            # Topologically Sorted Source Nodes: [permute_2017, mm_1172], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1540, (32, s27), (1, 32), 0), view_149, out=buf1542)
+            del view_149
+            buf1539 = reinterpret_tensor(buf1530, (896, 32), (32, 1), 0); del buf1530  # reuse
+            # Topologically Sorted Source Nodes: [permute_2013, mm_1170], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1538, (896, s27), (1, 896), 0), mm_52, out=buf1539)
+            del mm_52
+            buf1541 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4121], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1539, buf1541, 28672, stream=stream0)
+            buf1544 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4127], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1542, buf1544, 155648, stream=stream0)
+            buf1543 = reinterpret_tensor(buf1482, (s27, 4864), (4864, 1), 0); del buf1482  # reuse
+            # Topologically Sorted Source Nodes: [mm_1173], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1540, permute_2019, out=buf1543)
+            del permute_2019
+            buf1545 = reinterpret_tensor(buf1473, (s27, 4864), (4864, 1), 0); del buf1473  # reuse
+            # Topologically Sorted Source Nodes: [view_2177, result_63, permute_2021, mm_1174], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1537, (s27, 896), (896, 1), 0), primals_82, out=buf1545)
+            del primals_82
+            buf1546 = buf1489; del buf1489  # reuse
+            buf1553 = buf1480; del buf1480  # reuse
+            buf1555 = reinterpret_tensor(buf1472, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf1472  # reuse
+            buf1562 = reinterpret_tensor(buf1470, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf1470  # reuse
+            # Topologically Sorted Source Nodes: [view_2176, view_2178, add_12356, silu_2, mul_16212, mul_16213, mul_16214, convert_element_type_4145, neg_112, exp_21, add_12358, reciprocal_21, mul_16215, mul_16216, sub_3940, mul_16217, add_12359, mul_16218, convert_element_type_4147, mul_16219], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf1543, buf1545, add_1466, add_1509, buf1546, buf1553, buf1555, buf1562, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_1466
+            del add_1509
+            buf1554 = buf1538; del buf1538  # reuse
+            # Topologically Sorted Source Nodes: [view_2176, view_2178, add_12356, silu_2, mul_16212, view_2183, result_60, permute_2030, mm_1179], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1553, (s27, 4864), (4864, 1), 0), primals_79, out=buf1554)
+            del primals_79
+            buf1563 = buf1534; del buf1534  # reuse
+            # Topologically Sorted Source Nodes: [view_2176, view_2178, add_12356, silu_2, mul_16213, convert_element_type_4145, neg_112, exp_21, add_12358, reciprocal_21, mul_16215, mul_16216, sub_3940, mul_16217, add_12359, mul_16218, convert_element_type_4147, view_2189, result_57, permute_2039, mm_1184], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1562, (s27, 4864), (4864, 1), 0), primals_76, out=buf1563)
+            del primals_76
+            buf1548 = buf1540; del buf1540  # reuse
+            # Topologically Sorted Source Nodes: [view_2176, view_2178, add_12356, silu_2, mul_16212, mul_16214, view_2179, mm_1176], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1546, (s27, 4864), (4864, 1), 0), permute_2024, out=buf1548)
+            del permute_2024
+            buf1547 = reinterpret_tensor(buf1542, (4864, 32), (32, 1), 0); del buf1542  # reuse
+            # Topologically Sorted Source Nodes: [view_2176, view_2178, add_12356, silu_2, mul_16212, mul_16214, view_2179, permute_2022, mm_1175], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1546, (4864, s27), (1, 4864), 0), mm_49, out=buf1547)
+            del mm_49
+            buf1557 = buf1511; del buf1511  # reuse
+            # Topologically Sorted Source Nodes: [view_2176, view_2178, add_12356, silu_2, mul_16213, convert_element_type_4145, neg_112, exp_21, add_12358, reciprocal_21, mul_16215, mul_16216, sub_3940, mul_16217, add_12359, mul_16218, convert_element_type_4147, mul_16219, view_2185, mm_1181], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1555, (s27, 4864), (4864, 1), 0), permute_2033, out=buf1557)
+            del permute_2033
+            buf1556 = buf1474; del buf1474  # reuse
+            # Topologically Sorted Source Nodes: [view_2176, view_2178, add_12356, silu_2, mul_16213, convert_element_type_4145, neg_112, exp_21, add_12358, reciprocal_21, mul_16215, mul_16216, sub_3940, mul_16217, add_12359, mul_16218, convert_element_type_4147, mul_16219, view_2185, permute_2031, mm_1180], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1555, (4864, s27), (1, 4864), 0), mm_46, out=buf1556)
+            del mm_46
+            buf1550 = reinterpret_tensor(buf1539, (32, 896), (896, 1), 0); del buf1539  # reuse
+            # Topologically Sorted Source Nodes: [permute_2026, mm_1177], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1548, (32, s27), (1, 32), 0), view_137, out=buf1550)
+            buf1559 = reinterpret_tensor(buf1527, (32, 896), (896, 1), 0); del buf1527  # reuse
+            # Topologically Sorted Source Nodes: [permute_2035, mm_1182], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1557, (32, s27), (1, 32), 0), view_137, out=buf1559)
+            del view_137
+            buf1552 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4141], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1550, buf1552, 28672, stream=stream0)
+            buf1561 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4158], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1559, buf1561, 28672, stream=stream0)
+            buf1549 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4135], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1547, buf1549, 155648, stream=stream0)
+            buf1558 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4152], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1556, buf1558, 155648, stream=stream0)
+            buf1551 = buf1531; del buf1531  # reuse
+            # Topologically Sorted Source Nodes: [mm_1178], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1548, permute_2028, out=buf1551)
+            del permute_2028
+            buf1560 = buf1525; del buf1525  # reuse
+            # Topologically Sorted Source Nodes: [mm_1183], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1557, permute_2037, out=buf1560)
+            del permute_2037
+            buf1566 = buf1537; del buf1537  # reuse
+            buf1567 = buf1522; del buf1522  # reuse
+            # Topologically Sorted Source Nodes: [view_2182, view_2184, add_12357, view_2188, add_12360, view_2190, add_12361, mul_16220, convert_element_type_4162, hidden_states_26, mul_16221, mul_16222, sum_86, pow_136, mul_16223, mul_16224, expand_120, div_43, pow_137, mul_16225, mul_16226, add_12362, convert_element_type_4163, add_12363, mul_16227, view_2191], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf1566, buf1551, buf1554, buf1560, buf1563, primals_75, add_1398, rsqrt_5, buf1567, s27, 896, stream=stream0)
+            del add_1398
+            del buf1551
+            del primals_75
+            del rsqrt_5
+            buf1569 = buf1557; del buf1557  # reuse
+            # Topologically Sorted Source Nodes: [mm_1186], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1567, permute_2042, out=buf1569)
+            del permute_2042
+            buf1568 = reinterpret_tensor(buf1559, (896, 32), (32, 1), 0); del buf1559  # reuse
+            # Topologically Sorted Source Nodes: [permute_2040, mm_1185], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1567, (896, s27), (1, 896), 0), mm_43, out=buf1568)
+            del mm_43
+            buf1571 = buf1550; del buf1550  # reuse
+            # Topologically Sorted Source Nodes: [permute_2044, mm_1187], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1569, (32, s27), (1, 32), 0), view_131, out=buf1571)
+            del view_131
+            buf1570 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4168], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1568, buf1570, 28672, stream=stream0)
+            buf1573 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4174], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1571, buf1573, 28672, stream=stream0)
+            buf1572 = buf1567; del buf1567  # reuse
+            # Topologically Sorted Source Nodes: [mm_1188], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1569, permute_2046, out=buf1572)
+            del permute_2046
+            buf1574 = buf1563; del buf1563  # reuse
+            # Topologically Sorted Source Nodes: [view_2195, result_54, permute_2048, mm_1189], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1566, (s27, 896), (896, 1), 0), primals_72, out=buf1574)
+            del primals_72
+            buf1575 = reinterpret_tensor(buf1572, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf1572  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_2194, view_2196, add_12364, view_2197, permute_2049, _scaled_dot_product_efficient_attention_backward_21], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf1575, buf1574, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_2194, view_2196, add_12364, view_2197, permute_2049, _scaled_dot_product_efficient_attention_backward_21], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf1576 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf1575, add_1263, view_126, view_127, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_8, getitem_9, getitem_10, getitem_11, 0.0, [True, True, True, False], scale=0.125)
+            del add_1263
+            del getitem_10
+            del getitem_11
+            del getitem_8
+            del getitem_9
+            del view_126
+            del view_127
+            buf1577 = buf1576[0]
+            assert_size_stride(buf1577, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1577, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1578 = buf1576[1]
+            assert_size_stride(buf1578, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1578, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1580 = reinterpret_tensor(buf1524, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf1524  # reuse
+            # Topologically Sorted Source Nodes: [view_2199, sum_88], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf1578, buf1580, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf1579 = buf1576[2]
+            assert_size_stride(buf1579, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1579, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf1576
+            buf1581 = buf1508; del buf1508  # reuse
+            buf1582 = reinterpret_tensor(buf1517, (s27, 128), (128, 1), 0); del buf1517  # reuse
+            # Topologically Sorted Source Nodes: [view_2198, sum_87, squeeze_42, permute_2050, clone_113, view_2200, mul_16232, view_2201], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf1579, buf1581, buf1582, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf1583 = buf1518; del buf1518  # reuse
+            # Topologically Sorted Source Nodes: [permute_2051, mm_1190], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1582, (128, s27), (1, 128), 0), mm_40, out=buf1583)
+            del mm_40
+            buf1584 = buf1569; del buf1569  # reuse
+            # Topologically Sorted Source Nodes: [mm_1191], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1582, permute_2053, out=buf1584)
+            del permute_2053
+            buf1585 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4182], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1583, buf1585, 4096, stream=stream0)
+            buf1586 = buf1571; del buf1571  # reuse
+            # Topologically Sorted Source Nodes: [permute_2055, mm_1192], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1584, (32, s27), (1, 32), 0), view_107, out=buf1586)
+            buf1588 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4188], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1586, buf1588, 28672, stream=stream0)
+            buf1590 = reinterpret_tensor(buf1582, (1, s27, 128), (128*s27, 128, 1), 0); del buf1582  # reuse
+            buf1597 = reinterpret_tensor(buf1507, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf1507  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2199, sum_88, squeeze_43, mul_16228, slice_279, slice_280, neg_113, add_12365, mul_16229, add_12366, permute_2060, clone_114, view_2207, mul_16233], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf1580, mm_default, buf1590, buf1597, s27, s27, 128, stream=stream0)
+            buf1591 = buf1583; del buf1583  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2199, sum_88, squeeze_43, mul_16228, slice_279, slice_280, neg_113, add_12365, mul_16229, add_12366, permute_2060, clone_114, view_2207, mul_16233, view_2208, permute_2061, mm_1195], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1590, (128, s27), (1, 128), 0), mm_38, out=buf1591)
+            del mm_38
+            buf1592 = buf1548; del buf1548  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2199, sum_88, squeeze_43, mul_16228, slice_279, slice_280, neg_113, add_12365, mul_16229, add_12366, permute_2060, clone_114, view_2207, mul_16233, view_2208, mm_1196], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1590, (s27, 128), (128, 1), 0), permute_2063, out=buf1592)
+            del permute_2063
+            buf1593 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4196], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1591, buf1593, 4096, stream=stream0)
+            buf1594 = buf1586; del buf1586  # reuse
+            # Topologically Sorted Source Nodes: [permute_2065, mm_1197], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1592, (32, s27), (1, 32), 0), view_107, out=buf1594)
+            buf1596 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4202], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1594, buf1596, 28672, stream=stream0)
+            buf1589 = reinterpret_tensor(buf1579, (s27, 896), (896, 1), 0); del buf1579  # reuse
+            # Topologically Sorted Source Nodes: [view_2198, sum_87, squeeze_42, permute_2050, clone_113, view_2200, view_2205, result_51, permute_2059, mm_1194], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1581, (s27, 128), (128, 1), 0), primals_68, out=buf1589)
+            del primals_68
+            buf1598 = reinterpret_tensor(buf1578, (s27, 896), (896, 1), 0); del buf1578  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2199, sum_88, squeeze_43, mul_16228, slice_279, slice_280, neg_113, add_12365, mul_16229, add_12366, permute_2060, clone_114, view_2207, view_2212, result_48, permute_2069, mm_1199], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1597, (s27, 128), (128, 1), 0), primals_64, out=buf1598)
+            del primals_64
+            buf1587 = reinterpret_tensor(buf1575, (s27, 896), (896, 1), 0); del buf1575  # reuse
+            # Topologically Sorted Source Nodes: [mm_1193], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1584, permute_2057, out=buf1587)
+            del permute_2057
+            buf1595 = buf1574; del buf1574  # reuse
+            # Topologically Sorted Source Nodes: [mm_1198], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1592, permute_2067, out=buf1595)
+            del permute_2067
+            buf1599 = reinterpret_tensor(buf1560, (1, s27, 896), (896*s27, 896, 1), 0); del buf1560  # reuse
+            buf1606 = reinterpret_tensor(buf1554, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf1554  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16230, slice_281, slice_282, neg_114, add_12367, mul_16231, add_12368, permute_2070, clone_115, view_2214, mul_16234], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf1577, mm_default, buf1599, buf1606, s27, s27, 896, stream=stream0)
+            buf1601 = buf1592; del buf1592  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16230, slice_281, slice_282, neg_114, add_12367, mul_16231, add_12368, permute_2070, clone_115, view_2214, mul_16234, view_2215, mm_1201], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1599, (s27, 896), (896, 1), 0), permute_2073, out=buf1601)
+            del permute_2073
+            buf1600 = reinterpret_tensor(buf1594, (896, 32), (32, 1), 0); del buf1594  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16230, slice_281, slice_282, neg_114, add_12367, mul_16231, add_12368, permute_2070, clone_115, view_2214, mul_16234, view_2215, permute_2071, mm_1200], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1599, (896, s27), (1, 896), 0), mm_36, out=buf1600)
+            del mm_36
+            buf1603 = reinterpret_tensor(buf1568, (32, 896), (896, 1), 0); del buf1568  # reuse
+            # Topologically Sorted Source Nodes: [permute_2075, mm_1202], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1601, (32, s27), (1, 32), 0), view_107, out=buf1603)
+            del view_107
+            buf1607 = reinterpret_tensor(buf1599, (s27, 896), (896, 1), 0); del buf1599  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16230, slice_281, slice_282, neg_114, add_12367, mul_16231, add_12368, permute_2070, clone_115, view_2214, view_2219, result_45, permute_2079, mm_1204], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1606, (s27, 896), (896, 1), 0), primals_60, out=buf1607)
+            del primals_60
+            buf1602 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4210], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1600, buf1602, 28672, stream=stream0)
+            buf1605 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4216], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1603, buf1605, 28672, stream=stream0)
+            buf1604 = reinterpret_tensor(buf1606, (s27, 896), (896, 1), 0); del buf1606  # reuse
+            # Topologically Sorted Source Nodes: [mm_1203], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1601, permute_2077, out=buf1604)
+            del permute_2077
+            buf1610 = buf1566; del buf1566  # reuse
+            buf1611 = reinterpret_tensor(buf1577, (s27, 896), (896, 1), 0); del buf1577  # reuse
+            # Topologically Sorted Source Nodes: [view_2204, view_2206, add_12369, view_2211, add_12370, view_2213, add_12371, view_2218, add_12372, view_2220, add_12373, mul_16235, convert_element_type_4220, hidden_states_20, mul_16236, mul_16237, sum_89, pow_138, mul_16238, mul_16239, expand_121, div_44, pow_139, mul_16240, mul_16241, add_12374, convert_element_type_4221, add_12375, mul_16242, view_2221], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf1610, buf1587, buf1589, buf1595, buf1598, buf1604, buf1607, primals_59, add_1064, rsqrt_4, buf1611, s27, 896, stream=stream0)
+            del add_1064
+            del buf1587
+            del buf1589
+            del primals_59
+            del rsqrt_4
+            buf1613 = buf1601; del buf1601  # reuse
+            # Topologically Sorted Source Nodes: [mm_1206], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1611, permute_2082, out=buf1613)
+            del permute_2082
+            buf1615 = reinterpret_tensor(buf1556, (32, 4864), (4864, 1), 0); del buf1556  # reuse
+            # Topologically Sorted Source Nodes: [permute_2084, mm_1207], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1613, (32, s27), (1, 32), 0), view_101, out=buf1615)
+            del view_101
+            buf1612 = reinterpret_tensor(buf1603, (896, 32), (32, 1), 0); del buf1603  # reuse
+            # Topologically Sorted Source Nodes: [permute_2080, mm_1205], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1611, (896, s27), (1, 896), 0), mm_34, out=buf1612)
+            del mm_34
+            buf1614 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4226], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1612, buf1614, 28672, stream=stream0)
+            buf1617 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4232], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1615, buf1617, 155648, stream=stream0)
+            buf1616 = reinterpret_tensor(buf1555, (s27, 4864), (4864, 1), 0); del buf1555  # reuse
+            # Topologically Sorted Source Nodes: [mm_1208], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1613, permute_2086, out=buf1616)
+            del permute_2086
+            buf1618 = reinterpret_tensor(buf1546, (s27, 4864), (4864, 1), 0); del buf1546  # reuse
+            # Topologically Sorted Source Nodes: [view_2225, result_42, permute_2088, mm_1209], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1610, (s27, 896), (896, 1), 0), primals_56, out=buf1618)
+            del primals_56
+            buf1619 = buf1562; del buf1562  # reuse
+            buf1626 = buf1553; del buf1553  # reuse
+            buf1628 = reinterpret_tensor(buf1545, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf1545  # reuse
+            buf1635 = reinterpret_tensor(buf1543, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf1543  # reuse
+            # Topologically Sorted Source Nodes: [view_2224, view_2226, add_12376, silu_1, mul_16243, mul_16244, mul_16245, convert_element_type_4250, neg_115, exp_22, add_12378, reciprocal_22, mul_16246, mul_16247, sub_3941, mul_16248, add_12379, mul_16249, convert_element_type_4252, mul_16250], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf1616, buf1618, add_974, add_1017, buf1619, buf1626, buf1628, buf1635, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_1017
+            del add_974
+            buf1627 = buf1611; del buf1611  # reuse
+            # Topologically Sorted Source Nodes: [view_2224, view_2226, add_12376, silu_1, mul_16243, view_2231, result_39, permute_2097, mm_1214], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1626, (s27, 4864), (4864, 1), 0), primals_53, out=buf1627)
+            del primals_53
+            buf1636 = buf1607; del buf1607  # reuse
+            # Topologically Sorted Source Nodes: [view_2224, view_2226, add_12376, silu_1, mul_16244, convert_element_type_4250, neg_115, exp_22, add_12378, reciprocal_22, mul_16246, mul_16247, sub_3941, mul_16248, add_12379, mul_16249, convert_element_type_4252, view_2237, result_36, permute_2106, mm_1219], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1635, (s27, 4864), (4864, 1), 0), primals_50, out=buf1636)
+            del primals_50
+            buf1621 = buf1613; del buf1613  # reuse
+            # Topologically Sorted Source Nodes: [view_2224, view_2226, add_12376, silu_1, mul_16243, mul_16245, view_2227, mm_1211], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1619, (s27, 4864), (4864, 1), 0), permute_2091, out=buf1621)
+            del permute_2091
+            buf1620 = reinterpret_tensor(buf1615, (4864, 32), (32, 1), 0); del buf1615  # reuse
+            # Topologically Sorted Source Nodes: [view_2224, view_2226, add_12376, silu_1, mul_16243, mul_16245, view_2227, permute_2089, mm_1210], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1619, (4864, s27), (1, 4864), 0), mm_31, out=buf1620)
+            del mm_31
+            buf1630 = buf1584; del buf1584  # reuse
+            # Topologically Sorted Source Nodes: [view_2224, view_2226, add_12376, silu_1, mul_16244, convert_element_type_4250, neg_115, exp_22, add_12378, reciprocal_22, mul_16246, mul_16247, sub_3941, mul_16248, add_12379, mul_16249, convert_element_type_4252, mul_16250, view_2233, mm_1216], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1628, (s27, 4864), (4864, 1), 0), permute_2100, out=buf1630)
+            del permute_2100
+            buf1629 = buf1547; del buf1547  # reuse
+            # Topologically Sorted Source Nodes: [view_2224, view_2226, add_12376, silu_1, mul_16244, convert_element_type_4250, neg_115, exp_22, add_12378, reciprocal_22, mul_16246, mul_16247, sub_3941, mul_16248, add_12379, mul_16249, convert_element_type_4252, mul_16250, view_2233, permute_2098, mm_1215], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1628, (4864, s27), (1, 4864), 0), mm_28, out=buf1629)
+            del mm_28
+            buf1623 = reinterpret_tensor(buf1612, (32, 896), (896, 1), 0); del buf1612  # reuse
+            # Topologically Sorted Source Nodes: [permute_2093, mm_1212], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1621, (32, s27), (1, 32), 0), view_89, out=buf1623)
+            buf1632 = reinterpret_tensor(buf1600, (32, 896), (896, 1), 0); del buf1600  # reuse
+            # Topologically Sorted Source Nodes: [permute_2102, mm_1217], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1630, (32, s27), (1, 32), 0), view_89, out=buf1632)
+            del view_89
+            buf1625 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4246], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1623, buf1625, 28672, stream=stream0)
+            buf1634 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4263], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1632, buf1634, 28672, stream=stream0)
+            buf1622 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4240], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1620, buf1622, 155648, stream=stream0)
+            buf1631 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4257], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1629, buf1631, 155648, stream=stream0)
+            buf1624 = buf1604; del buf1604  # reuse
+            # Topologically Sorted Source Nodes: [mm_1213], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1621, permute_2095, out=buf1624)
+            del permute_2095
+            buf1633 = buf1598; del buf1598  # reuse
+            # Topologically Sorted Source Nodes: [mm_1218], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1630, permute_2104, out=buf1633)
+            del permute_2104
+            buf1639 = buf1610; del buf1610  # reuse
+            buf1640 = buf1595; del buf1595  # reuse
+            # Topologically Sorted Source Nodes: [view_2230, view_2232, add_12377, view_2236, add_12380, view_2238, add_12381, mul_16251, convert_element_type_4267, hidden_states_16, mul_16252, mul_16253, sum_90, pow_140, mul_16254, mul_16255, expand_122, div_45, pow_141, mul_16256, mul_16257, add_12382, convert_element_type_4268, add_12383, mul_16258, view_2239], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf1639, buf1624, buf1627, buf1633, buf1636, primals_49, add_906, rsqrt_3, buf1640, s27, 896, stream=stream0)
+            del add_906
+            del buf1624
+            del primals_49
+            del rsqrt_3
+            buf1642 = buf1630; del buf1630  # reuse
+            # Topologically Sorted Source Nodes: [mm_1221], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1640, permute_2109, out=buf1642)
+            del permute_2109
+            buf1641 = reinterpret_tensor(buf1632, (896, 32), (32, 1), 0); del buf1632  # reuse
+            # Topologically Sorted Source Nodes: [permute_2107, mm_1220], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1640, (896, s27), (1, 896), 0), mm_25, out=buf1641)
+            del mm_25
+            buf1644 = buf1623; del buf1623  # reuse
+            # Topologically Sorted Source Nodes: [permute_2111, mm_1222], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1642, (32, s27), (1, 32), 0), view_83, out=buf1644)
+            del view_83
+            buf1643 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4273], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1641, buf1643, 28672, stream=stream0)
+            buf1646 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4279], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1644, buf1646, 28672, stream=stream0)
+            buf1645 = buf1640; del buf1640  # reuse
+            # Topologically Sorted Source Nodes: [mm_1223], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1642, permute_2113, out=buf1645)
+            del permute_2113
+            buf1647 = buf1636; del buf1636  # reuse
+            # Topologically Sorted Source Nodes: [view_2243, result_33, permute_2115, mm_1224], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1639, (s27, 896), (896, 1), 0), primals_46, out=buf1647)
+            del primals_46
+            buf1648 = reinterpret_tensor(buf1645, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf1645  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_2242, view_2244, add_12384, view_2245, permute_2116, _scaled_dot_product_efficient_attention_backward_22], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf1648, buf1647, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            # Topologically Sorted Source Nodes: [attn_output, view_2242, view_2244, add_12384, view_2245, permute_2116, _scaled_dot_product_efficient_attention_backward_22], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf1649 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf1648, add_771, view_78, view_79, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem_4, getitem_5, getitem_6, getitem_7, 0.0, [True, True, True, False], scale=0.125)
+            del add_771
+            del getitem_4
+            del getitem_5
+            del getitem_6
+            del getitem_7
+            del view_78
+            del view_79
+            buf1650 = buf1649[0]
+            assert_size_stride(buf1650, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1650, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1651 = buf1649[1]
+            assert_size_stride(buf1651, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1651, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1653 = reinterpret_tensor(buf1597, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf1597  # reuse
+            # Topologically Sorted Source Nodes: [view_2247, sum_92], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf1651, buf1653, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            buf1652 = buf1649[2]
+            assert_size_stride(buf1652, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1652, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf1649
+            buf1654 = buf1581; del buf1581  # reuse
+            buf1655 = reinterpret_tensor(buf1590, (s27, 128), (128, 1), 0); del buf1590  # reuse
+            # Topologically Sorted Source Nodes: [view_2246, sum_91, squeeze_44, permute_2117, clone_116, view_2248, mul_16263, view_2249], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8.run(buf1652, buf1654, buf1655, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_8_xnumel, stream=stream0)
+            buf1656 = buf1591; del buf1591  # reuse
+            # Topologically Sorted Source Nodes: [permute_2118, mm_1225], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1655, (128, s27), (1, 128), 0), mm_22, out=buf1656)
+            del mm_22
+            buf1657 = buf1642; del buf1642  # reuse
+            # Topologically Sorted Source Nodes: [mm_1226], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1655, permute_2120, out=buf1657)
+            del permute_2120
+            buf1658 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4287], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1656, buf1658, 4096, stream=stream0)
+            buf1659 = buf1644; del buf1644  # reuse
+            # Topologically Sorted Source Nodes: [permute_2122, mm_1227], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1657, (32, s27), (1, 32), 0), view_59, out=buf1659)
+            buf1661 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4293], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1659, buf1661, 28672, stream=stream0)
+            buf1663 = reinterpret_tensor(buf1655, (1, s27, 128), (128*s27, 128, 1), 0); del buf1655  # reuse
+            buf1670 = reinterpret_tensor(buf1580, (1, s27, 2, 64), (128*s27, 128, 64, 1), 0); del buf1580  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2247, sum_92, squeeze_45, mul_16259, slice_283, slice_284, neg_116, add_12385, mul_16260, add_12386, permute_2127, clone_117, view_2255, mul_16264], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_10.run(buf1653, mm_default, buf1663, buf1670, s27, s27, 128, stream=stream0)
+            del buf1653
+            buf1664 = buf1656; del buf1656  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2247, sum_92, squeeze_45, mul_16259, slice_283, slice_284, neg_116, add_12385, mul_16260, add_12386, permute_2127, clone_117, view_2255, mul_16264, view_2256, permute_2128, mm_1230], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1663, (128, s27), (1, 128), 0), mm_20, out=buf1664)
+            del mm_20
+            buf1665 = buf1621; del buf1621  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2247, sum_92, squeeze_45, mul_16259, slice_283, slice_284, neg_116, add_12385, mul_16260, add_12386, permute_2127, clone_117, view_2255, mul_16264, view_2256, mm_1231], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1663, (s27, 128), (128, 1), 0), permute_2130, out=buf1665)
+            del buf1663
+            del permute_2130
+            buf1666 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4301], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1664, buf1666, 4096, stream=stream0)
+            buf1667 = buf1659; del buf1659  # reuse
+            # Topologically Sorted Source Nodes: [permute_2132, mm_1232], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1665, (32, s27), (1, 32), 0), view_59, out=buf1667)
+            buf1669 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4307], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1667, buf1669, 28672, stream=stream0)
+            buf1662 = reinterpret_tensor(buf1652, (s27, 896), (896, 1), 0); del buf1652  # reuse
+            # Topologically Sorted Source Nodes: [view_2246, sum_91, squeeze_44, permute_2117, clone_116, view_2248, view_2253, result_30, permute_2126, mm_1229], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1654, (s27, 128), (128, 1), 0), primals_42, out=buf1662)
+            del primals_42
+            buf1671 = reinterpret_tensor(buf1651, (s27, 896), (896, 1), 0); del buf1651  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2247, sum_92, squeeze_45, mul_16259, slice_283, slice_284, neg_116, add_12385, mul_16260, add_12386, permute_2127, clone_117, view_2255, view_2260, result_27, permute_2136, mm_1234], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1670, (s27, 128), (128, 1), 0), primals_38, out=buf1671)
+            del primals_38
+            buf1660 = reinterpret_tensor(buf1648, (s27, 896), (896, 1), 0); del buf1648  # reuse
+            # Topologically Sorted Source Nodes: [mm_1228], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1657, permute_2124, out=buf1660)
+            del permute_2124
+            buf1668 = buf1647; del buf1647  # reuse
+            # Topologically Sorted Source Nodes: [mm_1233], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1665, permute_2134, out=buf1668)
+            del permute_2134
+            buf1672 = reinterpret_tensor(buf1633, (1, s27, 896), (896*s27, 896, 1), 0); del buf1633  # reuse
+            buf1679 = reinterpret_tensor(buf1627, (1, s27, 14, 64), (896*s27, 896, 64, 1), 0); del buf1627  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16261, slice_285, slice_286, neg_117, add_12387, mul_16262, add_12388, permute_2137, clone_118, view_2262, mul_16265], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_11.run(buf1650, mm_default, buf1672, buf1679, s27, s27, 896, stream=stream0)
+            buf1674 = buf1665; del buf1665  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16261, slice_285, slice_286, neg_117, add_12387, mul_16262, add_12388, permute_2137, clone_118, view_2262, mul_16265, view_2263, mm_1236], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1672, (s27, 896), (896, 1), 0), permute_2140, out=buf1674)
+            del permute_2140
+            buf1673 = reinterpret_tensor(buf1667, (896, 32), (32, 1), 0); del buf1667  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16261, slice_285, slice_286, neg_117, add_12387, mul_16262, add_12388, permute_2137, clone_118, view_2262, mul_16265, view_2263, permute_2138, mm_1235], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1672, (896, s27), (1, 896), 0), mm_18, out=buf1673)
+            del mm_18
+            buf1676 = reinterpret_tensor(buf1641, (32, 896), (896, 1), 0); del buf1641  # reuse
+            # Topologically Sorted Source Nodes: [permute_2142, mm_1237], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1674, (32, s27), (1, 32), 0), view_59, out=buf1676)
+            del view_59
+            buf1680 = reinterpret_tensor(buf1672, (s27, 896), (896, 1), 0); del buf1672  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16261, slice_285, slice_286, neg_117, add_12387, mul_16262, add_12388, permute_2137, clone_118, view_2262, view_2267, result_24, permute_2146, mm_1239], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1679, (s27, 896), (896, 1), 0), primals_34, out=buf1680)
+            del primals_34
+            buf1675 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4315], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1673, buf1675, 28672, stream=stream0)
+            buf1678 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4321], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1676, buf1678, 28672, stream=stream0)
+            buf1677 = reinterpret_tensor(buf1679, (s27, 896), (896, 1), 0); del buf1679  # reuse
+            # Topologically Sorted Source Nodes: [mm_1238], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1674, permute_2144, out=buf1677)
+            del permute_2144
+            buf1683 = buf1639; del buf1639  # reuse
+            buf1684 = reinterpret_tensor(buf1650, (s27, 896), (896, 1), 0); del buf1650  # reuse
+            # Topologically Sorted Source Nodes: [view_2252, view_2254, add_12389, view_2259, add_12390, view_2261, add_12391, view_2266, add_12392, view_2268, add_12393, mul_16266, convert_element_type_4325, hidden_states_10, mul_16267, mul_16268, sum_93, pow_142, mul_16269, mul_16270, expand_123, div_46, pow_143, mul_16271, mul_16272, add_12394, convert_element_type_4326, add_12395, mul_16273, view_2269], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_12.run(buf1683, buf1660, buf1662, buf1668, buf1671, buf1677, buf1680, primals_33, add_572, rsqrt_2, buf1684, s27, 896, stream=stream0)
+            del add_572
+            del buf1660
+            del buf1662
+            del primals_33
+            del rsqrt_2
+            buf1686 = buf1674; del buf1674  # reuse
+            # Topologically Sorted Source Nodes: [mm_1241], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1684, permute_2149, out=buf1686)
+            del permute_2149
+            buf1688 = reinterpret_tensor(buf1629, (32, 4864), (4864, 1), 0); del buf1629  # reuse
+            # Topologically Sorted Source Nodes: [permute_2151, mm_1242], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1686, (32, s27), (1, 32), 0), view_53, out=buf1688)
+            del view_53
+            buf1685 = reinterpret_tensor(buf1676, (896, 32), (32, 1), 0); del buf1676  # reuse
+            # Topologically Sorted Source Nodes: [permute_2147, mm_1240], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1684, (896, s27), (1, 896), 0), mm_16, out=buf1685)
+            del mm_16
+            buf1687 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4331], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1685, buf1687, 28672, stream=stream0)
+            buf1690 = empty_strided_cuda((32, 4864), (4864, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4337], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1688, buf1690, 155648, stream=stream0)
+            buf1689 = reinterpret_tensor(buf1628, (s27, 4864), (4864, 1), 0); del buf1628  # reuse
+            # Topologically Sorted Source Nodes: [mm_1243], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1686, permute_2153, out=buf1689)
+            del permute_2153
+            buf1691 = reinterpret_tensor(buf1619, (s27, 4864), (4864, 1), 0); del buf1619  # reuse
+            # Topologically Sorted Source Nodes: [view_2273, result_21, permute_2155, mm_1244], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1683, (s27, 896), (896, 1), 0), primals_30, out=buf1691)
+            del primals_30
+            buf1692 = buf1635; del buf1635  # reuse
+            buf1699 = buf1626; del buf1626  # reuse
+            buf1701 = reinterpret_tensor(buf1618, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf1618  # reuse
+            buf1708 = reinterpret_tensor(buf1616, (1, s27, 4864), (4864*s27, 4864, 1), 0); del buf1616  # reuse
+            # Topologically Sorted Source Nodes: [view_2272, view_2274, add_12396, silu, mul_16274, mul_16275, mul_16276, convert_element_type_4355, neg_118, exp_23, add_12398, reciprocal_23, mul_16277, mul_16278, sub_3942, mul_16279, add_12399, mul_16280, convert_element_type_4357, mul_16281], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward]
+            triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel = 4864*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_add_mul_silu_silu_backward_view_4.run(buf1689, buf1691, add_482, add_525, buf1692, buf1699, buf1701, buf1708, triton_poi_fused_add_mul_silu_silu_backward_view_4_xnumel, stream=stream0)
+            del add_482
+            del add_525
+            del buf1689
+            del buf1691
+            buf1700 = buf1684; del buf1684  # reuse
+            # Topologically Sorted Source Nodes: [view_2272, view_2274, add_12396, silu, mul_16274, view_2279, result_18, permute_2164, mm_1249], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1699, (s27, 4864), (4864, 1), 0), primals_27, out=buf1700)
+            del buf1699
+            del primals_27
+            buf1709 = buf1680; del buf1680  # reuse
+            # Topologically Sorted Source Nodes: [view_2272, view_2274, add_12396, silu, mul_16275, convert_element_type_4355, neg_118, exp_23, add_12398, reciprocal_23, mul_16277, mul_16278, sub_3942, mul_16279, add_12399, mul_16280, convert_element_type_4357, view_2285, result_15, permute_2173, mm_1254], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1708, (s27, 4864), (4864, 1), 0), primals_24, out=buf1709)
+            del buf1708
+            del primals_24
+            buf1694 = buf1686; del buf1686  # reuse
+            # Topologically Sorted Source Nodes: [view_2272, view_2274, add_12396, silu, mul_16274, mul_16276, view_2275, mm_1246], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1692, (s27, 4864), (4864, 1), 0), permute_2158, out=buf1694)
+            del permute_2158
+            buf1693 = reinterpret_tensor(buf1688, (4864, 32), (32, 1), 0); del buf1688  # reuse
+            # Topologically Sorted Source Nodes: [view_2272, view_2274, add_12396, silu, mul_16274, mul_16276, view_2275, permute_2156, mm_1245], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1692, (4864, s27), (1, 4864), 0), mm_13, out=buf1693)
+            del buf1692
+            del mm_13
+            buf1703 = buf1657; del buf1657  # reuse
+            # Topologically Sorted Source Nodes: [view_2272, view_2274, add_12396, silu, mul_16275, convert_element_type_4355, neg_118, exp_23, add_12398, reciprocal_23, mul_16277, mul_16278, sub_3942, mul_16279, add_12399, mul_16280, convert_element_type_4357, mul_16281, view_2281, mm_1251], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1701, (s27, 4864), (4864, 1), 0), permute_2167, out=buf1703)
+            del permute_2167
+            buf1702 = buf1620; del buf1620  # reuse
+            # Topologically Sorted Source Nodes: [view_2272, view_2274, add_12396, silu, mul_16275, convert_element_type_4355, neg_118, exp_23, add_12398, reciprocal_23, mul_16277, mul_16278, sub_3942, mul_16279, add_12399, mul_16280, convert_element_type_4357, mul_16281, view_2281, permute_2165, mm_1250], Original ATen: [aten.view, aten.add, aten.silu, aten.mul, aten.silu_backward, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1701, (4864, s27), (1, 4864), 0), mm_10, out=buf1702)
+            del buf1701
+            del mm_10
+            buf1696 = reinterpret_tensor(buf1685, (32, 896), (896, 1), 0); del buf1685  # reuse
+            # Topologically Sorted Source Nodes: [permute_2160, mm_1247], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1694, (32, s27), (1, 32), 0), view_41, out=buf1696)
+            buf1705 = reinterpret_tensor(buf1673, (32, 896), (896, 1), 0); del buf1673  # reuse
+            # Topologically Sorted Source Nodes: [permute_2169, mm_1252], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1703, (32, s27), (1, 32), 0), view_41, out=buf1705)
+            del view_41
+            buf1698 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4351], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1696, buf1698, 28672, stream=stream0)
+            buf1707 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4368], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1705, buf1707, 28672, stream=stream0)
+            buf1695 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4345], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1693, buf1695, 155648, stream=stream0)
+            del buf1693
+            buf1704 = empty_strided_cuda((4864, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4362], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_3.run(buf1702, buf1704, 155648, stream=stream0)
+            del buf1702
+            buf1697 = buf1677; del buf1677  # reuse
+            # Topologically Sorted Source Nodes: [mm_1248], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1694, permute_2162, out=buf1697)
+            del permute_2162
+            buf1706 = buf1671; del buf1671  # reuse
+            # Topologically Sorted Source Nodes: [mm_1253], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1703, permute_2171, out=buf1706)
+            del permute_2171
+            buf1712 = buf1683; del buf1683  # reuse
+            buf1713 = buf1668; del buf1668  # reuse
+            # Topologically Sorted Source Nodes: [view_2278, view_2280, add_12397, view_2284, add_12400, view_2286, add_12401, mul_16282, convert_element_type_4372, hidden_states_6, mul_16283, mul_16284, sum_94, pow_144, mul_16285, mul_16286, expand_124, div_47, pow_145, mul_16287, mul_16288, add_12402, convert_element_type_4373, add_12403, mul_16289, view_2287], Original ATen: [aten.view, aten.add, aten.mul, aten._to_copy, aten.sum, aten.pow, aten.expand, aten.div]
+            stream0 = get_raw_stream(0)
+            triton_per_fused__to_copy_add_div_expand_mul_pow_sum_view_5.run(buf1712, buf1697, buf1700, buf1706, buf1709, primals_23, add_414, rsqrt_1, buf1713, s27, 896, stream=stream0)
+            del add_414
+            del buf1697
+            del buf1700
+            del buf1706
+            del buf1709
+            del primals_23
+            del rsqrt_1
+            buf1715 = buf1703; del buf1703  # reuse
+            # Topologically Sorted Source Nodes: [mm_1256], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1713, permute_2176, out=buf1715)
+            del permute_2176
+            buf1714 = reinterpret_tensor(buf1705, (896, 32), (32, 1), 0); del buf1705  # reuse
+            # Topologically Sorted Source Nodes: [permute_2174, mm_1255], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1713, (896, s27), (1, 896), 0), mm_7, out=buf1714)
+            del mm_7
+            buf1717 = buf1696; del buf1696  # reuse
+            # Topologically Sorted Source Nodes: [permute_2178, mm_1257], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1715, (32, s27), (1, 32), 0), view_35, out=buf1717)
+            del view_35
+            buf1720 = buf1713; del buf1713  # reuse
+            # Topologically Sorted Source Nodes: [view_2291, result_12, permute_2182, mm_1259], Original ATen: [aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1712, (s27, 896), (896, 1), 0), primals_20, out=buf1720)
+            del primals_20
+            buf1716 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4378], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1714, buf1716, 28672, stream=stream0)
+            buf1719 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4384], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1717, buf1719, 28672, stream=stream0)
+            buf1718 = reinterpret_tensor(buf1712, (s27, 896), (896, 1), 0); del buf1712  # reuse
+            # Topologically Sorted Source Nodes: [mm_1258], Original ATen: [aten.mm]
+            extern_kernels.mm(buf1715, permute_2180, out=buf1718)
+            del permute_2180
+            buf1721 = reinterpret_tensor(buf1718, (1, 14, s27, 64), (896*s27, 64, 896, 1), 0); del buf1718  # reuse
+            # Topologically Sorted Source Nodes: [attn_output, view_2290, view_2292, add_12404, view_2293, permute_2183, _scaled_dot_product_efficient_attention_backward_23], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel = 896*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6.run(buf1721, buf1720, triton_poi_fused__scaled_dot_product_efficient_attention_backward_add_expand_slice_transpose_view_6_xnumel, stream=stream0)
+            del buf1720
+            # Topologically Sorted Source Nodes: [attn_output, view_2290, view_2292, add_12404, view_2293, permute_2183, _scaled_dot_product_efficient_attention_backward_23], Original ATen: [aten.slice, aten.expand, aten.view, aten.add, aten.transpose, aten._scaled_dot_product_efficient_attention_backward]
+            buf1722 = torch.ops.aten._scaled_dot_product_efficient_attention_backward.default(buf1721, add_279, view_30, view_31, reinterpret_tensor(constant_pad_nd, (1, 14, s27, s27), (s27*max(1, 8 + s27 + (-1)*(s27 % 8)), 0, max(1, 8 + s27 + (-1)*(s27 % 8)), 1), 0), getitem, getitem_1, getitem_2, getitem_3, 0.0, [True, True, True, False], scale=0.125)
+            del add_279
+            del buf1721
+            del constant_pad_nd
+            del getitem
+            del getitem_1
+            del getitem_2
+            del getitem_3
+            del view_30
+            del view_31
+            buf1723 = buf1722[0]
+            assert_size_stride(buf1723, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1723, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1724 = buf1722[1]
+            assert_size_stride(buf1724, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1724, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            buf1726 = reinterpret_tensor(buf1670, (1, 2, 1, s27, 64), (128*s27, 64, 128*s27, 128, 1), 0); del buf1670  # reuse
+            # Topologically Sorted Source Nodes: [view_2295, sum_96], Original ATen: [aten.view, aten.sum]
+            triton_poi_fused_sum_view_7_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused_sum_view_7.run(buf1724, buf1726, triton_poi_fused_sum_view_7_xnumel, stream=stream0)
+            del buf1724
+            buf1725 = buf1722[2]
+            assert_size_stride(buf1725, (1, 14, s27, 64), (896*s27, 64, 896, 1), 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            assert_alignment(buf1725, 16, 'torch.ops.aten._scaled_dot_product_efficient_attention_backward.default')
+            del buf1722
+            buf1727 = reinterpret_tensor(buf1654, (1, s27, 128), (128*s27, 128, 1), 0); del buf1654  # reuse
+            # Topologically Sorted Source Nodes: [view_2294, sum_95, squeeze_46, permute_2184, clone_119, view_2296, mul_16294], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul]
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_13_xnumel = 128*s27
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_13.run(buf1725, buf1727, triton_poi_fused__unsafe_view_clone_mul_squeeze_sum_transpose_view_13_xnumel, stream=stream0)
+            buf1728 = buf1664; del buf1664  # reuse
+            # Topologically Sorted Source Nodes: [view_2294, sum_95, squeeze_46, permute_2184, clone_119, view_2296, mul_16294, view_2297, permute_2185, mm_1260], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1727, (128, s27), (1, 128), 0), mm_4, out=buf1728)
+            del mm_4
+            buf1729 = buf1715; del buf1715  # reuse
+            # Topologically Sorted Source Nodes: [view_2294, sum_95, squeeze_46, permute_2184, clone_119, view_2296, mul_16294, view_2297, mm_1261], Original ATen: [aten.view, aten.sum, aten.squeeze, aten.transpose, aten.clone, aten._unsafe_view, aten.mul, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1727, (s27, 128), (128, 1), 0), permute_2187, out=buf1729)
+            del permute_2187
+            buf1733 = buf1727; del buf1727  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2295, sum_96, squeeze_47, mul_16290, slice_287, slice_288, neg_119, add_12405, mul_16291, add_12406, permute_2192, clone_120, view_2300, mul_16295], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_squeeze_sum_transpose_unsqueeze_view_14.run(buf1726, mm_default, buf1733, s27, s27, 128, stream=stream0)
+            del buf1726
+            buf1739 = reinterpret_tensor(buf1725, (1, s27, 896), (896*s27, 896, 1), 0); del buf1725  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16292, slice_289, slice_290, neg_120, add_12407, mul_16293, add_12408, permute_2200, clone_121, view_2304, mul_16296], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy__unsafe_view_add_bmm_cat_clone_cos_mul_neg_sin_slice_slice_backward_transpose_unsqueeze_15.run(buf1723, mm_default, buf1739, s27, s27, 896, stream=stream0)
+            del buf1723
+            del mm_default
+            buf1734 = empty_strided_cuda((128, 32), (32, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2295, sum_96, squeeze_47, mul_16290, slice_287, slice_288, neg_119, add_12405, mul_16291, add_12406, permute_2192, clone_120, view_2300, mul_16295, view_2301, permute_2193, mm_1263], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1733, (128, s27), (1, 128), 0), mm_2, out=buf1734)
+            del mm_2
+            buf1735 = buf1694; del buf1694  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, full_default_52, cos, cos_1, cos_2, cos_3, view_2295, sum_96, squeeze_47, mul_16290, slice_287, slice_288, neg_119, add_12405, mul_16291, add_12406, permute_2192, clone_120, view_2300, mul_16295, view_2301, mm_1264], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.slice_backward, aten.cos, aten.view, aten.sum, aten.squeeze, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1733, (s27, 128), (128, 1), 0), permute_2195, out=buf1735)
+            del buf1733
+            del permute_2195
+            buf1741 = empty_strided_cuda((s27, 32), (32, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16292, slice_289, slice_290, neg_120, add_12407, mul_16293, add_12408, permute_2200, clone_121, view_2304, mul_16296, view_2305, mm_1267], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1739, (s27, 896), (896, 1), 0), permute_2203, out=buf1741)
+            del permute_2203
+            buf1740 = reinterpret_tensor(buf1717, (896, 32), (32, 1), 0); del buf1717  # reuse
+            # Topologically Sorted Source Nodes: [matmul, freqs, emb, sin, sin_1, sin_2, sin_3, cos, cos_1, cos_2, cos_3, full_default_54, mul_16292, slice_289, slice_290, neg_120, add_12407, mul_16293, add_12408, permute_2200, clone_121, view_2304, mul_16296, view_2305, permute_2201, mm_1266], Original ATen: [aten.bmm, aten.transpose, aten.cat, aten.sin, aten.mul, aten._to_copy, aten.unsqueeze, aten.cos, aten.slice_backward, aten.slice, aten.neg, aten.add, aten.clone, aten._unsafe_view, aten.view, aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1739, (896, s27), (1, 896), 0), mm, out=buf1740)
+            del buf1739
+            del mm
+            buf1731 = reinterpret_tensor(buf1714, (32, 896), (896, 1), 0); del buf1714  # reuse
+            # Topologically Sorted Source Nodes: [permute_2189, mm_1262], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1729, (32, s27), (1, 32), 0), view_11, out=buf1731)
+            del buf1729
+            buf1737 = empty_strided_cuda((32, 896), (896, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [permute_2197, mm_1265], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1735, (32, s27), (1, 32), 0), view_11, out=buf1737)
+            del buf1735
+            buf1743 = empty_strided_cuda((32, 896), (896, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [permute_2205, mm_1268], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf1741, (32, s27), (1, 32), 0), view_11, out=buf1743)
+            del buf1741
+            del view_11
+            buf1730 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4392], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1728, buf1730, 4096, stream=stream0)
+            del buf1728
+            buf1736 = empty_strided_cuda((128, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4400], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_9.run(buf1734, buf1736, 4096, stream=stream0)
+            del buf1734
+            buf1732 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4395], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1731, buf1732, 28672, stream=stream0)
+            del buf1731
+            buf1738 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4403], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1737, buf1738, 28672, stream=stream0)
+            del buf1737
+            buf1742 = empty_strided_cuda((896, 32), (32, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4408], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1740, buf1742, 28672, stream=stream0)
+            del buf1740
+            buf1744 = empty_strided_cuda((32, 896), (896, 1), torch.float32)
+            # Topologically Sorted Source Nodes: [convert_element_type_4411], Original ATen: [aten._to_copy]
+            stream0 = get_raw_stream(0)
+            triton_poi_fused__to_copy_2.run(buf1743, buf1744, 28672, stream=stream0)
+            del buf1743
+            buf1 = empty_strided_cuda((151936, 896), (896, 1), torch.bfloat16)
+            # Topologically Sorted Source Nodes: [permute_602, mm_433], Original ATen: [aten.t, aten.mm]
+            extern_kernels.mm(reinterpret_tensor(buf0, (151936, s35), (1, 151936), 0), view_1161, out=buf1)
+            del buf0
+            del view_1161
+        return (None, None, None, None, None, None, None, None, None, buf1744, buf1742, None, None, buf1738, buf1736, None, None, buf1732, buf1730, None, buf1719, buf1716, None, None, buf1707, buf1704, None, buf1698, buf1695, None, buf1690, buf1687, None, None, None, buf1678, buf1675, None, None, buf1669, buf1666, None, None, buf1661, buf1658, None, buf1646, buf1643, None, None, buf1634, buf1631, None, buf1625, buf1622, None, buf1617, buf1614, None, None, None, buf1605, buf1602, None, None, buf1596, buf1593, None, None, buf1588, buf1585, None, buf1573, buf1570, None, None, buf1561, buf1558, None, buf1552, buf1549, None, buf1544, buf1541, None, None, None, buf1532, buf1529, None, None, buf1523, buf1520, None, None, buf1515, buf1512, None, buf1500, buf1497, None, None, buf1488, buf1485, None, buf1479, buf1476, None, buf1471, buf1468, None, None, None, buf1459, buf1456, None, None, buf1450, buf1447, None, None, buf1442, buf1439, None, buf1427, buf1424, None, None, buf1415, buf1412, None, buf1406, buf1403, None, buf1398, buf1395, None, None, None, buf1386, buf1383, None, None, buf1377, buf1374, None, None, buf1369, buf1366, None, buf1354, buf1351, None, None, buf1342, buf1339, None, buf1333, buf1330, None, buf1325, buf1322, None, None, None, buf1313, buf1310, None, None, buf1304, buf1301, None, None, buf1296, buf1293, None, buf1281, buf1278, None, None, buf1269, buf1266, None, buf1260, buf1257, None, buf1252, buf1249, None, None, None, buf1240, buf1237, None, None, buf1231, buf1228, None, None, buf1223, buf1220, None, buf1208, buf1205, None, None, buf1196, buf1193, None, buf1187, buf1184, None, buf1179, buf1176, None, None, None, buf1167, buf1164, None, None, buf1158, buf1155, None, None, buf1150, buf1147, None, buf1135, buf1132, None, None, buf1123, buf1120, None, buf1114, buf1111, None, buf1106, buf1103, None, None, None, buf1094, buf1091, None, None, buf1085, buf1082, None, None, buf1077, buf1074, None, buf1062, buf1059, None, None, buf1050, buf1047, None, buf1041, buf1038, None, buf1033, buf1030, None, None, None, buf1021, buf1018, None, None, buf1012, buf1009, None, None, buf1004, buf1001, None, buf989, buf986, None, None, buf977, buf974, None, buf968, buf965, None, buf960, buf957, None, None, None, buf948, buf945, None, None, buf939, buf936, None, None, buf931, buf928, None, buf916, buf913, None, None, buf904, buf901, None, buf895, buf892, None, buf887, buf884, None, None, None, buf875, buf872, None, None, buf866, buf863, None, None, buf858, buf855, None, buf843, buf840, None, None, buf831, buf828, None, buf822, buf819, None, buf814, buf811, None, None, None, buf802, buf799, None, None, buf793, buf790, None, None, buf785, buf782, None, buf770, buf767, None, None, buf758, buf755, None, buf749, buf746, None, buf741, buf738, None, None, None, buf729, buf726, None, None, buf720, buf717, None, None, buf712, buf709, None, buf697, buf694, None, None, buf685, buf682, None, buf676, buf673, None, buf668, buf665, None, None, None, buf656, buf653, None, None, buf647, buf644, None, None, buf639, buf636, None, buf624, buf621, None, None, buf612, buf609, None, buf603, buf600, None, buf595, buf592, None, None, None, buf583, buf580, None, None, buf574, buf571, None, None, buf566, buf563, None, buf551, buf548, None, None, buf539, buf536, None, buf530, buf527, None, buf522, buf519, None, None, None, buf510, buf507, None, None, buf501, buf498, None, None, buf493, buf490, None, buf478, buf475, None, None, buf466, buf463, None, buf457, buf454, None, buf449, buf446, None, None, None, buf437, buf434, None, None, buf428, buf425, None, None, buf420, buf417, None, buf405, buf402, None, None, buf393, buf390, None, buf384, buf381, None, buf376, buf373, None, None, None, buf364, buf361, None, None, buf355, buf352, None, None, buf347, buf344, None, buf332, buf329, None, None, buf320, buf317, None, buf311, buf308, None, buf303, buf300, None, None, None, buf291, buf288, None, None, buf282, buf279, None, None, buf274, buf271, None, buf259, buf256, None, None, buf247, buf244, None, buf238, buf235, None, buf230, buf227, None, None, None, buf218, buf215, None, None, buf209, buf206, None, None, buf201, buf198, None, buf186, buf183, None, None, buf174, buf171, None, buf165, buf162, None, buf157, buf154, None, None, None, buf145, buf142, None, None, buf136, buf133, None, None, buf128, buf125, None, buf113, buf110, None, None, buf101, buf98, None, buf92, buf89, None, buf84, buf81, None, None, None, buf72, buf69, None, None, buf63, buf60, None, None, buf55, buf52, None, buf40, buf37, None, None, buf28, buf25, None, buf19, buf16, None, buf11, buf8, None, None, buf1, )
+
+runner = Runner(partitions=[])
+call = runner.call
+recursively_apply_fns = runner.recursively_apply_fns
+
+
+def benchmark_compiled_module(times=10, repeat=10):
+    from torch._dynamo.testing import rand_strided
+    from torch._inductor.utils import print_performance
+    primals_1 = 805
+    primals_632 = 723
+    neg_48 = -723
+    primals_20 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_23 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_24 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_27 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_30 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_33 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_34 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_38 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_42 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_46 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_49 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_50 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_53 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_56 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_59 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_60 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_64 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_68 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_72 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_75 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_76 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_79 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_82 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_85 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_86 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_90 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_94 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_98 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_101 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_102 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_105 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_108 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_111 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_112 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_116 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_120 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_124 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_127 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_128 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_131 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_134 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_137 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_138 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_142 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_146 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_150 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_153 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_154 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_157 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_160 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_163 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_164 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_168 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_172 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_176 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_179 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_180 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_183 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_186 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_189 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_190 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_194 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_198 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_202 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_205 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_206 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_209 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_212 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_215 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_216 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_220 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_224 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_228 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_231 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_232 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_235 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_238 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_241 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_242 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_246 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_250 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_254 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_257 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_258 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_261 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_264 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_267 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_268 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_272 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_276 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_280 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_283 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_284 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_287 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_290 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_293 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_294 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_298 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_302 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_306 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_309 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_310 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_313 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_316 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_319 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_320 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_324 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_328 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_332 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_335 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_336 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_339 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_342 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_345 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_346 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_350 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_354 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_358 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_361 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_362 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_365 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_368 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_371 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_372 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_376 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_380 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_384 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_387 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_388 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_391 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_394 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_397 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_398 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_402 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_406 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_410 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_413 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_414 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_417 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_420 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_423 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_424 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_428 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_432 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_436 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_439 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_440 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_443 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_446 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_449 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_450 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_454 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_458 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_462 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_465 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_466 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_469 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_472 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_475 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_476 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_480 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_484 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_488 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_491 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_492 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_495 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_498 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_501 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_502 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_506 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_510 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_514 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_517 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_518 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_521 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_524 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_527 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_528 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_532 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_536 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_540 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_543 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_544 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_547 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_550 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_553 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_554 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_558 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_562 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_566 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_569 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_570 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_573 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_576 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_579 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_580 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_584 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_588 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_592 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_595 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_596 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_599 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_602 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_605 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_606 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_610 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_614 = rand_strided((128, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_618 = rand_strided((896, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_621 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_622 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_625 = rand_strided((4864, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_628 = rand_strided((896, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    primals_631 = rand_strided((896, ), (1, ), device='cuda:0', dtype=torch.bfloat16)
+    primals_633 = rand_strided((151936, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_default = rand_strided((32, 805), (805, 1), device='cuda:0', dtype=torch.float32)
+    view_11 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_2 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_4 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_279 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_30 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_31 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    constant_pad_nd = rand_strided((1, 1, 805, 808), (650440, 650440, 808, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_1 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_2 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_3 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_35 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_7 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_414 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_1 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_41 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_10 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_482 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_13 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_525 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_53 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_16 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_572 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_2 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_59 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_18 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_20 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_22 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_771 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_78 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_79 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_4 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_5 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_6 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_7 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_83 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_25 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_906 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_3 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_89 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_28 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_974 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_31 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_1017 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_101 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_34 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_1064 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_4 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_107 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_36 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_38 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_40 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_1263 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_126 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_127 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_8 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_9 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_10 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_11 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_131 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_43 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_1398 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_5 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_137 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_46 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_1466 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_49 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_1509 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_149 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_52 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_1556 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_6 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_155 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_54 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_56 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_58 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_1755 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_174 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_175 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_12 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_13 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_14 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_15 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_179 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_61 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_1890 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_7 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_185 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_64 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_1958 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_67 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_2001 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_197 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_70 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_2048 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_8 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_203 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_72 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_74 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_76 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_2247 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_222 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_223 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_16 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_17 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_18 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_19 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_227 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_79 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_2382 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_9 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_233 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_82 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_2450 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_85 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_2493 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_245 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_88 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_2540 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_10 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_251 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_90 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_92 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_94 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_2739 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_270 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_271 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_20 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_21 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_22 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_23 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_275 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_97 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_2874 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_11 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_281 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_100 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_2942 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_103 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_2985 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_293 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_106 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_3032 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_12 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_299 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_108 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_110 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_112 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_3231 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_318 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_319 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_24 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_25 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_26 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_27 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_323 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_115 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_3366 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_13 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_329 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_118 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_3434 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_121 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_3477 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_341 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_124 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_3524 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_14 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_347 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_126 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_128 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_130 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_3723 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_366 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_367 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_28 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_29 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_30 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_31 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_371 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_133 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_3858 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_15 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_377 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_136 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_3926 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_139 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_3969 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_389 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_142 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_4016 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_16 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_395 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_144 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_146 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_148 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_4215 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_414 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_415 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_32 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_33 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_34 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_35 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_419 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_151 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_4350 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_17 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_425 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_154 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_4418 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_157 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_4461 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_437 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_160 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_4508 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_18 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_443 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_162 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_164 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_166 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_4707 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_462 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_463 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_36 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_37 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_38 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_39 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_467 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_169 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_4842 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_19 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_473 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_172 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_4910 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_175 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_4953 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_485 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_178 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_5000 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_20 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_491 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_180 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_182 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_184 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_5199 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_510 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_511 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_40 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_41 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_42 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_43 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_515 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_187 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_5334 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_21 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_521 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_190 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_5402 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_193 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_5445 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_533 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_196 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_5492 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_22 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_539 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_198 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_200 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_202 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_5691 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_558 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_559 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_44 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_45 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_46 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_47 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_563 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_205 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_5826 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_23 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_569 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_208 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_5894 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_211 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_5937 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_581 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_214 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_5984 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_24 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_587 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_216 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_218 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_220 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_6183 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_606 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_607 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_48 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_49 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_50 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_51 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_611 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_223 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_6318 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_25 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_617 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_226 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_6386 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_229 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_6429 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_629 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_232 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_6476 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_26 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_635 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_234 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_236 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_238 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_6675 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_654 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_655 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_52 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_53 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_54 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_55 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_659 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_241 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_6810 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_27 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_665 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_244 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_6878 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_247 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_6921 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_677 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_250 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_6968 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_28 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_683 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_252 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_254 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_256 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_7167 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_702 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_703 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_56 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_57 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_58 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_59 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_707 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_259 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_7302 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_29 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_713 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_262 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_7370 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_265 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_7413 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_725 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_268 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_7460 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_30 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_731 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_270 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_272 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_274 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_7659 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_750 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_751 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_60 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_61 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_62 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_63 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_755 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_277 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_7794 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_31 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_761 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_280 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_7862 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_283 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_7905 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_773 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_286 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_7952 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_32 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_779 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_288 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_290 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_292 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_8151 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_798 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_799 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_64 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_65 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_66 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_67 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_803 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_295 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_8286 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_33 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_809 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_298 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_8354 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_301 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_8397 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_821 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_304 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_8444 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_34 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_827 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_306 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_308 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_310 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_8643 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_846 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_847 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_68 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_69 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_70 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_71 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_851 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_313 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_8778 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_35 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_857 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_316 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_8846 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_319 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_8889 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_869 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_322 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_8936 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_36 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_875 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_324 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_326 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_328 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_9135 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_894 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_895 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_72 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_73 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_74 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_75 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_899 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_331 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_9270 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_37 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_905 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_334 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_9338 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_337 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_9381 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_917 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_340 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_9428 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_38 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_923 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_342 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_344 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_346 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_9627 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_942 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_943 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_76 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_77 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_78 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_79 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_947 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_349 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_9762 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_39 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_953 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_352 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_9830 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_355 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_9873 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_965 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_358 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_9920 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_40 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_971 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_360 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_362 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_364 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_10119 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_990 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_991 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_80 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_81 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_82 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_83 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_995 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_367 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_10254 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_41 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_1001 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_370 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_10322 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_373 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_10365 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_1013 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_376 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_10412 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_42 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_1019 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_378 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_380 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_382 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_10611 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_1038 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_1039 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_84 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_85 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_86 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_87 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_1043 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_385 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_10746 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_43 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_1049 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_388 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_10814 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_391 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_10857 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_1061 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_394 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_10904 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_44 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_1067 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_396 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_398 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_400 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_11103 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_1086 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_1087 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_88 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_89 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_90 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_91 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_1091 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_403 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_11238 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_45 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_1097 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_406 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_11306 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_409 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_11349 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_1109 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_412 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_11396 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_46 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_1115 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_414 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_416 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_418 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_11595 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_1134 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_1135 = rand_strided((1, 14, 805, 64), (721280, 51520, 64, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_92 = rand_strided((1, 14, 805, 64), (721280, 64, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    getitem_93 = rand_strided((1, 14, 832), (11648, 832, 1), device='cuda:0', dtype=torch.float32)
+    getitem_94 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    getitem_95 = rand_strided((), (), device='cuda:0', dtype=torch.int64)
+    view_1139 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_421 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_11730 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_47 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_1145 = rand_strided((805, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_424 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_11798 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_427 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_11841 = rand_strided((1, 805, 4864), (3915520, 4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    view_1157 = rand_strided((805, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    mm_430 = rand_strided((805, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    add_11888 = rand_strided((1, 805, 896), (721280, 896, 1), device='cuda:0', dtype=torch.bfloat16)
+    rsqrt_48 = rand_strided((1, 805, 1), (805, 1, 1), device='cuda:0', dtype=torch.float32)
+    view_1161 = rand_strided((723, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_608 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_612 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_617 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_621 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_626 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_630 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_635 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_639 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_646 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_650 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_656 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_660 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_666 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_670 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_675 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_679 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_684 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_688 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_693 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_697 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_702 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_706 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_713 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_717 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_723 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_727 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_733 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_737 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_742 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_746 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_751 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_755 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_760 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_764 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_769 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_773 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_780 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_784 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_790 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_794 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_800 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_804 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_809 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_813 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_818 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_822 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_827 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_831 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_836 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_840 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_847 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_851 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_857 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_861 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_867 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_871 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_876 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_880 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_885 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_889 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_894 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_898 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_903 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_907 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_914 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_918 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_924 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_928 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_934 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_938 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_943 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_947 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_952 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_956 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_961 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_965 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_970 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_974 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_981 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_985 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_991 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_995 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1001 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1005 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1010 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1014 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1019 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1023 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1028 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1032 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1037 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1041 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1048 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1052 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1058 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1062 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1068 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1072 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1077 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1081 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1086 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1090 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1095 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1099 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1104 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1108 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1115 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1119 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1125 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1129 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1135 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1139 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1144 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1148 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1153 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1157 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1162 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1166 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1171 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1175 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1182 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1186 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1192 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1196 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1202 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1206 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1211 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1215 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1220 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1224 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1229 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1233 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1238 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1242 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1249 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1253 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1259 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1263 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1269 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1273 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1278 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1282 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1287 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1291 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1296 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1300 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1305 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1309 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1316 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1320 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1326 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1330 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1336 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1340 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1345 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1349 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1354 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1358 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1363 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1367 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1372 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1376 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1383 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1387 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1393 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1397 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1403 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1407 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1412 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1416 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1421 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1425 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1430 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1434 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1439 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1443 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1450 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1454 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1460 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1464 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1470 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1474 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1479 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1483 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1488 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1492 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1497 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1501 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1506 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1510 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1517 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1521 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1527 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1531 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1537 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1541 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1546 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1550 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1555 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1559 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1564 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1568 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1573 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1577 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1584 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1588 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1594 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1598 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1604 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1608 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1613 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1617 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1622 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1626 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1631 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1635 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1640 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1644 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1651 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1655 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1661 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1665 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1671 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1675 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1680 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1684 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1689 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1693 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1698 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1702 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1707 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1711 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1718 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1722 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1728 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1732 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1738 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1742 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1747 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1751 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1756 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1760 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1765 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1769 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1774 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1778 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1785 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1789 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1795 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1799 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1805 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1809 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1814 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1818 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1823 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1827 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1832 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1836 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1841 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1845 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1852 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1856 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1862 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1866 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1872 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1876 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1881 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1885 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1890 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1894 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1899 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1903 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1908 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1912 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1919 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1923 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1929 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1933 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1939 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1943 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1948 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1952 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1957 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1961 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1966 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1970 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1975 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1979 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1986 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1990 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_1996 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2000 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2006 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2010 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2015 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2019 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2024 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2028 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2033 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2037 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2042 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2046 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2053 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2057 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2063 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2067 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2073 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2077 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2082 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2086 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2091 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2095 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2100 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2104 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2109 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2113 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2120 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2124 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2130 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2134 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2140 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2144 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2149 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2153 = rand_strided((32, 4864), (4864, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2158 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2162 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2167 = rand_strided((4864, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2171 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2176 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2180 = rand_strided((32, 896), (896, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2187 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2195 = rand_strided((128, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    permute_2203 = rand_strided((896, 32), (32, 1), device='cuda:0', dtype=torch.bfloat16)
+    tangents_1 = rand_strided((1, 723, 151936), (109849728, 151936, 1), device='cuda:0', dtype=torch.float32)
+    fn = lambda: call([primals_1, primals_632, neg_48, primals_20, primals_23, primals_24, primals_27, primals_30, primals_33, primals_34, primals_38, primals_42, primals_46, primals_49, primals_50, primals_53, primals_56, primals_59, primals_60, primals_64, primals_68, primals_72, primals_75, primals_76, primals_79, primals_82, primals_85, primals_86, primals_90, primals_94, primals_98, primals_101, primals_102, primals_105, primals_108, primals_111, primals_112, primals_116, primals_120, primals_124, primals_127, primals_128, primals_131, primals_134, primals_137, primals_138, primals_142, primals_146, primals_150, primals_153, primals_154, primals_157, primals_160, primals_163, primals_164, primals_168, primals_172, primals_176, primals_179, primals_180, primals_183, primals_186, primals_189, primals_190, primals_194, primals_198, primals_202, primals_205, primals_206, primals_209, primals_212, primals_215, primals_216, primals_220, primals_224, primals_228, primals_231, primals_232, primals_235, primals_238, primals_241, primals_242, primals_246, primals_250, primals_254, primals_257, primals_258, primals_261, primals_264, primals_267, primals_268, primals_272, primals_276, primals_280, primals_283, primals_284, primals_287, primals_290, primals_293, primals_294, primals_298, primals_302, primals_306, primals_309, primals_310, primals_313, primals_316, primals_319, primals_320, primals_324, primals_328, primals_332, primals_335, primals_336, primals_339, primals_342, primals_345, primals_346, primals_350, primals_354, primals_358, primals_361, primals_362, primals_365, primals_368, primals_371, primals_372, primals_376, primals_380, primals_384, primals_387, primals_388, primals_391, primals_394, primals_397, primals_398, primals_402, primals_406, primals_410, primals_413, primals_414, primals_417, primals_420, primals_423, primals_424, primals_428, primals_432, primals_436, primals_439, primals_440, primals_443, primals_446, primals_449, primals_450, primals_454, primals_458, primals_462, primals_465, primals_466, primals_469, primals_472, primals_475, primals_476, primals_480, primals_484, primals_488, primals_491, primals_492, primals_495, primals_498, primals_501, primals_502, primals_506, primals_510, primals_514, primals_517, primals_518, primals_521, primals_524, primals_527, primals_528, primals_532, primals_536, primals_540, primals_543, primals_544, primals_547, primals_550, primals_553, primals_554, primals_558, primals_562, primals_566, primals_569, primals_570, primals_573, primals_576, primals_579, primals_580, primals_584, primals_588, primals_592, primals_595, primals_596, primals_599, primals_602, primals_605, primals_606, primals_610, primals_614, primals_618, primals_621, primals_622, primals_625, primals_628, primals_631, primals_633, mm_default, view_11, mm, mm_2, mm_4, add_279, view_30, view_31, constant_pad_nd, getitem, getitem_1, getitem_2, getitem_3, view_35, mm_7, add_414, rsqrt_1, view_41, mm_10, add_482, mm_13, add_525, view_53, mm_16, add_572, rsqrt_2, view_59, mm_18, mm_20, mm_22, add_771, view_78, view_79, getitem_4, getitem_5, getitem_6, getitem_7, view_83, mm_25, add_906, rsqrt_3, view_89, mm_28, add_974, mm_31, add_1017, view_101, mm_34, add_1064, rsqrt_4, view_107, mm_36, mm_38, mm_40, add_1263, view_126, view_127, getitem_8, getitem_9, getitem_10, getitem_11, view_131, mm_43, add_1398, rsqrt_5, view_137, mm_46, add_1466, mm_49, add_1509, view_149, mm_52, add_1556, rsqrt_6, view_155, mm_54, mm_56, mm_58, add_1755, view_174, view_175, getitem_12, getitem_13, getitem_14, getitem_15, view_179, mm_61, add_1890, rsqrt_7, view_185, mm_64, add_1958, mm_67, add_2001, view_197, mm_70, add_2048, rsqrt_8, view_203, mm_72, mm_74, mm_76, add_2247, view_222, view_223, getitem_16, getitem_17, getitem_18, getitem_19, view_227, mm_79, add_2382, rsqrt_9, view_233, mm_82, add_2450, mm_85, add_2493, view_245, mm_88, add_2540, rsqrt_10, view_251, mm_90, mm_92, mm_94, add_2739, view_270, view_271, getitem_20, getitem_21, getitem_22, getitem_23, view_275, mm_97, add_2874, rsqrt_11, view_281, mm_100, add_2942, mm_103, add_2985, view_293, mm_106, add_3032, rsqrt_12, view_299, mm_108, mm_110, mm_112, add_3231, view_318, view_319, getitem_24, getitem_25, getitem_26, getitem_27, view_323, mm_115, add_3366, rsqrt_13, view_329, mm_118, add_3434, mm_121, add_3477, view_341, mm_124, add_3524, rsqrt_14, view_347, mm_126, mm_128, mm_130, add_3723, view_366, view_367, getitem_28, getitem_29, getitem_30, getitem_31, view_371, mm_133, add_3858, rsqrt_15, view_377, mm_136, add_3926, mm_139, add_3969, view_389, mm_142, add_4016, rsqrt_16, view_395, mm_144, mm_146, mm_148, add_4215, view_414, view_415, getitem_32, getitem_33, getitem_34, getitem_35, view_419, mm_151, add_4350, rsqrt_17, view_425, mm_154, add_4418, mm_157, add_4461, view_437, mm_160, add_4508, rsqrt_18, view_443, mm_162, mm_164, mm_166, add_4707, view_462, view_463, getitem_36, getitem_37, getitem_38, getitem_39, view_467, mm_169, add_4842, rsqrt_19, view_473, mm_172, add_4910, mm_175, add_4953, view_485, mm_178, add_5000, rsqrt_20, view_491, mm_180, mm_182, mm_184, add_5199, view_510, view_511, getitem_40, getitem_41, getitem_42, getitem_43, view_515, mm_187, add_5334, rsqrt_21, view_521, mm_190, add_5402, mm_193, add_5445, view_533, mm_196, add_5492, rsqrt_22, view_539, mm_198, mm_200, mm_202, add_5691, view_558, view_559, getitem_44, getitem_45, getitem_46, getitem_47, view_563, mm_205, add_5826, rsqrt_23, view_569, mm_208, add_5894, mm_211, add_5937, view_581, mm_214, add_5984, rsqrt_24, view_587, mm_216, mm_218, mm_220, add_6183, view_606, view_607, getitem_48, getitem_49, getitem_50, getitem_51, view_611, mm_223, add_6318, rsqrt_25, view_617, mm_226, add_6386, mm_229, add_6429, view_629, mm_232, add_6476, rsqrt_26, view_635, mm_234, mm_236, mm_238, add_6675, view_654, view_655, getitem_52, getitem_53, getitem_54, getitem_55, view_659, mm_241, add_6810, rsqrt_27, view_665, mm_244, add_6878, mm_247, add_6921, view_677, mm_250, add_6968, rsqrt_28, view_683, mm_252, mm_254, mm_256, add_7167, view_702, view_703, getitem_56, getitem_57, getitem_58, getitem_59, view_707, mm_259, add_7302, rsqrt_29, view_713, mm_262, add_7370, mm_265, add_7413, view_725, mm_268, add_7460, rsqrt_30, view_731, mm_270, mm_272, mm_274, add_7659, view_750, view_751, getitem_60, getitem_61, getitem_62, getitem_63, view_755, mm_277, add_7794, rsqrt_31, view_761, mm_280, add_7862, mm_283, add_7905, view_773, mm_286, add_7952, rsqrt_32, view_779, mm_288, mm_290, mm_292, add_8151, view_798, view_799, getitem_64, getitem_65, getitem_66, getitem_67, view_803, mm_295, add_8286, rsqrt_33, view_809, mm_298, add_8354, mm_301, add_8397, view_821, mm_304, add_8444, rsqrt_34, view_827, mm_306, mm_308, mm_310, add_8643, view_846, view_847, getitem_68, getitem_69, getitem_70, getitem_71, view_851, mm_313, add_8778, rsqrt_35, view_857, mm_316, add_8846, mm_319, add_8889, view_869, mm_322, add_8936, rsqrt_36, view_875, mm_324, mm_326, mm_328, add_9135, view_894, view_895, getitem_72, getitem_73, getitem_74, getitem_75, view_899, mm_331, add_9270, rsqrt_37, view_905, mm_334, add_9338, mm_337, add_9381, view_917, mm_340, add_9428, rsqrt_38, view_923, mm_342, mm_344, mm_346, add_9627, view_942, view_943, getitem_76, getitem_77, getitem_78, getitem_79, view_947, mm_349, add_9762, rsqrt_39, view_953, mm_352, add_9830, mm_355, add_9873, view_965, mm_358, add_9920, rsqrt_40, view_971, mm_360, mm_362, mm_364, add_10119, view_990, view_991, getitem_80, getitem_81, getitem_82, getitem_83, view_995, mm_367, add_10254, rsqrt_41, view_1001, mm_370, add_10322, mm_373, add_10365, view_1013, mm_376, add_10412, rsqrt_42, view_1019, mm_378, mm_380, mm_382, add_10611, view_1038, view_1039, getitem_84, getitem_85, getitem_86, getitem_87, view_1043, mm_385, add_10746, rsqrt_43, view_1049, mm_388, add_10814, mm_391, add_10857, view_1061, mm_394, add_10904, rsqrt_44, view_1067, mm_396, mm_398, mm_400, add_11103, view_1086, view_1087, getitem_88, getitem_89, getitem_90, getitem_91, view_1091, mm_403, add_11238, rsqrt_45, view_1097, mm_406, add_11306, mm_409, add_11349, view_1109, mm_412, add_11396, rsqrt_46, view_1115, mm_414, mm_416, mm_418, add_11595, view_1134, view_1135, getitem_92, getitem_93, getitem_94, getitem_95, view_1139, mm_421, add_11730, rsqrt_47, view_1145, mm_424, add_11798, mm_427, add_11841, view_1157, mm_430, add_11888, rsqrt_48, view_1161, permute_608, permute_612, permute_617, permute_621, permute_626, permute_630, permute_635, permute_639, permute_646, permute_650, permute_656, permute_660, permute_666, permute_670, permute_675, permute_679, permute_684, permute_688, permute_693, permute_697, permute_702, permute_706, permute_713, permute_717, permute_723, permute_727, permute_733, permute_737, permute_742, permute_746, permute_751, permute_755, permute_760, permute_764, permute_769, permute_773, permute_780, permute_784, permute_790, permute_794, permute_800, permute_804, permute_809, permute_813, permute_818, permute_822, permute_827, permute_831, permute_836, permute_840, permute_847, permute_851, permute_857, permute_861, permute_867, permute_871, permute_876, permute_880, permute_885, permute_889, permute_894, permute_898, permute_903, permute_907, permute_914, permute_918, permute_924, permute_928, permute_934, permute_938, permute_943, permute_947, permute_952, permute_956, permute_961, permute_965, permute_970, permute_974, permute_981, permute_985, permute_991, permute_995, permute_1001, permute_1005, permute_1010, permute_1014, permute_1019, permute_1023, permute_1028, permute_1032, permute_1037, permute_1041, permute_1048, permute_1052, permute_1058, permute_1062, permute_1068, permute_1072, permute_1077, permute_1081, permute_1086, permute_1090, permute_1095, permute_1099, permute_1104, permute_1108, permute_1115, permute_1119, permute_1125, permute_1129, permute_1135, permute_1139, permute_1144, permute_1148, permute_1153, permute_1157, permute_1162, permute_1166, permute_1171, permute_1175, permute_1182, permute_1186, permute_1192, permute_1196, permute_1202, permute_1206, permute_1211, permute_1215, permute_1220, permute_1224, permute_1229, permute_1233, permute_1238, permute_1242, permute_1249, permute_1253, permute_1259, permute_1263, permute_1269, permute_1273, permute_1278, permute_1282, permute_1287, permute_1291, permute_1296, permute_1300, permute_1305, permute_1309, permute_1316, permute_1320, permute_1326, permute_1330, permute_1336, permute_1340, permute_1345, permute_1349, permute_1354, permute_1358, permute_1363, permute_1367, permute_1372, permute_1376, permute_1383, permute_1387, permute_1393, permute_1397, permute_1403, permute_1407, permute_1412, permute_1416, permute_1421, permute_1425, permute_1430, permute_1434, permute_1439, permute_1443, permute_1450, permute_1454, permute_1460, permute_1464, permute_1470, permute_1474, permute_1479, permute_1483, permute_1488, permute_1492, permute_1497, permute_1501, permute_1506, permute_1510, permute_1517, permute_1521, permute_1527, permute_1531, permute_1537, permute_1541, permute_1546, permute_1550, permute_1555, permute_1559, permute_1564, permute_1568, permute_1573, permute_1577, permute_1584, permute_1588, permute_1594, permute_1598, permute_1604, permute_1608, permute_1613, permute_1617, permute_1622, permute_1626, permute_1631, permute_1635, permute_1640, permute_1644, permute_1651, permute_1655, permute_1661, permute_1665, permute_1671, permute_1675, permute_1680, permute_1684, permute_1689, permute_1693, permute_1698, permute_1702, permute_1707, permute_1711, permute_1718, permute_1722, permute_1728, permute_1732, permute_1738, permute_1742, permute_1747, permute_1751, permute_1756, permute_1760, permute_1765, permute_1769, permute_1774, permute_1778, permute_1785, permute_1789, permute_1795, permute_1799, permute_1805, permute_1809, permute_1814, permute_1818, permute_1823, permute_1827, permute_1832, permute_1836, permute_1841, permute_1845, permute_1852, permute_1856, permute_1862, permute_1866, permute_1872, permute_1876, permute_1881, permute_1885, permute_1890, permute_1894, permute_1899, permute_1903, permute_1908, permute_1912, permute_1919, permute_1923, permute_1929, permute_1933, permute_1939, permute_1943, permute_1948, permute_1952, permute_1957, permute_1961, permute_1966, permute_1970, permute_1975, permute_1979, permute_1986, permute_1990, permute_1996, permute_2000, permute_2006, permute_2010, permute_2015, permute_2019, permute_2024, permute_2028, permute_2033, permute_2037, permute_2042, permute_2046, permute_2053, permute_2057, permute_2063, permute_2067, permute_2073, permute_2077, permute_2082, permute_2086, permute_2091, permute_2095, permute_2100, permute_2104, permute_2109, permute_2113, permute_2120, permute_2124, permute_2130, permute_2134, permute_2140, permute_2144, permute_2149, permute_2153, permute_2158, permute_2162, permute_2167, permute_2171, permute_2176, permute_2180, permute_2187, permute_2195, permute_2203, tangents_1])
+    return print_performance(fn, times=times, repeat=repeat)
+
+
+if __name__ == "__main__":
+    from torch._inductor.wrapper_benchmark import compiled_module_main
+    compiled_module_main('None', benchmark_compiled_module)

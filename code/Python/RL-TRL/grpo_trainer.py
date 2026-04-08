@@ -17,7 +17,6 @@ from typing import List, Any
 class CustomGRPOConfig(GRPOConfig):
     # trl: 0.22.2
     # https://github.com/huggingface/trl/blob/v0.29.0/trl/trainer/grpo_config.py#L23
-    # torch_compile = True
 
     random_seed: int = 2026
     project_name: str = "Qwen-GRPO-Math"
@@ -25,10 +24,13 @@ class CustomGRPOConfig(GRPOConfig):
     current_date: str = datetime.now().strftime("%Y%m%d")
     special_num: int = random.randint(0, 9999)
     tracker_project_name: str = f'{current_date}-{project_name}-{special_num:04d}'
-    output_dir: str = field(default_factory=lambda: f"/root/autodl-fs/Model/Outputs-Compile/{CustomGRPOConfig.tracker_project_name}")
+    torch_compile: bool = True
+    torch_compile_backend: str = "inductor"
 
+    # 关键设置：reduce-overhead 会使用 CUDA Graphs 减少 CPU 启动开销
+    # 如果你的模型较小（如 Qwen-0.5B），CPU 调度开销往往比计算本身还大
     # 保存设置
-    save_total_limit: int=2 # 只保存两个
+    save_total_limit: int = 2  # 只保存两个
 
     dataset_name: str = "trl-lib/DeepMath-103K"
     dataset_from: str = "hf"

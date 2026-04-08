@@ -166,7 +166,7 @@
     ],
     [
       "new_description",
-      "LLM生成过程包含Prefill阶段和Decoding阶段，Prefill输入整个prompt的所有token输出KV Cache及首个输出token的logits，Decoding利用KV Cache和上一步token自回归生成。Beam Search通过束宽（k）选择k个最优输出作为第t步，t+1步结合前k步输出构成新输出，区别于Greedy search仅选最优。温度调节通过温度系数影响概率分布，温度0时选logits最大值对应token（确定性），较高温度使分布均匀增加随机性，较低使分布尖锐减少多样性，数值精度可能导致temperature=0时输出差异，温度仅控制采样随机性。Lookahead Search前瞻评估多步生成结果质量，平衡连贯性和多样性。"
+      "LLM生成分为Prefill与Decoding两个阶段，前者输入全量prompt输出KV Cache和首个生成token的logits，后者基于KV Cache和上一步生成token自回归逐token输出，适配大词表的主流生成策略包含多类。贪婪解码每步取概率最高token，输出完全确定；随机采样通过温度参数调整概率分布锐度，控制输出多样性；Top-k采样仅在概率最高的k个token中重归一化采样，过滤无效候选；核采样动态选择累积概率达阈值p的最小候选集，灵活度优于Top-k；Beam Search为确定性搜索算法，维护k条候选序列选全局最优。此外还有重复惩罚、前瞻搜索等策略，可平衡生成连贯性与多样性。"
     ]
   ],
   "./_posts/2025-01-06-TextEmbedding.md": [
@@ -777,6 +777,16 @@
     [
       "new_description",
       "大模型推理优化除量化、多attention方案、cache策略外，可通过模型蒸馏、模型剪枝两类方案实现参数优化。模型蒸馏核心是让小体量学生模型学习预训练大模型的行为逻辑，主流方案包括叠加双损失的KD知识蒸馏、带温度参数的DKD解耦知识蒸馏、基于双损失约束的DMD分配匹配蒸馏，可在降低计算量的前提下尽可能保留大模型性能。模型剪枝分为置零单权重的非结构化剪枝、移除整体结构单元的结构化剪枝两类，需通过多轮剪枝+微调迭代实现，可借助PyTorch内置prune工具快速落地。"
+    ]
+  ],
+  "./writing/2026-04-07-llm-out2.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "大语言模型输出可通过采样策略、温度系数调节，针对强制输出JSON格式的场景，最基础的方案是在提示词中加入输出样例引导模型模仿，但该方案存在失效概率。现有多层级技术实现可控输出：支持OpenAI调用规范的模型可通过设置response_format为json_object、传入自定义json_schema约束输出，底层基于约束解码机制，每步生成token时动态屏蔽不符合格式的候选。开源基座模型可基于vLLM部署，兼容原生参数配置或采用离线推理模式，也可搭配guidance工具实现输出约束。"
     ]
   ]
 }
