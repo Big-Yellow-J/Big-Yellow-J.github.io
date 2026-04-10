@@ -105,28 +105,20 @@ torch.onnx.export(
 print(f"模型已成功导出至: {onnx_file_path}")
 ```
 对于第二种可以直接将到处的模型通过网站：[https://netron.app/](https://netron.app/) 去分析每个节点的具体参数以及输入和输出。
-### 进一步分分析计算图
-https://zhuanlan.zhihu.com/p/644590863
 
-compile:
-https://zhuanlan.zhihu.com/p/39259061
-https://docs.python.org/zh-cn/3/library/dis.html
-https://zhuanlan.zhihu.com/p/630933479
-https://docs.pytorch.org/docs/stable/user_guide/torch_compiler/torch.compiler_dynamo_overview.html
 ## torch.compile
-### 简单使用
-**值得注意的是**：在torch>2.0之后引入一个新的概念 `torch.compile`[^3] 在传统的计算过程中，如 `x+y`那么pytorch就会执行Python 解释器调用函数、检查类型、分配内存、调用 GPU/CPU 操作等操作，这样以来过程就会比较慢，在compile中过程是（From ChatGPT）：
-> 对于下面过程中的几个概念 Dynamo等可以暂时不理会直接看最后代码实践
-
+![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260410161253319.png)
+首先了解几个基本过程[^6]：
 **第一步：首先通过TorchDynamo —— “动态录音机”（抓图）**
 当你第一次运行被 torch.compile 装饰的函数时，Dynamo 会“偷偷”接管 Python 的执行。 它不是静态看代码，而是一边模拟运行，一边录音： 把所有 PyTorch 操作（加、乘、卷积、ReLU 等）记录下来，画成一张 FX Graph（一张计算流程图）。 python 的普通代码（if 判断、for 循环、打印等）如果太复杂，就产生 Graph Break（图断开），这部分还是用原来的慢方式运行。 它还会记录“假设”：比如输入 tensor 的形状是 [32, 3, 224, 224]、类型是 float32 等。这些假设叫 Guards（守卫）。 为什么动态录音？因为 PyTorch 代码经常有动态形状、控制流，静态分析太难了。
-
+![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260410161614945.png)
 **第二步：AOTAutograd —— “提前准备反向传播”**
 如果是训练（需要 backward），Dynamo 只抓了前向（forward）。 AOTAutograd 会提前从前向图生成反向图（不用等到真正做 backward 时才临时建图）。 它还会把复杂操作分解成更基础的操作（PrimTorch），让后续优化更容易。 好处：前向+反向可以一起优化，节省内存（不用保存所有中间结果）。
-
+![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260410161628959.png)
 **第三步：TorchInductor（默认后端）—— “优化工厂 + 代码生成器”**
 拿到干净的计算图后，Inductor 开始大改造： 融合操作：把能合并的算子合成一个内核（例如 conv + batchnorm + relu 变成一个 GPU 内核，减少内存读写）。 布局优化、内存复用、循环优化等。 生成代码： GPU 上主要生成 Triton 代码（一种简单却高效的语言，比手写 CUDA 容易，性能接近官方）。 CPU 上生成 C++ 代码。
-最后把这些优化好的内核打包成一个可直接调用的函数。从而实现计算加速，比如说简单的计算：
+### 简单使用
+**值得注意的是**：在torch>2.0之后引入一个新的概念 `torch.compile`[^3] 在传统的计算过程中，如 `x+y`那么pytorch就会执行Python 解释器调用函数、检查类型、分配内存、调用 GPU/CPU 操作等操作，这样以来过程就会比较慢，比如说简单的计算：
 ```python
 import torch
 def fun1(a, b):
@@ -170,8 +162,127 @@ Epoch 95 | Train Time: 5.30s | Batch Time: 0.04843420398478605Train ACC: 38.82% 
 从上述结果上看，最后ACC差异不大，但是在每个epoch以及batch_time上还是有差异的，于此同时对于在GRPOTrainer上表现如下（只看loss和奖励值，测试的数据以及模型为trl-lib/DeepMath-103K和Qwen2-0.5B-Instruct，其中只使用1%数据）：
 ![20260408142215222](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260408142215222.png)
 ![20260408142251113](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260408142251113.png)
-通过在Resnet以及GRPO两种训练中发现，时间上都会减少并且在模型最后效果是差异不大。 下面进一步解释上面没有解释的几个概念。
-### 进阶概念
+通过在Resnet以及GRPO两种训练中发现，时间上都会减少并且在模型最后效果是差异不大。下面进一步解释上面没有解释的几个概念。
+### dynamo
+最上面提到在使用 compile 之前会去获取计算图，之所以要提前获取计算图是因为：pytorch中有些计算如 `ReLU(Add(A, B))`等，执行逻辑就是先add而后计算relu，但是如果提前获取计算图可以直接通过triton将两部合并为一段代码进而减少计算提高速度，参考[^8]这些内容理解。比如说在官方示例中：
+```python
+from typing import List
+import torch
+from torch import _dynamo as torchdynamo
+def my_compiler(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
+    print("my_compiler() called with FX graph:")
+    gm.graph.print_tabular()
+    return gm.forward  # return a python callable
+
+@torchdynamo.optimize(my_compiler)
+def toy_example(a, b):
+    x = a / (torch.abs(a) + 1)
+    if b.sum() < 0:
+        b = b * -1
+    return x * b
+for _ in range(100):
+    toy_example(torch.randn(10), torch.randn(10))
+```
+
+得到的输出是：
+![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260410163138961.png)
+对于上述参数解释如下：1、`opcode`（操作码），`placeholder`: 函数的输入参数（入口）。 `call_function`: 调用一个 Python 函数（如 add, mul）。 `call_method`: 调用一个对象的方法（如 tensor.sum()）。 `output`: 整个图的返回值（出口）；2、`name`: 这个节点在图中的唯一名称（可以理解为变量名）。 3、`target`: 实际执行的具体函数或目标。 4、`args / kwargs`: 该操作需要的输入参数。如果参数是 abs_1，表示它引用了前面名为 abs_1 节点的输出。 
+
+**第一个图：逻辑分支的“上半部分”** ，这个图展示了一段包含条件判断的计算逻辑：
+输入: 接收两个输入 l_a_ 和 l_b_。
+计算路径 A: 计算 abs(l_a_) + 1，然后计算 l_a_ / (abs(l_a_) + 1)，结果存为 x。
+计算路径 B: 计算 l_b_.sum()，结果存为 sum_1。
+条件判定: 判断 sum_1 < 0，结果存为 lt（此时其为一个bool类型数据）。
+**输出**: 返回了一个元组 (lt, x)。
+之所以要返回一个bool类型数据是因为 TorchDynamo 遇到了图中断（Graph Break）。Python 的 if 分支通常无法直接被编译进同一个静态图中。它先编译到 if 判定的地方，根据 lt 的真假，再决定后面走哪个子图。
+
+**后两个图**：分支后的执行路径，由于代码中可能存在类似 if sum(b) < 0: return x * (-b) else: return x * b 的逻辑，编译器生成了两个不同的子图：**子图 2** (my_compiler called again):执行的是 x * (b * -1)。这对应 sum(b) < 0 成立时的逻辑。**子图 3** (my_compiler called again):执行的是 x * b。这对应 sum(b) < 0 不成立时的逻辑
+
+那么最后通过上述过程将图处理为：
+```python
+def forward(a, b):
+    # 对应第一个图
+    abs_1 = abs(a)
+    add = abs_1 + 1
+    x = a / add
+    sum_1 = b.sum()
+    
+    # 此时发生了 Graph Break (图中断)
+    # 因为后端需要知道 lt 是 True 还是 False 才能继续
+    if sum_1 < 0:
+        # 对应第二个图
+        return x * (b * -1)
+    else:
+        # 对应第三个图
+        return x * b
+```
+那么此时不妨**进一步了解底层原理**（compile是怎么拆分得到计算图的呢？）借鉴[^5][^7]中描述**捕获计算图是在翻译 Python 字节码[^9]的过程中实现的**，还是用最上面的例子直接通过 `dis.dis(toy_example)` 输出得到字节码：
+```markdown
+ 11           0 RESUME                   0
+
+ 12           2 LOAD_FAST                0 (a)
+              4 LOAD_GLOBAL              1 (NULL + torch)
+             14 LOAD_ATTR                2 (abs)
+             34 LOAD_FAST                0 (a)
+             36 CALL                     1
+             44 LOAD_CONST               1 (1)
+             46 BINARY_OP                0 (+)
+             50 BINARY_OP               11 (/)
+             54 STORE_FAST               2 (x)
+
+ 13          56 LOAD_FAST                1 (b)
+             58 LOAD_ATTR                5 (NULL|self + sum)
+             78 CALL                     0
+             86 LOAD_CONST               2 (0)
+             88 COMPARE_OP               2 (<)
+             92 POP_JUMP_IF_FALSE        5 (to 104)
+
+ 14          94 LOAD_FAST                1 (b)
+             96 LOAD_CONST               3 (-1)
+             98 BINARY_OP                5 (*)
+            102 STORE_FAST               1 (b)
+
+ 15     >>  104 LOAD_FAST                2 (x)
+            106 LOAD_FAST                1 (b)
+            108 BINARY_OP                5 (*)
+            112 RETURN_VALUE
+```
+那么dynamo利用这个字节码的逻辑就是，**输入**：Python 字节码。 **处理**：逐条扫描字节码，若是 Tensor 运算就记在 FX Graph 账本上，若是普通 Python 逻辑就正常模拟。 **结果**：产生一个高效的 FX Graph + 一组确保安全的 Guards，对于这个过程可以看博客[^10]。
+
+### AOTAutograd
+dynamo只是获取了forward过程，模型优化（backward过程）在compile中则是通过AOTAutograd进行处理**为推理出来的计算图，自动生成配套的反向传播（Backward）计算图**。在pytorch中还有一中计算梯度方式也是最常见的计算方式autograd对于这两种之间差异在于（借用Grok中给出解释）：
+1、`Autograd`：：你只写前向传播（forward），PyTorch 会在运行时**动态记录每一步操作**，自动构建一个计算图（computational graph）。当你对 loss 调用 .backward() 时，它就沿着这个图反向走一遍，用链式法则自动算出所有参数的梯度。
+这个图是**动态、临时的**（ephemeral）：每次 forward 都会重新建图，用完就销毁（除非你手动 `retain_graph=True`）。优点是超级灵活——支持 if、for 循环、任意 Python 代码，调试也方便。但缺点是每次都要重新建图，Python 开销大，不容易做全局优化。
+2、`AOTAutograd`：它和普通 Autograd 的最大区别是：不是在运行时动态建图，而是**提前就把前向和反向的整个计算图一次性捕获**。第一次运行时，用“假张量”（FakeTensor）模拟一遍 forward，记录下所有操作，生成两个静态的 FX Graph（一个 forward，一个 backward）。这两个图是可分析、可复用、可优化的 Python 对象。
+> **简单总结就是**：`Autograd`没有计算都会重新去构建图，`AOTAutograd`提前将图创建好，下次用直接按照图去运行即可（省去创建费时）
+
+### 进阶使用
+1、如何debug；2、如何使用compile中参数；3、可以更加深入的去了解代码底层细节，比如说对于字节码在dynamo中式如何将其转化为计算图的呢？以及在atoautograd中又是如何利用直观计算图的呢？
+
+当你执行 compiled_model = torch.compile(model) 时，内部大致分成以下几步：
+
+TorchDynamo（图捕获阶段）
+它负责第一次运行时拦截 Python 字节码（bytecode）。
+分析代码，把纯 PyTorch 张量操作的部分提取出来，生成一个或多个 FX Graph（前向计算图）。
+Python 控制流（if、for、print 等）如果无法静态化，就会产生 graph break，那部分保持 eager 执行。
+这一步主要捕获的是 forward（前向） 的计算图。
+
+AOTAutograd（Ahead-of-Time 自动微分阶段）
+Dynamo 捕获到 forward 的 FX Graph 后，会把它交给 AOTAutograd。
+AOTAutograd 不是简单“利用”这个图，而是做更重要的事：
+使用 FakeTensor（假张量，不占内存）模拟运行一次 forward。
+在这个模拟过程中，让 PyTorch 原生的 Autograd 引擎跑一遍，从而提前记录并生成完整的 backward 图。
+得到一个 joint graph（前向 + 反向合并的完整图）。
+然后进行 min-cut partition（最小割划分），把 joint graph 拆分成：
+一个优化的 forward graph（决定哪些中间结果需要保存）
+一个优化的 backward graph（决定哪些可以重计算以节省显存）
+
+
+最后把 forward + backward 包装成一个 torch.autograd.Function，这样当你调用 loss.backward() 时，实际执行的就是这个提前编译好的 backward 图。
+
+后续编译器（如 TorchInductor）
+对划分后的 forward 和 backward 图分别做算子融合、代码生成等底层优化，生成高效的内核代码。
+
 ## torch数据形状改变方式
 在`torch`中涉及到数据形状改变函数，总结如下：
 
@@ -204,3 +315,9 @@ Epoch 95 | Train Time: 5.30s | Batch Time: 0.04843420398478605Train ACC: 38.82% 
 [^3]: [https://docs.pytorch.org/tutorials/intermediate/torch_compile_tutorial.html](https://docs.pytorch.org/tutorials/intermediate/torch_compile_tutorial.html)
 [^4]: [https://docs.pytorch.org/docs/stable/generated/torch.compile.html#torch.compile](https://docs.pytorch.org/docs/stable/generated/torch.compile.html#torch.compile)
 [^5]: [https://zhuanlan.zhihu.com/p/644590863](https://zhuanlan.zhihu.com/p/644590863)
+[^6]: [https://zhuanlan.zhihu.com/p/680288200?utm_psn=2025772286163067927](https://zhuanlan.zhihu.com/p/680288200?utm_psn=2025772286163067927)
+[^7]: [https://zhuanlan.zhihu.com/p/630933479](https://zhuanlan.zhihu.com/p/630933479)
+[^8]: [https://docs.pytorch.org/docs/stable/user_guide/torch_compiler/torch.compiler_dynamo_overview.html](https://docs.pytorch.org/docs/stable/user_guide/torch_compiler/torch.compiler_dynamo_overview.html)
+[^9]: [https://docs.python.org/zh-cn/3/library/dis.html](https://docs.python.org/zh-cn/3/library/dis.html)
+[^10]: [https://fkong.tech/posts/2023-05-14-dynamo-02/](https://fkong.tech/posts/2023-05-14-dynamo-02/)
+[^11]: [https://depyf.readthedocs.io/en/latest/walk_through.html](https://depyf.readthedocs.io/en/latest/walk_through.html)
