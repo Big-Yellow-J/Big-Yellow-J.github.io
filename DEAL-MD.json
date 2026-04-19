@@ -766,7 +766,7 @@
     ],
     [
       "new_description",
-      "模型训练常通过flash-attn、混合精度优化训练速度，但普遍缺乏对CPU、GPU等设备性能瓶颈的系统分析。PyTorch训练数据流遵循磁盘→内存→CPU→GPU计算→内存→磁盘路径，常见瓶颈分为五类：CPU瓶颈表现为GPU利用率跳变、部分CPU核打满，多为Dataloader参数配置问题；GPU计算瓶颈为利用率高但吞吐量低，需参考MFU指标判断；I/O瓶颈表现为训练初始慢后续提速，磁盘读写负载高；多卡通信瓶颈表现为部分卡利用率低，NCCL的AllReduce操作占比超30%；另有Python解释器、GIL导致的框架开销。可通过bpytop、nvidia-smi、iotop做宏观性能监控，用torch.profiler定位耗时点，对应调整Dataloader参数、使用NVIDIA DALI、算子融合、梯度压缩等方案优化。"
+      "PyTorch训练推理场景性能瓶颈分为CPU、GPU计算、I/O、多卡通信、框架开销五类，对应不同判别特征：GPU利用率波动跳变对应CPU瓶颈，训练起步慢后续提速对应I/O瓶颈，NCCL AllReduce耗时占比超30%对应多卡通信瓶颈。宏观可通过bpytop、nvidia-smi、iotop快速排查CPU、GPU、磁盘占用，微观借助torch.profiler的概览、算子、追踪等视图精确定位耗时节点。可调整Dataloader的num_workers、pin_memory等参数优化数据加载，超大数据用IterableDataset、WebDataset或Hugging Face流式加载，针对不同瓶颈可采取算子融合、混合精度训练、梯度压缩等方案优化。"
     ]
   ],
   "./_posts/2026-02-15-ModelDistillation.md": [

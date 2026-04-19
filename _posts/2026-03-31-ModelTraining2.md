@@ -9,6 +9,9 @@ show_footer_image: true
 tags:
 - 模型训练
 - Pytorh学习
+description: PyTorch训练推理场景性能瓶颈分为CPU、GPU计算、I/O、多卡通信、框架开销五类，对应不同判别特征：GPU利用率波动跳变对应CPU瓶颈，训练起步慢后续提速对应I/O瓶颈，NCCL
+  AllReduce耗时占比超30%对应多卡通信瓶颈。宏观可通过bpytop、nvidia-smi、iotop快速排查CPU、GPU、磁盘占用，微观借助torch.profiler的概览、算子、追踪等视图精确定位耗时节点。可调整Dataloader的num_workers、pin_memory等参数优化数据加载，超大数据用IterableDataset、WebDataset或Hugging
+  Face流式加载，针对不同瓶颈可采取算子融合、混合精度训练、梯度压缩等方案优化。
 ---
 
 在模型训练过程中，通过分析模型损失、准确率这些基础指标去判别模型优化效果，通过flash-attn、混合精度训练等去优化模型训练速度，但是训练过程中对于设备性能瓶颈分析似乎做的比较少，比如说CPU、GPU使用率等，下面内容系统分析一下如何去分析训练/推理过程中的性能瓶颈。在介绍工具使用之前首先了解在使用pytroch进行训练过程中设备之间处理顺序是什么：`磁盘 → 内存 → CPU → GPU（前向）→ GPU（反向）→ GPU（参数更新）→ 内存 → 磁盘（可选）`，一般而言对于数据处理（**主要是通过CPU进行数据处理，如数据增强等**），这个过程主要是 `磁盘 → 内存 → CPU`，而后就是将处理后的数据交给GPU进行计算。**训练过程中瓶颈分析**[^1]：
