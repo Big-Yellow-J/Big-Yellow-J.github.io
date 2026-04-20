@@ -164,6 +164,17 @@ Epoch 95 | Train Time: 5.30s | Batch Time: 0.04843420398478605Train ACC: 38.82% 
 ![20260408142215222](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260408142215222.png)
 ![20260408142251113](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260408142251113.png)
 通过在Resnet以及GRPO两种训练中发现，时间上都会减少并且在模型最后效果是差异不大。下面进一步解释上面没有解释的几个概念。
+#### `torch.compile` 参数
+官方[参数](https://docs.pytorch.org/docs/stable/generated/torch.compile.html)中提供的核心参数如下：
+1. `backend` (后端)：决定了计算图最终被转化为何种形式。`inductor` (默认值)：这是最推荐的选择。它使用 TorchInductor 后端，将代码编译为 Triton (针对 GPU) 或 C++ (针对 CPU)。它能提供最深的算子融合和内存优化。`cudagraphs`：利用 NVIDIA 的 CUDA Graphs 技术，通过减少 CPU 启动 Kernel 的开销来加速小模型。`其他`：如 onnxrt (ONNX Runtime) 或 tvm，通常用于特定的硬件部署场景。
+2. `mode` (预设模式)：1、 `default`：默认模式；2、 `reduce-overhead`：减少开销模式（使用 CUDA Graphs 减少 CPU 启动开销，最适合小 batch 或推理场景，但会增加显存占用）；3、 `max-autotune`：最大自动调优模式（使用 Triton 优化算子，如 ReLU、Softmax 等，编译时间较长）
+3. `fullgraph`（全图捕捉）：`False` (默认)：如果编译器遇到无法处理的 Python 代码（如使用了复杂的第三方库或特殊的 print 语句），它会将图**拆分（Graph Break）**成几个小图，中间夹杂着 Python 解释器执行。`True`：强制要求整个模型被捕捉为一张完整的计算图。如果模型中存在无法编译的代码，会直接报错。这通常用于追求极致性能的导出场景。
+4. `options`可以直接向底层后端传递特定的优化指令。可以直接通过 `torch._inductor.list_options()`查看支持哪些操作，除此之外按照官方文档中介绍的几种处理方式：
+![20260420172724](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image/20260420172724.png)
+
+<!-- #### `torch.compilr` debug过程
+一般而言在 `torch.compile` 中主要错误如下几类：1、图被切断；2、三个阶段出现错误（如dynamo捕获图出现错误等），比较常见排错方式，通过指定不同的 `backend` 去测试，`eager`（只走 dynamo）、`aot_eager`（测试 AOTAutograd）、`inductor`（测试 Inductor 算子合并） -->
+
 ### 基础概念
 #### dynamo
 最上面提到在使用 compile 之前会去获取计算图，之所以要提前获取计算图是因为：pytorch中有些计算如 `ReLU(Add(A, B))`等，执行逻辑就是先add而后计算relu，但是如果提前获取计算图可以直接通过triton将两部合并为一段代码进而减少计算提高速度，参考[^8]这些内容理解。比如说在官方示例中对于compile获取计算图过程为：
@@ -198,9 +209,7 @@ _计算路径B_: 计算 l_b_.sum()，结果存为 sum_1。
 _条件判定_: 判断 sum_1 < 0，结果存为 lt（此时其为一个bool类型数据）。
 **输出**: 返回了一个元组 (lt, x)。 之所以要返回一个bool类型数据是因为 TorchDynamo 遇到了图中断（Graph Break）。Python 的 if 分支通常无法直接被编译进同一个静态图中。它先编译到 if 判定的地方，根据 lt 的真假，再决定后面走哪个子图。
 
-**后两个图**：分支后的执行路径，由于代码中可能存在类似 if sum(b) < 0: return x * (-b) else: return x * b 的逻辑，编译器生成了两个不同的子图：**子图 2** (my_compiler called again):执行的是 x * (b * -1)。这对应 sum(b) < 0 成立时的逻辑。**子图 3** (my_compiler called again):执行的是 x * b。这对应 sum(b) < 0 不成立时的逻辑
-
-那么最后通过上述过程将图处理为：
+**后两个图**：分支后的执行路径，由于代码中可能存在类似 `if sum(b) < 0: return x * (-b) else: return x * b` 的判断语法，编译器生成了两个不同的子图：**子图 2**：执行的是 x * (b * -1)。这对应 sum(b) < 0 成立时的逻辑。**子图 3** ：执行的是 x * b。这对应 sum(b) < 0 不成立时的逻辑。那么最后通过上述过程将图处理为：
 ```python
 def forward(a, b):
     # 对应第一个图
@@ -219,7 +228,7 @@ def forward(a, b):
         return x * b
 ```
 compile中具体获取计算图过程[^5][^7]是直接通过**捕获计算图是在翻译 Python 字节码[^9]的过程中实现的**，还是用最上面的例子直接通过 `dis.dis(toy_example)` 输出得到字节码：
-> 对于 **字节码** 简单理解为：在执行python代码（源码）之前会将代码进行编译得到所谓的字节码，然后直接将字节码交给虚拟机执行，那么在 `dynamo` 过程中则是 **逐条解释字节码，遇到tensor操作将其记录为计算图节点**（可以简单见 计算图 理解为一个栈，遇到和pytorch相关计算就放到这个 栈 中）
+> 对于 **字节码** 简单理解为：在执行python代码（源码）之前会将代码进行编译得到所谓的字节码，然后直接将字节码交给虚拟机执行，那么在 `dynamo` 过程中则是 **逐条解释字节码，遇到tensor操作将其记录为计算图节点**（可以简单将 计算图 理解为一个栈，遇到和pytorch相关计算就放到这个 栈 中）
 
 ```markdown
  11           0 RESUME                   0
@@ -254,13 +263,13 @@ compile中具体获取计算图过程[^5][^7]是直接通过**捕获计算图是
 那么dynamo利用这个字节码的逻辑就是，**输入**：Python 字节码。 **处理**：逐条扫描字节码，若是 Tensor 运算就记在 FX Graph 账本上，若是普通 Python 逻辑就正常模拟。 **结果**：产生一个高效的 FX Graph + 一组确保安全的 Guards。
 
 #### AOTAutograd
-dynamo只是获取了forward过程，模型优化（backward过程）在compile中则是通过AOTAutograd进行处理**为推理出来的计算图，自动生成配套的反向传播（Backward）计算图**。在pytorch中还有一中计算梯度方式也是最常见的计算方式autograd对于这两种之间差异在于（借用Grok中给出解释）：
+dynamo只是获取了forward过程，模型优化（backward过程）在compile中则是通过AOTAutograd进行处理**为推理出来的计算图，自动生成配套的反向传播（Backward）计算图**。在pytorch中还有一中计算梯度方式也是最常见的计算方式autograd对于这两种之间差异在于：
 1、`Autograd`：你只写前向传播（forward），PyTorch 会在运行时**动态记录每一步操作**，自动构建一个计算图（computational graph）。当你对 loss 调用 `.backward()` 时，它就沿着这个图反向走一遍，用链式法则自动算出所有参数的梯度。 整个过程中这个图是动态、临时的：**每次 forward 都会重新建图，用完就销毁**（除非手动 `retain_graph=True`）。优点是超级灵活——支持 if、for 循环、任意 Python 代码，调试也方便。但缺点是每次都要重新建图，Python 开销大，不容易做全局优化。
 2、`AOTAutograd`：它和普通 Autograd 的最大区别是：不是在运行时动态建图，而是**提前就把前向和反向的整个计算图一次性捕获**。第一次运行时，用“假张量”（FakeTensor）模拟一遍 forward，记录下所有操作，生成两个静态的 FX Graph（一个 forward，一个 backward）。这两个图是可分析、可复用、可优化的 Python 对象。
 > **简单总结就是**：`Autograd`没有计算都会重新去构建图，`AOTAutograd`提前将图创建好，下次用直接按照图去运行即可（省去创建费时）
 
-### 进阶使用
-1、如何debug；2、如何使用compile中参数；3、可以更加深入的去了解代码底层细节，比如说对于字节码在dynamo中式如何将其转化为计算图的呢？以及在atoautograd中又是如何利用直观计算图的呢？
+#### TorchInductor
+主要是对算子进行融合，比如说$y = \text{ReLU}(Ax + b)$，传统方式要读写三次显存，Inductor 会将其合并为一个 Kernel，数据读入显卡后一次性算完再写回。
 
 ## torch数据形状改变方式
 在`torch`中涉及到数据形状改变函数，总结如下：
