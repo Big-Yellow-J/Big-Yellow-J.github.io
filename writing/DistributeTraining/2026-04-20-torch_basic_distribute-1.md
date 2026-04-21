@@ -132,6 +132,8 @@ for input in data_loader:
 
 ### 4、专家并行
 
+## 分布式训练实现
+
 ## 参考
 [^1]: [https://www.telesens.co/2019/04/04/distributed-data-parallel-training-using-pytorch-on-aws/](https://www.telesens.co/2019/04/04/distributed-data-parallel-training-using-pytorch-on-aws/)
 [^2]: [https://arxiv.org/pdf/1811.06965](https://arxiv.org/pdf/1811.06965)
