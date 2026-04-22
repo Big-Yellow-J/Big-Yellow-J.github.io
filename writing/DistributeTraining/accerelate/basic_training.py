@@ -1,51 +1,79 @@
-import os
+﻿import os
 import math
 import json
 import torch
 import random
 import shutil
-import random
 import logging
 import numpy as np
 import torch.nn as nn
 from datetime import datetime
-from accelerate import Accelerator
+
+from accelerate import Accelerator, DeepSpeedPlugin
+from accelerate.utils import (
+    DistributedDataParallelKwargs,
+    DistributedType,
+    GradientAccumulationPlugin,
+    ProjectConfiguration,
+    load_fsdp_model,
+    load_fsdp_optimizer,
+    save_fsdp_model,
+    save_fsdp_optimizer,
+)
 from accelerate.logging import get_logger
+
+from transformers import get_scheduler
 from torch.utils.data import DataLoader, Dataset
-from dataclasses import dataclass, field
+
+from typing import Optional, Dict, Any
+from dataclasses import dataclass, field, asdict
 
 log = get_logger(__name__)
 
 
+
 @dataclass
 class BasicConfig:
-    # 基础参数配置
     cache_dir: str = '/root/autodl-tmp/Model/'
     project_name: str = 'Training-BasicConfig'
-    current_date = datetime.now().strftime("%Y%m%d")
-    special_num = random.randint(0, 9999)
-    tracker_project_name: str = f'{current_date}-{project_name}-{special_num:04d}'
-    output_dir: str = f'{cache_dir}/result-QwenVL-Docparse/{tracker_project_name}/'
 
-    # 模型保存参数
-    small_dataset: float = 0  # 小批量输出做测试
-    checkpointing_steps: int = 0  # 存储一次参数步数
-    checkpoints_total_limit: int = 10  # 只存储2组参数
-    resume_from_checkpoint: str = None  # 恢复训练路径
+    current_date: str = field(default_factory=lambda: datetime.now().strftime("%Y%m%d"))
+    special_num: int = field(default_factory=lambda: random.randint(0, 9999))
 
-    # 模型训练参数
+    tracker_project_name: str = field(init=False)
+    output_dir: str = field(init=False)
+
+    small_dataset: float = 0.0
+    checkpointing_steps: int = 0
+    checkpoints_total_limit: int = 10
+    resume_from_checkpoint: str = None
     seed: int = 10086
     epoch: int = 10
     batch_size: int = 1
     max_train_steps: int = 0
     learning_rate: float = 2e-5
-    lr_warmup_steps: float = 0.1
     lr_scheduler: str = 'cosine'
-    gradient_accumulation_steps: int = 1  # 梯度累计步数
+    lr_warmup_steps: float = 0.1
+    optim_name: str = "adamW"
 
-    # 优化器配置
-    optim_name: str= "adamW" # adamw/ adamw_8bit
+    accelerator_config: Dict[str, Any] = field(default_factory=lambda: {
+        "mixed_precision": "bf16",
+        "log_with": "tensorboard",
+        "project_config": "",
+    })
+    deepspeed_plugin: Dict[str, Any] = field(default_factory= lambda:{})
+    fsdp2_plugin: Dict[str, Any] = field(default_factory= lambda:{})
+    gradient_plugin: Dict[str, Any] = field(default_factory= lambda: {
+        "num_steps": 1 # 梯度累计次数
+    })
 
+
+    def __post_init__(self):
+        self.tracker_project_name = f'{self.current_date}-{self.project_name}-{self.special_num:04d}'
+        self.output_dir = f'{self.cache_dir}/result-QwenVL-Docparse/{self.tracker_project_name}/'
+
+    def to_dict(self):
+        return asdict(self)
 
 def write_json(json_path, json_file, special_name=None):
     if special_name:
@@ -60,7 +88,7 @@ def logger_init(output_dir, tracker_project_name):
     '''日志初始化'''
     os.makedirs(output_dir, exist_ok=True)
     file_path = os.path.join(output_dir, f"{tracker_project_name}.log")
-    
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
@@ -76,7 +104,7 @@ def random_state(seed):
     random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed) 
+    torch.cuda.manual_seed_all(seed)
 
 def save_checkpoint(accelerator: Accelerator, config: BasicConfig,
                     global_step: int, epoch: int, suffix="",
@@ -237,16 +265,52 @@ class BasicTrainer:
     def __init__(
             self, config: BasicConfig,
             model: nn.Module=None,
-            train_dataset: Dataset=None,
-            eval_dataset: Dataset=None,
+            train_dataloader: DataLoader=None,
+            eval_dataloader: DataLoader=None,
             optimizers: torch.optim.Optimizer=None,
     ):
         self.config = config
+        print(self.config.accelerator_config, self.config.gradient_plugin)
         self.model = model
+
+        # 数据集处理过程
+        self.train_dataloader = train_dataloader
+        self.eval_dataloader = eval_dataloader
+
+        # accelerate 初始化
+
+        self._load_trainsteps()
         self.optimizers = optimizers if optimizers else self._load_optimizer()
+        # self._load_lr_scheduler()
+
+    def _accelerator_init(self):
+        gradient_accumulation_plugin = GradientAccumulationPlugin(**self.config.gradient_plugin)
+
+        if self.config.deepspeed_plugin:
+            deepspeed_plugin = DeepSpeedPlugin(**self.config.deepspeed_plugin)
+            self.accelerator = Accelerator(
+                deepspeed_plugin=deepspeed_plugin,
+                gradient_accumulation_plugin=gradient_accumulation_plugin,
+                **self.config.accelerator_config,
+            )
+            return
+        if self.config.fsdp2_plugin:
+            # fsdp2_plugin = fsdp
+            # self.accelerator = Accelerator(
+            #     fsdp_plugin=
+            #     gradient_accumulation_plugin=gradient_accumulation_plugin,
+            #     **self.config.accelerator_config,
+            # )
+            return
+        else:
+            self.accelerator = Accelerator(
+                gradient_accumulation_plugin=gradient_accumulation_plugin,
+                **self.config.accelerator_config,
+            )
+            return
 
     def _load_optimizer(self):
-        #TODO: 训练参数还可以优化一下特别是针对 lora 情况
+        """定义一个基础的 optimizer 如果需要更加复杂 直接在初始化中定义好 optimizer 即可"""
         trainable_params = [p for p in self.model.parameters() if p.requires_grad]
         if self.config.optim_name == "adamw_8bit":
             import bitsandbytes as bnb
@@ -263,3 +327,25 @@ class BasicTrainer:
         ]
         optimizer = optimizer_class(param_groups)
         return optimizer
+
+    def _load_lr_scheduler(self):
+        #TODO: 待补充
+        self.lr_scheduler = get_scheduler(
+            self.config.lr_scheduler,
+            optimizer= self.optimizers,
+            # num_warmup_steps=,
+            num_training_steps= self.train_steps
+        )
+
+    def _load_trainsteps(self):
+        num_updates = math.ceil(len(self.train_dataloader)/
+                                self.config.gradient_accumulation_steps)
+        if self.config.max_train_steps:
+            self.train_steps = self.config.max_train_steps
+            # 重新反推 epoch 数量
+        elif self.config.epoch:
+            self.train_steps = self.config.epoch* num_updates
+
+if __name__ == "__main__":
+    config = BasicConfig()
+    BasicTrainer(config= config)
