@@ -1,10 +1,11 @@
-from typing import Any, Dict, Optional, Tuple
+from dataclasses import dataclass
+from typing import Dict
 
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
-from dataclasses import asdict, dataclass, field
 from torch.utils.data import DataLoader
+
 from accelerate_training import BasicConfig, BasicTrainer
 
 
@@ -14,11 +15,22 @@ class ResNet50Config(BasicConfig):
     cache_dir: str = "/root/autodl-fs/huggingface"
     task_type: str = "classification"
     project_name: str = 'Training-ResNet50-DDP'
+    checkpointing_steps: int = 10000
+    checkpoints_total_limit: int = 2
     seed: int = 42
-    batch_size: int = 32
+    batch_size: int = 256
     num_workers: int= 8
     max_train_steps: int = 0
 
+    resume_from_checkpoint: str = "/root/autodl-tmp/.cache/HuangJieCode/outputs/20260425-Training-ResNet50-DDP-6082/checkpoint-interrupted-2168"
+
+@dataclass
+class ResNet50ConfigDeepSpeed(BasicConfig):
+    pass
+
+@dataclass
+class ResNet50ConfigFSDP2(BasicConfig):
+    pass
 
 class ResNet50Trainer(BasicTrainer):
     def __init__(self, config: ResNet50Config):

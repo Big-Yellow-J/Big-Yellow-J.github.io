@@ -202,11 +202,11 @@ if self.accelerator.is_main_process:
 ...
 for epoch in range(1, self.num_epochs + 1):
     for batch_idx, (images, labels) in enumerate(self.train_loader):
-        ...
+        ...# 模型训练过程
         if profiler and self.accelerator.is_main_process:
             profiler.step()
 if prof:
-    profiler.export_chrome_trace("trace.json")
+    # profiler.export_chrome_trace("trace.json")
     prof.stop()
 ```
 torch profile使用比较简单就是先初始化而后`start()`启动记录器、`step()`记录结果、`stop()`停止记录，而后直接通过 `tensorboard --logdir logs/` 即可（ **值得注意的是**，上面代码只会记录少数步，当 `repeat=0`时候就会一直记录，不需要频繁记录那么多），上述过程中需要注意tensorboard和profile的存储的最终的文件夹要保持一致，对于启动后的在tensorboard中视图中各项结果分析如下[^5]：

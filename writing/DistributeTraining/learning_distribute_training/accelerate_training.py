@@ -1,11 +1,11 @@
-﻿import json
+﻿import gc
+import json
 import logging
 import math
 import os
-import gc
 import random
 import shutil
-from tqdm import tqdm
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
@@ -14,7 +14,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 from accelerate import Accelerator
+from torch.profiler import profile, ProfilerActivity, tensorboard_trace_handler
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 from transformers import AutoProcessor, get_scheduler
 
 logger = logging.getLogger(__name__)
@@ -34,7 +36,7 @@ class BasicConfig:
 
     checkpointing_steps: int = 0
     checkpoints_total_limit: int = 10
-    resume_from_checkpoint: Optional[str] = None
+    resume_from_checkpoint: Optional[str] = ""
 
     seed: int = 10086
     epoch: int = 10
@@ -49,6 +51,7 @@ class BasicConfig:
     task_type: str = "llm"  # llm | classification
 
     torch_compile: bool = True
+    torch_profile: bool = False
     compile_config: Dict[str, Any] = field(default_factory=lambda: {
         "backend": "inductor", "mode": "default"
     })
@@ -105,10 +108,9 @@ class BasicTrainer:
         criterion: Optional[nn.Module] = None,
     ):
         self.config = config
-        self.model = model
+        self.model = model #TODO 支持 vllm 模型初始化
         if self.config.torch_compile:
-            torch.compile(self.model, **self.config.compile_config)
-            #TODO: model grad_checkpoint 支持
+            self.model = torch.compile(self.model, **self.config.compile_config)
 
         self.processor = processor
         self.train_dataloader = train_dataloader
@@ -118,8 +120,7 @@ class BasicTrainer:
         self._set_random_seed()
         self._logger_init()
         self._accelerator_init()
-        if self.config.accelerator_config["log_with"] == "tensorboard":
-            self._tensorboard_init()
+
 
         self.optimizer = optimizer if optimizer is not None else self._build_optimizer()
 
@@ -155,44 +156,85 @@ class BasicTrainer:
             torch.cuda.manual_seed_all(seed)
 
     def _tensorboard_init(self):
-        def filter_hparams(config_dict):
-            filtered = {}
-            for k, v in config_dict.items():
-                if isinstance(v, (int, float, str, bool, type(None))):
-                    filtered[k] = v
-                elif isinstance(v, torch.Tensor):
-                    filtered[k] = v
-            return filtered
+        def flatten_dict(d, parent_key="", sep="."):
+            items = {}
+            for k, v in d.items():
+                new_key = f"{parent_key}{sep}{k}" if parent_key else k
+
+                if isinstance(v, dict):
+                    items.update(flatten_dict(v, new_key))
+                else:
+                    items[new_key] = v
+            return items
+
+        def sanitize(v):
+            if isinstance(v, (int, float, str, bool)):
+                return v
+            elif v is None:
+                return "None"
+            elif isinstance(v, torch.Tensor):
+                return v
+            else:
+                return str(v)
 
         if self.accelerator.is_main_process:
-            tracker_config = dict(vars(self.config))
-            tracker_config = filter_hparams(tracker_config)
+            tracker_config = self.config.to_dict()
+            tracker_config = flatten_dict(tracker_config)
+            tracker_config = {k: sanitize(v) for k, v in tracker_config.items()}
+
             self.accelerator.init_trackers(
-                self.config.tracker_project_name, config=tracker_config)
+                self.config.tracker_project_name,
+                config=tracker_config
+            )
+
+    def _profile_init(self):
+        self.profile = profile(
+            activities= [ProfilerActivity.CPU, ProfilerActivity.CUDA],
+            schedule=torch.profiler.schedule(
+                wait=1,    # 等待步数
+                warmup=1,  # 预热步数
+                active=3,  # 活跃步数
+                repeat=2   # 重复次数
+            ),
+            on_trace_ready=tensorboard_trace_handler(self.config.output_dir),
+            record_shapes=True,   # 记录张量形状
+            profile_memory=True,  # 记录内存使用
+            with_stack=True,      # 记录调用栈
+            with_flops=True       # 计算 FLOPs
+        )
 
     def _accelerator_init(self) -> None:
-        # TODO: tensorboard 日志文件记录
         from accelerate.utils import GradientAccumulationPlugin, ProjectConfiguration
 
-        plugins: Dict[str, Any] = {
+        plugins = {
             "gradient_accumulation_plugin": GradientAccumulationPlugin(**self.config.gradient_plugin)
         }
 
         if self.config.deepspeed_plugin:
             from accelerate.utils import DeepSpeedPlugin
-
             plugins["deepspeed_plugin"] = DeepSpeedPlugin(**self.config.deepspeed_plugin)
         elif self.config.fsdp2_plugin:
             from accelerate.utils import FullyShardedDataParallelPlugin
-
             plugins["fsdp_plugin"] = FullyShardedDataParallelPlugin(**self.config.fsdp2_plugin)
 
         accelerator_kwargs = dict(self.config.accelerator_config)
-        if accelerator_kwargs.get("project_config", None) in ("", None):
-            accelerator_kwargs.pop("project_config", None)
+        accelerator_kwargs.pop("project_config", None)
 
-        accelerator_project_config = ProjectConfiguration(project_dir=self.config.store_dir)
-        self.accelerator = Accelerator(project_config= accelerator_project_config, **plugins, **accelerator_kwargs)
+        accelerator_project_config = ProjectConfiguration(
+            project_dir=self.config.store_dir
+        )
+
+        self.accelerator = Accelerator(
+            project_config=accelerator_project_config,
+            **plugins,
+            **accelerator_kwargs
+        )
+        if self.config.torch_profile and self.accelerator.is_main_process:
+            self._profile_init()
+            self.profile.start()
+        if self.config.accelerator_config["log_with"] == "tensorboard":
+            self._tensorboard_init()
+
 
     def _build_optimizer(self) -> torch.optim.Optimizer:
         trainable_params = [p for p in self.model.parameters() if p.requires_grad]
@@ -233,58 +275,16 @@ class BasicTrainer:
         )
 
     def _prepare_components(self) -> None:
-        prepared = self.accelerator.prepare(
-            self.model,
-            self.optimizer,
-            self.train_dataloader,
-            self.eval_dataloader,
-            self.lr_scheduler,
+        self.model, self.optimizer, self.train_dataloader, self.eval_dataloader, self.lr_scheduler = self.accelerator.prepare(
+            self.model, self.optimizer, self.train_dataloader, self.eval_dataloader, self.lr_scheduler
         )
-        (
-            self.model,
-            self.optimizer,
-            self.train_dataloader,
-            self.eval_dataloader,
-            self.lr_scheduler,
-        ) = prepared
 
         if self.criterion is not None:
             self.criterion = self.accelerator.prepare(self.criterion)
 
-    def _resolve_resume_path(self) -> Optional[str]:
-        resume_path = None
-
-        if self.config.resume_from_checkpoint:
-            manual_path = self.config.resume_from_checkpoint
-            if os.path.isabs(manual_path):
-                resume_path = manual_path
-            else:
-                resume_path = os.path.join(self.config.output_dir, manual_path)
-
-        interrupted_path = os.path.join(self.config.output_dir, "checkpoint-interrupted")
-        if os.path.exists(interrupted_path):
-            return interrupted_path
-
-        if resume_path and os.path.exists(resume_path):
-            return resume_path
-
-        if not os.path.exists(self.config.output_dir):
-            return None
-
-        checkpoints = [
-            d
-            for d in os.listdir(self.config.output_dir)
-            if d.startswith("checkpoint-") and d.split("checkpoint-")[-1].isdigit()
-        ]
-        if not checkpoints:
-            return None
-
-        checkpoints.sort(key=lambda x: int(x.split("checkpoint-")[-1]), reverse=True)
-        return os.path.join(self.config.output_dir, checkpoints[0])
-
     def load_checkpoint(self) -> Tuple[int, int, int]:
-        resume_path = self._resolve_resume_path()
-        if not resume_path:
+        resume_path = self.config.resume_from_checkpoint
+        if not os.path.exists(resume_path):
             return 0, 0, 0
 
         logger.info("Resuming training from %s", resume_path)
@@ -346,18 +346,11 @@ class BasicTrainer:
                 shutil.rmtree(old_path, ignore_errors=True)
                 logger.info("Removed old checkpoint: %s", old_ckpt)
 
-    def _move_batch_to_device(self, batch):
-        if isinstance(batch, dict):
-            return {k: v.to(self.accelerator.device) if hasattr(v, "to") else v for k, v in batch.items()}
-        if isinstance(batch, (list, tuple)):
-            moved = [v.to(self.accelerator.device) if hasattr(v, "to") else v for v in batch]
-            return type(batch)(moved)
-        return batch.to(self.accelerator.device) if hasattr(batch, "to") else batch
-
     def _clean_cuda_gc(self):
         gc.collect()
         torch.cuda.empty_cache()
 
+    # TODO 一直计算等于0
     def _compute_grad_norm(self) -> float:
         grad_norms = [
             torch.norm(p.grad.detach(), p=2.0)
@@ -368,17 +361,25 @@ class BasicTrainer:
             return 0.0
         return float(torch.norm(torch.stack(grad_norms), p=2.0).item())
 
+    def _move_batch_to_device(self, batch):
+        if isinstance(batch, dict):
+            return {k: v.to(self.accelerator.device) if hasattr(v, "to") else v for k, v in batch.items()}
+        if isinstance(batch, (list, tuple)):
+            moved = [v.to(self.accelerator.device) if hasattr(v, "to") else v for v in batch]
+            return type(batch)(moved)
+        if isinstance(batch, Mapping):
+            return {k: v.to(self.accelerator.device) if hasattr(v, "to") else v for k, v in batch.items()}
+        return batch.to(self.accelerator.device) if hasattr(batch, "to") else batch
+
     def compute_loss(self, batch) -> torch.Tensor:
         batch = self._move_batch_to_device(batch)
 
         if self.config.task_type == "llm":
-            if isinstance(batch, dict):
-                outputs = self.model(**batch)
-            else:
-                raise ValueError("LLM task expects batch to be dict for model(**batch)")
-
+            outputs = self.model(**batch)
             if hasattr(outputs, "loss") and outputs.loss is not None:
                 return outputs.loss
+            if isinstance(outputs, dict) and "loss" in outputs:
+                return outputs["loss"]
             raise ValueError("LLM model output does not contain .loss")
 
         if self.config.task_type == "classification":
@@ -394,16 +395,6 @@ class BasicTrainer:
 
         raise ValueError(f"Unsupported task_type={self.config.task_type}")
 
-    def training_step(self, batch) -> float:
-        loss = self.compute_loss(batch)
-        self.accelerator.backward(loss)
-        if self.accelerator.sync_gradients:
-            self.accelerator.clip_grad_norm_(self.model.parameters(),self.config.max_grad_norm)
-        self.optimizer.step()
-        self.lr_scheduler.step()
-        self.optimizer.zero_grad()
-        return float(loss.detach().item())
-
     def evaluate(self) -> Dict[str, float]:
         if self.eval_dataloader is None:
             return {}
@@ -414,7 +405,7 @@ class BasicTrainer:
 
         with torch.no_grad():
             pbar = tqdm(
-                total=len(self.train_dataloader),
+                total=len(self.eval_dataloader),
                 disable=not self.accelerator.is_main_process,
                 desc=f"EVAL",
                 dynamic_ncols=True,
@@ -430,6 +421,16 @@ class BasicTrainer:
             return {"eval_loss": 0.0}
         return {"eval_loss": total_loss / total_steps}
 
+    def training_step(self, batch) -> float:
+        loss = self.compute_loss(batch)
+        self.accelerator.backward(loss)
+        if self.accelerator.sync_gradients:
+            self.accelerator.clip_grad_norm_(self.model.parameters(),self.config.max_grad_norm)
+        self.optimizer.step()
+        self.lr_scheduler.step()
+        self.optimizer.zero_grad()
+        return float(loss.detach().item())
+
     def train(self) -> None:
         self.starting_epoch, self.global_step, self.steps_completed_in_current_epoch = self.load_checkpoint()
 
@@ -443,6 +444,7 @@ class BasicTrainer:
         )
 
         self.model.train()
+        epoch = self.starting_epoch
         try:
             for epoch in range(self.starting_epoch, self.config.epoch):
                 pbar = tqdm(
@@ -477,12 +479,13 @@ class BasicTrainer:
                                 "Train/grad_norm": grad_norm,
                                 "Train/lr": self.lr_scheduler.get_last_lr()[0],
                             },step=self.global_step,)
+                        if self.config.torch_profile:
+                            self.profile.step()
 
                         pbar.set_postfix({
                                 "loss": f"{loss_value:.4f}",
                                 "lr": f"{self.lr_scheduler.get_last_lr()[0]:.2e}",
                             })
-                        #TODO: 测试断点加载/重训
                         if self.config.checkpointing_steps > 0 and self.global_step % self.config.checkpointing_steps == 0:
                             self.save_checkpoint(
                                 global_step=self.global_step,
@@ -499,11 +502,14 @@ class BasicTrainer:
 
                 if self.global_step >= max_train_steps:
                     break
+
             self.save_checkpoint(
                 global_step=self.global_step,
                 epoch=self.config.epoch,
                 suffix="-last",
             )
+            if self.config.torch_profile:
+                self.profile.stop()
 
         except KeyboardInterrupt:
             logger.warning("Training interrupted, saving interrupted checkpoint...")
