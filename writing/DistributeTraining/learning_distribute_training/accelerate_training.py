@@ -1,4 +1,4 @@
-﻿import gc
+import gc
 import json
 import logging
 import math
@@ -50,7 +50,7 @@ class BasicConfig:
     logging_steps: int = 10
     task_type: str = "llm"  # llm | classification
 
-    torch_compile: bool = True
+    torch_compile: bool = False
     torch_profile: bool = False
     compile_config: Dict[str, Any] = field(default_factory=lambda: {
         "backend": "inductor", "mode": "default"
@@ -82,8 +82,6 @@ class BasicConfig:
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
-
-
 def write_json(json_path: str, json_file: Dict[str, Any], special_name: Optional[str] = None) -> None:
     if special_name:
         dir_name = os.path.dirname(json_path)
@@ -108,7 +106,7 @@ class BasicTrainer:
         criterion: Optional[nn.Module] = None,
     ):
         self.config = config
-        self.model = model #TODO 支持 vllm 模型初始化
+        self.model = model
         if self.config.torch_compile:
             self.model = torch.compile(self.model, **self.config.compile_config)
 
@@ -191,16 +189,16 @@ class BasicTrainer:
         self.profile = profile(
             activities= [ProfilerActivity.CPU, ProfilerActivity.CUDA],
             schedule=torch.profiler.schedule(
-                wait=1,    # 等待步数
-                warmup=1,  # 预热步数
-                active=3,  # 活跃步数
-                repeat=2   # 重复次数
+                wait=1,    # �ȴ�����
+                warmup=1,  # Ԥ�Ȳ���
+                active=3,  # ��Ծ����
+                repeat=2   # �ظ�����
             ),
             on_trace_ready=tensorboard_trace_handler(self.config.output_dir),
-            record_shapes=True,   # 记录张量形状
-            profile_memory=True,  # 记录内存使用
-            with_stack=True,      # 记录调用栈
-            with_flops=True       # 计算 FLOPs
+            record_shapes=True,   # ��¼������״
+            profile_memory=True,  # ��¼�ڴ�ʹ��
+            with_stack=True,      # ��¼����ջ
+            with_flops=True       # ���� FLOPs
         )
 
     def _accelerator_init(self) -> None:
@@ -235,6 +233,11 @@ class BasicTrainer:
         if self.config.accelerator_config["log_with"] == "tensorboard":
             self._tensorboard_init()
 
+    def _build_vllm_server(self):
+        """ llm eval 阶段可以考虑使用 vllm 进行生成
+        TODO ֧支持vllm 进行生成 离线/在线
+        """
+        pass
 
     def _build_optimizer(self) -> torch.optim.Optimizer:
         trainable_params = [p for p in self.model.parameters() if p.requires_grad]
@@ -350,17 +353,6 @@ class BasicTrainer:
         gc.collect()
         torch.cuda.empty_cache()
 
-    # TODO 一直计算等于0
-    def _compute_grad_norm(self) -> float:
-        grad_norms = [
-            torch.norm(p.grad.detach(), p=2.0)
-            for p in self.model.parameters()
-            if p.grad is not None
-        ]
-        if not grad_norms:
-            return 0.0
-        return float(torch.norm(torch.stack(grad_norms), p=2.0).item())
-
     def _move_batch_to_device(self, batch):
         if isinstance(batch, dict):
             return {k: v.to(self.accelerator.device) if hasattr(v, "to") else v for k, v in batch.items()}
@@ -418,18 +410,23 @@ class BasicTrainer:
 
         self.model.train()
         if total_steps == 0:
-            return {"eval_loss": 0.0}
-        return {"eval_loss": total_loss / total_steps}
+            return {"Eval/eval_loss": 0.0}
+        return {"Eval/eval_loss": total_loss / total_steps}
 
-    def training_step(self, batch) -> float:
+    def training_step(self, batch) -> Tuple[float, float]:
         loss = self.compute_loss(batch)
         self.accelerator.backward(loss)
+        grad_norm = 0.0
         if self.accelerator.sync_gradients:
-            self.accelerator.clip_grad_norm_(self.model.parameters(),self.config.max_grad_norm)
+            grad_norm_tensor = self.accelerator.clip_grad_norm_(
+                self.model.parameters(), self.config.max_grad_norm
+            )
+            if grad_norm_tensor is not None:
+                grad_norm = float(grad_norm_tensor.detach().item())
         self.optimizer.step()
         self.lr_scheduler.step()
         self.optimizer.zero_grad()
-        return float(loss.detach().item())
+        return float(loss.detach().item()), grad_norm
 
     def train(self) -> None:
         self.starting_epoch, self.global_step, self.steps_completed_in_current_epoch = self.load_checkpoint()
@@ -462,7 +459,7 @@ class BasicTrainer:
 
                     try:
                         with self.accelerator.accumulate(self.model):
-                            loss_value = self.training_step(batch)
+                            loss_value, grad_norm = self.training_step(batch)
                     except Exception as e:
                         logger.error(f"ERROR: {e}")
                         self.optimizer.zero_grad()
@@ -473,12 +470,12 @@ class BasicTrainer:
 
                     if self.accelerator.sync_gradients:
                         self.global_step += 1
-                        grad_norm = self._compute_grad_norm()
-                        self.accelerator.log({
-                                "Train/loss": loss_value,
-                                "Train/grad_norm": grad_norm,
-                                "Train/lr": self.lr_scheduler.get_last_lr()[0],
-                            },step=self.global_step,)
+                        if self.global_step % self.config.logging_steps == 0:
+                            self.accelerator.log({
+                                    "Train/loss": loss_value,
+                                    "Train/grad_norm": grad_norm,
+                                    "Train/lr": self.lr_scheduler.get_last_lr()[0],
+                                },step=self.global_step,)
                         if self.config.torch_profile:
                             self.profile.step()
 
@@ -523,3 +520,4 @@ class BasicTrainer:
 
 if __name__ == "__main__":
     logger.info("BasicTrainer module loaded.")
+
