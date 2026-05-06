@@ -194,6 +194,8 @@ def format_description(md_content, yaml_dict, description, md_path):
         }]
 
         model_list = [
+            # 'deepseek-v4-flash',
+            # 'deepseek-v4-pro',
             'doubao-seed-2-0-pro-260215',
             'doubao-seed-1-6-250615', 
             'doubao-seed-1-6-flash-250615', 

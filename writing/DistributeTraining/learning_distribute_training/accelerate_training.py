@@ -1,4 +1,3 @@
-import gc
 import json
 import logging
 import math
@@ -7,33 +6,35 @@ import random
 import shutil
 from collections.abc import Mapping
 from datetime import datetime
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
+import datasets
 import numpy as np
 import torch
 import torch.nn as nn
 from accelerate import Accelerator
 from torch.profiler import profile, ProfilerActivity, tensorboard_trace_handler
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset, IterableDataset
 from tqdm import tqdm
 from transformers import AutoProcessor, get_scheduler
 
 from accelerate_config import BasicConfig
-from utils import write_json, get_gpu_info
+from utils import write_json, get_gpu_info, clean_cuda_gc
 
 logger = logging.getLogger(__name__)
 
+
 class BasicTrainer:
     def __init__(
-        self,
-        config: BasicConfig,
-        model: Optional[nn.Module] = None,
-        train_dataloader: Optional[DataLoader] = None,
-        eval_dataloader: Optional[DataLoader] = None,
-        processor: Optional[AutoProcessor] = None,
-        optimizer: Optional[torch.optim.Optimizer] = None,
-        lr_scheduler=None,
-        criterion: Optional[nn.Module] = None,
+            self,
+            config: BasicConfig,
+            model: nn.Module | None = None,
+            train_dataset: "Dataset | IterableDataset | datasets.Dataset | None" = None,
+            eval_dataset: "Dataset | IterableDataset | datasets.Dataset | None" = None,
+            processor: AutoProcessor | None = None,
+            optimizer: torch.optim.Optimizer | None = None,
+            lr_scheduler: str | None = None,
+            criterion: nn.Module | None = None,
     ):
         self.config = config
         self.model = model
@@ -41,14 +42,16 @@ class BasicTrainer:
             self.model = torch.compile(self.model, **self.config.compile_config)
 
         self.processor = processor
-        self.train_dataloader = train_dataloader
-        self.eval_dataloader = eval_dataloader
+        self.train_dataset = train_dataset
+        self.eval_dataset = eval_dataset
+        self.train_dataloader = None
+        self.eval_dataloader = None
         self.criterion = criterion
 
         self._set_random_seed()
         self._logger_init()
         self._accelerator_init()
-
+        self._build_dataloader()
 
         self.optimizer = optimizer if optimizer is not None else self._build_optimizer()
 
@@ -62,6 +65,35 @@ class BasicTrainer:
         self.global_step = 0
         self.starting_epoch = 0
         self.steps_completed_in_current_epoch = 0
+
+    def _build_dataloader(self) -> None:
+        num_workers = int(
+            getattr(self.config, "dataloader_num_workers", getattr(self.config, "num_workers", 0))
+        )
+        pin_memory = bool(getattr(self.config, "pin_memory", False))
+        persistent_workers = bool(getattr(self.config, "persistent_workers", False))
+        prefetch_factor = getattr(self.config, "prefetch_factor", None)
+
+        common_kwargs = {
+            "batch_size": self.config.batch_size,
+            "num_workers": num_workers,
+            "pin_memory": pin_memory,
+            "persistent_workers": persistent_workers and num_workers > 0,
+            "prefetch_factor": prefetch_factor if num_workers > 0 else None,
+        }
+
+        if self.train_dataset is not None:
+            self.train_dataloader = DataLoader(
+                self.train_dataset,
+                shuffle=True,
+                **common_kwargs,
+            )
+        if self.eval_dataset is not None:
+            self.eval_dataloader = DataLoader(
+                self.eval_dataset,
+                shuffle=False,
+                **common_kwargs,
+            )
 
     def _logger_init(self) -> None:
         os.makedirs(self.config.output_dir, exist_ok=True)
@@ -117,7 +149,7 @@ class BasicTrainer:
 
     def _profile_init(self):
         self.profile = profile(
-            activities= [ProfilerActivity.CPU, ProfilerActivity.CUDA],
+            activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
             schedule=torch.profiler.schedule(
                 wait=1,
                 warmup=1,
@@ -269,8 +301,8 @@ class BasicTrainer:
                 d
                 for d in os.listdir(self.config.output_dir)
                 if d.startswith("checkpoint-")
-                and d.split("checkpoint-")[-1].isdigit()
-                and "interrupted" not in d
+                   and d.split("checkpoint-")[-1].isdigit()
+                   and "interrupted" not in d
             ]
             checkpoints.sort(key=lambda x: int(x.split("checkpoint-")[-1]))
             expired = checkpoints[:-self.config.checkpoints_total_limit]
@@ -278,10 +310,6 @@ class BasicTrainer:
                 old_path = os.path.join(self.config.output_dir, old_ckpt)
                 shutil.rmtree(old_path, ignore_errors=True)
                 logger.info("Removed old checkpoint: %s", old_ckpt)
-
-    def _clean_cuda_gc(self):
-        gc.collect()
-        torch.cuda.empty_cache()
 
     def _move_batch_to_device(self, batch):
         if isinstance(batch, dict):
@@ -398,7 +426,7 @@ class BasicTrainer:
                     except Exception as e:
                         logger.error(f"ERROR: {e}")
                         self.optimizer.zero_grad()
-                        self._clean_cuda_gc()
+                        clean_cuda_gc()
                         continue
 
                     pbar.update(1)
@@ -406,16 +434,19 @@ class BasicTrainer:
                     if self.accelerator.sync_gradients:
                         self.global_step += 1
                         if self.global_step % self.config.logging_steps == 0:
-                            self.accelerator.log(train_metrics,step=self.global_step,)
+                            self.accelerator.log(train_metrics, step=self.global_step, )
                         if self.config.torch_profile:
                             self.profile.step()
 
                         pbar.set_postfix({
-                                "loss": f"{train_metrics['Train/loss']:.4f}",
-                                "lr": f"{train_metrics['Train/lr']:.2e}",
-                            })
+                            "loss": f"{train_metrics['Train/loss']:.4f}",
+                            "lr": f"{train_metrics['Train/lr']:.2e}",
+                        })
                         if self.config.checkpointing_steps > 0 and self.global_step % self.config.checkpointing_steps == 0:
-                            self.save_checkpoint(global_step=self.global_step,epoch=epoch,)
+                            self.save_checkpoint(global_step=self.global_step, epoch=epoch, )
+                        elif self.config.checkpointing_steps <= 0 and self.global_step % len(
+                                self.train_dataloader) == 0:
+                            self.save_checkpoint(global_step=self.global_step, epoch=epoch, )
 
                     if self.global_step >= max_train_steps:
                         break
@@ -429,7 +460,7 @@ class BasicTrainer:
                 if self.global_step >= max_train_steps:
                     break
 
-            self.save_checkpoint(global_step=self.global_step,epoch=self.config.epoch,suffix="-last",)
+            self.save_checkpoint(global_step=self.global_step, epoch=self.config.epoch, suffix="-last", )
             if self.config.torch_profile:
                 self.profile.stop()
 
@@ -445,4 +476,3 @@ class BasicTrainer:
 
 if __name__ == "__main__":
     logger.info("BasicTrainer module loaded.")
-

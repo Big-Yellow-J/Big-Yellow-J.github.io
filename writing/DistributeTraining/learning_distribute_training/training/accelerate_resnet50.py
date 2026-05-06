@@ -1,30 +1,39 @@
-from dataclasses import dataclass
-from typing import Dict
-
+import sys
+from pathlib import Path
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, Optional
 
-from accelerate_training import BasicConfig, BasicTrainer
+CURRENT_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = CURRENT_DIR.parent
+if str(PROJECT_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJECT_DIR))
 
+try:
+    from learning_distribute_training.accelerate_training import BasicTrainer
+    from learning_distribute_training.accelerate_config import BasicConfig
+except ModuleNotFoundError:
+    from accelerate_training import BasicTrainer
+    from accelerate_config import BasicConfig
 
 @dataclass
 class ResNet50Config(BasicConfig):
     store_dir: str = "/root/autodl-tmp/.cache/HuangJieCode/outputs"
     cache_dir: str = "/root/autodl-fs/huggingface"
     task_type: str = "classification"
-    project_name: str = 'Training-ResNet50-DDP'
-    checkpointing_steps: int = 400
-    checkpoints_total_limit: int = 2
+    project_name: str = 'Training-ResNet50-Accelerate-DDP'
+    checkpointing_steps: int = -1
+    checkpoints_total_limit: int = 1
     seed: int = 42
-    epoch: int = 10
+    epoch: int = 1
     batch_size: int = 512
     num_workers: int= 8
     max_train_steps: int = 0
-
+    learning_rate: float = 2e-4
+    lr_scheduler: str = "cosine"
+    lr_warmup_steps: float = 0.03
 
 @dataclass
 class ResNet50ConfigDeepSpeed(BasicConfig):
@@ -32,10 +41,10 @@ class ResNet50ConfigDeepSpeed(BasicConfig):
     cache_dir: str = "/root/autodl-fs/huggingface"
     task_type: str = "classification"
     project_name: str = 'Training-ResNet50-DeepSpeed'
-    checkpointing_steps: int = 400
-    checkpoints_total_limit: int = 2
+    checkpointing_steps: int = -1
+    checkpoints_total_limit: int = 1
     seed: int = 42
-    epoch: int = 10
+    epoch: int = 1
     batch_size: int = 512
     num_workers: int= 8
     max_train_steps: int = 0
@@ -53,10 +62,10 @@ class ResNet50ConfigFSDP2(BasicConfig):
     cache_dir: str = "/root/autodl-fs/huggingface"
     task_type: str = "classification"
     project_name: str = 'Training-ResNet50-FSDP'
-    checkpointing_steps: int = 400
-    checkpoints_total_limit: int = 2
+    checkpointing_steps: int = -1
+    checkpoints_total_limit: int = 1
     seed: int = 42
-    epoch: int = 10
+    epoch: int = 1
     batch_size: int = 512
     num_workers: int= 8
     max_train_steps: int = 0
@@ -65,18 +74,40 @@ class ResNet50ConfigFSDP2(BasicConfig):
 class ResNet50Trainer(BasicTrainer):
     def __init__(self, config: ResNet50Config):
         model = self._load_resnet50()
-        train_dataloader, eval_dataloader = self._load_dataset(config)
+        train_dataset, eval_dataset = self._load_dataset(config)
         super().__init__(
             config=config,
             model=model,
-            train_dataloader=train_dataloader,
-            eval_dataloader=eval_dataloader,
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
         )
+
+    def _build_dataloader(self) -> None:
+        from torch.utils.data import DataLoader
+
+        num_workers = int(getattr(self.config, "num_workers", 0))
+
+        def collate_fn(examples):
+            pixel_values = torch.stack([example["pixel_values"] for example in examples])
+            labels = torch.tensor([example["label"] for example in examples])
+            return pixel_values, labels
+
+        common_kwargs = {
+            "batch_size": self.config.batch_size,
+            "num_workers": num_workers,
+            "collate_fn": collate_fn,
+        }
+
+        if self.train_dataset is not None:
+            self.train_dataloader = DataLoader(self.train_dataset, shuffle=True, **common_kwargs)
+        if self.eval_dataset is not None:
+            self.eval_dataloader = DataLoader(self.eval_dataset, shuffle=False, **common_kwargs)
 
     def _load_resnet50(self):
         from torchvision.models import resnet50, ResNet50_Weights
         model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
         model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        model.maxpool = nn.Identity()
         num_ftrs = model.fc.in_features
         model.fc = nn.Linear(num_ftrs, 10)
         return model
@@ -107,27 +138,7 @@ class ResNet50Trainer(BasicTrainer):
         train_dataset = raw_datasets["train"].with_transform(train_transforms)
         val_dataset = raw_datasets["test"].with_transform(val_transforms)
 
-        def collate_fn(examples):
-            pixel_values = torch.stack([example["pixel_values"] for example in examples])
-            labels = torch.tensor([example["label"] for example in examples])
-            return pixel_values, labels
-
-        train_loader = DataLoader(
-            train_dataset,
-            batch_size=config.batch_size,
-            shuffle=True,
-            num_workers=config.num_workers,
-            collate_fn=collate_fn
-        )
-        val_loader = DataLoader(
-            val_dataset,
-            batch_size=config.batch_size,
-            shuffle=False,
-            num_workers=config.num_workers,
-            collate_fn=collate_fn
-        )
-
-        return train_loader, val_loader
+        return train_dataset, val_dataset
 
     def evaluate(self) -> Dict[str, float]:
         self.model.eval()
@@ -160,9 +171,9 @@ class ResNet50Trainer(BasicTrainer):
 
 if __name__ == "__main__":
     """
-    DDP: export HF_ENDPOINT=https://hf-mirror.com && accelerate launch resnet50_training.py
+    DDP: export HF_ENDPOINT=https://hf-mirror.com && accelerate launch accelerate_resnet50.py
     """
-    # config = ResNet50Config()
-    config = ResNet50ConfigDeepSpeed
+    config = ResNet50Config()
+    # config = ResNet50ConfigDeepSpeed()
     trainer = ResNet50Trainer(config)
     trainer.train()
