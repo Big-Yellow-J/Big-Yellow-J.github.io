@@ -33,8 +33,8 @@ class BasicConfig:
     logging_steps: int = 10
     task_type: str = "llm"  # llm | classification
 
-    torch_compile: bool = True
-    torch_profile: bool = True
+    torch_compile: bool = False
+    torch_profile: bool = False
     compile_config: Dict[str, Any] = field(default_factory=lambda: {
         "backend": "inductor", "mode": "default"
     })

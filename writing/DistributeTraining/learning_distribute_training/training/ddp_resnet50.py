@@ -39,7 +39,6 @@ class ResNet50DDPConfig(BasicConfig):
     lr_scheduler: str = "cosine"
     lr_warmup_steps: float = 0.03
     log_with: str = "tensorboard"
-    resume_from_checkpoint: str = "/root/autodl-tmp/.cache/HuangJieCode/outputs/20260506-Training-ResNet50-Torch-DDP-7983/checkpoint-interrupted-169"
 
 class ResNet50DDPTrainer(DDPTrainer):
     def __init__(self, config: ResNet50DDPConfig):

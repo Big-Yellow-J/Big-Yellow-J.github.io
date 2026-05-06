@@ -39,8 +39,8 @@ class BasicConfig:
     task_type: str = "llm"
     gradient_accumulation_steps: int = 1
 
-    torch_compile: bool = True
-    torch_profile: bool = True
+    torch_compile: bool = False
+    torch_profile: bool = False
     compile_config: Dict[str, Any] = field(default_factory=lambda: {
         "backend": "inductor", "mode": "default"
     })
