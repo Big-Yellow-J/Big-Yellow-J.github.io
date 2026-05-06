@@ -6,9 +6,8 @@ import os
 import random
 import shutil
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 import torch
@@ -19,79 +18,10 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import AutoProcessor, get_scheduler
 
+from accelerate_config import BasicConfig
+from utils import write_json, get_gpu_info
+
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class BasicConfig:
-    cache_dir: str = "./outputs"
-    store_dir: str = "./outputs"
-    project_name: str = "Training-BasicConfig"
-
-    current_date: str = field(default_factory=lambda: datetime.now().strftime("%Y%m%d"))
-    special_num: int = field(default_factory=lambda: random.randint(0, 9999))
-
-    tracker_project_name: str = field(init=False)
-    output_dir: str = field(init=False)
-
-    checkpointing_steps: int = 0
-    checkpoints_total_limit: int = 10
-    resume_from_checkpoint: Optional[str] = ""
-
-    seed: int = 10086
-    epoch: int = 10
-    batch_size: int = 1
-    max_train_steps: int = 0
-    learning_rate: float = 2e-5
-    max_grad_norm: float = 1.0
-    lr_scheduler: str = "cosine"
-    lr_warmup_steps: float = 0.1
-    optim_name: str = "adamw"
-    logging_steps: int = 10
-    task_type: str = "llm"  # llm | classification
-
-    torch_compile: bool = False
-    torch_profile: bool = False
-    compile_config: Dict[str, Any] = field(default_factory=lambda: {
-        "backend": "inductor", "mode": "default"
-    })
-    accelerator_config: Dict[str, Any] = field(
-        default_factory=lambda: {
-            "mixed_precision": "bf16",
-            "log_with": "tensorboard",
-            "project_config": None,
-        }
-    )
-    deepspeed_plugin: Dict[str, Any] = field(default_factory=dict)
-    fsdp2_plugin: Dict[str, Any] = field(default_factory=dict)
-    gradient_plugin: Dict[str, Any] = field(
-        default_factory=lambda: {
-            "num_steps": 1,
-        }
-    )
-
-    def __post_init__(self) -> None:
-        self.tracker_project_name = f"{self.current_date}-{self.project_name}-{self.special_num:04d}"
-        self.output_dir = os.path.join(self.store_dir, self.tracker_project_name)
-        os.makedirs(self.store_dir, exist_ok=True)
-
-    @property
-    def gradient_accumulation_steps(self) -> int:
-        return int(self.gradient_plugin.get("num_steps", 1))
-
-    def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
-
-def write_json(json_path: str, json_file: Dict[str, Any], special_name: Optional[str] = None) -> None:
-    if special_name:
-        dir_name = os.path.dirname(json_path)
-        base_name = os.path.basename(json_path)
-        new_name = f"{special_name}_{base_name}"
-        json_path = os.path.join(dir_name, new_name)
-
-    with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(json_file, f, ensure_ascii=False, indent=2)
-
 
 class BasicTrainer:
     def __init__(
@@ -189,16 +119,16 @@ class BasicTrainer:
         self.profile = profile(
             activities= [ProfilerActivity.CPU, ProfilerActivity.CUDA],
             schedule=torch.profiler.schedule(
-                wait=1,    # �ȴ�����
-                warmup=1,  # Ԥ�Ȳ���
-                active=3,  # ��Ծ����
-                repeat=2   # �ظ�����
+                wait=1,
+                warmup=1,
+                active=3,
+                repeat=2
             ),
             on_trace_ready=tensorboard_trace_handler(self.config.output_dir),
-            record_shapes=True,   # ��¼������״
-            profile_memory=True,  # ��¼�ڴ�ʹ��
-            with_stack=True,      # ��¼����ջ
-            with_flops=True       # ���� FLOPs
+            record_shapes=True,
+            profile_memory=True,
+            with_stack=True,
+            with_flops=True
         )
 
     def _accelerator_init(self) -> None:
@@ -413,20 +343,25 @@ class BasicTrainer:
             return {"Eval/eval_loss": 0.0}
         return {"Eval/eval_loss": total_loss / total_steps}
 
-    def training_step(self, batch) -> Tuple[float, float]:
+    def training_step(self, batch) -> Dict[str, float]:
+        training_info = {}
         loss = self.compute_loss(batch)
         self.accelerator.backward(loss)
         grad_norm = 0.0
         if self.accelerator.sync_gradients:
-            grad_norm_tensor = self.accelerator.clip_grad_norm_(
+            grad_norm = self.accelerator.clip_grad_norm_(
                 self.model.parameters(), self.config.max_grad_norm
-            )
-            if grad_norm_tensor is not None:
-                grad_norm = float(grad_norm_tensor.detach().item())
+            ).item()
         self.optimizer.step()
         self.lr_scheduler.step()
         self.optimizer.zero_grad()
-        return float(loss.detach().item()), grad_norm
+        gpu_info = get_gpu_info(self.accelerator)
+        training_info = {
+            "Train/loss": float(loss.detach().item()),
+            "Train/grad_norm": grad_norm,
+            "Train/lr": self.lr_scheduler.get_last_lr()[0]}
+        training_info.update(gpu_info)
+        return training_info
 
     def train(self) -> None:
         self.starting_epoch, self.global_step, self.steps_completed_in_current_epoch = self.load_checkpoint()
@@ -459,7 +394,7 @@ class BasicTrainer:
 
                     try:
                         with self.accelerator.accumulate(self.model):
-                            loss_value, grad_norm = self.training_step(batch)
+                            train_metrics = self.training_step(batch)
                     except Exception as e:
                         logger.error(f"ERROR: {e}")
                         self.optimizer.zero_grad()
@@ -471,22 +406,16 @@ class BasicTrainer:
                     if self.accelerator.sync_gradients:
                         self.global_step += 1
                         if self.global_step % self.config.logging_steps == 0:
-                            self.accelerator.log({
-                                    "Train/loss": loss_value,
-                                    "Train/grad_norm": grad_norm,
-                                    "Train/lr": self.lr_scheduler.get_last_lr()[0],
-                                },step=self.global_step,)
+                            self.accelerator.log(train_metrics,step=self.global_step,)
                         if self.config.torch_profile:
                             self.profile.step()
 
                         pbar.set_postfix({
-                                "loss": f"{loss_value:.4f}",
-                                "lr": f"{self.lr_scheduler.get_last_lr()[0]:.2e}",
+                                "loss": f"{train_metrics['Train/loss']:.4f}",
+                                "lr": f"{train_metrics['Train/lr']:.2e}",
                             })
                         if self.config.checkpointing_steps > 0 and self.global_step % self.config.checkpointing_steps == 0:
-                            self.save_checkpoint(
-                                global_step=self.global_step,
-                                epoch=epoch,)
+                            self.save_checkpoint(global_step=self.global_step,epoch=epoch,)
 
                     if self.global_step >= max_train_steps:
                         break
@@ -500,11 +429,7 @@ class BasicTrainer:
                 if self.global_step >= max_train_steps:
                     break
 
-            self.save_checkpoint(
-                global_step=self.global_step,
-                epoch=self.config.epoch,
-                suffix="-last",
-            )
+            self.save_checkpoint(global_step=self.global_step,epoch=self.config.epoch,suffix="-last",)
             if self.config.torch_profile:
                 self.profile.stop()
 

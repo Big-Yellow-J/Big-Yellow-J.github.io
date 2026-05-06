@@ -5,6 +5,8 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
+from dataclasses import asdict, dataclass, field
+from typing import Any, Dict, Optional
 
 from accelerate_training import BasicConfig, BasicTrainer
 
@@ -15,21 +17,49 @@ class ResNet50Config(BasicConfig):
     cache_dir: str = "/root/autodl-fs/huggingface"
     task_type: str = "classification"
     project_name: str = 'Training-ResNet50-DDP'
-    checkpointing_steps: int = 10000
+    checkpointing_steps: int = 400
     checkpoints_total_limit: int = 2
     seed: int = 42
-    batch_size: int = 256
+    epoch: int = 10
+    batch_size: int = 512
     num_workers: int= 8
     max_train_steps: int = 0
 
-    resume_from_checkpoint: str = "/root/autodl-tmp/.cache/HuangJieCode/outputs/20260425-Training-ResNet50-DDP-6082/checkpoint-interrupted-2168"
 
 @dataclass
 class ResNet50ConfigDeepSpeed(BasicConfig):
-    pass
+    store_dir: str = "/root/autodl-tmp/.cache/HuangJieCode/outputs"
+    cache_dir: str = "/root/autodl-fs/huggingface"
+    task_type: str = "classification"
+    project_name: str = 'Training-ResNet50-DeepSpeed'
+    checkpointing_steps: int = 400
+    checkpoints_total_limit: int = 2
+    seed: int = 42
+    epoch: int = 10
+    batch_size: int = 512
+    num_workers: int= 8
+    max_train_steps: int = 0
+
+    deepspeed_config: Dict[str, Any] = field(default_factory=lambda: {
+        "stage": 2,
+        "offload_optimizer_device": "cpu",
+        "offload_param_device": "none",
+        "gradient_clipping": 1.0,
+    })
 
 @dataclass
 class ResNet50ConfigFSDP2(BasicConfig):
+    store_dir: str = "/root/autodl-tmp/.cache/HuangJieCode/outputs"
+    cache_dir: str = "/root/autodl-fs/huggingface"
+    task_type: str = "classification"
+    project_name: str = 'Training-ResNet50-FSDP'
+    checkpointing_steps: int = 400
+    checkpoints_total_limit: int = 2
+    seed: int = 42
+    epoch: int = 10
+    batch_size: int = 512
+    num_workers: int= 8
+    max_train_steps: int = 0
     pass
 
 class ResNet50Trainer(BasicTrainer):
@@ -132,6 +162,7 @@ if __name__ == "__main__":
     """
     DDP: export HF_ENDPOINT=https://hf-mirror.com && accelerate launch resnet50_training.py
     """
-    config = ResNet50Config()
+    # config = ResNet50Config()
+    config = ResNet50ConfigDeepSpeed
     trainer = ResNet50Trainer(config)
     trainer.train()
