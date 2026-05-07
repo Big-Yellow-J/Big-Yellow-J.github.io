@@ -141,10 +141,11 @@ for input in data_loader:
 以上述DDP训练过程为例，为了更大限度的榨干设备显存（让其可以接受更加大的数据输入），就可以考虑使用 `DeepSpeed` 以及 toch原生的 `FSDP2`方式去对模型/梯度/优化器状态的分布式分片，除此之外对于更加大的模型可能就会考虑直接使用 混合并行（多种分布式训练叠加）
 
 ### DeepSpeed 
-[DeepSpeed基本原理](https://www.big-yellow-j.top/posts/2025/02/24/deepspeed.html)，简单回顾一下DeepSpeed中基本原理：
+简单回顾一下[DeepSpeed中基本原理](https://www.big-yellow-j.top/posts/2025/02/24/deepspeed.html)，在 `DeepSpeed`中指出模型训练过程中显存占用上主要分为如下3块（假设模型的参数为 $\Phi$，使用混合精度训练，对于参数以及梯度会用fp16而对于adam优化器则是fp32）：1、模型参数（ $2\Phi$）；2、梯度（ $2\Phi$）；3、优化器状态（ $4+4+4\Phi$）
 
 ![](https://s2.loli.net/2025/06/21/4OUkVeJpjsF8zvc.webp)
 
+其中有3中不同的切分处理方式（上图从左到右）， `Zero-1`直接去对优化器进行切分每个设备只保留部分；`Zero-2`：额外去对梯度进行切分；`Zero-3`：额外去对模型参数进行切分。除此之外还会涉及到不同设备之间的同步方式：All-reduce（聚合所有结果，然后计算平均比如DDP中就是使用All-reduce）、reduce-scatter、All-Gather（收集每张卡状态然后广播所有设备）
 ### FSDP
 ## 分布式训练实现
 [各类分布式训练实现](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/Pytorch-Learning/learning_distribute/distirbute_training.ipynb)
