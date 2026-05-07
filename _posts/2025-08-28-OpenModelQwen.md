@@ -118,12 +118,12 @@ attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).
 ```
 ### QwenVL-3
 在官方Blog[^7]的介绍中
-![20260226135106](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image/20260226135106.png)
+![20260226135106](https://files.seeusercontent.com/2026/05/07/aEf9/20260226135106.webp)
 对于模型架构的更新简单总结为：1、**MRoPE-Interleave**: 改进位置编码，采用时间(t)、高度(h)、宽度(w)交错分布形式，提升对长视频的理解能力。2、**DeepStack 技术**: 融合 ViT 多层次特征，将视觉特征注入 LLM 的多层中，实现更精细化的视觉理解和图文对齐精度。3、**文本时间戳对齐机制 (T-RoPE 升级)**: 采用“时间戳-视频帧”交错输入形式，实现帧级别时间信息与视觉内容的细粒度对齐，提升视频事件定位精度。整体模型结构在区别上一代QwenVL-2.5改进点在于：patch_embed的patch_size变大了（14->16），embed使用的三维卷积里加了bias，ViT的隐层维度hiddeen_dim从1280->1152，而后使用DeepStack、MRoPE-Interleave。
 * **DeepStack 技术原理**
 
 从最上面的模型结构图中可以发现DeepStack就是将视觉视觉编码器特征融入到LLM Block的每一层中，参考论文中的结构图[^9]:
-![20260226135226](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image/20260226135226.png)
+![20260226135226](https://files.seeusercontent.com/2026/05/07/3fiQ/20260226135226.webp)
 之所以要使用该技术是为了解决：**计算与内存开销过高**:传统LMMs将所有视觉visual tokens拼接成一维序列输入到语言模型的第一层，导致需要处理的输入序列长度显著增加，尤其在处理高分辨率图像或多帧视频时，计算和内存成本急剧上升。**细粒度视觉信息丢失**:现有方法通过压缩视觉Token(如空间池化、感知器重采样等)来平衡计算开销与信息保留，但会牺牲高分辨率图像中的细节信息。**视觉与语言交互效率不足**:现有方法仅通过第一层Transformer处理所有视觉Token，未能充分利用语言模型深层结构的层次化特征提取能力。
 #### 源码结构
 对于具体源码（[代码](https://github.com/huggingface/transformers/blob/0419ff881d7bb503f4fc0f0a7a5aac3d012c9b91/src/transformers/models/qwen3_vl/modular_qwen3_vl.py)）分析整体模型处理过程如下（[代码](https://github.com/huggingface/transformers/blob/0419ff881d7bb503f4fc0f0a7a5aac3d012c9b91/src/transformers/models/qwen3_vl/modeling_qwen3_vl.py#L885)）
@@ -237,10 +237,10 @@ class Qwen3VLTextModel(Qwen3VLPreTrainedModel):
 其实从上面代码中很容易发现在DeepStack中QwenVL-3处理方式很简单直接选出**所有视觉token位置**而后将视觉特征进行补充，其中visual_pos_masks的形状是batch_size, seqlen
 ### Qwen-3.5
 简单总结模型主要亮点在于：1、**使用linear-attention+full+attention的混合**，其中整体的混合比例3：1（3层linear attention后叠加1层full attention）比如说
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260308150901627.png)
+![](https://files.seeusercontent.com/2026/05/07/nS8g/image20260308150901627.webp)
 
 2、除此之外引入门控注意力计算（Gate-Attention[^10]）主要过程式在计算QKV三部分的注意力之后引入Gate机制。在代码中的具体实现过程为代码为（图片来源[知乎](https://zhuanlan.zhihu.com/p/2006241509226350575)）：
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260308164431758.png)
+![](https://files.seeusercontent.com/2026/05/07/3xvY/image20260308164431758.webp)
 
 对于上述过程中的QKV和常规的Attention中计算没差异，关键在于其引入了z、b、a这三组变量，其中b、a主要是用在Gate计算中而z则是在最后计算完attention之后再去`self.norm(core_attn_out, z)`，在计算门控过程中代码过程如下
 ```python

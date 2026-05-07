@@ -40,14 +40,14 @@ if accelerator.sync_gradients:
             step=global_step)
 ```
 通过上面方式去记录loss等变化情况得到最终图像如下：
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260220153354808.png)
+![](https://files.seeusercontent.com/2026/05/07/Qrx9/image20260220153354808.webp)
 ## loss以及Grad Norm理论简单分析
 首先loss往往直接用来表示模型的拟合效果（loss下降代表拟合效果较好，部分震荡代表数据中部分样本很难较好的进行“拟合”）。Gradient（梯度）一般而言就是对于需要优化函数的导数，而Grad Norm一般就是表示**所有参数梯度向量拼接（展平）后形成的超长向量的 L2 范数**。在模型训练过程总一般而言主要关注两个指标比较多：1、loss；2、评估指标（ACC等），但是对于Grad Norm这个值相对讨论较少，简单对于Grad Norm过程指标（optimization dynamic 的诊断信号），区别loss它不直接衡量模型好坏，而是反映优化器当前“还能走多远、多快”、训练是否稳定、是否接近某种奇异点等中间状态。
 那么理论上而言模型优化过程中应该是loss以及Grad Norm（越往后期模型理论上越接近“最优值”那么梯度理论越小）两个指标都一起下降，但是实际情况可能相反，下面就这种情况简单分析如下：
 ## Grad Norm上升原因分析
 在Github-issue[^2]中给出结论是：**梯度范数大致与参数范数成正比**（或者至少取决于参数范数）。作者直接给出了梯度与模型参数的变化情况分析：$\Vert \nabla f(\theta) \Vert ≈ \Vert \theta \Vert \cdot \Vert \nabla f(\theta / \Vert \theta \Vert)\Vert$，那么也就意味了如果模型 $\theta / \Vert \theta \Vert$ 大致逐渐收敛但是参数 $\Vert \theta \Vert$在增加就会导致最终的Grad Norm逐渐上升。
 在论文中[^1]作者给出解释是：**权重衰减与学习率安排相互作用的结果**，具体理论分析如下:
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260220162749186.png)
+![](https://files.seeusercontent.com/2026/05/07/kxQ3/image20260220162749186.webp)
 这样一来梯度$g$ 与权重 $x_t$ 之间关系就只与学习率 $\gamma$ 和参数 $\lambda$ 之间有关系。因此就可以得到：$\frac{\Vert g_t \Vert}{\Vert x_t \Vert}=\sqrt{\frac{2\lambda}{\gamma_t}}$ 当使用**学习率warm up策略**时候就会发生下降上升的情况。
 ## 参考
 [^1]: [Why Gradients Rapidly Increase Near the End of Training](https://arxiv.org/abs/2506.02285)

@@ -798,5 +798,15 @@
       "new_description",
       "大模型多卡微调场景下主流分布式训练分为四类方案。数据并行中DP采用集中分发机制，存在数据冗余、GPU利用率不均问题，DDP采用独立运行机制，通过DistributedSampler加载无重叠数据，梯度经all-reduce后全局同步更新，无需重复拷贝模型。张量并行针对超大规模参数矩阵，按行/列拆分到多设备，分别通过all-gather、all-reduce完成梯度聚合。流水线并行将模型按层拆分到不同设备形成计算阶段，GPipe通过微批次拆分降低流水线气泡，搭配梯度检查点减少显存占用，PipeDream引入权重暂存策略解决前后向参数不一致问题。"
     ]
+  ],
+  "./writing/2026-04-10-torch_basic_torch_compile.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "PyTorch计算图为有向无环图，节点对应张量或运算，边代表数据流与依赖关系，随前向计算动态构建，反向传播时沿图计算梯度，中间激活会占用显存，无需梯度的张量可通过detach从图中分离降低显存开销。torch.compile通过TorchDynamo捕获计算图生成FX Graph与校验守卫，AOTAutograd提前生成反向计算图，TorchInductor完成算子融合、内存优化并生成对应硬件代码，可调整backend、mode等参数适配不同场景，提速同时不影响模型精度。同时梳理了reshape、view等张量形变方法的差异，以及model.train、model.eval、torch.no_grad的适用场景。"
+    ]
   ]
 }

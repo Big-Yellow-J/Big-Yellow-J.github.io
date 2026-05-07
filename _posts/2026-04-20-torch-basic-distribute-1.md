@@ -88,7 +88,7 @@ GPU 3 (阶段 3): 运行第 4 层并计算损失。
 **流水线并行**：因为模型分布在不同设备上（假设：$ld_1, ld_2, ld_3, ld_4, ld_5$），会有一个操作：将数据在拆分为不同 `micro-batch`（这里假设为5，得到：$md_1,md_2,md_3,md_4,md_5 $），这样一来随着前向传播：$t_0$ 时：$ld_1$ 处理 $md_1$；$t_1$ 时：$(ld_1, md_2), (ld_2, md_1)$（ 值得注意的是 此处的md_1是由 ld_1处理完md_1得到结果，更加准确描述是：$(ld_2, ld_1(md_1))$）。
 同理在 `backward` 阶段处理过程（对于 **数据并行**直接依次计算梯度即可 ）为：在 `forward` 结束之后此时 **流水线并行** 中对于设备 `ld_5` 在 $t_9$: $ld_5$ 接收 Loss 传回的 $md_5$ 的梯度。它利用之前存的 $md_5$ 前向输入，重算一遍，算出 $W$ 的梯度。$t_{10}$: $ld_5$ 接收 Loss 传回的 $md_4$ 的梯度，重复上述动作，
 用一个表格表示上述forward 以及 backward 过程：
-![20260420213604](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image/20260420213604.png)
+![20260420213604](https://files.seeusercontent.com/2026/05/07/x6xO/20260420213604.webp)
 
 **不过值得注意的是**，在Gpipe中存在 **激活缓存机制**：如果将每一个 micro-batch 计算结果都进行缓存会导致显存随 micro-batch 进行线性增长，因此在 `forward` 阶段丢弃中间保留边界，显存中只会保留 $md_i$ 的输入，在 `backward`阶段：即时计算，因为需要计算梯度那么直接将初始输入拿出来在计算 forward过程（也就是所谓的 `gradient-checkpoint`）。 以及 **梯度累计机制**：因为梯度更新必须是完整的一个batc处理之后才会进行，因此在数据 $md_5 \rightarrow md_1$ 的过程中，**激活缓存机制**会不断的将梯度进行累积直到所有的数据处理完毕再进行反向传播。
 
@@ -117,7 +117,7 @@ for input in data_loader:
 
 #### 3.2 PipeDream 实现流水线并行
 
-![20260420215304](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image/20260420215304.png)
+![20260420215304](https://files.seeusercontent.com/2026/05/07/c7Cg/20260420215304.webp)
 
 在论文[^5]中提出在**权重更新过程中存在问题**：
 **1、同一个minibatch的前向传播和后向传播使用的参数不一致**：比如在 Machine1上输入数据5时，用的是数据1的更新后参数，依次类推到数据5梯度更新时用的是1、2、3、4这4组数据梯度，这就导致 minibatch 5 的前向计算和后向计算时候，使用的参数不一致。即，第一行 Machine 1，蓝色 5 号 和 绿色 5 号 计算时候，必须都使用 绿色 1 号之后更新的参数。
@@ -126,12 +126,12 @@ for input in data_loader:
 对于上述问题，其提出Weight stashing、Vertical Sync策略解决这个问题。**Weight stashing**过程如下：
 > PipeDream核心在于：**同一个 micro-batch 的 forward 和 backward 使用同一份权重**
 
-![20260420222207](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image/20260420222207.png)
+![20260420222207](https://files.seeusercontent.com/2026/05/07/Bid7/20260420222207.webp)
 
 以 数据5 为例：在forward中对于 Worker1 使用的是 数据1 更新后的权重，那么在 backward 中就需要去对 数据1 更新后权重进行 backward，因此在Worker1中为了保证上述原理，就需要去缓存1-4的数据的权重（因为数据5 backward 之前还进行其他3组数据）也就是 $W_1^{(1)},...,W_1^{(4)}$，那么类似的对于Worker2就需要去缓存2-4的数据的权重依次类推。数据5 的 backward 必须使用它 forward 时对应的权重版本也就是将 $W_1^{(1)}$ 拿出来（如 数据5 在worker1 forward中计算是：$o = W_1\times \text{Data}_5$ 那么 backward 时需要将 $W_1^{(1)}$ 拿出来）
 
 **Vertical Sync**过程如下[^6]：
-![20260420234611](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image/20260420234611.png)
+![20260420234611](https://files.seeusercontent.com/2026/05/07/s3Rj/20260420234611.webp)
 
 每个进入管道的 数据 都与其进入流水线输入阶段时候的最新权重版本相联系。当小批次在流水线前向传播阶段前进时候，这个版本信息随着激活值和梯度一起流动。比如说上图中，强制所有worker在计算 minibatch 5 的时候都用本worker做 minibatch 1 反向传播之后的参数，具体来说就是：对于 worker 2，使用本阶段绿色1（1反向传播之后，更新的本阶段权重）来做 5 的前向传播。但是，这样同步会导致很多计算浪费无用。比如5更新时用的1的权重，但2/3/4后向传播的权重都白白计算了，所以**默认不使用Vertical Sync**。这样虽然每层不完全一致，但是由于weight stashing的存在，所有的参数都是有效的。
 
@@ -141,7 +141,10 @@ for input in data_loader:
 以上述DDP训练过程为例，为了更大限度的榨干设备显存（让其可以接受更加大的数据输入），就可以考虑使用 `DeepSpeed` 以及 toch原生的 `FSDP2`方式去对模型/梯度/优化器状态的分布式分片，除此之外对于更加大的模型可能就会考虑直接使用 混合并行（多种分布式训练叠加）
 
 ### DeepSpeed 
-[DeepSpeed基本原理](https://www.big-yellow-j.top/posts/2025/02/24/deepspeed.html)
+[DeepSpeed基本原理](https://www.big-yellow-j.top/posts/2025/02/24/deepspeed.html)，简单回顾一下DeepSpeed中基本原理：
+
+![](https://s2.loli.net/2025/06/21/4OUkVeJpjsF8zvc.webp)
+
 ### FSDP
 ## 分布式训练实现
 [各类分布式训练实现](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/Pytorch-Learning/learning_distribute/distirbute_training.ipynb)

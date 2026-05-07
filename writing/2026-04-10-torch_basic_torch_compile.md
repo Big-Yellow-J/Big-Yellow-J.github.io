@@ -9,6 +9,8 @@ tags:
 - pytorch
 - torch.compile
 - 计算图
+description: PyTorch计算图为有向无环图，节点对应张量或运算，边代表数据流与依赖关系，随前向计算动态构建，反向传播时沿图计算梯度，中间激活会占用显存，无需梯度的张量可通过detach从图中分离降低显存开销。torch.compile通过TorchDynamo捕获计算图生成FX
+  Graph与校验守卫，AOTAutograd提前生成反向计算图，TorchInductor完成算子融合、内存优化并生成对应硬件代码，可调整backend、mode等参数适配不同场景，提速同时不影响模型精度。同时梳理了reshape、view等张量形变方法的差异，以及model.train、model.eval、torch.no_grad的适用场景。
 ---
 
 ## torch计算图概念
@@ -106,15 +108,15 @@ print(f"模型已成功导出至: {onnx_file_path}")
 对于第二种可以直接将到处的模型通过网站：[https://netron.app/](https://netron.app/) 去分析每个节点的具体参数以及输入和输出。
 
 ## torch.compile
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260410161253319.png)
+![](https://files.seeusercontent.com/2026/05/07/o8lL/image20260410161253319.webp)
 首先了解几个基本过程[^6]：
 **第一步：首先通过TorchDynamo —— “动态录音机”（抓图）**
 当你第一次运行被 torch.compile 装饰的函数时，Dynamo 会“偷偷”接管 Python 的执行。 它不是静态看代码，而是一边模拟运行，一边录音： 把所**有 PyTorch 操作（加、乘、卷积、ReLU 等）记录下来，画成一张 FX Graph（一张计算流程图）**（对于普通的python操作不会被记录）。 python 的普通代码（if 判断、for 循环、打印等）如果太复杂，就产生 Graph Break（图断开），这部分还是用原来的慢方式运行。 它还会记录“假设”：比如输入 tensor 的形状是 [32, 3, 224, 224]、类型是 float32 等。这些假设叫 Guards（守卫）。 
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260410161614945.png)
+![](https://files.seeusercontent.com/2026/05/07/6uLd/image20260410161614945.webp)
 
 **第二步：AOTAutograd —— “提前准备反向传播”**
 如果是训练（需要 backward），Dynamo 只抓了前向（forward）。 AOTAutograd 会提前从前向图生成反向图（不用等到真正做 backward 时才临时建图）。 它还会把复杂操作分解成更基础的操作（PrimTorch），让后续优化更容易。 好处：前向+反向可以一起优化，节省内存（不用保存所有中间结果）。
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260410161628959.png)
+![](https://files.seeusercontent.com/2026/05/07/lhE7/image20260410161628959.webp)
 
 **第三步：TorchInductor（默认后端）—— “优化工厂 + 代码生成器”**
 拿到干净的计算图后，Inductor 开始大改造： 融合操作：把能合并的算子合成一个内核（例如 conv + batchnorm + relu 变成一个 GPU 内核，减少内存读写）。 布局优化、内存复用、循环优化等。 生成代码： GPU 上主要生成 Triton 代码（一种简单却高效的语言，比手写 CUDA 容易，性能接近官方）。 CPU 上生成 C++ 代码。
@@ -162,7 +164,7 @@ Epoch 95 | Train Time: 5.30s | Batch Time: 0.04843420398478605Train ACC: 38.82% 
 ```
 从上述结果上看，最后ACC差异不大，但是在每个epoch以及batch_time上还是有差异的，于此同时对于在GRPOTrainer上表现如下（只看loss和奖励值，测试的数据以及模型为trl-lib/DeepMath-103K和Qwen2-0.5B-Instruct，其中只使用1%数据）：
 ![20260408142215222](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260408142215222.png)
-![20260408142251113](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260408142251113.png)
+![20260408142251113](https://files.seeusercontent.com/2026/05/07/2Yug/image20260408142251113.webp)
 通过在Resnet以及GRPO两种训练中发现，时间上都会减少并且在模型最后效果是差异不大。下面进一步解释上面没有解释的几个概念。
 #### `torch.compile` 参数
 官方[参数](https://docs.pytorch.org/docs/stable/generated/torch.compile.html)中提供的核心参数如下：
@@ -170,7 +172,7 @@ Epoch 95 | Train Time: 5.30s | Batch Time: 0.04843420398478605Train ACC: 38.82% 
 2. `mode` (预设模式)：1、 `default`：默认模式；2、 `reduce-overhead`：减少开销模式（使用 CUDA Graphs 减少 CPU 启动开销，最适合小 batch 或推理场景，但会增加显存占用）；3、 `max-autotune`：最大自动调优模式（使用 Triton 优化算子，如 ReLU、Softmax 等，编译时间较长）
 3. `fullgraph`（全图捕捉）：`False` (默认)：如果编译器遇到无法处理的 Python 代码（如使用了复杂的第三方库或特殊的 print 语句），它会将图**拆分（Graph Break）**成几个小图，中间夹杂着 Python 解释器执行。`True`：强制要求整个模型被捕捉为一张完整的计算图。如果模型中存在无法编译的代码，会直接报错。这通常用于追求极致性能的导出场景。
 4. `options`可以直接向底层后端传递特定的优化指令。可以直接通过 `torch._inductor.list_options()`查看支持哪些操作，除此之外按照官方文档中介绍的几种处理方式：
-![20260420172724](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image/20260420172724.png)
+![20260420172724](https://files.seeusercontent.com/2026/05/07/8aYn/20260420172724.webp)
 
 <!-- #### `torch.compilr` debug过程
 一般而言在 `torch.compile` 中主要错误如下几类：1、图被切断；2、三个阶段出现错误（如dynamo捕获图出现错误等），比较常见排错方式，通过指定不同的 `backend` 去测试，`eager`（只走 dynamo）、`aot_eager`（测试 AOTAutograd）、`inductor`（测试 Inductor 算子合并） -->
@@ -198,7 +200,7 @@ for _ in range(100):
 ```
 
 得到的输出是：
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260410163138961.png)
+![](https://files.seeusercontent.com/2026/05/07/gI9c/image20260410163138961.webp)
 
 对于上述参数解释如下：1、`opcode`（操作码），`placeholder`: 函数的输入参数（入口）。 `call_function`: 调用一个 Python 函数（如 add, mul）。 `call_method`: 调用一个对象的方法（如 tensor.sum()）。 `output`: 整个图的返回值（出口）；2、`name`: 这个节点在图中的唯一名称（可以理解为变量名）。 3、`target`: 实际执行的具体函数或目标。 4、`args / kwargs`: 该操作需要的输入参数。如果参数是 abs_1，表示它引用了前面名为 abs_1 节点的输出。 
 

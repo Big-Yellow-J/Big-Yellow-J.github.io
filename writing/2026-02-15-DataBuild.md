@@ -20,7 +20,7 @@ description: Z-Image生成模型数据集构建过程中，通过多维度Data P
 **1、Data Profiling Engine**
 这个过程是一个多维度（元数据 → 技术质量 → 信息密度 → 美学语义 → 图文对齐）的自动化数据体检 + 精选系统，通过 pHash 去重、自研质量/AIGC/VLM 模型打分、CN-CLIP 对齐过滤 + VLM 一体化生成丰富 caption，最终从海量脏数据中提炼出高质量、强对齐、偏中文文化的训练语料
 **数据收集过程**
-![image.png](https://test.fukit.cn/autoupload/f/vkB-Pqb1HNqojGbyEgL65tiO_OyvX7mIgxFBfDMDErs/Blog-Image/image.png)
+![image.png](https://files.seeusercontent.com/2026/05/07/4hiS/image.webp)
 上面为Z-Image中整个数据收集过程在对图像/文本进行编码之后去对图像进行粗过滤主要是去重+基于规则方式进行过来，而后去进行图像-文本匹配方式最后得到匹配的文本-图像数据。而对于去重方式主要是使用pHash方式进行图像数据去重、同时，Z-Image利用了borderpixel variance与瞬时JPEG重编码后的BPP(bytes-per-pixel)作为图像复杂度的一种表示方式，有效过滤低信息熵样本、使用CN-CLIP方式去计算图-文匹配度
 ## 数据去重方法
 ### pHash

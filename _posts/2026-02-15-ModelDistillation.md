@@ -25,15 +25,15 @@ $$\mathcal{L}_{NCKD} = \mathrm{KL} ( \frac{p^S}{\sum_{j\neq t} p^S_j},\ \frac{p^
 ### 分配匹配蒸馏（DMD）
 对于DMD[^2]方法原理如下（DMD1的算法流程）：
 
-<!-- ![20260331164300749](https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260331164300749.png) -->
+<!-- ![20260331164300749](https://files.seeusercontent.com/2026/05/07/2dtP/image20260331164300749.webp) -->
 
-![DMD1](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260219145134921.png)
+![DMD1](https://files.seeusercontent.com/2026/05/07/Tee1/image20260219145134921.webp)
 
 对于上诉算法流程图简单描述在DMD蒸馏中主要是通过两个Loss实现，**1、regression loss（回归损失）**：对于教师模型生成过程中得到一批noise-image对（对应 $z_{ref}, y_{ref}$），对于蒸馏的学生模型生成器 $G_\theta$ 直接用初始化噪声以及noise-image中的噪声进行单步生成得到image分别得到：$x$ 以及 $x_{ref}$，而后对于noise-image中的噪声直接去计算**LPIPS损失函数**（主要是计算两组图像之间的相似度，[代码实现](https://lightning.ai/docs/torchmetrics/stable/image/learned_perceptual_image_patch_similarity.html)）；**2、diffusion loss**：蒸馏过程中核心损失，在一般的蒸馏模型过程如LCM是去强迫学生模型模仿 teacher 的每一步去噪轨迹，而DMD则是去计算最终生成的图像分布是否和真实分布之间是否一致，具体的处理过程直接去计算distributionMatchingLoss：
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260331210034629.png)
+![](https://files.seeusercontent.com/2026/05/07/9eqO/image20260331210034629.webp)
 从上面过程很容易知道处理过程，通过计算“真假两个扩散模型”在噪声预测上的偏差，产生一个指引梯度，推着学生模型去生成更符合真实统计规律的图像。
 **在DMDv2**[^1]中**直接取消了回归损失**（主要是在DMDv1中需要预先通过教师模型生成一个庞大的“文本/噪声-图像”对数据集，并且使用回归损失和分布匹配的核心思想相悖，限制了模型性能：回归损失强制学生模型模仿教师模型的具体采样路径，而不是匹配整体的输出分布。）但是直接取消会带来训练效果下降，因此在论文里面使用**TTUR**：在DMDv1中使用的loss处理思路和GAN相似，因此在v2中未来弥补取消回归损失影响对模型优化影响，对于生成器更新一次，而我的判别器会更新n次（论文中5次，在TTUR原始论文中是使用不同的学习率）。
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260401140400394.png)
+![](https://files.seeusercontent.com/2026/05/07/2hzE/image20260401140400394.webp)
 除此之外**引入GAN损失**：
 $$L_{GAN} = \mathbb{E}_{x \sim p_{real}, t \sim [0,T]} [\log D(F(x, t))] + \mathbb{E}_{z \sim p_{noise}, t \sim [0,T]} [-\log(D(F(G_\theta(z), t)))]$$
 各项参数含义，D：GAN discriminator（分类器），通常作为 fake denoiser（μ_fake）的 bottleneck 上的一个分支。F(·, t)：forward diffusion process（在图像上加噪声到 timestep t），让 discriminator 在 noisy 版本上区分 real vs fake（这与 diffusion 的 noisy nature 兼容）。$G_θ(z)$：student generator 输出的图像（z 是纯噪声）。生成器 $G_θ$ 最小化损失（让 D 把 fake 判断成 real）；D 则学习区分 real 与 fake。简单总结上述loss计算过程，对于学生模型 $G_θ(z)$ 通过对其解析拆解构成判别器模型，在生成图像之后通过判别去判别（GAN的思路），**总结而言就是将DMDv1中回归损失直接更换为GAN损失其他保持不变**。

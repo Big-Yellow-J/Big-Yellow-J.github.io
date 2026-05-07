@@ -82,7 +82,7 @@ def format_image(md_content, image_store_dir, max_threads):
         '''上传图片'''
         if image_bed == 'sm.ms':
             SMMS_API_LIST = os.getenv("SMMS_API_LIST", "").split(",")
-            url = 'https://sm.ms/api/v2/upload'
+            url = 'https://s.ee/api/v1/file/upload'
 
             for token in SMMS_API_LIST:
                 headers = {'Authorization': token}
@@ -137,6 +137,7 @@ def format_image(md_content, image_store_dir, max_threads):
     #     if url_path:
     #         md_content = md_content.replace(image_url, url_path)
     # return md_content
+
     future_to_url = {}
     with ThreadPoolExecutor(max_workers=max_threads) as executor:
         for image_url in matches:
@@ -271,9 +272,9 @@ def process_file(file_path_list,
         if md_path.endswith('md'):
             image_store_dir = mkdir_image_dir(md_path)
             md_content = open_file(md_path)
-            # md_content = format_image(md_content,
-            #                           image_store_dir,
-            #                           max_threads) # 优化图像转化为 webp 图像
+            md_content = format_image(md_content,
+                                      image_store_dir,
+                                      max_threads) # 优化图像转化为 webp 图像
             _, yaml_dict = formad_markdown(md_content)
             file_description_dict[md_path] = (md_content, yaml_dict)
 

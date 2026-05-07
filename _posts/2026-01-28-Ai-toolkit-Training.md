@@ -271,7 +271,7 @@ adapter:
 ### 排错处理
 * 1、加载数据过程中出现数据形状不匹配问题
 
-![企业微信截图_17727623386283](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image企业微信截图_17727623386283.png)
+![企业微信截图_17727623386283](https://files.seeusercontent.com/2026/05/07/kK2f/image_17727623386283.webp)
 对于上面截图报错在测试`Klein9B`模型过程中出现，主要是在测试`batch_size>1`就容易发生，可以直接将所有的数据都固定到相同形状可以解决
 * 2、进程一直被`killed`
 

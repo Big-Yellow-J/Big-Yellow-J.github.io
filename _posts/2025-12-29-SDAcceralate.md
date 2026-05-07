@@ -221,11 +221,11 @@ quantize_(model, Float8DynamicActivationFloat8WeightConfig(granularity=PerTensor
 ```
 然后将 `from_pretrained` 里面的 `quantization_config` 修改即可，在 torchao 中支持的[量化方式](https://docs.pytorch.org/ao/stable/api_reference/api_ref_quantization.html#torchao-quantization)有：
 
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260414155418919.png)
+![](https://files.seeusercontent.com/2026/05/07/yj4C/image20260414155418919.webp)
 
 而对于 **TorchAO 的量化核心**基于仿射量化和 分组/通道级粒度（值得是在量化过程中对于 “数据选择”决定“多少个权重/激活值共享同一个缩放因子”的粗细程度 比如说 bitsandbytes 量化过程中直接是选择 block_size 而在 torchao 中支持 block_size/granularity=PerTensor()/granularity=PerRow()），底层依赖自定义内核（CUDA/XPU/CPU）与 inductor 编译器融合。除去上述量化方式 torchao 支持QAT（量化感知训练），根据[官方](https://docs.pytorch.org/ao/stable/eager_tutorials/finetuning.html)描述：
 
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260414191418227.png)
+![](https://files.seeusercontent.com/2026/05/07/Teg2/image20260414191418227.webp)
 
 TorchAO的QAT支持包含两个独立步骤：prepare 和 converted。准备步骤“假”是在训练过程中量化激活和/或权重，这意味着高精度值（例如bf16）会映射到对应的量化值，但实际上不会将其投射到目标的低精度d类型（例如int4）。训练后应用的转换步骤，将模型中的“假”量化操作替换为执行dtype铸造的“真实”量化。比如说下面代码：
 
@@ -371,15 +371,15 @@ outputs = llm.generate([prompt], sampling_params)
 
 vllm不仅仅对llm可以起作用，在diffuseion model中也可以起作用，可以直接使用 vllm-omni[^6]进行扩散模型加速推理其内部逻辑为：
 
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260415161433343.png)
+![](https://files.seeusercontent.com/2026/05/07/zI6b/image20260415161433343.webp)
 
 在对比omni和diffusers在生成图像效果如下，测试[代码](https://docs.vllm.ai/projects/vllm-omni/en/latest/user_guide/examples/offline_inference/text_to_image/#example-materials)：
 > 测试参数为（具体设备为 `vGPU-32G`）：`Klein4B`、`超写实亚洲中年男性，年龄约45-55岁。面容坚毅、憔悴，带有生活阅历的痕迹（如眼角的细纹）。他穿着质感柔软的深灰色高领毛衣，外搭一件经典的卡其色风衣，站在寒风中周围是高楼大厦`、`random_seed=416`，直接运行10次测试平均省图时间
 
 | 生成方式 |                                                       正常生图                                                       | 时间 |                                                cache_dit+ compile                                                | 时间 |
 |:--:|:----------------------------------------------------------------------------------------------------------------:|:--:|:----------------------------------------------------------------------------------------------------------------:|:--:|
-| `diffusers` |       ![9](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image/9.png)         | `2.478` |                                                         ![9](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image/9.png)                                                         | `2.101` |
-| `vllm-omni` | ![omni-n-9](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image/omni-n-9.png) | `2.368` | ![omni-c-9](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image/omni-c-9.png) | `2.143` |
+| `diffusers` |       ![9](https://files.seeusercontent.com/2026/05/07/siV8/9.webp)         | `2.478` |                                                         ![9](https://files.seeusercontent.com/2026/05/07/siV8/9.webp)                                                         | `2.101` |
+| `vllm-omni` | ![omni-n-9](https://files.seeusercontent.com/2026/05/07/t3Ds/omni-n-9.webp) | `2.368` | ![omni-c-9](https://files.seeusercontent.com/2026/05/07/yqM3/omni-c-9.webp) | `2.143` |
 
 
 ## 参考

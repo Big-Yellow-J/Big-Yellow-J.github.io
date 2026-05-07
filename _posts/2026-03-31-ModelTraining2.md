@@ -55,7 +55,7 @@ train_loader = DataLoader(
 
 **这里再去介绍一些Dataloader原理**（图像来自[知乎](https://zhuanlan.zhihu.com/p/1936349147797120821)）：
 
-![20260417195427](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image/20260417195427.png)
+![20260417195427](https://files.seeusercontent.com/2026/05/07/cj9R/20260417195427.webp)
 
 `Dataset` 是整个数据加载流程的基础。它提供了**一个索引访问接口**，主要定义了两个方法：`__len__()`：返回数据集总样本数，`__getitem__(index)`：**根据索引返回第 $i$ 个样本**（样本可能来自磁盘读取、内存加载，或实时生成）。Sampler 与 BatchSampler 的作用如下：如果没有手动指定 sampler，且 shuffle=True，DataLoader 会自动使用 RandomSampler，在每个 epoch 开始时对所有样本的索引进行一次性随机打乱。BatchSampler 则负责将打乱后的索引列表，按照 batch_size 分组，形成一个个 batch 的索引列表（例如 [ [45, 7, 23, 12], ... ]）。**当 num_workers > 0 时**，DataLoader 会启用多进程数据加载机制，具体流程如下：
 
@@ -148,8 +148,8 @@ class BucketBatchSampler(Sampler):
 
 ## 宏观指标分析
 最简单分析方法直接在模型运行过程中使用 `time` 去记录时间就可以快速了解每一个阶段耗时统计，除此之外还可以直接基于linux（假设服务器为linux Ubuntu系统）的基础命令进行分析，主要是分析CPU内存使用情况、GPU使用情况、磁盘io使用情况。**CPU性能分析**，一般而言可以直接使用htop、top、bytop等工具直接去看，这里直接使用**bytop**工具进行性能分析，首先安装bytop[^2]（`pip3 install bpytop --upgrade` 或者直接使用 `sudo apt install bpytop`），而后就可以直接终端使用 `bpytop`就可以看到各项性能分析
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260401153039800.png)
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260401153015796.png)
+![](https://files.seeusercontent.com/2026/05/07/1uGv/image20260401153039800.webp)
+![](https://files.seeusercontent.com/2026/05/07/xUi7/image20260401153015796.webp)
 使用方法比较简单直接通过数字选择（直接键盘输入数字）需要看到的面板：
 ```
 1：显示/关闭 CPU性能分析
@@ -158,17 +158,17 @@ class BucketBatchSampler(Sampler):
 4：显示/关闭 各项进程进行分析
 ```
 首先通过上述 `bpytop`就可以简单了解各项进程上在内存上使用情况如何、CPU使用情况如何。**GPU性能分析**，对于GPU性能分析最简单工具直接使用 `watch -n 0.1 nvidia-smi` 每0.1s刷新nvidia-smi情况，主要是去看GPU利用率、显存占用情况
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260401153751296.png)
+![](https://files.seeusercontent.com/2026/05/07/7njW/image20260401153751296.webp)
 **值得注意的是**，**有些时候即使将所有的在跑的程序都关闭但是发现显存还是被占用（利用率是0）**[^3]使用`ps -ef`命令
-![](https://www.autodl.com/docs/qa4.assets/image-20220713171325500.png)
+![](https://files.seeusercontent.com/2026/05/07/Px8l/image-20220713171325500.webp)
 可以看到PID、PPID、CMD 3列重要信息，分别是进程ID、父进程ID、进程的启动命令。通过命令可以判断哪些进程是自己程序启动的进程，比如上方的python train.py就是我启动的进程，其他的均为系统进程或无关显存占用的进程。接下来杀死进程：从截图中看到python train.py程序的进程ID是594 和797，那么可以使用`kill -9 594 797`命令来结束进程。 
 
 但是常常占用显存的进程会很多，特别是在多卡并行时，按此方法会比较繁琐，以下介绍一种更强大的方式结束进程：通过`ps -ef`能看出，我自己的进程都包含了train关键字（并且其他无关的系统进程没有包含，防止误杀），那么使用grep命令可以过滤出我自己的进程，例如：
-![](https://www.autodl.com/docs/qa4.assets/image-20220713172143285.png)
+![](https://files.seeusercontent.com/2026/05/07/paU5/image-20220713172143285.webp)
 接下来是获取进程的ID，此时可以使用awk命令，awk命令用法复杂，这里简单记住以下命令即可：
-![](https://www.autodl.com/docs/qa4.assets/image-20220713172301267.png)
+![](https://files.seeusercontent.com/2026/05/07/Kl9h/image-20220713172301267.webp)
 最后再通过kill命令，即可完整的结束进程。完整命令为`ps -ef | grep train | awk '{print $2}' | xargs kill -9`
-![](https://www.autodl.com/docs/qa4.assets/image-20220713172428298.png)
+![](https://files.seeusercontent.com/2026/05/07/uOw7/image-20220713172428298.webp)
 以上输出中会多出来一个No such process的错误，可以忽略，出现原因是grep train也会产生一个进程，被自己过滤出来。
 ## 微观指标分析
 上面介绍了宏观指标去看CPU/GPU/磁盘/内存之间的使用情况，最好的情况就是这几项的指标都要上去保证在一个较好的情况下，下面进一步介绍更加微观的指标
@@ -211,19 +211,19 @@ if prof:
 ```
 torch profile使用比较简单就是先初始化而后`start()`启动记录器、`step()`记录结果、`stop()`停止记录，而后直接通过 `tensorboard --logdir logs/` 即可（ **值得注意的是**，上面代码只会记录少数步，当 `repeat=0`时候就会一直记录，不需要频繁记录那么多），上述过程中需要注意tensorboard和profile的存储的最终的文件夹要保持一致，对于启动后的在tensorboard中视图中各项结果分析如下[^5]：
 **Overview（概览）**：这个页面能帮你快速判断性能瓶颈在哪。
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260401215011996.png)
+![](https://files.seeusercontent.com/2026/05/07/Cta3/image20260401215011996.webp)
 主要关注红框中内容，它会将每个Step（迭代）的时间拆分成 **Kernel**（计算）、**Memcpy**（数据传输）、**Memset**（GPU内存设置时间）、**DataLoader**（数据加载） 和 **CPU Exec**（CPU计算） 等几部分。如果"Kernel"占比低而"DataLoader"很高，说明数据加载是瓶颈；如果"CPU Exec"很高，则说明CPU侧的算子或逻辑存在优化空间。
 **Operator（算子）**：这个表格是所有PyTorch操作（如aten::convolution）的性能数据。
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260401215618602.png)
+![](https://files.seeusercontent.com/2026/05/07/0tYa/image20260401215618602.webp)
 
 主要关注红框中内容，Calls（运行过程中被使用次数）、Device xxx Duration（在 GPU 上花费的累计时间）、Host xxx Duration（在主机上花费时间），分析过程中主要是去更具耗时最长的就是优化重点。如果开启了with_stack=True，点击"Call Stack"还能直接跳转到你代码中调用该算子的位置
 **Trace（追踪）**：这个时间线视图最直观，能让你看到每个算子和CUDA Kernel的精确起止时间。使用方法：在Chrome浏览器打开 chrome://tracing，然后加载生成的JSON文件。或者直接在TensorBoard的Trace页面分析。你可以通过鼠标滚轮缩放，并利用右上角的 Flow Events 按钮，查看是哪个CPU算子启动了一个GPU Kernel，这对于定位CUDA Kernel的启动延迟问题非常有帮助。
 
 **Memory（内存）**：这个视图展示了内存随时间的分配和释放情况，帮你发现内存泄漏或不必要的显存占用。
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260401220618523.png)
+![](https://files.seeusercontent.com/2026/05/07/m1Xn/image20260401220618523.webp)
 
 **Kernel（内核）**：这是GPU上执行的底层函数视图。
-![](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260401220329364.png)
+![](https://files.seeusercontent.com/2026/05/07/ngD5/image20260401220329364.webp)
 
 主要是去查看GPU利用率（GPU Utilization）、SM效率（Est. SM Efficiency）以及Tensor Core的使用情况。如果这些指标偏低，说明GPU并没有被充分利用。
 ## 调节参数优化
