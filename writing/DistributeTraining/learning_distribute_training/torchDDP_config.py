@@ -32,6 +32,9 @@ class BasicConfig:
     max_train_steps: int = 0
     learning_rate: float = 2e-5
     max_grad_norm: float = 1.0
+    mixed_precision: str = "bf16"
+    gradient_checkpointing: bool = True
+    gradient_checkpointing_kwargs: dict | None = None
     lr_scheduler: str = "cosine"
     lr_warmup_steps: float = 0.1
     optim_name: str = "adamw"

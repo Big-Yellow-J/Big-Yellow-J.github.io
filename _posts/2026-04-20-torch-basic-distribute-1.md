@@ -137,6 +137,12 @@ for input in data_loader:
 
 ### 4、专家并行
 
+## 分布式训练优化
+以上述DDP训练过程为例，为了更大限度的榨干设备显存（让其可以接受更加大的数据输入），就可以考虑使用 `DeepSpeed` 以及 toch原生的 `FSDP2`方式去对模型/梯度/优化器状态的分布式分片，除此之外对于更加大的模型可能就会考虑直接使用 混合并行（多种分布式训练叠加）
+
+### DeepSpeed 
+[DeepSpeed基本原理](https://www.big-yellow-j.top/posts/2025/02/24/deepspeed.html)
+### FSDP
 ## 分布式训练实现
 [各类分布式训练实现](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/Pytorch-Learning/learning_distribute/distirbute_training.ipynb)
 

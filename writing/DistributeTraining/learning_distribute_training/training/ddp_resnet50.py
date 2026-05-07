@@ -31,7 +31,7 @@ class ResNet50DDPConfig(BasicConfig):
     checkpointing_steps: int = -1
     checkpoints_total_limit: int = 1
     seed: int = 42
-    epoch: int = 1
+    epoch: int = 10
     batch_size: int = 512
     num_workers: int = 8
     max_train_steps: int = 0
@@ -39,6 +39,8 @@ class ResNet50DDPConfig(BasicConfig):
     lr_scheduler: str = "cosine"
     lr_warmup_steps: float = 0.03
     log_with: str = "tensorboard"
+    mixed_precision: str = "bf16"
+    gradient_checkpointing: bool = True
 
 class ResNet50DDPTrainer(DDPTrainer):
     def __init__(self, config: ResNet50DDPConfig):
@@ -164,7 +166,7 @@ class ResNet50DDPTrainer(DDPTrainer):
 
 if __name__ == "__main__":
     """
-    torchrun --nproc_per_node=1 ddp_resnet50.py
+    export HF_ENDPOINT=https://hf-mirror.com && torchrun --nproc_per_node=1 ddp_resnet50.py
     """
     config = ResNet50DDPConfig()
     trainer = ResNet50DDPTrainer(config)

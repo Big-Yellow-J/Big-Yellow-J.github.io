@@ -3,6 +3,7 @@ import math
 import os
 import random
 import shutil
+import json
 from collections.abc import Mapping
 from datetime import datetime
 from typing import Dict, Optional, Tuple
@@ -65,10 +66,13 @@ class DDPTrainer:
         self._build_dataloader()
         self._prepare_model_optimizer_scheduler()
         self._tracker_init()
+        self._dtype_init()
+        self._amp_init()
 
         self.global_step = 0
         self.starting_epoch = 0
         self.steps_completed_in_current_epoch = 0
+
 
     def _dist_init(self) -> None:
         if not self.is_distributed:
@@ -82,6 +86,18 @@ class DDPTrainer:
             torch.cuda.set_device(self.local_rank)
         dist.init_process_group(backend=backend, init_method="env://")
 
+    def _dtype_init(self) -> None:
+        dtype_dict = {
+            "bf16": torch.bfloat16,
+            "fp32": torch.float32,
+            "fp16": torch.float16,
+        }
+        self.dtype = dtype_dict.get(self.config.mixed_precision, torch.float32)
+
+    def _amp_init(self) -> None:
+        use_fp16_scaler = self.device.type == "cuda" and self.dtype == torch.float16
+        self.grad_scaler = torch.cuda.amp.GradScaler(enabled=use_fp16_scaler)
+        
     def _set_seed(self) -> None:
         seed = self.config.seed + self.rank
         np.random.seed(seed)
@@ -189,6 +205,7 @@ class DDPTrainer:
     def _prepare_model_optimizer_scheduler(self) -> None:
         if self.model is None:
             raise ValueError("model is required for DDPTrainer.")
+        self._enable_gradient_checkpointing()
         self.model = self.model.to(self.device)
         if self.is_distributed:
             self.model = DDP(
@@ -202,6 +219,33 @@ class DDPTrainer:
         if self.lr_scheduler is None:
             self.lr_scheduler = self._build_lr_scheduler()
 
+    def _enable_gradient_checkpointing(self) -> None:
+        enabled = bool(getattr(self.config, "gradient_checkpointing", False))
+        if not enabled or self.model is None:
+            return
+
+        gc_kwargs = getattr(self.config, "gradient_checkpointing_kwargs", None) or {}
+        model = self.model
+        if not hasattr(model, "gradient_checkpointing_enable"):
+            if self.is_main_process:
+                logger.warning(
+                    "gradient_checkpointing=True, but model has no gradient_checkpointing_enable()."
+                )
+            return
+
+        try:
+            model.gradient_checkpointing_enable(gradient_checkpointing_kwargs=gc_kwargs)
+        except TypeError:
+            model.gradient_checkpointing_enable()
+
+        if hasattr(model, "enable_input_require_grads"):
+            model.enable_input_require_grads()
+        if hasattr(model, "config") and hasattr(model.config, "use_cache"):
+            model.config.use_cache = False
+
+        if self.is_main_process:
+            logger.info("Gradient checkpointing enabled. kwargs=%s", gc_kwargs)
+
     def _tracker_init(self) -> None:
         if not self.is_main_process:
             return
@@ -209,6 +253,17 @@ class DDPTrainer:
         if "tensorboard" in log_with:
             tb_dir = os.path.join(self.config.output_dir, "tb")
             self.tb_writer = SummaryWriter(log_dir=tb_dir)
+            self.tb_writer.add_text(
+                "config",
+                json.dumps(self.config.to_dict(), ensure_ascii=False, indent=2),
+                global_step=0,
+            )
+            hparams = {}
+            for k, v in self.config.to_dict().items():
+                if isinstance(v, (bool, int, float, str)):
+                    hparams[k] = v
+            self.tb_writer.add_hparams(hparams, {"meta/init": 0.0})
+            self.tb_writer.flush()
         if "wandb" in log_with:
             try:
                 import wandb
@@ -244,6 +299,7 @@ class DDPTrainer:
             self.wandb_run.finish()
 
     def _reduce_scalar(self, value: torch.Tensor) -> torch.Tensor:
+        """对所有卡计算得到梯度信息进行同步"""
         if not self.is_distributed:
             return value
         reduced = value.detach().clone()
@@ -292,20 +348,39 @@ class DDPTrainer:
         raise ValueError(f"Unsupported task_type={self.config.task_type}")
 
     def training_step(self, batch, should_sync: bool) -> Dict[str, float]:
-        loss = self.compute_loss(batch)
+        device_type = "cuda" if self.device.type == "cuda" else "cpu"
+        amp_enabled = self.dtype in (torch.float16, torch.bfloat16)
+        with torch.amp.autocast(
+                device_type=device_type,
+                dtype=self.dtype,
+                enabled=amp_enabled):
+            loss = self.compute_loss(batch)
         scaled_loss = loss / self.config.gradient_accumulation_steps
+
         if isinstance(self.model, DDP) and not should_sync:
             with self.model.no_sync():
-                scaled_loss.backward()
+                if self.grad_scaler.is_enabled():
+                    self.grad_scaler.scale(scaled_loss).backward()
+                else:
+                    scaled_loss.backward()
         else:
-            scaled_loss.backward()
+            if self.grad_scaler.is_enabled():
+                self.grad_scaler.scale(scaled_loss).backward()
+            else:
+                scaled_loss.backward()
 
         grad_norm = 0.0
         if should_sync:
+            if self.grad_scaler.is_enabled():
+                self.grad_scaler.unscale_(self.optimizer)
             grad_norm = torch.nn.utils.clip_grad_norm_(
                 self.model.parameters(), self.config.max_grad_norm
             ).item()
-            self.optimizer.step()
+            if self.grad_scaler.is_enabled():
+                self.grad_scaler.step(self.optimizer)
+                self.grad_scaler.update()
+            else:
+                self.optimizer.step()
             self.lr_scheduler.step()
             self.optimizer.zero_grad(set_to_none=True)
 
@@ -487,4 +562,3 @@ class DDPTrainer:
         finally:
             self._close_trackers()
             self._cleanup()
-
