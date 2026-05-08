@@ -163,7 +163,7 @@ Epoch 90 | Train Time: 5.05s | Batch Time: 0.04837274064823073Train ACC: 37.71% 
 Epoch 95 | Train Time: 5.30s | Batch Time: 0.04843420398478605Train ACC: 38.82% | Test ACC: 40.20%
 ```
 从上述结果上看，最后ACC差异不大，但是在每个epoch以及batch_time上还是有差异的，于此同时对于在GRPOTrainer上表现如下（只看loss和奖励值，测试的数据以及模型为trl-lib/DeepMath-103K和Qwen2-0.5B-Instruct，其中只使用1%数据）：
-![20260408142215222](https://ghfast.top/https://raw.githubusercontent.com/Big-Yellow-J/BlogImage/main/image20260408142215222.png)
+![20260408142215222](https://files.seeusercontent.com/2026/05/07/Bgr7/image20260408142215222.webp)
 ![20260408142251113](https://files.seeusercontent.com/2026/05/07/2Yug/image20260408142251113.webp)
 通过在Resnet以及GRPO两种训练中发现，时间上都会减少并且在模型最后效果是差异不大。下面进一步解释上面没有解释的几个概念。
 #### `torch.compile` 参数

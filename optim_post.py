@@ -77,36 +77,27 @@ def formad_markdown(md_content,
     
     return md_content, yaml_dict
 def format_image(md_content, image_store_dir, max_threads):
-    '''格式化图像'''
     def upload_webp_file(webp_path: Path, image_bed='sm.ms'):
-        '''上传图片'''
         if image_bed == 'sm.ms':
-            SMMS_API_LIST = os.getenv("SMMS_API_LIST", "").split(",")
+            smms_api_key = os.getenv("SMMS_API_LIST", "")
             url = 'https://s.ee/api/v1/file/upload'
+            headers = {'Authorization': str(smms_api_key)}
+            try:
+                with open(webp_path, 'rb') as f:
+                    files = {'file': f}
+                    response = requests.post(url, files=files, headers=headers, timeout=30)
+                response.raise_for_status()
+                result = response.json()
 
-            for token in SMMS_API_LIST:
-                headers = {'Authorization': token}
-                try:
-                    with open(webp_path, 'rb') as f:
-                        files = {
-                            'smfile': (webp_path.name, f, 'image/webp')
-                        }
-                        response = requests.post(url, headers=headers, files=files, timeout=10)
-                        response.raise_for_status()
-                        result = response.json()
+                if result.get("success"):
+                    return result["data"]["url"]
+                else:
+                    print(f"❌ 上传失败（token: {smms_api_key[:4]}***）：{webp_path.name} - {result.get('message')}")
+            except Exception as e:
+                print(f"❌ 上传出错（token: {smms_api_key[:4]}***）：{webp_path} - {e}")
 
-                        if result.get("success"):
-                            return result["data"]["url"]
-                        else:
-                            print(f"❌ 上传失败（token: {token[:4]}***）：{webp_path.name} - {result.get('message')}")
-                except Exception as e:
-                    print(f"❌ 上传出错（token: {token[:4]}***）：{webp_path} - {e}")
-            return None
-        else:
-            print("❌ 未支持的图床类型")
-            return None
     def download_convert(image_url, output_path, quality=85, image_bed='sm.ms'):
-        '''下载图片将其转化为webp'''
+        """下载图片将其转化为webp"""
         try:
             response = requests.get(image_url, timeout=10)
             response.raise_for_status()
