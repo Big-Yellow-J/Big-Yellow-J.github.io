@@ -58,3 +58,6 @@ Makefile
 .DS_Store
 # Windows
 Thumbs.db
+/.obsidian/
+*.json
+/.junie/

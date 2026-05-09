@@ -6,7 +6,7 @@ import random
 import shutil
 from collections.abc import Mapping
 from datetime import datetime
-from typing import Dict, Tuple
+from typing import Any, Dict, Tuple
 
 import datasets
 import numpy as np
@@ -33,12 +33,12 @@ class BasicTrainer:
             eval_dataset: "Dataset | IterableDataset | datasets.Dataset | None" = None,
             processor: AutoProcessor | None = None,
             optimizer: torch.optim.Optimizer | None = None,
-            lr_scheduler: str | None = None,
+            lr_scheduler: Any | None = None,
             criterion: nn.Module | None = None,
     ):
         self.config = config
         self.model = model
-        if self.config.torch_compile:
+        if self.config.torch_compile and self.model is not None:
             self.model = torch.compile(self.model, **self.config.compile_config)
 
         self.processor = processor
@@ -79,8 +79,9 @@ class BasicTrainer:
             "num_workers": num_workers,
             "pin_memory": pin_memory,
             "persistent_workers": persistent_workers and num_workers > 0,
-            "prefetch_factor": prefetch_factor if num_workers > 0 else None,
         }
+        if num_workers > 0 and prefetch_factor is not None:
+            common_kwargs["prefetch_factor"] = prefetch_factor
 
         if self.train_dataset is not None:
             self.train_dataloader = DataLoader(
@@ -149,7 +150,10 @@ class BasicTrainer:
 
     def _profile_init(self):
         self.profile = profile(
-            activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+            activities=[
+                ProfilerActivity.CPU,
+                *([ProfilerActivity.CUDA] if torch.cuda.is_available() else []),
+            ],
             schedule=torch.profiler.schedule(
                 wait=1,
                 warmup=1,
@@ -170,12 +174,23 @@ class BasicTrainer:
             "gradient_accumulation_plugin": GradientAccumulationPlugin(**self.config.gradient_plugin)
         }
 
-        if self.config.deepspeed_plugin:
+        deepspeed_plugin_config = getattr(
+            self.config,
+            "deepspeed_plugin",
+            None,
+        ) or getattr(self.config, "deepspeed_config", None)
+        fsdp_plugin_config = getattr(
+            self.config,
+            "fsdp2_plugin",
+            None,
+        ) or getattr(self.config, "fsdp_config", None)
+
+        if deepspeed_plugin_config:
             from accelerate.utils import DeepSpeedPlugin
-            plugins["deepspeed_plugin"] = DeepSpeedPlugin(**self.config.deepspeed_plugin)
-        elif self.config.fsdp2_plugin:
+            plugins["deepspeed_plugin"] = DeepSpeedPlugin(**deepspeed_plugin_config)
+        elif fsdp_plugin_config:
             from accelerate.utils import FullyShardedDataParallelPlugin
-            plugins["fsdp_plugin"] = FullyShardedDataParallelPlugin(**self.config.fsdp2_plugin)
+            plugins["fsdp_plugin"] = FullyShardedDataParallelPlugin(**fsdp_plugin_config)
 
         accelerator_kwargs = dict(self.config.accelerator_config)
         accelerator_kwargs.pop("project_config", None)
@@ -192,7 +207,7 @@ class BasicTrainer:
         if self.config.torch_profile and self.accelerator.is_main_process:
             self._profile_init()
             self.profile.start()
-        if self.config.accelerator_config["log_with"] == "tensorboard":
+        if self.config.accelerator_config.get("log_with") == "tensorboard":
             self._tensorboard_init()
 
     def _build_vllm_server(self):
@@ -202,6 +217,9 @@ class BasicTrainer:
         pass
 
     def _build_optimizer(self) -> torch.optim.Optimizer:
+        if self.model is None:
+            raise ValueError("model must be provided when optimizer is not passed")
+
         trainable_params = [p for p in self.model.parameters() if p.requires_grad]
 
         if self.config.optim_name.lower() == "adamw_8bit":
@@ -219,9 +237,10 @@ class BasicTrainer:
         if self.config.max_train_steps > 0:
             return self.config.max_train_steps
 
-        num_update_steps_per_epoch = math.ceil(
-            len(self.train_dataloader) / self.config.gradient_accumulation_steps
-        )
+        if self.train_dataloader is None:
+            raise ValueError("train_dataloader must be built before computing training steps")
+
+        num_update_steps_per_epoch = self._num_update_steps_per_epoch()
         return self.config.epoch * num_update_steps_per_epoch
 
     def _build_lr_scheduler(self):
@@ -240,15 +259,44 @@ class BasicTrainer:
         )
 
     def _prepare_components(self) -> None:
-        self.model, self.optimizer, self.train_dataloader, self.eval_dataloader, self.lr_scheduler = self.accelerator.prepare(
-            self.model, self.optimizer, self.train_dataloader, self.eval_dataloader, self.lr_scheduler
-        )
+        components: list[tuple[str, Any]] = [
+            ("model", self.model),
+            ("optimizer", self.optimizer),
+            ("train_dataloader", self.train_dataloader),
+            ("eval_dataloader", self.eval_dataloader),
+            ("lr_scheduler", self.lr_scheduler),
+        ]
+        present_components = [(name, component) for name, component in components if component is not None]
+        if not present_components:
+            return
+
+        prepared = self.accelerator.prepare(*(component for _, component in present_components))
+
+        if len(present_components) == 1:
+            prepared = (prepared,)
+
+        for (name, _), component in zip(present_components, prepared):
+            setattr(self, name, component)
 
         if self.criterion is not None:
             self.criterion = self.accelerator.prepare(self.criterion)
 
+    def _num_update_steps_per_epoch(self) -> int:
+        if self.train_dataloader is None:
+            raise ValueError("train_dataloader is required for training")
+        return math.ceil(len(self.train_dataloader) / self.config.gradient_accumulation_steps)
+
+    def _completed_batches_in_epoch(self, global_step: int) -> int:
+        completed_update_steps = global_step % max(1, self._num_update_steps_per_epoch())
+        return min(
+            len(self.train_dataloader),
+            completed_update_steps * self.config.gradient_accumulation_steps,
+        )
+
     def load_checkpoint(self) -> Tuple[int, int, int]:
         resume_path = self.config.resume_from_checkpoint
+        if not resume_path:
+            return 0, 0, 0
         if not os.path.exists(resume_path):
             return 0, 0, 0
 
@@ -262,11 +310,9 @@ class BasicTrainer:
                 state = json.load(f)
 
         global_step = int(state.get("global_step", 0))
-        num_update_steps_per_epoch = math.ceil(
-            len(self.train_dataloader) / self.config.gradient_accumulation_steps
-        )
+        num_update_steps_per_epoch = self._num_update_steps_per_epoch()
         starting_epoch = global_step // max(1, num_update_steps_per_epoch)
-        steps_completed_in_current_epoch = global_step % max(1, num_update_steps_per_epoch)
+        steps_completed_in_current_epoch = self._completed_batches_in_epoch(global_step)
 
         logger.info(
             "Resume state loaded: global_step=%s starting_epoch=%s completed_steps=%s",
@@ -362,9 +408,11 @@ class BasicTrainer:
             )
             for batch in self.eval_dataloader:
                 loss = self.compute_loss(batch)
-                total_loss += float(loss.detach().item())
-                total_steps += 1
+                gathered_loss = self.accelerator.gather_for_metrics(loss.detach().float().reshape(1))
+                total_loss += float(gathered_loss.sum().item())
+                total_steps += int(gathered_loss.numel())
                 pbar.update(1)
+            pbar.close()
 
         self.model.train()
         if total_steps == 0:
@@ -377,9 +425,9 @@ class BasicTrainer:
         self.accelerator.backward(loss)
         grad_norm = 0.0
         if self.accelerator.sync_gradients:
-            grad_norm = self.accelerator.clip_grad_norm_(
+            grad_norm = float(self.accelerator.clip_grad_norm_(
                 self.model.parameters(), self.config.max_grad_norm
-            ).item()
+            ).item())
         self.optimizer.step()
         self.lr_scheduler.step()
         self.optimizer.zero_grad()
@@ -394,9 +442,7 @@ class BasicTrainer:
     def train(self) -> None:
         self.starting_epoch, self.global_step, self.steps_completed_in_current_epoch = self.load_checkpoint()
 
-        num_update_steps_per_epoch = math.ceil(
-            len(self.train_dataloader) / self.config.gradient_accumulation_steps
-        )
+        num_update_steps_per_epoch = self._num_update_steps_per_epoch()
         max_train_steps = (
             self.config.max_train_steps
             if self.config.max_train_steps > 0
@@ -433,9 +479,9 @@ class BasicTrainer:
 
                     if self.accelerator.sync_gradients:
                         self.global_step += 1
-                        if self.global_step % self.config.logging_steps == 0:
+                        if self.config.logging_steps > 0 and self.global_step % self.config.logging_steps == 0:
                             self.accelerator.log(train_metrics, step=self.global_step, )
-                        if self.config.torch_profile:
+                        if self.config.torch_profile and hasattr(self, "profile"):
                             self.profile.step()
 
                         pbar.set_postfix({
@@ -444,8 +490,7 @@ class BasicTrainer:
                         })
                         if self.config.checkpointing_steps > 0 and self.global_step % self.config.checkpointing_steps == 0:
                             self.save_checkpoint(global_step=self.global_step, epoch=epoch, )
-                        elif self.config.checkpointing_steps <= 0 and self.global_step % len(
-                                self.train_dataloader) == 0:
+                        elif self.config.checkpointing_steps <= 0 and self.global_step % num_update_steps_per_epoch == 0:
                             self.save_checkpoint(global_step=self.global_step, epoch=epoch, )
 
                     if self.global_step >= max_train_steps:
@@ -460,8 +505,8 @@ class BasicTrainer:
                 if self.global_step >= max_train_steps:
                     break
 
-            self.save_checkpoint(global_step=self.global_step, epoch=self.config.epoch, suffix="-last", )
-            if self.config.torch_profile:
+            self.save_checkpoint(global_step=self.global_step, epoch=epoch, suffix="-last", )
+            if self.config.torch_profile and hasattr(self, "profile"):
                 self.profile.stop()
 
         except KeyboardInterrupt:
