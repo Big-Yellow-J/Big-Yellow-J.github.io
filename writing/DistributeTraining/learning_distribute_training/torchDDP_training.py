@@ -14,6 +14,13 @@ import torch
 import torch.distributed as dist
 import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.distributed.fsdp import (
+    FullyShardedDataParallel as FSDP,
+    FullOptimStateDictConfig,
+    FullStateDictConfig,
+    ShardingStrategy,
+    StateDictType,
+)
 from torch.utils.data import DataLoader, Dataset, IterableDataset
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.tensorboard import SummaryWriter
@@ -52,6 +59,8 @@ class DDPTrainer:
         self.local_rank = int(os.environ.get("LOCAL_RANK", "0"))
         self.world_size = int(os.environ.get("WORLD_SIZE", "1"))
         self.is_distributed = self.world_size > 1
+        self.strategy = str(getattr(self.config, "distributed_strategy", "ddp")).lower()
+        self.use_fsdp = self.strategy in {"fsdp", "fsdp2"}
         self.is_main_process = self.rank == 0
         self.device = torch.device(
             f"cuda:{self.local_rank}" if torch.cuda.is_available() else "cpu"
@@ -75,7 +84,8 @@ class DDPTrainer:
 
 
     def _dist_init(self) -> None:
-        if not self.is_distributed:
+        need_init = self.is_distributed or self.use_fsdp
+        if not need_init:
             return
         backend = self.config.backend
         if backend == "nccl" and not torch.cuda.is_available():
@@ -84,7 +94,8 @@ class DDPTrainer:
                 logger.warning("CUDA unavailable; fallback backend from nccl to gloo.")
         if torch.cuda.is_available():
             torch.cuda.set_device(self.local_rank)
-        dist.init_process_group(backend=backend, init_method="env://")
+        if not dist.is_initialized():
+            dist.init_process_group(backend=backend, init_method="env://")
 
     def _dtype_init(self) -> None:
         dtype_dict = {
@@ -207,7 +218,23 @@ class DDPTrainer:
             raise ValueError("model is required for DDPTrainer.")
         self._enable_gradient_checkpointing()
         self.model = self.model.to(self.device)
-        if self.is_distributed:
+        if self.use_fsdp:
+            sharding_map = {
+                "FULL_SHARD": ShardingStrategy.FULL_SHARD,
+                "SHARD_GRAD_OP": ShardingStrategy.SHARD_GRAD_OP,
+                "NO_SHARD": ShardingStrategy.NO_SHARD,
+            }
+            sharding_cfg = str(getattr(self.config, "fsdp_sharding_strategy", "FULL_SHARD")).upper()
+            sharding_strategy = sharding_map.get(sharding_cfg, ShardingStrategy.FULL_SHARD)
+            self.model = FSDP(
+                self.model,
+                device_id=self.local_rank if self.device.type == "cuda" else None,
+                sharding_strategy=sharding_strategy,
+                use_orig_params=bool(getattr(self.config, "fsdp_use_orig_params", True)),
+                limit_all_gathers=bool(getattr(self.config, "fsdp_limit_all_gathers", True)),
+                sync_module_states=bool(getattr(self.config, "fsdp_sync_module_states", False)),
+            )
+        elif self.is_distributed:
             self.model = DDP(
                 self.model,
                 device_ids=[self.local_rank] if self.device.type == "cuda" else None,
@@ -316,7 +343,9 @@ class DDPTrainer:
             dist.destroy_process_group()
 
     def _unwrap_model(self) -> nn.Module:
-        return self.model.module if isinstance(self.model, DDP) else self.model
+        if isinstance(self.model, (DDP, FSDP)):
+            return self.model.module
+        return self.model
 
     def _move_batch_to_device(self, batch):
         if isinstance(batch, dict):
@@ -357,7 +386,7 @@ class DDPTrainer:
             loss = self.compute_loss(batch)
         scaled_loss = loss / self.config.gradient_accumulation_steps
 
-        if isinstance(self.model, DDP) and not should_sync:
+        if isinstance(self.model, (DDP, FSDP)) and not should_sync:
             with self.model.no_sync():
                 if self.grad_scaler.is_enabled():
                     self.grad_scaler.scale(scaled_loss).backward()
@@ -408,28 +437,54 @@ class DDPTrainer:
         return {"Eval/eval_loss": float(total_loss.item() / denom)}
 
     def save_checkpoint(self, global_step: int, epoch: int, suffix: str = "") -> None:
-        if not self.is_main_process:
-            return
         ckpt_name = f"checkpoint{suffix}-{global_step}" if suffix else f"checkpoint-{global_step}"
         save_path = os.path.join(self.config.output_dir, ckpt_name)
-        os.makedirs(save_path, exist_ok=True)
-        state = {
-            "model": self._unwrap_model().state_dict(),
-            "optimizer": self.optimizer.state_dict(),
-            "lr_scheduler": self.lr_scheduler.state_dict(),
-            "global_step": global_step,
-            "epoch": epoch,
-            "saved_at": datetime.now().isoformat(),
-            "config": self.config.to_dict(),
-        }
-        torch.save(state, os.path.join(save_path, "training_state.pt"))
-        write_json(
-            os.path.join(save_path, "trainer_state.json"),
-            {"global_step": global_step, "epoch": epoch, "saved_at": state["saved_at"]},
-        )
-        logger.info("Saved checkpoint at step %s -> %s", global_step, save_path)
+        state = None
+        if isinstance(self.model, FSDP):
+            full_state_cfg = FullStateDictConfig(offload_to_cpu=True, rank0_only=True)
+            full_optim_cfg = FullOptimStateDictConfig(offload_to_cpu=True, rank0_only=True)
+            with FSDP.state_dict_type(
+                self.model,
+                StateDictType.FULL_STATE_DICT,
+                full_state_cfg,
+                full_optim_cfg,
+            ):
+                model_state = self.model.state_dict()
+                optim_state = FSDP.optim_state_dict(self.model, self.optimizer)
+            if self.is_main_process:
+                os.makedirs(save_path, exist_ok=True)
+                state = {
+                    "model": model_state,
+                    "optimizer": optim_state,
+                    "lr_scheduler": self.lr_scheduler.state_dict(),
+                    "global_step": global_step,
+                    "epoch": epoch,
+                    "saved_at": datetime.now().isoformat(),
+                    "config": self.config.to_dict(),
+                }
+        else:
+            if not self.is_main_process:
+                return
+            os.makedirs(save_path, exist_ok=True)
+            state = {
+                "model": self._unwrap_model().state_dict(),
+                "optimizer": self.optimizer.state_dict(),
+                "lr_scheduler": self.lr_scheduler.state_dict(),
+                "global_step": global_step,
+                "epoch": epoch,
+                "saved_at": datetime.now().isoformat(),
+                "config": self.config.to_dict(),
+            }
 
-        if self.config.checkpoints_total_limit is not None:
+        if self.is_main_process and state is not None:
+            torch.save(state, os.path.join(save_path, "training_state.pt"))
+            write_json(
+                os.path.join(save_path, "trainer_state.json"),
+                {"global_step": global_step, "epoch": epoch, "saved_at": state["saved_at"]},
+            )
+            logger.info("Saved checkpoint at step %s -> %s", global_step, save_path)
+
+        if self.is_main_process and self.config.checkpoints_total_limit is not None:
             checkpoints = [
                 d
                 for d in os.listdir(self.config.output_dir)
@@ -451,9 +506,23 @@ class DDPTrainer:
         if not os.path.exists(state_file):
             return 0, 0, 0
         map_location = self.device if self.device.type == "cuda" else "cpu"
-        state = torch.load(state_file, map_location=map_location)
-        self._unwrap_model().load_state_dict(state["model"])
-        self.optimizer.load_state_dict(state["optimizer"])
+        state = torch.load(state_file, map_location=map_location) if self.is_main_process else None
+        if self.is_distributed or self.use_fsdp:
+            state_list = [state]
+            dist.broadcast_object_list(state_list, src=0)
+            state = state_list[0]
+
+        if isinstance(self.model, FSDP):
+            self.model.load_state_dict(state["model"])
+            optim_state = FSDP.optim_state_dict_to_load(
+                model=self.model,
+                optim=self.optimizer,
+                optim_state_dict=state["optimizer"],
+            )
+            self.optimizer.load_state_dict(optim_state)
+        else:
+            self._unwrap_model().load_state_dict(state["model"])
+            self.optimizer.load_state_dict(state["optimizer"])
         self.lr_scheduler.load_state_dict(state["lr_scheduler"])
 
         global_step = int(state.get("global_step", 0))

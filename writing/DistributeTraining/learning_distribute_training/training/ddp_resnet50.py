@@ -28,6 +28,7 @@ class ResNet50DDPConfig(BasicConfig):
     cache_dir: str = "/root/autodl-fs/huggingface"
     task_type: str = "classification"
     project_name: str = "Training-ResNet50-Torch-DDP"
+    optim_name: str = "adamw_8bit"
     checkpointing_steps: int = -1
     checkpoints_total_limit: int = 1
     seed: int = 42
@@ -41,6 +42,7 @@ class ResNet50DDPConfig(BasicConfig):
     log_with: str = "tensorboard"
     mixed_precision: str = "bf16"
     gradient_checkpointing: bool = True
+    distributed_strategy: str = "fsdp2" # "ddp"  # "ddp" | "fsdp2"
 
 class ResNet50DDPTrainer(DDPTrainer):
     def __init__(self, config: ResNet50DDPConfig):
@@ -169,5 +171,6 @@ if __name__ == "__main__":
     export HF_ENDPOINT=https://hf-mirror.com && torchrun --nproc_per_node=1 ddp_resnet50.py
     """
     config = ResNet50DDPConfig()
+    # config.distributed_strategy = "fsdp2"
     trainer = ResNet50DDPTrainer(config)
     trainer.train()

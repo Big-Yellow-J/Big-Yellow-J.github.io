@@ -19,6 +19,7 @@ class BasicConfig:
     resume_from_checkpoint: Optional[str] = ""
 
     backend: str = "nccl"
+    distributed_strategy: str = "ddp"  # "ddp" | "fsdp" | "fsdp2"
     seed: int = 10086
     epoch: int = 10
     batch_size: int = 32
@@ -42,6 +43,12 @@ class BasicConfig:
     task_type: str = "llm"
     gradient_accumulation_steps: int = 1
 
+    # FSDP options
+    fsdp_sharding_strategy: str = "FULL_SHARD"  # "FULL_SHARD" | "SHARD_GRAD_OP" | "NO_SHARD"
+    fsdp_use_orig_params: bool = True
+    fsdp_limit_all_gathers: bool = True
+    fsdp_sync_module_states: bool = False
+
     torch_compile: bool = False
     torch_profile: bool = False
     compile_config: Dict[str, Any] = field(default_factory=lambda: {
@@ -56,7 +63,7 @@ class BasicConfig:
 
     def __post_init__(self) -> None:
         self.tracker_project_name = (
-            f"{self.current_date}-{self.project_name}-{self.special_num:04d}"
+            f"{self.current_date}-{self.project_name}-{self.special_num:04d}-{self.distributed_strategy}"
         )
         self.output_dir = os.path.join(self.store_dir, self.tracker_project_name)
         os.makedirs(self.output_dir, exist_ok=True)

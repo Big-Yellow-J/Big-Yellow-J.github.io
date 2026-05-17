@@ -61,6 +61,7 @@ class Qwen2DDPConfig(BasicConfig):
     optim_name: str = "adamw"
     gradient_checkpointing: bool = True
     gradient_checkpointing_kwargs: Optional[dict] = None
+    distributed_strategy: str = "ddp"  # "ddp" | "fsdp2"
 
 
 class Qwen2DDPTrainer(DDPTrainer):
@@ -207,5 +208,6 @@ if __name__ == "__main__":
     export HF_ENDPOINT=https://hf-mirror.com && torchrun --nproc_per_node=1 ddp_qwen0.5.py
     """
     config = Qwen2DDPConfig()
+    # config.distributed_strategy = "fsdp2"
     trainer = Qwen2DDPTrainer(config)
     trainer.train()
