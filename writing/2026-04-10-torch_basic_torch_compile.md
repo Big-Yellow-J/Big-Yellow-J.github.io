@@ -12,19 +12,14 @@ tags:
 ---
 
 ## torch计算图概念
-在深度学习框架中，计算图（英文简称Graph）是一个有向无环图（DAG），它的节点代表操作（例如加法、乘法或者更复杂的函数），边则代表数据（例如张量或者标量）。计算图为深度学习中的前向传播（forward propagation）和反向传播（backward propagation）提供了一个可视化的框架，它能清楚地展示数据是如何流动和操作的。
+在深度学习框架中，计算图（英文简称Graph）是一个有向无环图（DAG），它的节点代表操作（例如加法、乘法或者更复杂的函数），边则代表数据（例如张量或者标量）。计算图为深度学习中的前向传播（forward propagation）和反向传播（backward propagation）提供了一个可视化的框架，它能清楚地展示数据是如何流动和操作的。比如说以下面例子为例解释
 
-在PyTorch中，计算图是随着代码计算过程动态构建的。**"计算图捕获"**（Graph Capture）就是通过分析/运行代码来捕获计算图的过程。捕获了计算图之后，PyTorch能够得到整个计算过程的全局视角，从而有可能进行更好的优化。例如，通过图优化，PyTorch可以删除没必要的计算，合并相似的操作，或者重新排列计算顺序，以此来提升计算效率。目前torch中支持计算图主要有两种：**动态计算图、静态计算图**下面对于两种计算过程进一步解释。
+### 简单例子
+> PyTorch 在 forward 时构建一张由 Node 组成的反向执行图，每个 Node 记录局部梯度计算规则和必要上下文，在 backward 时由 Engine 按拓扑顺序逐节点执行并完成梯度传播与累加。
 
-
-[//]: # (对于这两种计算中在forward以及backward过程简单理解：1、动态计算图（eager mode）在forward过程中不知道模型结构，运行到那一层就计算那一层，backward过程它会从根节点（Loss）出发，根据 DAG 图的拓扑排序，逆向调用每个 Node 的反向计算逻辑，当一个节点计算完毕并且下游不需要就会将其从内存中销毁，并且释放forward过程中缓存的中间向量；2、静态计算图)
-
-[//]: # (简单介绍一下提到的缓存的中间变量，比如说函数：$f&#40;x&#41;=x^2\times \ln&#40;x&#41;$)
-
-### 动态计算图过程
 ![](https://s2.loli.net/2025/08/14/gIftdlM7KTw2Yak.webp)
 
-参考上图中给出的例子[^1]，对于（pytorch中的）计算图而言主要起到的作用就是：**用来记录张量之间的运算关系**。涉及到的几个概念：**1、节点（Node）**：张量（Tensor）或者运算（Function）。**2、边（Edge）**：表示数据流和依赖关系，指明一个张量是由哪些运算生成的，或一个运算的输入来源于哪个张量。**3、叶子节点（Leaf Tensor）**：通常是用户创建的、需要梯度的张量（`requires_grad=True`）。4、动态计算图：PyTorch 是 动态图框架，计算图会在每次 forward 运行时即时构建，执行完一次计算后，默认图会释放（除非使用`retain_graph=True`）。当通过调用 `.backward()` 时，**PyTorch 会沿着这个计算图从输出节点反向传播，依次计算每个叶子节点的梯度**。比如说对于上面的过程（上面过程中每一个圆圈节点就会对应一个节点，那么反向传播就可以去计算这些节点梯度去对参数进行更新）：$z=w=y_1\times y_2= \log(a) \times \sin(x_2)=\log(x_1\times x_2)\times \sin(x_2)$
+参考上图中给出的例子[^1]，PyTorch 的计算图在底层负责记录张量之间的运算与依赖关系。要点：**节点（Node）** 为张量或运算；**边（Edge）**表示数据流，指明某张量由哪个运算生成或某运算的输入来自哪个张量；叶子节点为用户创建且需梯度的张量（`requires_grad=True`）。PyTorch 是动态图框架：每次 forward 即时构建计算图，执行后默认释放（除非 `retain_graph=True`）。调用 `.backward()` 时，框架沿计算图从输出向输入反向传播，逐节点累加梯度并回传到叶子张量（例如 $z=w=y_1\times y_2= \log(a) \times \sin(x_2)=\log(x_1\times x_2)\times \sin(x_2)$ 的梯度由对应运算节点按链式法则逐步计算）：
 
 ```python
 import torch
@@ -73,7 +68,43 @@ dz/dX2 = dz/da * ∂a/∂X2 + dz/dy2 * ∂y2/∂X2
        = -1.7267885208129883
 ```
 
-对于计算图就是对于你的输入数据进行了那种计算方式进行记录，后续梯度反向传播时候通过上面计算图（**计算图保存了所有中间变量和梯度信息**）来计算梯度更新参数，**那么进一步了解计算过程**，对于上述等式 $z=w=y_1\times y_2= \log(a) \times \sin(x_2)=\log(x_1\times x_2)+ \sin(x_2)$，那么以 $x_1$ 为例在计算过程中对 $x$ 求导得到：$\frac{\partial z}{\partial x_1}=\frac{\partial z}{\partial w}\cdot\frac{\partial w}{\partial y_1}\cdot\frac{\partial y_1}{\partial a}\cdot\frac{\partial a}{\partial x_1}$，其中每一项（分别对 $y_1, a, x_1$）再计算导数过程总都需要中间变量值，比如说计算 $\frac{\partial w}{\partial y_1}=y_2$，那么此时就需要中间变量 $y_2$ 的值（其他以此类推），那么就会导致会不断将这些值就行缓存（导致显存占用过高），**对应解决措施**：直接使用[grad checkpoint](https://www.big-yellow-j.top/posts/2026/04/20/torch-basic-distribute-1.html#:~:text=gradient%2Dcheckpoint%20%E8%BF%87%E7%A8%8B)减小显存占用。如果在后续计算中不再需要梯度，可以直接使用 `.detach()` 将其从计算图中分离，以减少显存占用。如果要得到模型具体的计算图下面两种方法：
+对于计算图就是对于你的输入数据进行了那种计算方式进行记录，后续梯度反向传播时候通过上面计算图（**计算图保存了所有中间变量和梯度信息**）来计算梯度更新参数。**更加底层**的了解一下上述整个过程，通过下面代码访问具体计算图：
+```python
+def show_graph(fn, indent=0):
+    if fn is None:
+        return
+    print("  " * indent, fn)
+    for next_fn, _ in fn.next_functions:
+        show_graph(next_fn, indent + 1)
+show_graph(z.grad_fn)
+```
+最后输出内容就是：
+```
+ <MulBackward0 object at 0x7f3aac04af20>         z=y2* y3
+   <LogBackward0 object at 0x7f3aac0494b0>       y2=log(y1)
+     <MulBackward0 object at 0x7f3aac049690>     y1=x1*x2
+       <AccumulateGrad object at 0x7f3aac049600> x1
+       <AccumulateGrad object at 0x7f3aac049510> x2
+   <SinBackward0 object at 0x7f3aac0495d0>       y3=sin(x2)
+     <AccumulateGrad object at 0x7f3aac049690>   x2
+```
+那么在 `forward` 过程中，Step-1计算 $y1= x1\times x2$，那么此时创建Node：MulBackward0并且保存`x1 x2`，并且建立关系：
+```markdown
+y1.grad_fn → MulBackward0
+MulBackward0.next_functions → [AccumulateGrad(x1), AccumulateGrad(x2)]
+```
+那么在 `backward` 过程中，Step-1计算 MulBackward0（z=y2* y3）计算：
+```markdown
+dz/dy2 = y3
+dz/dy3 = y2
+```
+传递：
+```markdown
+→ LogBackward0（带 y3）
+→ SinBackward0（带 y2）
+```
+
+如果要得到模型具体的计算图下面两种方法：
 ```python
 import torch
 from torchviz import make_dot
@@ -110,6 +141,9 @@ torch.onnx.export(
 print(f"模型已成功导出至: {onnx_file_path}")
 ```
 对于第二种可以直接将到处的模型通过网站：[https://netron.app/](https://netron.app/) 去分析每个节点的具体参数以及输入和输出。
+
+### 动态计算图过程
+对于上述等式 $z=w=y_1\times y_2= \log(a) \times \sin(x_2)=\log(x_1\times x_2)\times \sin(x_2)$，其中变量 $x_1$ 以及 $x_2$ 对应我们的叶子节点，而对应的计算 $\sin$ 以及 $\log$ 对应我们的运算节点，以 $x_1$ 为例在计算过程中对 $x_1$ 求导得到：$\frac{\partial z}{\partial x_1}=\frac{\partial z}{\partial w}\cdot\frac{\partial w}{\partial y_1}\cdot\frac{\partial y_1}{\partial a}\cdot\frac{\partial a}{\partial x_1}$，其中每一项（分别对 $y_1, a, x_1$）再计算导数过程总都需要中间变量值，比如说计算 $\frac{\partial w}{\partial y_1}=y_2$，那么此时就需要中间变量 $y_2$ 的值（其他以此类推），那么就会导致会不断将这些值就行缓存（导致显存占用过高），**对应解决措施**：直接使用[grad checkpoint](https://www.big-yellow-j.top/posts/2026/04/20/torch-basic-distribute-1.html#:~:text=gradient%2Dcheckpoint%20%E8%BF%87%E7%A8%8B)（直接放弃中间结果，当计算需要时候重新过一遍计算图再计算一次）减小显存占用。如果在后续计算中不再需要梯度，可以直接使用 `.detach()` 将其从计算图中分离，以减少显存占用。
 
 ## torch.compile
 > 对于静态计算图过程，用的比较多就是直接使用 `torch.compile` 因此直接介绍 `torch.compile`
