@@ -9,6 +9,8 @@ tags:
 - pytorch
 - torch.compile
 - 计算图
+description: PyTorch动态计算图为有向无环结构，节点对应张量或运算，边代表数据流，forward时即时构建，backward时按拓扑顺序反向传播累加梯度，执行后默认释放，可通过retain_graph=True保留中间变量与梯度信息。torch.compile基于三阶段流程实现提速：TorchDynamo捕获PyTorch操作生成FX
+  Graph，搭配输入形状、类型等Guard校验规则；AOTAutograd提前生成反向计算图，拆分基础操作实现前后向联合优化，降低内存开销；TorchInductor完成算子融合、内存复用等优化，GPU端生成Triton代码、CPU端生成C++代码。该功能不影响模型精度，可降低训练耗时，已适配TRL、Accelerator等主流训练框架。
 ---
 
 ## torch计算图概念
@@ -140,16 +142,13 @@ torch.onnx.export(
 )
 print(f"模型已成功导出至: {onnx_file_path}")
 ```
-对于第二种可以直接将到处的模型通过网站：[https://netron.app/](https://netron.app/) 去分析每个节点的具体参数以及输入和输出。
-
-### 动态计算图过程
-对于上述等式 $z=w=y_1\times y_2= \log(a) \times \sin(x_2)=\log(x_1\times x_2)\times \sin(x_2)$，其中变量 $x_1$ 以及 $x_2$ 对应我们的叶子节点，而对应的计算 $\sin$ 以及 $\log$ 对应我们的运算节点，以 $x_1$ 为例在计算过程中对 $x_1$ 求导得到：$\frac{\partial z}{\partial x_1}=\frac{\partial z}{\partial w}\cdot\frac{\partial w}{\partial y_1}\cdot\frac{\partial y_1}{\partial a}\cdot\frac{\partial a}{\partial x_1}$，其中每一项（分别对 $y_1, a, x_1$）再计算导数过程总都需要中间变量值，比如说计算 $\frac{\partial w}{\partial y_1}=y_2$，那么此时就需要中间变量 $y_2$ 的值（其他以此类推），那么就会导致会不断将这些值就行缓存（导致显存占用过高），**对应解决措施**：直接使用[grad checkpoint](https://www.big-yellow-j.top/posts/2026/04/20/torch-basic-distribute-1.html#:~:text=gradient%2Dcheckpoint%20%E8%BF%87%E7%A8%8B)（直接放弃中间结果，当计算需要时候重新过一遍计算图再计算一次）减小显存占用。如果在后续计算中不再需要梯度，可以直接使用 `.detach()` 将其从计算图中分离，以减少显存占用。
+对于第二种可以直接将到处的模型通过网站：[https://netron.app/](https://netron.app/) 去分析每个节点的具体参数以及输入和输出。在torch计算图概念中主要是两种计算方式：1、动态计算图；2、静态计算图，两者之间的核心差异在于前者计算图在 forward 执行过程中边执行边生成（执行每一个运算过程就会生成一个新的节点），而后者计算图在执行前已经完整确定，并作为“可优化程序”执行（提前解析表达式得到计算图）
 
 ## torch.compile
-> 对于静态计算图过程，用的比较多就是直接使用 `torch.compile` 因此直接介绍 `torch.compile`
 
 ![](https://files.seeusercontent.com/2026/05/07/o8lL/image20260410161253319.webp)
-首先了解几个基本过程[^6]：
+
+对于上述图像简单了解几个基本过程[^6]：
 **第一步：首先通过TorchDynamo —— “动态录音机”（抓图）**
 当你第一次运行被 torch.compile 装饰的函数时，Dynamo 会“偷偷”接管 Python 的执行。 它不是静态看代码，而是一边模拟运行，一边录音： 把所**有 PyTorch 操作（加、乘、卷积、ReLU 等）记录下来，画成一张 FX Graph（一张计算流程图）**（对于普通的python操作不会被记录）。 python 的普通代码（if 判断、for 循环、打印等）如果太复杂，就产生 Graph Break（图断开），这部分还是用原来的慢方式运行。 它还会记录“假设”：比如输入 tensor 的形状是 [32, 3, 224, 224]、类型是 float32 等。这些假设叫 Guards（守卫）。 
 ![](https://files.seeusercontent.com/2026/05/07/6uLd/image20260410161614945.webp)
@@ -210,16 +209,14 @@ Epoch 95 | Train Time: 5.30s | Batch Time: 0.04843420398478605Train ACC: 38.82% 
 官方[参数](https://docs.pytorch.org/docs/stable/generated/torch.compile.html)中提供的核心参数如下：
 1. `backend` (后端)：决定了计算图最终被转化为何种形式。`inductor` (默认值)：这是最推荐的选择。它使用 TorchInductor 后端，将代码编译为 Triton (针对 GPU) 或 C++ (针对 CPU)。它能提供最深的算子融合和内存优化。`cudagraphs`：利用 NVIDIA 的 CUDA Graphs 技术，通过减少 CPU 启动 Kernel 的开销来加速小模型。`其他`：如 onnxrt (ONNX Runtime) 或 tvm，通常用于特定的硬件部署场景。
 2. `mode` (预设模式)：1、 `default`：默认模式；2、 `reduce-overhead`：减少开销模式（使用 CUDA Graphs 减少 CPU 启动开销，最适合小 batch 或推理场景，但会增加显存占用）；3、 `max-autotune`：最大自动调优模式（使用 Triton 优化算子，如 ReLU、Softmax 等，编译时间较长）
-3. `fullgraph`（全图捕捉）：`False` (默认)：如果编译器遇到无法处理的 Python 代码（如使用了复杂的第三方库或特殊的 print 语句），它会将图**拆分（Graph Break）**成几个小图，中间夹杂着 Python 解释器执行。`True`：强制要求整个模型被捕捉为一张完整的计算图。如果模型中存在无法编译的代码，会直接报错。这通常用于追求极致性能的导出场景。
+3. `fullgraph`（全图捕捉）：`False` (默认)：如果编译器遇到无法处理的 Python 代码（如使用了复杂的第三方库或特殊的 print 语句），它会将图**拆分**成几个小图，中间夹杂着 Python 解释器执行。`True`：强制要求整个模型被捕捉为一张完整的计算图。如果模型中存在无法编译的代码，会直接报错。这通常用于追求极致性能的导出场景。
 4. `options`可以直接向底层后端传递特定的优化指令。可以直接通过 `torch._inductor.list_options()`查看支持哪些操作，除此之外按照官方文档中介绍的几种处理方式：
 ![20260420172724](https://files.seeusercontent.com/2026/05/07/8aYn/20260420172724.webp)
 
-<!-- #### `torch.compilr` debug过程
-一般而言在 `torch.compile` 中主要错误如下几类：1、图被切断；2、三个阶段出现错误（如dynamo捕获图出现错误等），比较常见排错方式，通过指定不同的 `backend` 去测试，`eager`（只走 dynamo）、`aot_eager`（测试 AOTAutograd）、`inductor`（测试 Inductor 算子合并） -->
-
 ### 基础概念
+对于最开始提到的3组合概念：1、dynamo；2、AOTAutograd；3、TorchInductor下面逐一进行介绍
 #### dynamo
-最上面提到在使用 compile 之前会去获取计算图，之所以要提前获取计算图是因为：pytorch中有些计算如 `ReLU(Add(A, B))`等，执行逻辑就是先add而后计算relu，但是如果提前获取计算图可以直接通过triton将两部合并为一段代码进而减少计算提高速度，参考[^8]这些内容理解。比如说在官方示例中对于compile获取计算图过程为：
+最上面提到在使用 compile 之前会去获取计算图，之所以要提前获取计算图是因为：pytorch中有些计算如 `ReLU(Add(A, B))`等，执行逻辑就是先add而后计算relu，但是如果提前获取计算图可以直接通过triton将两部合并为一段代码进而减少计算提高速度（这就是动态计算图和静态计算图之间一个较大的差异，动态计算图便计算边获取图，静态提前获取整个计算图），参考[^8]这些内容理解。比如说在官方示例中对于compile获取计算图过程为：
 ```python
 from typing import List
 import torch
@@ -308,7 +305,7 @@ compile中具体获取计算图过程[^5][^7]是直接通过**捕获计算图是
 dynamo只是获取了forward过程，模型优化（backward过程）在compile中则是通过AOTAutograd进行处理**为推理出来的计算图，自动生成配套的反向传播（Backward）计算图**。在pytorch中还有一中计算梯度方式也是最常见的计算方式autograd对于这两种之间差异在于：
 1、`Autograd`：你只写前向传播（forward），PyTorch 会在运行时**动态记录每一步操作**，自动构建一个计算图（computational graph）。当你对 loss 调用 `.backward()` 时，它就沿着这个图反向走一遍，用链式法则自动算出所有参数的梯度。 整个过程中这个图是动态、临时的：**每次 forward 都会重新建图，用完就销毁**（除非手动 `retain_graph=True`）。优点是超级灵活——支持 if、for 循环、任意 Python 代码，调试也方便。但缺点是每次都要重新建图，Python 开销大，不容易做全局优化。
 2、`AOTAutograd`：它和普通 Autograd 的最大区别是：不是在运行时动态建图，而是**提前就把前向和反向的整个计算图一次性捕获**。第一次运行时，用“假张量”（FakeTensor）模拟一遍 forward，记录下所有操作，生成两个静态的 FX Graph（一个 forward，一个 backward）。这两个图是可分析、可复用、可优化的 Python 对象。
-> **简单总结就是**：`Autograd`没有计算都会重新去构建图，`AOTAutograd`提前将图创建好，下次用直接按照图去运行即可（省去创建费时）
+> **简单总结就是**：`Autograd`每次计算都会重新去构建图，`AOTAutograd`提前将图创建好，下次用直接按照图去运行即可（省去创建费时）
 
 #### TorchInductor
 主要是对算子进行融合，比如说$y = \text{ReLU}(Ax + b)$，传统方式要读写三次显存，Inductor 会将其合并为一个 Kernel，数据读入显卡后一次性算完再写回。

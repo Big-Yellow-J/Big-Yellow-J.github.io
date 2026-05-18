@@ -808,5 +808,25 @@
       "new_description",
       "PyTorch计算图为有向无环图，节点对应张量或运算，边代表数据流与依赖关系，随前向计算动态构建，反向传播时沿图计算梯度，中间激活会占用显存，无需梯度的张量可通过detach从图中分离降低显存开销。torch.compile通过TorchDynamo捕获计算图生成FX Graph与校验守卫，AOTAutograd提前生成反向计算图，TorchInductor完成算子融合、内存优化并生成对应硬件代码，可调整backend、mode等参数适配不同场景，提速同时不影响模型精度。同时梳理了reshape、view等张量形变方法的差异，以及model.train、model.eval、torch.no_grad的适用场景。"
     ]
+  ],
+  "./_posts/2026-04-10-torch_basic_torch_compile.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "PyTorch动态计算图为有向无环结构，节点对应张量或运算，边代表数据流，forward时即时构建，backward时按拓扑顺序反向传播累加梯度，执行后默认释放，可通过retain_graph=True保留中间变量与梯度信息。torch.compile基于三阶段流程实现提速：TorchDynamo捕获PyTorch操作生成FX Graph，搭配输入形状、类型等Guard校验规则；AOTAutograd提前生成反向计算图，拆分基础操作实现前后向联合优化，降低内存开销；TorchInductor完成算子融合、内存复用等优化，GPU端生成Triton代码、CPU端生成C++代码。该功能不影响模型精度，可降低训练耗时，已适配TRL、Accelerator等主流训练框架。"
+    ]
+  ],
+  "./writing/2026-05-17-OpenCode.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "覆盖OpenCode代码托管、分支管理、Pull Request协作、CI/CD流水线配置、细粒度权限管控等核心功能，讲解从仓库初始化、代码提交规范、多人协作评审流程到自动化构建部署的全链路操作步骤，针对多角色协同场景给出分支策略、代码冲突解决、灰度版本发布的可落地最佳实践，适配个人项目托管、中小团队协作开发、公开开源项目运营等不同使用需求，可实现研发流程标准化，降低跨角色协同成本，稳定提升代码交付质量与迭代效率。"
+    ]
   ]
 }

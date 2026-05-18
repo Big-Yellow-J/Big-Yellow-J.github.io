@@ -206,7 +206,7 @@ for epoch in range(5):
 ```
 使用deepspeed十分简单，只需要提前配置好deepspeed的参数，而后将其通过deepspeed初始化处理（模型、优化器等），而后后续训练就和普通训练过程差异不大，model.backward(loss) 和 model.step() 已经自动管理了梯度清零，所以传统训练里必须用的 optimizer.zero_grad() 不需要显式调用。
 ### FSDP
-其在基本思想上和DeepSpeed相似都是选择去对3部分进行切分，可以简单理解为：**PyTorch 原生的 ZeRO-3 实现，通过在前反向计算时临时 All-Gather 完整参数、计算后立即释放的方式，将参数、梯度、优化器状态均匀分片到所有 GPU 上，使显存占用从 O(N) 降至 O(1/N)。**简单使用FSDP进行分布式训练：
+其在基本思想上和DeepSpeed相似都是选择去对3部分进行切分，可以简单理解为：**PyTorch 原生的 ZeRO-3 实现，通过在前反向计算时临时 All-Gather 完整参数、计算后立即释放的方式，将参数、梯度、优化器状态均匀分片到所有 GPU 上，使显存占用从 O(N) 降至 O(1/N)。** 简单使用FSDP进行分布式训练：
 ```python
 from torch.distributed.fsdp import (
     FullyShardedDataParallel as FSDP,
