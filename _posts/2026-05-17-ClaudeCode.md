@@ -1,0 +1,77 @@
+---
+layout: mypost
+title: Claude Code安装使用
+categories: agent
+address: 北京🦞
+extMath: true
+show_footer_image: true
+tags:
+- agent
+- claude code
+description: Windows端Claude Code支持桌面端、终端两种安装路径，终端安装可通过CMD或PowerShell执行官方命令完成，遇网络连接报错可切换美国VPN节点、开启全局代理或虚拟网卡模式解决，安装完成后需配置系统环境变量，可搭配rtk工具优化token消耗。终端输入claude即可启动，输入/可调用操作命令，支持切换模型、安装superpowers等官方插件。内置技能分为项目级、全局级两类，可通过复制文件夹或命令行安装第三方可复用prompt，也支持自定义技能，适配自动、手动两种触发方式。
+---
+
+## Claude Code安装使用
+### 安装与卸载
+以win电脑为例按照官方过程直接输入命令即可，对于**桌面端安装**直接访问[链接](https://code.claude.com/docs/en/desktop)然后安装即可，对于**终端安装**参考[链接](https://code.claude.com/docs/zh-CN/terminal-guide)首先安装 [`git`](https://git-scm.com/install/windows)然后直接终端（win+r 然后输入 cmd）执行安装即可：`curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd`或者直接：
+![20260518221435773](https://files.seeusercontent.com/2026/05/19/vg0U/20260518221435773.webp)
+打开 PowerShell然后输入安装命令：`irm https://claude.ai/install.ps1 | iex`
+**处理报错**，如果遇到如下报错：
+![20260518215550368](https://files.seeusercontent.com/2026/05/19/2xMq/20260518215550368.webp)
+**解决措施**：（理论上）直接将VPN节点换到美国即可
+**处理报错**，如果遇到报错 `Failed to fetch version from https://downloads.claude.ai/claude-code-releases/latest: ECONNREFUSED`
+![20260518215850658](https://files.seeusercontent.com/2026/05/19/Nag5/20260518215850658.webp)
+**解决措施**：将VPN开启虚拟网卡模式或者直接将VPN开全局代理即可
+最后终端中出现如下界面表示安装完成
+![20260518220850516](https://files.seeusercontent.com/2026/05/19/dBy8/20260518220850516.webp)
+值得注意的是里面提到：`Native installation exists.....`，这是因为没有**配置好系统环境变量**，直接`win+r`然后输入 `sysdm.cpl`
+![20260518221208684](https://files.seeusercontent.com/2026/05/19/F4ug/20260518221208684.webp)
+点击确认即可完成环境变量配置处理。然后终端直接输入 `claude`
+**卸载过程**就比较简单直接去删除对应文件即可，**为了节约token**选择直接[安装](https://github.com/rtk-ai/rtk/blob/develop/README_zh.md)`rtk`，首先[下载对应文件](https://github.com/rtk-ai/rtk/releases/download/dev-0.41.0-rc.227/rtk-x86_64-pc-windows-msvc.zip)并且解压（**记住解压的路径**），解压完成之后将对应文件添加到环境变量中（过程和上面配置claude code环境变量相同），然后 `rtk.exe init --global`（如果不行就直接输入`D:\ClaudeCode\rtk.exe init --global`，前面的路径为你解压路径）运行之后就可以开启节约token，值得注意的是如果环境变量添加了，终端输入 `rtk` 没有效果可以直接去 `C:\Users\hjie\.claude\settings.json` 里面修改配置，将里面的hook修改为
+![20260519211105815](https://files.seeusercontent.com/2026/05/19/4bCo/20260519211105815.webp)
+
+### 配置其他API
+以[DeepSeek](https://platform.deepseek.com/usage)配置过程为例，打开目录 `C:\Users\hjie\.claude` 然后
+![20260518222937445](https://files.seeusercontent.com/2026/05/19/bG7z/20260518222937445.webp)
+```json
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "sk-",
+    "ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-flash",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-v4-pro",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-pro",
+    "ANTHROPIC_MODEL": "deepseek-v4-pro"
+  },
+  "autoUpdatesChannel": "latest",
+  "theme": "dark"
+}
+```
+在配置完毕之后，打开 Powershell然后执行 `claude`
+![20260518223208225](https://files.seeusercontent.com/2026/05/19/qy1O/20260518223208225.webp)
+
+### 简单使用
+![20260518224707197](https://files.seeusercontent.com/2026/05/19/fj9N/20260518224707197.webp)
+在终端中所有的命令可以直接输入 `/` 来进行执行比如说切换模型 `/model` 然后按不同箭头选择模型（enter 回车选择模型），
+### 插件安装
+比如说安装[用量检查插件](https://github.com/jarrodwatts/claude-hud/blob/main/README.zh.md)或者安装superpowers：`/plugin install superpowers@claude-plugins-official`
+### MCP
+https://zhuanlan.zhihu.com/p/1933624323849032925
+https://www.cnblogs.com/youring2/p/20065433
+### Skills
+*skills简单理解为一个可以复用的任务prompt（比如说创建PPT）不用每次都去重新写prompt直接通过skills进行复用即可*
+> 安装前简单了解一下skills有“两个目录”：**1、项目目录**（那么你的skills就只在这个项目起到效果），比如直接在你的文件夹里面进行打开就会访问项目目录比如说 `D:\ClaudeCode\.claude`；**2、根目录**（所有项目都可以用到这个skills），这个就是你的claude code安装目录比如说：`C:\Users\hjie\.claude`
+
+**第一种、安装他人skills**[^1]有如下几种：**1、复制文件夹**直接将别人skills所有内容复制到skills目录下即可，**2、直接下载**，以获取微信文章为例直接访问[地址](https://www.skills.sh/)然后搜索`wechat-article-extractor`在得到安装命令`npx skills add https://github.com/freestylefly/wechat-article-extractor-skill --skill wechat-article-extractor`在你的终端进行安装即可，安装完过程中可能要选择是 project 还是 global 根据提示进行选择即可
+> 需要安装npm，安装方式参考：[链接](https://www.cnblogs.com/liushunli/p/18663191)
+
+安装完毕之后skills触发有两种：**1、自动进行触发**，比如在上述skills中有description字段
+![20260519214202838](https://files.seeusercontent.com/2026/05/19/Yb8y/20260519214202838.webp)
+当你在claude中输入 `提取微信文章：https://mp.weixin.qq.com/s/8axsDd-vY247Nd3oPZ9_zQ` 他就会自动触发这个skills进行处理
+![20260519214401207](https://files.seeusercontent.com/2026/05/19/c7Nx/20260519214401207.webp)
+**2、手动触发**，可以直接在 claude中输入 '/we' 会在下面触发联想，然后通过箭头选择自己需要内容直接按 `tab` 补全命令
+![20260519214750902](https://files.seeusercontent.com/2026/05/19/9Wma/20260519214750902.webp)
+**第二种、自定义skills**：直接去看别人skills怎么写的然后进行修改即可，或者直接让claude code写skills
+
+## 参考
+[^1]: [https://www.bilibili.com/video/BV1BFouBYERu/?spm_id_from=333.337.search-card.all.click&vd_source=881c4826193cfb648b5cdd0bad9f19f0](https://www.bilibili.com/video/BV1BFouBYERu/?spm_id_from=333.337.search-card.all.click&vd_source=881c4826193cfb648b5cdd0bad9f19f0)
