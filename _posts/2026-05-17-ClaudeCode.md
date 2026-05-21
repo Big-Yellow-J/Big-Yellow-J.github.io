@@ -153,6 +153,13 @@ rtk init --global
 ![20260520223828636](https://files.seeusercontent.com/2026/05/20/B9jx/20260520223828636.webp)
 通过上面一轮对话处理下来token消耗
 ![20260520224434337](https://files.seeusercontent.com/2026/05/20/kRv5/20260520224434337.webp)
+#### 自动化搜索skills
+一般而言在工作中可能需要去调研（比如说搜集论文、收集相关数据集等），推荐直接使用 [crawl4ai](https://github.com/unclecode/crawl4ai) 去自动搜索爬取内容，可以直接使用他的[skills](https://docs.crawl4ai.com/assets/crawl4ai-skill.zip)然后放到自己的目录下面，然后再终端中执行`claude --permission-mode auto`，然后输入自己要求：
+![20260520223001394](https://files.seeusercontent.com/2026/05/20/Dts8/20260520223001394.webp)
+最后输出结果（任务比较费时用来12min52s完成）
+![20260520223828636](https://files.seeusercontent.com/2026/05/20/B9jx/20260520223828636.webp)
+通过上面一轮对话处理下来token消耗
+![20260520224434337](https://files.seeusercontent.com/2026/05/20/kRv5/20260520224434337.webp)
 
 ## 参考
 [^1]: [https://www.bilibili.com/video/BV1BFouBYERu/?spm_id_from=333.337.search-card.all.click&vd_source=881c4826193cfb648b5cdd0bad9f19f0](https://www.bilibili.com/video/BV1BFouBYERu/?spm_id_from=333.337.search-card.all.click&vd_source=881c4826193cfb648b5cdd0bad9f19f0)
