@@ -11,7 +11,7 @@ tags:
 description: Windows端Claude Code支持桌面端、终端两种安装路径，终端安装可通过CMD或PowerShell执行官方命令完成，遇网络连接报错可切换美国VPN节点、开启全局代理或虚拟网卡模式解决，安装完成后需配置系统环境变量，可搭配rtk工具优化token消耗。终端输入claude即可启动，输入/可调用操作命令，支持切换模型、安装superpowers等官方插件。内置技能分为项目级、全局级两类，可通过复制文件夹或命令行安装第三方可复用prompt，也支持自定义技能，适配自动、手动两种触发方式。
 ---
 
-## Claude Code安装使用
+## Claude Code简单使用
 ### 安装环境准备
 目前大部分的skills等都会用到python因此就需要去安装python等，因此需要去安装python，除此之外还需要权重npm等，因此：**在win电脑上更加建议直接使用wsl去搭建Claude Code**，[WSL安装方式](https://www.runoob.com/linux/windows-wsl-linux.html)，安装完毕之后其他命令就和linux安装命令相同，先去介绍基于WSL安装claude过程，执行如下命令：
 > 对于配置DeepSeek：[配置DeepSeek订阅](#配置其他api)
@@ -107,7 +107,7 @@ rtk init --global
 在配置完毕之后，打开 Powershell然后执行 `claude`
 ![20260518223208225](https://files.seeusercontent.com/2026/05/19/qy1O/20260518223208225.webp)
 
-### 简单使用
+### 基础命令
 ![20260518224707197](https://files.seeusercontent.com/2026/05/19/fj9N/20260518224707197.webp)
 在终端中所有的命令可以直接输入 `/` 来进行执行比如说切换模型 `/model` 然后按不同箭头选择模型（enter 回车选择模型），或者直接使用 `@` 去访问文件等，简单使用过程中一般而言用的比较多的几个命令：1、`/compact`：去压缩对话，一般而言模型上下文有限去对上下文进行压缩
 ```cmd
@@ -122,6 +122,7 @@ rtk init --global
 ![20260520225631202](https://files.seeusercontent.com/2026/05/20/2pNt/20260520225631202.webp)
 除此之外要**监控各类task任务**（比如说有些python自动脚本会到建立task）进行情况可以直接安装：`npx claude-task-viewer`然后就可以看到正在进行进程：
 ![20260520212935955](https://files.seeusercontent.com/2026/05/20/Cil9/20260520212935955.webp)
+除此之外有些时候可能需要[一次性进行多个任务](https://code.claude.com/docs/zh-CN/agent-view)（比如说去搜索A相关事情、搜索B相关事情）可以执行`claude agents --permission-mode auto`，这样就可以快速进行多组对话进行切换
 ### 插件安装
 比如说安装[用量检查插件](https://github.com/jarrodwatts/claude-hud/blob/main/README.zh.md)或者安装superpowers：`/plugin install superpowers@claude-plugins-official`
 ### MCP
@@ -146,22 +147,55 @@ rtk init --global
 **2、手动触发**，可以直接在 claude中输入 '/we' 会在下面触发联想，然后通过箭头选择自己需要内容直接按 `tab` 补全命令
 ![20260519214750902](https://files.seeusercontent.com/2026/05/19/9Wma/20260519214750902.webp)
 **第二种、自定义skills**：直接去看别人skills怎么写的然后进行修改即可，或者直接让claude code写skills
-#### 自动化搜索skills
+#### 搜索自动化
 一般而言在工作中可能需要去调研（比如说搜集论文、收集相关数据集等），推荐直接使用 [crawl4ai](https://github.com/unclecode/crawl4ai) 去自动搜索爬取内容，可以直接使用他的[skills](https://docs.crawl4ai.com/assets/crawl4ai-skill.zip)然后放到自己的目录下面，然后再终端中执行`claude --permission-mode auto`，然后输入自己要求：
 ![20260520223001394](https://files.seeusercontent.com/2026/05/20/Dts8/20260520223001394.webp)
 最后输出结果（任务比较费时用来12min52s完成）
 ![20260520223828636](https://files.seeusercontent.com/2026/05/20/B9jx/20260520223828636.webp)
 通过上面一轮对话处理下来token消耗
 ![20260520224434337](https://files.seeusercontent.com/2026/05/20/kRv5/20260520224434337.webp)
-#### 自动化搜索skills
-一般而言在工作中可能需要去调研（比如说搜集论文、收集相关数据集等），推荐直接使用 [crawl4ai](https://github.com/unclecode/crawl4ai) 去自动搜索爬取内容，可以直接使用他的[skills](https://docs.crawl4ai.com/assets/crawl4ai-skill.zip)然后放到自己的目录下面，然后再终端中执行`claude --permission-mode auto`，然后输入自己要求：
-![20260520223001394](https://files.seeusercontent.com/2026/05/20/Dts8/20260520223001394.webp)
-最后输出结果（任务比较费时用来12min52s完成）
-![20260520223828636](https://files.seeusercontent.com/2026/05/20/B9jx/20260520223828636.webp)
-通过上面一轮对话处理下来token消耗
-![20260520224434337](https://files.seeusercontent.com/2026/05/20/kRv5/20260520224434337.webp)
+## Claude 进阶使用
+所有的使用都是基于wsl上安装的claude code进行执行（claude code上进行操作是一致的，只不过可能有些细微内容会用linux命令）
+### Agent Team协作
+一般而言在使用claude code进行对话时候，都是执行一个任务，在等待结果之后再去执行一个新的任务，比如说法律一个案子需要同时去收集案子以及法条然后再去对材料进行整理，这里就需要用到**agent team概念**，简单介绍Agent team概念参考里面对于subagents和agent teams之间对比[^4]：
+![20260522220431712](https://files.seeusercontent.com/2026/05/22/V9ek/20260522220431712.png)
+两者之间差异点在于subagents相当于一个老师将任务分配给几位学生然后学生给老师一个反馈，agent teams相当于老师给学生分配任务，学生之间还在不断交流，那么以[长沙货拉拉案](https://news.cctv.com/2021/09/30/ARTIUszTVNT8vTB7EhBbgvgT210930.shtml)为例，以一个法律从业者出发（本人非专业人员）去构建一个agent team来解决这个案子，**首先**本地创建一个文件夹然后执行claude code
+```bash
+mkdir CSHuolala # 创建文件夹
+mkdir .claude   # 创建文件夹
+echo '{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}' > /home/hjie/ClaudeCode/CShuolala/.claude/settings.json # 相当于写入文件
+ claude --permission-mode auto --teammate-mode in-process  # teammate-mode 控制显示模式
+
+# 测试的提示词是
+为货拉拉案法庭辩护材料准备材料辩护词
+1、任务 A：证据审查与现场环境重构（由 Evidence-Agent 认领）
+2、任务 B：刑法因果关系与无罪/罪轻辩护词起草（由 Criminal-Law-Agent 认领）
+3、任务 C：被害人过错分析及同行案例检索（由 Case-Search-Agent 认领）
+4、任务 D：最后对辩护词进行审查（有Lawer-Agent认领）
+执行顺序上首先执行任务A而后并行执行B和C，最后执行D
+辩护词合适标准：1、辩护词合乎法律文书书写；2、所有收集材料都在本地文件夹保存；3、法律必需都有自己出处
+```
+> 值得注意的是上面任务都是基于网络进行搜索，实际情况可能需要对自己具体材料（比如说收集的材料）进行处理，可能就需要用到其他skills/mcp工具，**在规划任务时候越详细越好**（更加好控制模型） 
+
+![](https://files.seeusercontent.com/2026/05/22/r7Ak/20260522223624142.png)
+可以看到目前之后一个 `Evidence-Agent` 在执行工作，可以直接通过键盘↓去进入 `@main @Evidence-Agent`然后键盘←→箭头进行跳装查看工作如何，或者直接通过`npx claude-task-viewer`然后进入对应网页查看如下：
+![](https://files.seeusercontent.com/2026/05/22/9Ttd/20260522224446512.png)
+那么在`Evidence-Agent`中执行效果如下：
+![](https://files.seeusercontent.com/2026/05/22/cG0g/20260522224004375.png)
+很明显看到执行 *争取审查+任务重构*符合我的任务A要求，A执行完毕就会进行BC比如说得到如下：
+![](https://files.seeusercontent.com/2026/05/22/Na8o/20260522224706671.png)
+可以看到另外两个agent也开始执行了
+
+**最后**所有的整理的材料以及最后的书写得到的辩护词在[百度网盘](https://pan.baidu.com/s/1wzkkb8n_HqIcmLZqeynuYA?pwd=ve8w)总共是花费了大概4元（DeepSeek-4-pro）
+
+#### 底层原理
 
 ## 参考
 [^1]: [https://www.bilibili.com/video/BV1BFouBYERu/?spm_id_from=333.337.search-card.all.click&vd_source=881c4826193cfb648b5cdd0bad9f19f0](https://www.bilibili.com/video/BV1BFouBYERu/?spm_id_from=333.337.search-card.all.click&vd_source=881c4826193cfb648b5cdd0bad9f19f0)
 [^2]: [https://www.cnblogs.com/youring2/p/20065433](https://www.cnblogs.com/youring2/p/20065433)
 [^3]: [https://zhuanlan.zhihu.com/p/1933624323849032925](https://zhuanlan.zhihu.com/p/1933624323849032925)
+[^4]: [https://code.claude.com/docs/zh-CN/agent-teams](https://code.claude.com/docs/zh-CN/agent-teams)
