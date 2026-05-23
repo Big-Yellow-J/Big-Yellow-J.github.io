@@ -193,7 +193,9 @@ echo '{
 **最后**所有的整理的材料以及最后的书写得到的辩护词在[百度网盘](https://pan.baidu.com/s/1wzkkb8n_HqIcmLZqeynuYA?pwd=ve8w)总共是花费了大概4元（DeepSeek-4-pro）
 
 #### 底层原理
+### Skills开发
 
+### MCP开发
 ## 参考
 [^1]: [https://www.bilibili.com/video/BV1BFouBYERu/?spm_id_from=333.337.search-card.all.click&vd_source=881c4826193cfb648b5cdd0bad9f19f0](https://www.bilibili.com/video/BV1BFouBYERu/?spm_id_from=333.337.search-card.all.click&vd_source=881c4826193cfb648b5cdd0bad9f19f0)
 [^2]: [https://www.cnblogs.com/youring2/p/20065433](https://www.cnblogs.com/youring2/p/20065433)

@@ -23,7 +23,6 @@ from utils import write_json, get_gpu_info, clean_cuda_gc
 
 logger = logging.getLogger(__name__)
 
-
 class BasicTrainer:
     def __init__(
             self,
