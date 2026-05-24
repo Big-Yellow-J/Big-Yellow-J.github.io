@@ -238,9 +238,9 @@ When writing API endpoints:
 | shell | 否 | 用于此 skill 中 !`command` 和 \`\`\`! 块的 shell。接受 bash（默认）或 powershell。设置 powershell 在 Windows 上通过 PowerShell 运行内联 shell 命令。需要 CLAUDE_CODE_USE_POWERSHELL_TOOL=1。 |
 
 其实对于上述字段中最核心的就是：1、description：告诉模型这个skills都是干什么的；2、name：告诉模型你的skills叫什么（如果没有他就会用上层的文件夹名称），除此之外其他的也可以去注意一下使用（具体描述看上面的表格里面描述）：disable-model-invocation，在定义完skills中yaml之后就是关于第二部分，prompt书写（这部分其实就是相当于你将你一贯的prompt直接机械的告诉大模型，让他按照你这个内容去机械的进行操作），回到最上面去实现一个**规范文书写作skills**（很粗糙具体内容可能需要具体修改），首先明确我的skills都需要哪些内容：1、定义名称（`legaldocnorm`）；2、定义一些小的脚本工具，比如说对于文档（假设为docx文件）需要让模型去打开文件就需要一些脚本；3、其他。按照上述内容开始一个skills创作（全部基于wsl上，有些命令都是linux命令可以自然的转化到win上，比如创建文件夹）。
-**第一步**、去构建一个所有文件“系统”以及大致SKILL.md文件（**头部信息推荐英文**，后续内容中英都行）最后所有文件见Github链接
-**第二步**、去构建我的脚本 `script`（不会写直接让AI帮你写即可），最后的script见Github链接
-**第三步**、去构建一个reference，因为法律文书在书写上比较规划，模型可能不知道具体如何书写可以简单给一个参考让模型规范输出（规范文本可以直接用最高法院提供模板），这里只提供两种规范文本供参考：1、[广州市海珠区人民法院——民事答辩状](https://www.gzhzcourt.gov.cn/news/45007004.cshtml)；2、[广州市海珠区人民法院——民事起诉状)](https://www.gzhzcourt.gov.cn/news/45007009.cshtml)，最后所有的reference见Github链接
+**第一步**、去构建一个所有文件“系统”以及大致SKILL.md文件（**头部信息推荐英文**，后续内容中英都行）最后所有文件见[Github链接](https://github.com/Big-Yellow-J/Big-Yellow-J.github.io/tree/master/code/Python/skills/legaldocnorm)
+**第二步**、去构建我的脚本 `script`（不会写直接让AI帮你写即可），最后的script见[Github链接](https://github.com/Big-Yellow-J/Big-Yellow-J.github.io/tree/master/code/Python/skills/legaldocnorm)
+**第三步**、去构建一个reference，因为法律文书在书写上比较规划，模型可能不知道具体如何书写可以简单给一个参考让模型规范输出（规范文本可以直接用最高法院提供模板），这里只提供两种规范文本供参考：1、[广州市海珠区人民法院——民事答辩状](https://www.gzhzcourt.gov.cn/news/45007004.cshtml)；2、[广州市海珠区人民法院——民事起诉状)](https://www.gzhzcourt.gov.cn/news/45007009.cshtml)，最后所有的reference见[Github链接](https://github.com/Big-Yellow-J/Big-Yellow-J.github.io/tree/master/code/Python/skills/legaldocnorm)
 ### MCP开发
 ## 参考
 [^1]: [https://www.bilibili.com/video/BV1BFouBYERu/?spm_id_from=333.337.search-card.all.click&vd_source=881c4826193cfb648b5cdd0bad9f19f0](https://www.bilibili.com/video/BV1BFouBYERu/?spm_id_from=333.337.search-card.all.click&vd_source=881c4826193cfb648b5cdd0bad9f19f0)
