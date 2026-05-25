@@ -24,25 +24,30 @@ try:
 except ModuleNotFoundError:
     from torchDDP_training import DDPTrainer
     from torchDDP_config import BasicConfig
+import warnings
 
+warnings.filterwarnings(
+    "ignore",
+    message=".*use_reentrant parameter.*"
+)
 
 @dataclass
 class Qwen2DDPConfig(BasicConfig):
     task_type: str = "llm"
     project_name: str = "Qwen2.5-0.5B-Torch-DDP"
-    model_name_or_path: str = "Qwen/Qwen2.5-0.5B"
-    cache_dir: str = "/root/autodl-fs/huggingface"
-    store_dir: str = "/root/autodl-tmp/.cache/HuangJieCode/outputs"
+    model_name_or_path: str = "/home/huangjie/MdiriCode/ModelParameterCache/qwen2-0.5B" #"Qwen/Qwen2.5-0.5B"
+    store_dir: str = "/home/huangjie/MdiriCode/ModelTrainingResult"
+    cache_dir: str = "/home/huangjie/MdiriCode/ModelParameterCache"
 
     dataset_name: str = "HuggingFaceH4/MATH-500"
     system_text: str = "You are a mathematician, directly outputting the answers to mathematical problems."
-    split: str = "test"
+    split: str = "train"
     eval_split_ratio: float = 0.1
     block_size: int = 128
     num_proc: int = 1
 
-    epoch: int = 5
-    batch_size: int = 8
+    epoch: int = 20
+    batch_size: int = 32
     learning_rate: float = 2e-5
     checkpointing_steps: int = 100
     checkpoints_total_limit: int = 2
@@ -66,17 +71,16 @@ class Qwen2DDPConfig(BasicConfig):
 
 class Qwen2DDPTrainer(DDPTrainer):
     def __init__(self, config: Qwen2DDPConfig):
+        super().__init__(config=config, model=None, train_dataset=None, eval_dataset=None)
         model, tokenizer = self._load_model(config)
         train_dataset, eval_dataset = self._load_dataset(config, tokenizer)
         self.collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
-
-        super().__init__(
-            config=config,
-            model=model,
-            train_dataset=train_dataset,
-            eval_dataset=eval_dataset,
-        )
         self.tokenizer = tokenizer
+        self.model = model
+        self.train_dataset = train_dataset
+        self.eval_dataset = eval_dataset
+        self._build_dataloader()
+        self._prepare_model_optimizer_scheduler()
 
     def _build_dataloader(self) -> None:
         super()._build_dataloader()
@@ -108,11 +112,27 @@ class Qwen2DDPTrainer(DDPTrainer):
             )
 
     def _load_model(self, config: Qwen2DDPConfig):
-        tokenizer = AutoTokenizer.from_pretrained(
-            config.model_name_or_path,
-            cache_dir=config.cache_dir,
-            trust_remote_code=True,
-        )
+        if self.is_distributed:
+            if self.is_main_process:
+                tokenizer = AutoTokenizer.from_pretrained(
+                    config.model_name_or_path,
+                    cache_dir=config.cache_dir,
+                    trust_remote_code=True,local_files_only=True
+                )
+            self._barrier()
+            if not self.is_main_process:
+                tokenizer = AutoTokenizer.from_pretrained(
+                    config.model_name_or_path,
+                    cache_dir=config.cache_dir,
+                    trust_remote_code=True,local_files_only=True
+                )
+        else:
+            tokenizer = AutoTokenizer.from_pretrained(
+                config.model_name_or_path,
+                cache_dir=config.cache_dir,
+                trust_remote_code=True,local_files_only=True
+            )
+
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
         if tokenizer.pad_token is None:
@@ -123,13 +143,34 @@ class Qwen2DDPTrainer(DDPTrainer):
         else:
             torch_dtype = torch.float32
 
-        model = AutoModelForCausalLM.from_pretrained(
-            config.model_name_or_path,
-            cache_dir=config.cache_dir,
-            trust_remote_code=True,
-            torch_dtype=torch_dtype,
-            use_cache=False,
-        )
+        # 仅 rank 0 下载模型权重
+        if self.is_distributed:
+            if self.is_main_process:
+                model = AutoModelForCausalLM.from_pretrained(
+                    config.model_name_or_path,
+                    cache_dir=config.cache_dir,
+                    trust_remote_code=True,
+                    torch_dtype=torch_dtype,
+                    use_cache=False, local_files_only=True
+                )
+            self._barrier()
+            if not self.is_main_process:
+                model = AutoModelForCausalLM.from_pretrained(
+                    config.model_name_or_path,
+                    cache_dir=config.cache_dir,
+                    trust_remote_code=True,
+                    torch_dtype=torch_dtype,
+                    use_cache=False,local_files_only=True
+                )
+        else:
+            model = AutoModelForCausalLM.from_pretrained(
+                config.model_name_or_path,
+                cache_dir=config.cache_dir,
+                trust_remote_code=True,
+                torch_dtype=torch_dtype,
+                use_cache=False,local_files_only=True
+            )
+
         model.set_attn_implementation("sdpa")
         model.config.pad_token_id = tokenizer.pad_token_id
         model.config.use_cache = False
@@ -205,7 +246,7 @@ class Qwen2DDPTrainer(DDPTrainer):
 
 if __name__ == "__main__":
     """
-    export HF_ENDPOINT=https://hf-mirror.com && torchrun --nproc_per_node=1 ddp_qwen0.5.py
+    export HF_ENDPOINT=https://hf-mirror.com && CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2 ddp_qwen0.5.py
     """
     config = Qwen2DDPConfig()
     # config.distributed_strategy = "fsdp2"

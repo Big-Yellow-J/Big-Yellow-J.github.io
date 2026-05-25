@@ -31,7 +31,6 @@ from torchDDP_config import BasicConfig
 from utils import write_json, get_gpu_info, clean_cuda_gc
 
 logger = logging.getLogger(__name__)
-
 class DDPTrainer:
     def __init__(
         self,
@@ -70,6 +69,12 @@ class DDPTrainer:
         self.wandb_run = None
 
         self._dist_init()
+        # 多卡时用 rank 0 的 output_dir，防止各进程 special_num 不一致导致目录分裂
+        if self.is_distributed:
+            dir_list = [self.config.output_dir]
+            dist.broadcast_object_list(dir_list, src=0)
+            self.config.output_dir = dir_list[0]
+            self.config.tracker_project_name = os.path.basename(self.config.output_dir)
         self._set_seed()
         self._logger_init()
         self._build_dataloader()
@@ -120,6 +125,7 @@ class DDPTrainer:
 
     def _logger_init(self) -> None:
         if self.is_main_process:
+            os.makedirs(self.config.output_dir, exist_ok=True)
             file_path = os.path.join(
                 self.config.output_dir, f"{self.config.tracker_project_name}.log"
             )
@@ -215,7 +221,7 @@ class DDPTrainer:
 
     def _prepare_model_optimizer_scheduler(self) -> None:
         if self.model is None:
-            raise ValueError("model is required for DDPTrainer.")
+            return  # 子类延迟加载 model 时跳过
         self._enable_gradient_checkpointing()
         self.model = self.model.to(self.device)
         if self.use_fsdp:

@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import Dict
 import sys
 
+import os
+
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
@@ -24,15 +26,15 @@ except ModuleNotFoundError:
 
 @dataclass
 class ResNet50DDPConfig(BasicConfig):
-    store_dir: str = "/root/autodl-tmp/.cache/HuangJieCode/outputs"
-    cache_dir: str = "/root/autodl-fs/huggingface"
+    store_dir: str = "/home/huangjie/MdiriCode/ModelTrainingResult"
+    cache_dir: str = "/home/huangjie/MdiriCode/ModelParameterCache"
     task_type: str = "classification"
     project_name: str = "Training-ResNet50-Torch-DDP"
     optim_name: str = "adamw_8bit"
     checkpointing_steps: int = -1
     checkpoints_total_limit: int = 1
     seed: int = 42
-    epoch: int = 10
+    epoch: int = 100
     batch_size: int = 512
     num_workers: int = 8
     max_train_steps: int = 0
@@ -42,23 +44,31 @@ class ResNet50DDPConfig(BasicConfig):
     log_with: str = "tensorboard"
     mixed_precision: str = "bf16"
     gradient_checkpointing: bool = True
-    distributed_strategy: str = "fsdp2" # "ddp"  # "ddp" | "fsdp2"
+    distributed_strategy: str = "ddp" # "ddp"  # "ddp" | "fsdp2"
 
 class ResNet50DDPTrainer(DDPTrainer):
     def __init__(self, config: ResNet50DDPConfig):
+        super().__init__(config=config, model=None, train_dataset=None, eval_dataset=None)
         model = self._load_resnet50()
         train_dataset, eval_dataset = self._load_dataset(config)
-        super().__init__(
-            config=config,
-            model=model,
-            train_dataset=train_dataset,
-            eval_dataset=eval_dataset,
-        )
+        self.model = model
+        self.train_dataset = train_dataset
+        self.eval_dataset = eval_dataset
+        self._build_dataloader()
+        self._prepare_model_optimizer_scheduler()
 
     def _load_resnet50(self) -> nn.Module:
         from torchvision.models import ResNet50_Weights, resnet50
 
-        model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
+        if self.is_distributed:
+            if self.is_main_process:
+                model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
+            self._barrier()
+            if not self.is_main_process:
+                model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
+        else:
+            model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
+
         model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
         model.maxpool = nn.Identity()
         model.fc = nn.Linear(model.fc.in_features, 10)
@@ -168,7 +178,7 @@ class ResNet50DDPTrainer(DDPTrainer):
 
 if __name__ == "__main__":
     """
-    export HF_ENDPOINT=https://hf-mirror.com && torchrun --nproc_per_node=1 ddp_resnet50.py
+    export HF_ENDPOINT=https://hf-mirror.com && CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2 ddp_resnet50.py
     """
     config = ResNet50DDPConfig()
     # config.distributed_strategy = "fsdp2"

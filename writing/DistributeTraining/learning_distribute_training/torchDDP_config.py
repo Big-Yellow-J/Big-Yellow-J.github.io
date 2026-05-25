@@ -66,7 +66,7 @@ class BasicConfig:
             f"{self.current_date}-{self.project_name}-{self.special_num:04d}-{self.distributed_strategy}"
         )
         self.output_dir = os.path.join(self.store_dir, self.tracker_project_name)
-        os.makedirs(self.output_dir, exist_ok=True)
+        # 不在此处 makedirs，由 DDPTrainer 在 barrier 同步后统一创建，避免多卡重复建目录
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
