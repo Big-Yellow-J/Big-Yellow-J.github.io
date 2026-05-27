@@ -10,7 +10,7 @@ tags:
 - claude code
 description: Windows端Claude Code支持桌面端、终端两种安装路径，终端安装可通过CMD或PowerShell执行官方命令完成，遇网络连接报错可切换美国VPN节点、开启全局代理或虚拟网卡模式解决，安装完成后需配置系统环境变量，可搭配rtk工具优化token消耗。终端输入claude即可启动，输入/可调用操作命令，支持切换模型、安装superpowers等官方插件。内置技能分为项目级、全局级两类，可通过复制文件夹或命令行安装第三方可复用prompt，也支持自定义技能，适配自动、手动两种触发方式。
 ---
-
+本文详细介绍Claude Code在windows上安装使用，对于一般非计算机行业用户或者对底层技术了解兴趣不深的可以只看：1、第一部分Claude Code简单使用；2、Claude Code进阶使用；3、Claude Code底层原理中的Skills开发。
 ## Claude Code简单使用
 ### 安装环境准备
 目前大部分的skill或者说Clade Code运行任务（比如说读取文件等）都会用到python，因此就需要去安装python，除此之外如果要去安装一些skills还需要权重npm等，因此：**在win电脑上更加建议直接使用wsl去搭建Claude Code**，[WSL安装方式](https://www.runoob.com/linux/windows-wsl-linux.html)，安装完毕之后其他命令就和linux安装命令相同，先去介绍基于WSL安装claude过程，执行如下命令：
@@ -130,7 +130,6 @@ rtk init --global
 比如说安装`playwright`（直接用自然语言描述你想做的事，而后调用对应的浏览器操作）：`claude mcp add playwright npx @playwright/mcp@latest`如果要卸载直接`claude mcp remove playwright`，安装完毕之后
 ![](https://files.seeusercontent.com/2026/05/20/7Ame/20260520163227086.webp)
 可以看到MCP已经启动了，如果要去使用这个MCP直接 `使用 playwright 打开浏览器访问 https://www.big-yellow-j.top/posts/2026/04/20/torch-basic-distribute-1.html 并且检查还有什么需要补充的分布式训练方式，以及内容上还有什么不足` 去让Claude Code去调用playwright的MCP。
-
 ### Skills
 *skills简单理解为一个可以复用的任务prompt（比如说创建PPT）不用每次都去重新写prompt直接通过skills进行复用即可*，如果要去找其他的Skills直接可以访问：[https://www.skills.sh/](https://www.skills.sh/)或者直接去安装[find-skills](https://www.skills.sh/vercel-labs/skills/find-skills)让其帮你自动去搜索一些skills，
 > 安装前简单了解一下skills有“两个目录”：**1、项目目录**（那么你的skills就只在这个项目起到效果），比如直接在你的文件夹里面进行打开就会访问项目目录比如说 `D:\ClaudeCode\.claude`；**2、根目录**（所有项目都可以用到这个skills），这个就是你的claude code安装目录比如说：`C:\Users\hjie\.claude`
@@ -152,7 +151,7 @@ rtk init --global
 ![20260520223828636](https://files.seeusercontent.com/2026/05/20/B9jx/20260520223828636.webp)
 通过上面一轮对话处理下来token消耗
 ![20260520224434337](https://files.seeusercontent.com/2026/05/20/kRv5/20260520224434337.webp)
-## Claude 进阶使用
+## Claude Code进阶使用
 所有的使用都是基于wsl上安装的claude code进行执行（claude code上进行操作是一致的，只不过可能有些细微内容会用linux命令）
 ### Agent Team协作
 一般而言在使用claude code进行对话时候，都是执行一个任务，在等待结果之后再去执行一个新的任务，比如说法律一个案子需要同时去收集案子以及法条然后再去对材料进行整理，这里就需要用到**agent team概念**，简单介绍Agent team概念参考里面对于subagents和agent teams之间对比[^4]：
@@ -186,11 +185,34 @@ echo '{
 ![](https://files.seeusercontent.com/2026/05/22/cG0g/20260522224004375.png)
 很明显看到执行 *争取审查+任务重构*符合我的任务A要求，A执行完毕就会进行BC比如说得到如下：
 ![](https://files.seeusercontent.com/2026/05/22/Na8o/20260522224706671.png)
-可以看到另外两个agent也开始执行了
+可以看到另外两个agent也开始执行了，**最后**所有的整理的材料以及最后的书写得到的辩护词在[百度网盘](https://pan.baidu.com/s/1wzkkb8n_HqIcmLZqeynuYA?pwd=ve8w)总共是花费了大概4元（DeepSeek-4-pro）
 
-**最后**所有的整理的材料以及最后的书写得到的辩护词在[百度网盘](https://pan.baidu.com/s/1wzkkb8n_HqIcmLZqeynuYA?pwd=ve8w)总共是花费了大概4元（DeepSeek-4-pro）
+<!-- ### 任务看板 -->
 
-#### 底层原理
+## Claude Code底层原理
+下面内容都是纯Agent技术内容，一般而言了解skills开发即可其他看不去了解
+### 抓包Claude Code
+为了分析Claude Code中每一步系统层都在发生什么就需要最Claude Code进行抓包，具体过程如下，首先对环境进行配置：
+```bash
+# 基于wsl
+conda create -n mitm python=3.11
+conda activate mitm
+pip install mitmproxy
+mitmweb --listen-host 0.0.0.0 --listen-port 8080 # 8080 为代理端口 cc走这里 8081 web ui看流量
+
+# 新建窗口
+export http_proxy=http://0.0.0.0:8080
+export https_proxy=http://0.0.0.0:8080
+export HTTP_PROXY=http://0.0.0.0:8080
+export HTTPS_PROXY=http://0.0.0.0:8080
+export ALL_PROXY=http://0.0.0.0:8080
+export NODE_EXTRA_CA_CERTS=~/.mitmproxy/mitmproxy-ca-cert.pem
+export SSL_CERT_FILE=~/.mitmproxy/mitmproxy-ca-cert.pem
+claude --permission-mode auto
+```
+在启动完毕之后，可以看到终端
+![](https://files.seeusercontent.com/2026/05/27/4hnK/20260527214050041.png)
+而后直接去Claude code随便测试：1、你好；2、`/crawl4ai 搜索一下Yolo系列论文`，**直接去终端里面提供的url地址**然后可以直接`~c 200`（因为访问  https://api.anthropic.com/api/event_logging/v2/batch **可能会**有很多失败会显示400，因此重点看一下链接成功的）
 ### Skills开发
 > **最简单方法直接看别人怎么写然后进行仿写即可**
 
@@ -241,7 +263,8 @@ When writing API endpoints:
 **第一步**、去构建一个所有文件“系统”以及大致SKILL.md文件（**头部信息推荐英文**，后续内容中英都行）最后所有文件见[Github链接](https://github.com/Big-Yellow-J/Big-Yellow-J.github.io/tree/master/code/Python/skills/legaldocnorm)
 **第二步**、去构建我的脚本 `script`（不会写直接让AI帮你写即可），最后的script见[Github链接](https://github.com/Big-Yellow-J/Big-Yellow-J.github.io/tree/master/code/Python/skills/legaldocnorm)
 **第三步**、去构建一个reference，因为法律文书在书写上比较规划，模型可能不知道具体如何书写可以简单给一个参考让模型规范输出（规范文本可以直接用最高法院提供模板），这里只提供两种规范文本供参考：1、[广州市海珠区人民法院——民事答辩状](https://www.gzhzcourt.gov.cn/news/45007004.cshtml)；2、[广州市海珠区人民法院——民事起诉状)](https://www.gzhzcourt.gov.cn/news/45007009.cshtml)，最后所有的reference见[Github链接](https://github.com/Big-Yellow-J/Big-Yellow-J.github.io/tree/master/code/Python/skills/legaldocnorm)
-### MCP开发
+**skills底层原理**：还是一个function calling，所谓 **function calling**比如说：“北京今天天气如何？”输入模型模型（大模型本身只能输出文本不能去搜索网页等功能）通过分析用户文本输出结构化信息：`{"name": "get_weather", "arguments": {"date":xxx, ....}}` 而后通过结构化信息进行工具调用（比如说调用搜索天气相关的API进行天气检索）。因此虽然claude code中skills都是文本prompt，大模型在检索到要使用的skills之后通过分析skills中内容自动解析处需要进行操作，因此claude code中skills底层就是：`Prompt+Tool Description+ Few-shot examples+ Execution`
+<!-- ### MCP开发 -->
 ## 参考
 [^1]: [https://www.bilibili.com/video/BV1BFouBYERu/?spm_id_from=333.337.search-card.all.click&vd_source=881c4826193cfb648b5cdd0bad9f19f0](https://www.bilibili.com/video/BV1BFouBYERu/?spm_id_from=333.337.search-card.all.click&vd_source=881c4826193cfb648b5cdd0bad9f19f0)
 [^2]: [https://www.cnblogs.com/youring2/p/20065433](https://www.cnblogs.com/youring2/p/20065433)
