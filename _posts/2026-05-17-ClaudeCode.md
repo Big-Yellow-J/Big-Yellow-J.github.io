@@ -212,7 +212,31 @@ claude --permission-mode auto
 ```
 在启动完毕之后，可以看到终端
 ![](https://files.seeusercontent.com/2026/05/27/4hnK/20260527214050041.png)
-而后直接去Claude code随便测试：1、你好；2、`/crawl4ai 搜索一下Yolo系列论文`，**直接去终端里面提供的url地址**然后可以直接`~c 200`（因为访问  https://api.anthropic.com/api/event_logging/v2/batch **可能会**有很多失败会显示400，因此重点看一下链接成功的）
+而后直接去Claude code随便测试：1、你好；2、`/crawl4ai 搜索一下Yolo系列论文`，**直接去终端里面提供的url地址**然后可以直接`~c 200`（因为访问  https://api.anthropic.com/api/event_logging/v2/batch **可能会**有很多失败会显示400，因此重点看一下链接成功的），比如说通过解析：
+![](https://files.seeusercontent.com/2026/05/27/5dcD/20260528001036233.png)
+在输入第一段对话 `你好` 模型会输入很多内容如tools/skills描述等，但是这些内容绝大部分会“命中缓存”（观察deepseek中就有这种内容）
+> 所谓命中缓存意思就是说：这部分内容不用模型去重新计算可以直接复用，这是因为大模型生成过程是prefill+decode，prefill阶段就是对我的prompt进行编码，而decode就是对prefill后内容开始解码一个token一个token进行输出，**即使如此还是建议如果skills不用就不要开启**
+
+而后可以看模型输出部分think+输出：
+![](https://files.seeusercontent.com/2026/05/27/Iro1/20260528001620963.png)
+而后在第二部分对话中 `/crawl4ai 搜索一下Yolo系列论文` 首先可以看模型终端输出：
+![](https://files.seeusercontent.com/2026/05/27/y4Wa/20260528002707498.png)
+模型进行如下4次对话处理：
+**1、任务重写**：从模糊到精确（第 1-3 轮）
+第 1 轮：输入“搜索 Yolo 论文”，模型携带了 crawl4ai 的技能定义。
+关键转折（你发现的 1 & 2 点）：**crawl4ai生成了两个极其精确的搜索关键词**：`YOLO series papers object detection survey 2024 2025`（针对综述）；`YOLOv1 to YOLOv12 paper list arxiv`（针对列表）
+第 2-3 轮： 框架将这两个“进阶关键词”重新喂回给模型。这时，模型不再是处理你那个模糊的原始需求，而是拿到了已经被优化过的检索指令。目的： 这就是 Query Expansion（查询扩展）。Agent 知道直接搜“Yolo 论文”结果太乱，所以先把它拆解成“搜综述”和“搜最新版本列表”两个子任务。
+**2、执行与回传**（第 4 轮）
+动作： 携带了这两个精确关键词的对话被送入 web_search 工具。
+结果： 搜索引擎返回了你看到的那一串包含 YOLOv1 到 YOLOv26 的 Arxiv 链接和详细摘要。
+总结： 最终 DeepSeek 拿到这些被精准定位后的素材，进行最后的整合输出。
+> *值得注意的是*,web_search返回内容还是通过模型/工具进行总结的，比如说一个搜索得到5-6结果模型进行总结即可
+
+<!-- 上面内容就带来很多有意思事情：1、prompt过长如何压缩，比如我的skills很长如何处理；2、tools如果没有命中怎么办？ 
+对于上述问题：https://grok.com/share/c2hhcmQtMi1jb3B5_374f2c52-8da4-4bfd-8133-d07070f91114
+
+-->
+
 ### Skills开发
 > **最简单方法直接看别人怎么写然后进行仿写即可**
 
