@@ -21,6 +21,11 @@ from torch.distributed.fsdp import (
     ShardingStrategy,
     StateDictType,
 )
+from torch.distributed.fsdp.wrap import (
+    transformer_auto_wrap_policy,
+    size_based_auto_wrap_policy,
+)
+from functools import partial
 from torch.utils.data import DataLoader, Dataset, IterableDataset
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.tensorboard import SummaryWriter
@@ -86,6 +91,12 @@ class DDPTrainer:
         self.global_step = 0
         self.starting_epoch = 0
         self.steps_completed_in_current_epoch = 0
+
+        # 最佳模型追踪
+        self._best_metric_value: Optional[float] = None
+        self._best_metric_name: str = getattr(self.config, "best_metric_name", "") or ""
+        self._best_metric_mode: str = getattr(self.config, "best_metric_mode", "min") or "min"
+        self._best_ckpt_path: Optional[str] = None
 
 
     def _dist_init(self) -> None:
@@ -232,19 +243,51 @@ class DDPTrainer:
             }
             sharding_cfg = str(getattr(self.config, "fsdp_sharding_strategy", "FULL_SHARD")).upper()
             sharding_strategy = sharding_map.get(sharding_cfg, ShardingStrategy.FULL_SHARD)
+
+            # Build auto_wrap_policy for transformer models to ensure proper
+            # parameter all-gather during gradient checkpointing recomputation.
+            auto_wrap_policy = None
+            transformer_layer_classes = set()
+
+            # Qwen2 (纯文本)
+            try:
+                from transformers.models.qwen2.modeling_qwen2 import Qwen2DecoderLayer
+                transformer_layer_classes.add(Qwen2DecoderLayer)
+            except ImportError:
+                pass
+
+            # Qwen2-VL (多模态)
+            try:
+                from transformers.models.qwen2_vl.modeling_qwen2_vl import Qwen2VLDecoderLayer
+                transformer_layer_classes.add(Qwen2VLDecoderLayer)
+            except ImportError:
+                pass
+
+            if transformer_layer_classes:
+                auto_wrap_policy = partial(
+                    transformer_auto_wrap_policy,
+                    transformer_layer_cls=transformer_layer_classes,
+                )
+
+            if auto_wrap_policy is None:
+                # Fallback: wrap any nn.Module children by default
+                auto_wrap_policy = partial(size_based_auto_wrap_policy, min_num_params=1e6)
+
             self.model = FSDP(
                 self.model,
                 device_id=self.local_rank if self.device.type == "cuda" else None,
                 sharding_strategy=sharding_strategy,
+                auto_wrap_policy=auto_wrap_policy,
                 use_orig_params=bool(getattr(self.config, "fsdp_use_orig_params", True)),
                 limit_all_gathers=bool(getattr(self.config, "fsdp_limit_all_gathers", True)),
-                sync_module_states=bool(getattr(self.config, "fsdp_sync_module_states", False)),
+                sync_module_states=bool(getattr(self.config, "fsdp_sync_module_states", True)),
             )
         elif self.is_distributed:
             self.model = DDP(
                 self.model,
                 device_ids=[self.local_rank] if self.device.type == "cuda" else None,
                 output_device=self.local_rank if self.device.type == "cuda" else None,
+                find_unused_parameters=bool(getattr(self.config, "ddp_find_unused_params", True)),
             )
 
         if self.optimizer is None:
@@ -353,6 +396,12 @@ class DDPTrainer:
             return self.model.module
         return self.model
 
+    def log(self, level: str, msg: str, *args) -> None:
+        if not self.is_main_process:
+            return
+        log_fn = getattr(logger, level, logger.info)
+        log_fn(msg, *args)
+
     def _move_batch_to_device(self, batch):
         if isinstance(batch, dict):
             return {k: v.to(self.device) if hasattr(v, "to") else v for k, v in batch.items()}
@@ -365,7 +414,7 @@ class DDPTrainer:
 
     def compute_loss(self, batch) -> torch.Tensor:
         batch = self._move_batch_to_device(batch)
-        if self.config.task_type == "llm":
+        if self.config.task_type in ["llm", "multimodal"]:
             outputs = self.model(**batch)
             if hasattr(outputs, "loss") and outputs.loss is not None:
                 return outputs.loss
@@ -424,6 +473,45 @@ class DDPTrainer:
             "Train/grad_norm": float(grad_norm),
             "Train/lr": float(self.lr_scheduler.get_last_lr()[0]),
         }
+
+    def _is_better_metric(self, current: float, best: Optional[float]) -> bool:
+        """判断当前指标是否优于历史最佳。"""
+        if best is None:
+            return True
+        if self._best_metric_mode == "max":
+            return current > best
+        return current < best
+
+    def _save_best_checkpoint(self, metrics: Dict[str, float], global_step: int, epoch: int) -> None:
+        """如果当前 eval 指标更优，则保存最佳模型权重（best-checkpoint）。"""
+        if not self._best_metric_name:
+            return
+        current = metrics.get(self._best_metric_name)
+        if current is None:
+            if self.is_main_process:
+                logger.warning(
+                    "best_metric_name='%s' not found in eval metrics: %s",
+                    self._best_metric_name, list(metrics.keys()),
+                )
+            return
+
+        if self._is_better_metric(float(current), self._best_metric_value):
+            self._best_metric_value = float(current)
+            # 删除旧的最佳 checkpoint
+            if self._best_ckpt_path and os.path.isdir(self._best_ckpt_path):
+                shutil.rmtree(self._best_ckpt_path, ignore_errors=True)
+            
+            self.save_checkpoint(global_step=global_step, epoch=epoch, suffix="-best")
+            # save_checkpoint 内部用的是 self.config.output_dir / checkpoint-best-{global_step}
+            self._best_ckpt_path = os.path.join(
+                self.config.output_dir, f"checkpoint-best-{global_step}"
+            )
+            if self.is_main_process:
+                logger.info(
+                    "🏆 New best model saved! %s = %.6f (mode=%s) at step %s",
+                    self._best_metric_name, self._best_metric_value,
+                    self._best_metric_mode, global_step,
+                )
 
     def evaluate(self) -> Dict[str, float]:
         if self.eval_dataloader is None:
@@ -497,6 +585,7 @@ class DDPTrainer:
                 if d.startswith("checkpoint-")
                 and d.split("checkpoint-")[-1].isdigit()
                 and "interrupted" not in d
+                and "best" not in d  # 最佳模型不受总数限制
             ]
             checkpoints.sort(key=lambda x: int(x.split("checkpoint-")[-1]))
             expired = checkpoints[:-self.config.checkpoints_total_limit]
@@ -621,6 +710,7 @@ class DDPTrainer:
                 if self.eval_dataloader is not None:
                     metrics = self.evaluate()
                     self._log_metrics(metrics, step=self.global_step)
+                    self._save_best_checkpoint(metrics, global_step=self.global_step, epoch=epoch)
                     if self.is_main_process:
                         logger.info("Epoch %s eval metrics: %s", epoch, metrics)
                 if self.global_step >= max_train_steps:

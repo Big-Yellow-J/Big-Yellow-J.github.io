@@ -105,6 +105,8 @@ class Qwen2Trainer(BasicTrainer):
             target_modules= ["q_proj", "k_proj", "v_proj"],
         )
         model = get_peft_model(model, peft_config)
+        # Ensure uniform dtype for FSDP compatibility; LoRA layers default to float32.
+        model = model.to(torch_dtype)
         model.train()
         print(f"Model loaded: {model.config.model_type}, total params: {model.num_parameters()}")
         return model, tokenizer

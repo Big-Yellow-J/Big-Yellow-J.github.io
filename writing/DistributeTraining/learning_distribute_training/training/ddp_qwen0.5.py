@@ -41,7 +41,7 @@ class Qwen2DDPConfig(BasicConfig):
 
     dataset_name: str = "HuggingFaceH4/MATH-500"
     system_text: str = "You are a mathematician, directly outputting the answers to mathematical problems."
-    split: str = "train"
+    split: str = "test"
     eval_split_ratio: float = 0.1
     block_size: int = 128
     num_proc: int = 1
@@ -66,7 +66,7 @@ class Qwen2DDPConfig(BasicConfig):
     optim_name: str = "adamw"
     gradient_checkpointing: bool = True
     gradient_checkpointing_kwargs: Optional[dict] = None
-    distributed_strategy: str = "ddp"  # "ddp" | "fsdp2"
+    distributed_strategy: str = "fsdp2"  # "ddp" | "fsdp2"
 
 
 class Qwen2DDPTrainer(DDPTrainer):
@@ -184,6 +184,8 @@ class Qwen2DDPTrainer(DDPTrainer):
             target_modules=["q_proj", "k_proj", "v_proj"],
         )
         model = get_peft_model(model, peft_config)
+        
+        model = model.to(torch_dtype)
         model.train()
         return model, tokenizer
 
@@ -246,7 +248,7 @@ class Qwen2DDPTrainer(DDPTrainer):
 
 if __name__ == "__main__":
     """
-    export HF_ENDPOINT=https://hf-mirror.com && CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2 ddp_qwen0.5.py
+    export HF_ENDPOINT=https://hf-mirror.com && CUDA_VISIBLE_DEVICES=4,5 torchrun --nproc_per_node=2 ddp_qwen0.5.py
     """
     config = Qwen2DDPConfig()
     # config.distributed_strategy = "fsdp2"

@@ -49,6 +49,13 @@ class BasicConfig:
     fsdp_limit_all_gathers: bool = True
     fsdp_sync_module_states: bool = False
 
+    # Best model checkpoint: save when eval metric improves
+    # metric_name: 对应 evaluate() 返回 dict 中的 key，如 "Eval/eval_loss" / "Eval/accuracy"
+    # metric_mode: "min" 表示越小越好（loss），"max" 表示越大越好（accuracy）
+    # 设为 None 或空字符串则关闭最佳模型保存
+    best_metric_name: str = ""
+    best_metric_mode: str = "min"  # "min" | "max"
+
     torch_compile: bool = False
     torch_profile: bool = False
     compile_config: Dict[str, Any] = field(default_factory=lambda: {
@@ -66,7 +73,6 @@ class BasicConfig:
             f"{self.current_date}-{self.project_name}-{self.special_num:04d}-{self.distributed_strategy}"
         )
         self.output_dir = os.path.join(self.store_dir, self.tracker_project_name)
-        # 不在此处 makedirs，由 DDPTrainer 在 barrier 同步后统一创建，避免多卡重复建目录
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
