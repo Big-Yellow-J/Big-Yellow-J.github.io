@@ -187,8 +187,6 @@ echo '{
 ![](https://files.seeusercontent.com/2026/05/22/Na8o/20260522224706671.png)
 可以看到另外两个agent也开始执行了，**最后**所有的整理的材料以及最后的书写得到的辩护词在[百度网盘](https://pan.baidu.com/s/1wzkkb8n_HqIcmLZqeynuYA?pwd=ve8w)总共是花费了大概4元（DeepSeek-4-pro）
 
-<!-- ### 任务看板 -->
-
 ## Claude Code底层原理
 下面内容都是纯Agent技术内容，一般而言了解skills开发即可其他看不去了解
 ### 抓包Claude Code
@@ -215,7 +213,7 @@ claude --permission-mode auto
 而后直接去Claude code随便测试：1、你好；2、`/crawl4ai 搜索一下Yolo系列论文`，**直接去终端里面提供的url地址**然后可以直接`~c 200`（因为访问  https://api.anthropic.com/api/event_logging/v2/batch **可能会**有很多失败会显示400，因此重点看一下链接成功的），比如说通过解析：
 ![](https://files.seeusercontent.com/2026/05/27/5dcD/20260528001036233.png)
 在输入第一段对话 `你好` 模型会输入很多内容如tools/skills描述等，但是这些内容绝大部分会“命中缓存”（观察deepseek中就有这种内容）
-> 所谓命中缓存意思就是说：这部分内容不用模型去重新计算可以直接复用，这是因为大模型生成过程是prefill+decode，prefill阶段就是对我的prompt进行编码，而decode就是对prefill后内容开始解码一个token一个token进行输出，**即使如此还是建议如果skills不用就不要开启**
+> 所谓命中缓存意思就是说：**这部分内容不用模型去重新计算可以直接复用**，这是因为大模型生成过程是prefill+decode，prefill阶段就是对我的prompt进行编码，比如说上面输入模型是一个结构化文档，在[vllm的cache逻辑中](https://www.big-yellow-j.top/posts/2026/03/15/vllm-3.html)会将输入token进行block处理（比如每个block存储n个token）当出现block相同时候就会复用结果（必须保证如：输入1：QWERASDF和输入2：QWERASDF此时可以命中缓存，但是如果输入1改成WQERASDF就不行，因此**为了更加大的命中缓存会直接将容易命中缓存输入放到模型输入前面如tools、system等**），而decode就是对prefill后内容开始解码一个token一个token进行输出，**即使如此还是建议如果skills不用就不要开启**
 
 而后可以看模型输出部分think+输出：
 ![](https://files.seeusercontent.com/2026/05/27/Iro1/20260528001620963.png)
@@ -295,3 +293,4 @@ When writing API endpoints:
 [^3]: [https://zhuanlan.zhihu.com/p/1933624323849032925](https://zhuanlan.zhihu.com/p/1933624323849032925)
 [^4]: [https://code.claude.com/docs/zh-CN/agent-teams](https://code.claude.com/docs/zh-CN/agent-teams)
 [^5]: [https://code.claude.com/docs/zh-CN/skills](https://code.claude.com/docs/zh-CN/skills)
+[^6]: [https://www.big-yellow-j.top/posts/2026/03/15/vllm-3.html](https://www.big-yellow-j.top/posts/2026/03/15/vllm-3.html)
