@@ -123,7 +123,7 @@ class DDPTrainer:
 
     def _amp_init(self) -> None:
         use_fp16_scaler = self.device.type == "cuda" and self.dtype == torch.float16
-        self.grad_scaler = torch.cuda.amp.GradScaler(enabled=use_fp16_scaler)
+        self.grad_scaler = torch.amp.GradScaler('cuda', enabled=use_fp16_scaler)
         
     def _set_seed(self) -> None:
         seed = self.config.seed + self.rank
@@ -707,7 +707,12 @@ class DDPTrainer:
                         break
 
                 pbar.close()
-                if self.eval_dataloader is not None:
+                should_eval = (
+                    self.eval_dataloader is not None
+                    and self.config.evaluate_epochs > 0
+                    and (epoch + 1) % self.config.evaluate_epochs == 0
+                )
+                if self.eval_dataloader is not None and should_eval:
                     metrics = self.evaluate()
                     self._log_metrics(metrics, step=self.global_step)
                     self._save_best_checkpoint(metrics, global_step=self.global_step, epoch=epoch)

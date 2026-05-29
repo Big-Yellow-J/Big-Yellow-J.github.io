@@ -14,6 +14,7 @@ class BasicConfig:
     tracker_project_name: str = field(init=False)
     output_dir: str = field(init=False)
 
+    evaluate_epochs: int = 1 # 每多少个 epoch 进行一次模型评估，<0 表示不进行评估
     checkpointing_steps: int = 0
     checkpoints_total_limit: int = 10
     resume_from_checkpoint: Optional[str] = ""
@@ -70,7 +71,7 @@ class BasicConfig:
 
     def __post_init__(self) -> None:
         self.tracker_project_name = (
-            f"{self.current_date}-{self.project_name}-{self.special_num:04d}-{self.distributed_strategy}"
+            f"{self.current_date}-{self.project_name}-{self.special_num:04d}"
         )
         self.output_dir = os.path.join(self.store_dir, self.tracker_project_name)
 

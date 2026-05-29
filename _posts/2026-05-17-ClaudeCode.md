@@ -234,7 +234,7 @@ claude --permission-mode auto
 对于上述问题：https://grok.com/share/c2hhcmQtMi1jb3B5_374f2c52-8da4-4bfd-8133-d07070f91114
 争对上述问题主要涉及两个工程化内容：1、上下文工程（Context）；2、回退机制
 #### Context Engine
-
+所谓上下文工程指的是，随着用户之间对话那么窗口token就肯定会超出模型限制（比如DeepSeek的1M），那么就需要对历史对话进行处理如压缩等，以如下代码为例
 -->
 
 ### Skills开发

@@ -19,9 +19,8 @@ import torch.distributed as dist
 import numpy as np
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from datasets import Dataset, load_dataset
+from datasets import Dataset
 from peft import LoraConfig, get_peft_model
-from sklearn.model_selection import train_test_split
 from transformers import AutoProcessor, AutoModelForAudioClassification
 
 try:
@@ -30,7 +29,6 @@ try:
 except ModuleNotFoundError:
     from torchDDP_training import DDPTrainer
     from torchDDP_config import BasicConfig
-import warnings
 
 warnings.filterwarnings("ignore", message=".*use_reentrant parameter.*")
 
@@ -48,16 +46,6 @@ def _focal_loss(logits: torch.Tensor, labels: torch.Tensor, gamma: float = 2.0, 
     return (focal_weight * ce_loss).mean()
 
 def _ccc_loss(y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
-    """Concordance Correlation Coefficient Loss (CCC Loss).
-    
-    用于维度情感识别 (valence/arousal/dominance 连续值)。
-    CCC 衡量预测值与真实值之间的一致性，范围为 [-1, 1]，1 表示完全一致。
-    loss = 1 - CCC，越接近 0 越好。
-    
-    Args:
-        y_pred: (B, D) 预测值，D 为维度数（通常为 3: valence, arousal, dominance）
-        y_true: (B, D) 真实值
-    """
     mu_pred = y_pred.mean(dim=0)
     mu_true = y_true.mean(dim=0)
     var_pred = y_pred.var(dim=0, unbiased=False)
@@ -69,55 +57,64 @@ def _ccc_loss(y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
     ccc = numerator / (denominator + 1e-8)
     return (1.0 - ccc).mean()
 
-def _load_audio(audio_path: str, target_sr: int = 16000) -> np.ndarray:
+def _load_audio(audio_path: str, target_sr: int = 16000) -> Optional[np.ndarray]:
     cmd = [
         "ffmpeg", "-y", "-i", audio_path,
         "-ac", "1", "-ar", str(target_sr),
         "-f", "f32le", "-loglevel", "error", "pipe:1",
     ]
-    raw = subprocess.run(cmd, capture_output=True).stdout
+    result = subprocess.run(cmd, capture_output=True)
+    raw = result.stdout
     if not raw:
-        raise RuntimeError(f"ffmpeg 无法解码: {audio_path}")
+        stderr_msg = result.stderr.decode(errors="replace").strip()[:200] if result.stderr else "no stderr"
+        logger.warning(f"ffmpeg 无法解码: {audio_path} | {stderr_msg}")
+        return None
     return np.frombuffer(raw, dtype=np.float32)
 
 @dataclass
 class MeralionSERConfig(BasicConfig):
     task_type: str = "classification"
-    project_name: str = "MeralionSER-Training-Mdiri"
+    project_name: str = "Mdiri-Extra"
     model_name_or_path: str = "MERaLiON/MERaLiON-SER-v1"
     store_dir: str = "/home/huangjie/MdiriCode/ModelTrainingResult"
     cache_dir: str = "/home/huangjie/MdiriCode/ModelParameterCache"
-
     audio_path_dir: str = "/home/huangjie/MdiriCode/SER/data/studio"
     data_path_list: List[str] = field(
-        default_factory=lambda: ["/home/huangjie/MdiriCode/SER/SER/data/train.csv", 
-                                 "/home/huangjie/MdiriCode/SER/SER/data/val.csv",
-                                 "/home/huangjie/MdiriCode/SER/SER/data/allin_ser_dataset_review.xlsx"])
+        default_factory=lambda: [
+            "/home/huangjie/MdiriCode/SER/SER/train.csv",
+        ])
+    eval_data_path_list: List[str] = field(
+        default_factory=lambda: [
+            "/home/huangjie/MdiriCode/SER/SER/test.csv",
+        ])
 
-    resample_target_count: int = 200
-    resample_labels: List[str] = field(
-        default_factory=lambda: ["sad", "disgust", "fear", "surprised"])  # 需要重采样的标签
+    resample_target_count: int = None
+    resample_labels: List[str] = field(default_factory=lambda: ["sad", "disgusted", "fearful", "surprised"])
+    neutral_max_samples: int = 0  # neutral 最大保留数，0=不限制；推荐 4000~6000（配合 resample 可设更小）
     num_proc: int = 1
-    epoch: int = 20
-    batch_size: int = 192 # 12   
-    learning_rate: float = 6e-4
+    epoch: int = 60
+    max_length: int = 16000 * 30 # Whisper 编码器要求 mel 特征固定 3000 帧（= 30秒@16kHz)
+    batch_size: int = 64
+    learning_rate: float = 1e-5
     checkpointing_steps: int = -1
     checkpoints_total_limit: int = 2
     seed: int = 42
     max_train_steps: int = 0
 
-    best_metric_name: str = "Eval/uar"
-    best_metric_mode: str = "max"
-
-    loss_type: str = "cross_entropy"
-    focal_gamma: float = 2.0             # Focal Loss 的 gamma 参数（仅 loss_type=focal 时生效）
-    focal_alpha: Optional[float] = None  # Focal Loss 的 alpha（类别权重），None 则不使用
+    loss_type: str = "cross_entropy" #"focal"
+    focal_gamma: float = 3.0             # Focal Loss 的 gamma，越大越关注难样本（不均衡严重时建议 3~5）
+    # alpha: 平方根逆频率权重 (1/sqrt(count) 归一化)，对应 [neutral, happy, sad, angry, fearful, disgusted, surprised]
+    focal_alpha: Optional[List[float]] = field(
+        default_factory=lambda: [0.0229, 0.1025, 0.2108, 0.0815, 0.2391, 0.1930, 0.1502]
+    )
     ccc_loss_weight: float = 0.0         # CCC loss 权重（模型输出 dims 用于 valence/arousal/dominance 回归）
-    label_smoothing: float = 0.1         # Cross Entropy 的 label smoothing
+    label_smoothing: float = 0.0         # Cross Entropy 的 label smoothing
 
-    # 微调策略: "lora_only" (只训 LoRA 层) | "lora_plus_downstream" (LoRA + downstream_model 全量微调) | "lora_plus_classifier" (LoRA + 情绪分类头微调) | "classifier_only" (仅微调 emotion_classification_layer)
-    finetune_strategy: str = "classifier_only"# "lora_only"
-    # DDP find_unused_parameters: classifier_only 下关闭可避免性能警告，其他策略建议开启
+    # "lora_only" (只训 LoRA 层) 
+    # "lora_plus_downstream" (LoRA + downstream_model 全量微调) 
+    # "lora_plus_classifier" (LoRA + 情绪分类头微调) 
+    # "classifier_only" (仅微调 emotion_classification_layer，使用模型自带分类头)
+    finetune_strategy: str = "classifier_only"
     ddp_find_unused_params: bool = False
 
     num_workers: int = 8
@@ -125,9 +122,9 @@ class MeralionSERConfig(BasicConfig):
     persistent_workers: bool = True
     prefetch_factor: int = 2
     lr_scheduler: str = "cosine"
-    lr_warmup_steps: float = 0.03
+    lr_warmup_steps: float = 0.1
     mixed_precision: str = "bf16"
-    gradient_accumulation_steps: int = 2
+    gradient_accumulation_steps: int = 1
     log_with: str = "tensorboard"
     optim_name: str = "adamw"
     best_metric_name: str = "Eval/uar"
@@ -135,6 +132,40 @@ class MeralionSERConfig(BasicConfig):
     gradient_checkpointing_kwargs: Optional[dict] = None
     gradient_checkpointing: bool = False  # MERaLiON-SER 不支持 gradient checkpointing
     distributed_strategy: str = "ddp"
+
+    def _concat_all_data(self, config):
+        return _concat_all_data_static(config.data_path_list)
+
+def _concat_all_data_static(data_path_list: List[str]):
+    """从 CSV 文件读取音频路径和标签。支持 'audio_path' / 'path' 列。"""
+    all_paths, all_labels = [], []
+
+    for data_path in data_path_list:
+        try:
+            df = pd.read_csv(data_path)
+        except Exception:
+            df = pd.read_excel(data_path)
+
+        for _, row in df.iterrows():
+            # 优先 audio_path 列，回退到 path 列
+            audio_file = row.get("audio_path", None)
+            if pd.isna(audio_file) or not str(audio_file).strip():
+                audio_file = row.get("path", None)
+            if pd.isna(audio_file) or not str(audio_file).strip():
+                continue
+            audio_file = str(audio_file).strip()
+
+            audio_label = row.get("label", None)
+            if pd.isna(audio_label) or not str(audio_label).strip():
+                continue
+
+            label_str = str(audio_label).strip().lower()
+            if label_str not in LABEL_TO_ID:
+                continue
+
+            all_paths.append(audio_file)
+            all_labels.append(label_str)
+    return all_paths, all_labels
 
 class MeralionSERTrainer(DDPTrainer):
     def __init__(self, config: MeralionSERConfig):
@@ -150,10 +181,26 @@ class MeralionSERTrainer(DDPTrainer):
         self._prepare_model_optimizer_scheduler()
 
     def _collate_fn(self, batch: list) -> dict:
-        paths = [item["path"] for item in batch]
-        labels = [item["label"] for item in batch]
+        """过滤掉无法加载的音频，避免 ffmpeg 解码失败导致训练卡住。"""
+        valid_items = []
+        for item in batch:
+            audio = _load_audio(item["path"])
+            if audio is not None:
+                valid_items.append((audio, item["label"]))
 
-        wavs = [_load_audio(p) for p in paths]
+        if not valid_items:
+            # 极端情况：整批都无法加载，返回一个空 batch（几乎不会发生）
+            inputs = self.processor(
+                [np.zeros(16000, dtype=np.float32)], sampling_rate=16000,
+                return_tensors="pt", padding="max_length",
+                return_attention_mask=True, truncation=True, 
+                max_length= self.config.max_length,
+            )
+            inputs["labels"] = torch.tensor([0], dtype=torch.long)
+            return inputs
+
+        wavs, labels = zip(*valid_items)
+        wavs = list(wavs)
         label_ids = [LABEL_TO_ID[lbl.strip().lower()] for lbl in labels]
 
         inputs = self.processor(
@@ -162,7 +209,7 @@ class MeralionSERTrainer(DDPTrainer):
             padding="max_length",
             return_attention_mask=True,
             truncation=True,
-            max_length=16000 * 30,
+            max_length= self.config.max_length,
         )
         inputs["labels"] = torch.tensor(label_ids, dtype=torch.long)
         return inputs
@@ -200,20 +247,21 @@ class MeralionSERTrainer(DDPTrainer):
             trust_remote_code=True,
             local_files_only=local_path is not None,
         )
-        # 1：64 128
+        # LoRA 参数从 config 读取（支持 Ray Tune 调参）
+        lora_r = getattr(config, "lora_r", 32)
+        lora_alpha = getattr(config, "lora_alpha", 64)
+        lora_dropout = getattr(config, "lora_dropout", 0.05)
         peft_config = LoraConfig(
-            r=32,
-            lora_alpha=64,
-            lora_dropout=0.05,
+            r=lora_r,
+            lora_alpha=lora_alpha,
+            lora_dropout=lora_dropout,
             task_type="SEQ_CLS",
             bias="none",
             target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
         )
-        model = get_peft_model(model, peft_config)
-
         finetune_strategy = getattr(config, "finetune_strategy", "lora_only")
         if finetune_strategy == "classifier_only":
-            # 仅微调情绪分类头，不注入 LoRA，冻结其它所有参数
+            # 使用模型自带的 emotion_classification_layer，不做替换
             for n, p in model.named_parameters():
                 p.requires_grad = "emotion_classification_layer" in n
         else:
@@ -294,47 +342,6 @@ class MeralionSERTrainer(DDPTrainer):
                 modeling_file,
             )
 
-    def _concat_all_data(self, config: MeralionSERConfig):
-        all_paths, all_labels = [], []
-        audio_dir = config.audio_path_dir
-
-        for data_path in config.data_path_list:
-            try:
-                df = pd.read_csv(data_path)
-            except Exception:
-                df = pd.read_excel(data_path)
-
-            for _, row in df.iterrows():
-                # 兼容 csv (audio_key) 和 xlsx (sample_id) 列名
-                audio_name = row.get("audio_key", row.get("sample_id", None))
-                audio_label = row.get("label", None)
-                if audio_name is None or audio_label is None:
-                    continue
-
-                # 查找实际音频文件
-                audio_file = None
-                candidate = os.path.join(audio_dir, str(audio_name))
-                if os.path.isfile(candidate):
-                    audio_file = candidate
-                else:
-                    for ext in [".ogg", ".m4a", ".mp3", ".wav"]:
-                        p = os.path.join(audio_dir, f"{audio_name}{ext}")
-                        if os.path.isfile(p):
-                            audio_file = p
-                            break
-
-                if audio_file is None:
-                    continue
-
-                label_str = str(audio_label).strip().lower()
-                if label_str not in LABEL_TO_ID:
-                    continue
-
-                all_paths.append(audio_file)
-                all_labels.append(label_str)
-
-        return all_paths, all_labels
-
     def _resample_minority(
         self, paths, labels, target_count: int, minority_labels: list, seed: int = 42
     ):
@@ -356,32 +363,38 @@ class MeralionSERTrainer(DDPTrainer):
         return resampled_paths, resampled_labels
 
     def _load_dataset(self, config: MeralionSERConfig):
-        all_paths, all_labels = self._concat_all_data(config)
-        self.log("info", "[Data] Total valid samples: %s", len(all_paths))
+        # ---- 加载训练集 ----
+        train_paths, train_labels = _concat_all_data_static(config.data_path_list)
+        self.log("info", "[Data] Train samples: %s", len(train_paths))
+        self.log("info", "[Data] Train label distribution: %s", dict(Counter(train_labels)))
 
-        self.log("info", "[Data] Label distribution: %s", dict(Counter(all_labels)))
-
-        train_p, eval_p, train_l, eval_l = train_test_split(
-            all_paths, all_labels,
-            test_size=0.2,
-            random_state=config.seed,
-            stratify=all_labels,
-        )
+        # ---- neutral 降采样（仅对 train） ----
+        neutral_max = getattr(config, "neutral_max_samples", 0)
+        if neutral_max > 0:
+            neutral_idx = [i for i, l in enumerate(train_labels) if l == "neutral"]
+            if len(neutral_idx) > neutral_max:
+                rng = np.random.RandomState(config.seed)
+                keep = set(rng.choice(neutral_idx, size=neutral_max, replace=False).tolist())
+                train_paths = [p for i, p in enumerate(train_paths) if train_labels[i] != "neutral" or i in keep]
+                train_labels = [l for i, l in enumerate(train_labels) if l != "neutral" or i in keep]
+                self.log("info", "[Data] Neutral downsampled: %s → %s", len(neutral_idx), neutral_max)
 
         if config.resample_target_count and config.resample_labels:
-            train_p, train_l = self._resample_minority(
-                train_p, train_l,
+            train_paths, train_labels = self._resample_minority(
+                train_paths, train_labels,
                 target_count=config.resample_target_count,
                 minority_labels=config.resample_labels,
                 seed=config.seed,
             )
+            self.log("info", "[Data] After resample train labels: %s", dict(Counter(train_labels)))
 
-            self.log("info", "[Data] After resample train labels: %s", dict(Counter(train_l)))
+        # ---- 加载评估集 ----
+        eval_paths, eval_labels = _concat_all_data_static(config.eval_data_path_list)
+        self.log("info", "[Data] Eval samples: %s", len(eval_paths))
+        self.log("info", "[Data] Eval label distribution: %s", dict(Counter(eval_labels)))
 
-        self.log("info", "[Data] Train: %s, Eval: %s", len(train_p), len(eval_p))
-
-        train_dataset = Dataset.from_dict({"path": train_p, "label": train_l})
-        eval_dataset = Dataset.from_dict({"path": eval_p, "label": eval_l})
+        train_dataset = Dataset.from_dict({"path": train_paths, "label": train_labels})
+        eval_dataset = Dataset.from_dict({"path": eval_paths, "label": eval_labels})
         return train_dataset, eval_dataset
 
     def _build_dataloader(self) -> None:
@@ -505,29 +518,35 @@ class MeralionSERTrainer(DDPTrainer):
             metrics["Eval/f1_macro"] = round(float(f1_macro), 4)
 
             # ---- 逐类指标：Recall, Precision, F1 ----
+            # 显式传入全部 7 类标签，避免 sklearn 自动推断导致缺失类别
             from sklearn.metrics import precision_score
-            per_class_recall = recall_score(all_labels, all_preds, average=None, zero_division=0)
-            per_class_precision = precision_score(all_labels, all_preds, average=None, zero_division=0)
-            per_class_f1 = f1_score(all_labels, all_preds, average=None, zero_division=0)
+            all_possible_labels = list(range(NUM_EMOTIONS))
+            per_class_recall = recall_score(all_labels, all_preds, labels=all_possible_labels, average=None, zero_division=0)
+            per_class_precision = precision_score(all_labels, all_preds, labels=all_possible_labels, average=None, zero_division=0)
+            per_class_f1 = f1_score(all_labels, all_preds, labels=all_possible_labels, average=None, zero_division=0)
             for i, emo in enumerate(EMO_MAP):
                 emo_lower = emo.lower()
-                metrics[f"Eval/{emo_lower}_precision"] = round(float(per_class_precision[i]) if i < len(per_class_precision) else 0.0, 4)
-                metrics[f"Eval/{emo_lower}_recall"] = round(float(per_class_recall[i]) if i < len(per_class_recall) else 0.0, 4)
-                metrics[f"Eval/{emo_lower}_f1"] = round(float(per_class_f1[i]) if i < len(per_class_f1) else 0.0, 4)
+                metrics[f"Eval/{emo_lower}_precision"] = round(float(per_class_precision[i]), 4)
+                metrics[f"Eval/{emo_lower}_recall"] = round(float(per_class_recall[i]), 4)
+                metrics[f"Eval/{emo_lower}_f1"] = round(float(per_class_f1[i]), 4)
+            # Debug: 打印混淆矩阵和标签分布
+            from sklearn.metrics import confusion_matrix
+            all_possible_labels = list(range(NUM_EMOTIONS))
+            cm = confusion_matrix(all_labels, all_preds, labels=all_possible_labels)
+            cm_lines = ["  Confusion Matrix (rows=true, cols=pred):"]
+            cm_header = "           " + "".join(f"{e[:6]:>7}" for e in EMO_MAP)
+            cm_lines.append(f"  {cm_header}")
+            for i, emo in enumerate(EMO_MAP):
+                row = "".join(f"{cm[i][j]:>7}" for j in range(NUM_EMOTIONS))
+                cm_lines.append(f"  {emo.lower():<10}: {row}")
+            logger.info(
+                "Eval label distribution: %s\n%s",
+                dict(Counter(all_labels)), "\n".join(cm_lines),
+            )
         return metrics
 
-    # ---------- 推理 & 测试 ----------
-
-    def load_model_for_inference(self, checkpoint_path: str, device: str = "cuda"):
-        """加载微调后的模型权重用于推理/测试。
-
-        Args:
-            checkpoint_path: training_state.pt 所在目录路径（如 .../checkpoint-best-200）
-            device: 推理设备，默认 "cuda"
-
-        Returns:
-            model, processor — 可直接用于推理
-        """
+    @staticmethod
+    def load_model_for_inference(checkpoint_path: str, device: str = "cuda"):
         state_file = os.path.join(checkpoint_path, "training_state.pt")
         if not os.path.isfile(state_file):
             raise FileNotFoundError(f"Checkpoint not found: {state_file}")
@@ -536,22 +555,24 @@ class MeralionSERTrainer(DDPTrainer):
         saved_config = state.get("config", {})
         finetune_strategy = saved_config.get("finetune_strategy", "lora_only")
 
-        self.log("info", "[Inference] Loading model from: %s", checkpoint_path)
-        self.log("info", "[Inference] finetune_strategy=%s", finetune_strategy)
+        print(f"[Inference] Loading model from: {checkpoint_path}")
+        print(f"[Inference] finetune_strategy={finetune_strategy}")
 
-        # 1. 重建原始模型（与训练时一致的结构）
-        processor = self.processor  # 复用 trainer 已有的 processor
         repo = saved_config.get("model_name_or_path", "MERaLiON/MERaLiON-SER-v1")
 
-        # 重新加载基础模型
+        # 加载 processor
+        processor = AutoProcessor.from_pretrained(
+            repo, cache_dir=saved_config.get("cache_dir"),
+            trust_remote_code=True, local_files_only=True,
+        )
+        # 加载基础模型
         model = AutoModelForAudioClassification.from_pretrained(
-            repo,
-            cache_dir=saved_config.get("cache_dir"),
-            trust_remote_code=True,
-            local_files_only=True,
+            repo, cache_dir=saved_config.get("cache_dir"),
+            trust_remote_code=True, local_files_only=True,
+            ignore_mismatched_sizes=True,
         )
 
-        # 2. 按训练时的策略注入 LoRA（如果需要）
+        # 按训练时的策略注入 LoRA（如果需要）
         if finetune_strategy != "classifier_only":
             peft_config = LoraConfig(
                 r=saved_config.get("lora_r", 32),
@@ -563,74 +584,48 @@ class MeralionSERTrainer(DDPTrainer):
             )
             model = get_peft_model(model, peft_config)
 
-        # 3. 加载训练好的权重
+        # 加载训练好的权重
         model.load_state_dict(state["model"], strict=False)
         model.to(device)
         model.eval()
 
-        self.log("info", "[Inference] Model loaded successfully, device=%s", device)
+        print(f"[Inference] Model loaded successfully, device={device}")
         return model, processor
 
+    @staticmethod
     def evaluate_with_confusion_matrix(
-        self, model=None, processor=None, data_path_list: Optional[List[str]] = None,
-        audio_path_dir: Optional[str] = None, device: str = "cuda",
+        model, processor, data_path_list: List[str],
+        audio_path_dir: str, device: str = "cuda",
+        batch_size: int = 32,
+        output_txt: Optional[str] = None,
     ) -> dict:
-        """单卡评估：加载数据 → 推理 → 计算所有指标 + 混淆矩阵。
-
-        如果 model/processor 为 None，则使用 self.model / self.processor（训练中的评估）。
-        否则可以使用 load_model_for_inference() 加载的模型进行独立测试。
-
-        Returns:
-            dict: {
-                "accuracy": float,
-                "uar": float,
-                "f1_macro": float,
-                "confusion_matrix": np.ndarray (C, C),
-                "per_class_precision": list[float],
-                "per_class_recall": list[float],
-                "per_class_f1": list[float],
-                "preds": list[int],
-                "labels": list[int],
-            }
-        """
         from tqdm import tqdm as _tqdm
         from sklearn.metrics import (
             recall_score, f1_score, accuracy_score,
             precision_score, confusion_matrix,
         )
 
-        model = model or self.model
-        processor = processor or self.processor
         model.eval()
 
-        # 如果没有传入数据路径，复用 trainer 的 eval_dataset 对应的数据
-        if data_path_list is None:
-            # 从 self.eval_dataset 中提取所有数据
-            all_paths = [item["path"] for item in self.eval_dataset]
-            all_label_strs = [item["label"] for item in self.eval_dataset]
-        else:
-            # 从外部文件加载数据
-            audio_dir = audio_path_dir or self.config.audio_path_dir
-            config = MeralionSERConfig(
-                audio_path_dir=audio_dir,
-                data_path_list=data_path_list,
-            )
-            # 创建一个临时的 trainer 实例来解析数据
-            temp_trainer = MeralionSERTrainer.__new__(MeralionSERTrainer)
-            all_paths, all_label_strs = temp_trainer._concat_all_data(config)
-
+        # 从外部文件加载数据
+        all_paths, all_label_strs = _concat_all_data_static(data_path_list)
         label_ids = [LABEL_TO_ID[lbl.strip().lower()] for lbl in all_label_strs]
-        self.log("info", "[EvalCM] Total samples: %s", len(all_paths))
+        n_total = len(all_paths)
+        print(f"[EvalCM] Total samples: {n_total}, batch_size={batch_size}")
 
         all_preds: List[int] = []
-        all_labels: List[int] = []
+        all_labels: List[int] = label_ids.copy()
 
-        # 逐样本推理（不用 DataLoader 的 collate_fn，避免 batch 处理复杂性）
+        # ---- 批次推理 ----
         with torch.no_grad():
-            for i in _tqdm(range(len(all_paths)), desc="Inference"):
-                audio = _load_audio(all_paths[i])
+            for start in _tqdm(range(0, n_total, batch_size), desc="Inference (batch)"):
+                end = min(start + batch_size, n_total)
+                batch_paths = all_paths[start:end]
+
+                # 批量加载 + 处理音频
+                wavs = [_load_audio(p) for p in batch_paths]
                 inputs = processor(
-                    audio, sampling_rate=16000,
+                    wavs, sampling_rate=16000,
                     return_tensors="pt",
                     padding="max_length",
                     return_attention_mask=True,
@@ -644,70 +639,108 @@ class MeralionSERTrainer(DDPTrainer):
                     attention_mask=inputs.get("attention_mask"),
                 )
                 logits = outputs["logits"]
-                pred = int(logits.argmax(dim=-1).item())
-                all_preds.append(pred)
-                all_labels.append(label_ids[i])
+                preds = logits.argmax(dim=-1).cpu().tolist()
+                all_preds.extend(preds)
 
         # 计算指标
         cm = confusion_matrix(all_labels, all_preds, labels=list(range(NUM_EMOTIONS)))
         acc = accuracy_score(all_labels, all_preds)
         uar = recall_score(all_labels, all_preds, average="macro", zero_division=0)
         f1_macro = f1_score(all_labels, all_preds, average="macro", zero_division=0)
-        per_class_recall = recall_score(all_labels, all_preds, average=None, zero_division=0)
-        per_class_precision = precision_score(all_labels, all_preds, average=None, zero_division=0)
-        per_class_f1 = f1_score(all_labels, all_preds, average=None, zero_division=0)
+        f1_weighted = f1_score(all_labels, all_preds, average="weighted", zero_division=0)
+        all_possible_labels = list(range(NUM_EMOTIONS))
+        per_class_recall = recall_score(all_labels, all_preds, labels=all_possible_labels, average=None, zero_division=0)
+        per_class_precision = precision_score(all_labels, all_preds, labels=all_possible_labels, average=None, zero_division=0)
+        per_class_f1 = f1_score(all_labels, all_preds, labels=all_possible_labels, average=None, zero_division=0)
+        per_class_support = [int(sum(1 for l in all_labels if l == i)) for i in range(NUM_EMOTIONS)]
 
         results = {
             "accuracy": round(float(acc), 4),
             "uar": round(float(uar), 4),
             "f1_macro": round(float(f1_macro), 4),
+            "f1_weighted": round(float(f1_weighted), 4),
             "confusion_matrix": cm,
             "per_class_precision": {EMO_MAP[i]: round(float(per_class_precision[i]), 4) for i in range(NUM_EMOTIONS)},
             "per_class_recall": {EMO_MAP[i]: round(float(per_class_recall[i]), 4) for i in range(NUM_EMOTIONS)},
             "per_class_f1": {EMO_MAP[i]: round(float(per_class_f1[i]), 4) for i in range(NUM_EMOTIONS)},
+            "per_class_support": {EMO_MAP[i]: per_class_support[i] for i in range(NUM_EMOTIONS)},
             "preds": all_preds,
             "labels": all_labels,
         }
 
-        # 打印结果
-        print("\n" + "=" * 60)
-        print("Evaluation Results")
-        print("=" * 60)
-        print(f"Accuracy:  {results['accuracy']:.4f}")
-        print(f"UAR:       {results['uar']:.4f}")
-        print(f"F1-Macro:  {results['f1_macro']:.4f}")
-        print("-" * 60)
-        print(f"{'Emotion':<12} {'Precision':>10} {'Recall':>10} {'F1':>10}")
-        print("-" * 60)
-        for emo in EMO_MAP:
-            p = results["per_class_precision"][emo]
-            r = results["per_class_recall"][emo]
-            f = results["per_class_f1"][emo]
-            print(f"{emo:<12} {p:>10.4f} {r:>10.4f} {f:>10.4f}")
-        print("-" * 60)
-        print("\nConfusion Matrix (rows=true, cols=pred):")
-        cm_str = "           " + "".join(f"{e[:6]:>7}" for e in EMO_MAP)
-        print(cm_str)
+        # ---- 构建输出文本 ----
+        lines: List[str] = []
+        lines.append("=" * 65)
+        lines.append("  FINE-TUNED MODEL EVALUATION")
+        lines.append("=" * 65)
+        lines.append(f"  Test samples  : {len(all_labels)}")
+        lines.append(f"  Batch size    : {batch_size}")
+        lines.append(f"  ── metrics ─────────────────────────────────────────────")
+        lines.append(f"  ACC            : {acc*100:6.2f} %")
+        lines.append(f"  UAR            : {uar*100:6.2f} %")
+        lines.append(f"  F1 (macro)     : {f1_macro*100:6.2f} %")
+        lines.append(f"  F1 (weighted)  : {f1_weighted*100:6.2f} %")
+        lines.append("")
+        lines.append(f"  Per-class:")
+        lines.append(f"  {'class':<12} {'P':>7} {'R':>7} {'F1':>7} {'n':>6}")
+        lines.append(f"  {'-'*42}")
+        for i, emo in enumerate(EMO_MAP):
+            p = per_class_precision[i] * 100
+            r = per_class_recall[i] * 100
+            f = per_class_f1[i] * 100
+            n = per_class_support[i]
+            lines.append(f"  {emo.lower():<12} {p:6.2f}% {r:6.2f}% {f:6.2f}% {n:>6}")
+        lines.append(f"  {'-'*42}")
+        lines.append("")
+        lines.append("  Confusion Matrix (rows=true, cols=pred):")
+        cm_header = "           " + "".join(f"{e[:6]:>7}" for e in EMO_MAP)
+        lines.append(f"  {cm_header}")
         for i, emo in enumerate(EMO_MAP):
             row = "".join(f"{cm[i][j]:>7}" for j in range(NUM_EMOTIONS))
-            print(f"{emo:<10}: {row}")
-        print("=" * 60 + "\n")
+            lines.append(f"  {emo.lower():<10}: {row}")
+        lines.append("=" * 65)
+        lines.append("")
+
+        # 逐样本预测详情
+        lines.append("-" * 65)
+        lines.append("  Per-sample predictions (path | true_label | pred_label | correct)")
+        lines.append("-" * 65)
+        correct_count = 0
+        for i in range(n_total):
+            true_lbl = ID_TO_LABEL[all_labels[i]]
+            pred_lbl = ID_TO_LABEL[all_preds[i]]
+            is_correct = "✓" if all_preds[i] == all_labels[i] else "✗"
+            if all_preds[i] == all_labels[i]:
+                correct_count += 1
+            lines.append(f"  {all_paths[i]} | {true_lbl} | {pred_lbl} | {is_correct}")
+        lines.append("-" * 65)
+        lines.append(f"  Correct: {correct_count}/{n_total} ({100*correct_count/max(1,n_total):.2f}%)")
+        lines.append("")
+
+        # 输出：打印到终端 + 可选写入文件
+        full_text = "\n".join(lines)
+        print(full_text)
+
+        if output_txt is not None:
+            os.makedirs(os.path.dirname(output_txt) or ".", exist_ok=True)
+            with open(output_txt, "w", encoding="utf-8") as f:
+                f.write(full_text)
+            print(f"[EvalCM] Results saved to: {output_txt}")
 
         return results
 
 if __name__ == "__main__":
-    #export HF_ENDPOINT=https://hf-mirror.com && CUDA_VISIBLE_DEVICES=4,5 torchrun --nproc_per_node=2 ddp_meralionser.py
+    import json
+    # export HF_ENDPOINT=https://hf-mirror.com && CUDA_VISIBLE_DEVICES=4,5 torchrun --nproc_per_node=2 ddp_meralionser.py
+
     config = MeralionSERConfig()
+    trial_params_json = os.environ.get("TRIAL_PARAMS", "")
+    if trial_params_json:
+        params = json.loads(trial_params_json)
+        for k, v in params.items():
+            if hasattr(config, k):
+                setattr(config, k, v)
+        print(f"[Trial] Overriding config: {json.dumps(params, indent=2)}")
+
     trainer = MeralionSERTrainer(config)
     trainer.train()
-
-    model, processor = trainer.load_model_for_inference("/home/huangjie/MdiriCode/CodeLearning/ModelTrainingResult/20260526-MeralionSER-Training-Mdiri-1573-ddp/checkpoint-best-49/")
-    results = trainer.evaluate_with_confusion_matrix()
-
-    # model, processor = trainer.load_model_for_inference(".../checkpoint-best-200")
-    # results = trainer.evaluate_with_confusion_matrix(
-    #     model=model, processor=processor,
-    #     data_path_list=["/path/to/test.csv"],
-    #     audio_path_dir="/path/to/audio",
-    #     device="cuda",
-    # )
