@@ -1,6 +1,5 @@
 import os
 import re
-import io
 import json
 import yaml
 import requests
@@ -15,19 +14,21 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 load_dotenv('./API_KEY.env')
 
-def formad_markdown(md_content, 
-                        format_way=['yaml_head', 'image', 'table', 'code', 'math', 'link']):
+def format_yaml_head(md_content):
+    '''去除头部 YAML 标记'''
+    yaml_pattern = r'^---\n.*?\n---\n'
+    match = re.match(yaml_pattern, md_content, re.DOTALL)
+    if match:
+        yaml_str = md_content[match.start():match.end()].strip()
+        yaml_dict = yaml.safe_load(yaml_str.replace('---', ''))
+        md_content = md_content[match.end():].strip()
+        return md_content, yaml_dict
+    return md_content, None
+
+
+def format_markdown(md_content,
+                    format_way=['yaml_head', 'image', 'table', 'code', 'math', 'link']):
     '''格式化 Markdown 内容'''
-    def format_yaml_head(md_content):
-        '''去除头部 YAML 标记'''
-        yaml_pattern = r'^---\n.*?\n---\n'
-        match = re.match(yaml_pattern, md_content, re.DOTALL)
-        if match:
-            yaml_str = md_content[match.start():match.end()].strip()
-            yaml_dict = yaml.safe_load(yaml_str.replace('---', ''))
-            md_content = md_content[match.end():].strip()
-            return md_content, yaml_dict
-        return md_content, None
     
     def format_image(md_content):
         '''替换图片标记为 <image>'''
@@ -74,18 +75,24 @@ def formad_markdown(md_content,
             md_content = format_math(md_content)
         elif way == 'link':
             md_content = format_link(md_content)
-    
+
     return md_content, yaml_dict
+
+
 def format_image(md_content, image_store_dir, max_threads):
     def upload_webp_file(webp_path: Path, image_bed='sm.ms'):
         if image_bed == 'sm.ms':
-            smms_api_key = os.getenv("SMMS_API_LIST", "")
+            smms_api_key = os.getenv("SMMS_API_LIST", "").strip()
+            if not smms_api_key:
+                print(f"❌ 上传失败：未设置 SMMS_API_LIST 环境变量，请检查 API_KEY.env 文件")
+                return None
             url = 'https://s.ee/api/v1/file/upload'
-            headers = {'Authorization': str(smms_api_key)}
+            headers = {'Authorization': smms_api_key}
             try:
                 with open(webp_path, 'rb') as f:
-                    files = {'file': f}
-                    response = requests.post(url, files=files, headers=headers, timeout=30)
+                    files = {'smfile': f}
+                    data = {'domain': 'sm.ms'}
+                    response = requests.post(url, files=files, data=data, headers=headers, timeout=30)
                 response.raise_for_status()
                 result = response.json()
 
@@ -103,9 +110,6 @@ def format_image(md_content, image_store_dir, max_threads):
             response.raise_for_status()
             image = Image.open(BytesIO(response.content)).convert("RGB")
 
-            temp_buffer = io.BytesIO()
-            image.save(temp_buffer, format='JPEG', quality=quality)
-
             output_path.parent.mkdir(parents=True, exist_ok=True)
             file_name_with_ext = Path(urlparse(image_url).path).name
             file_name = Path(file_name_with_ext).stem
@@ -119,15 +123,13 @@ def format_image(md_content, image_store_dir, max_threads):
             print(f"❌ 下载/转换失败：{image_url} - {e}")
             return image_url, None
     image_pattern = re.compile(
-        r'!\[.*?\]\((https?://[^\s)]+\.(?:png|jpg|jpeg))\)', 
+        r'!\[.*?\]\((https?://[^\s)]+\.(?:png|jpg|jpeg|webp|gif|bmp|svg))\)',
         re.IGNORECASE
     )
     matches = image_pattern.findall(md_content)
-    # for image_url in matches:
-    #     image_url, url_path = download_convert(image_url, image_store_dir)
-    #     if url_path:
-    #         md_content = md_content.replace(image_url, url_path)
-    # return md_content
+
+    if not matches:
+        return md_content
 
     future_to_url = {}
     with ThreadPoolExecutor(max_workers=max_threads) as executor:
@@ -135,26 +137,21 @@ def format_image(md_content, image_store_dir, max_threads):
             future = executor.submit(download_convert, image_url, image_store_dir)
             future_to_url[future] = image_url
 
+        url_map = {}
         for future in as_completed(future_to_url):
             image_url, url_path = future.result()
             if url_path:
-                md_content = md_content.replace(image_url, url_path)
+                url_map[image_url] = url_path
+
+    if url_map:
+        escaped = map(re.escape, url_map)
+        pattern = re.compile('|'.join(escaped))
+        md_content = pattern.sub(lambda m: url_map[m.group(0)], md_content)
 
     return md_content
 
 def format_description(md_content, yaml_dict, description, md_path):
     '''生成摘要'''
-    def format_yaml_head(md_content):
-        '''去除头部 YAML 标记'''
-        yaml_pattern = r'^---\n.*?\n---\n'
-        match = re.match(yaml_pattern, md_content, re.DOTALL)
-        if match:
-            yaml_str = md_content[match.start():match.end()].strip()
-            yaml_dict = yaml.safe_load(yaml_str.replace('---', ''))
-            md_content = md_content[match.end():].strip()
-            return md_content, yaml_dict
-        return md_content, None
-
     def llm_generate(md_content):
         '''通过llm生成描述'''
         client = OpenAI(
@@ -210,7 +207,7 @@ def format_description(md_content, yaml_dict, description, md_path):
         return None
 
     if yaml_dict.get('description', None) is None:
-        old_md_content, yaml_dict = formad_markdown(md_content)
+        old_md_content, yaml_dict = format_markdown(md_content)
         md_content, _ = format_yaml_head(md_content)
         llm_description = llm_generate(old_md_content)
         if llm_description:
@@ -255,9 +252,10 @@ def process_file(file_path_list,
                     print(e)
                     return {}
             
-    max_threads = max(1, os.cpu_count() * 2) if os.cpu_count() is not None else max_threads
+    cpu_count = os.cpu_count() or 1
+    max_threads = min(max_threads, cpu_count * 2)
     file_description_dict = defaultdict(list)
-    description = open_file(description_path)
+    description = open_file(description_path) or {}
 
     for md_path in file_path_list:
         if md_path.endswith('md'):
@@ -266,7 +264,7 @@ def process_file(file_path_list,
             md_content = format_image(md_content,
                                       image_store_dir,
                                       max_threads) # 优化图像转化为 webp 图像
-            _, yaml_dict = formad_markdown(md_content)
+            _, yaml_dict = format_markdown(md_content)
             file_description_dict[md_path] = (md_content, yaml_dict)
 
     with ThreadPoolExecutor(max_workers=max_threads) as executor:

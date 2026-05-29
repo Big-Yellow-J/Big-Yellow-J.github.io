@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: Claude Code安装使用
+title: Claude Code安装使用及其底层架构
 categories: agent
 address: 北京🦞
 extMath: true
@@ -232,6 +232,8 @@ claude --permission-mode auto
 
 <!-- 上面内容就带来很多有意思事情：1、prompt过长如何压缩，比如我的skills很长如何处理；2、tools如果没有命中怎么办？ 
 对于上述问题：https://grok.com/share/c2hhcmQtMi1jb3B5_374f2c52-8da4-4bfd-8133-d07070f91114
+争对上述问题主要涉及两个工程化内容：1、上下文工程（Context）；2、回退机制
+#### Context Engine
 
 -->
 
