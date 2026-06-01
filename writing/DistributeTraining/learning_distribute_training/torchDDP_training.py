@@ -325,6 +325,7 @@ class DDPTrainer:
     def _tracker_init(self) -> None:
         if not self.is_main_process:
             return
+        self._write_config_yaml()
         log_with = self.config.log_with.lower()
         if "tensorboard" in log_with:
             tb_dir = os.path.join(self.config.output_dir, "tb")
@@ -357,6 +358,26 @@ class DDPTrainer:
             except Exception as e:
                 logger.exception("WandB init failed, fallback to non-wandb logging: %s", e)
                 self.wandb_run = None
+
+    def _write_config_yaml(self) -> None:
+        config_path = os.path.join(self.config.output_dir, "config.yaml")
+        config_dict = self.config.to_dict()
+        try:
+            import yaml
+
+            with open(config_path, "w", encoding="utf-8") as f:
+                yaml.safe_dump(
+                    config_dict,
+                    f,
+                    allow_unicode=True,
+                    sort_keys=False,
+                )
+            logger.info("Saved config yaml -> %s", config_path)
+        except Exception as e:
+            logger.warning("Write config.yaml failed (%s), fallback to JSON string in yaml file.", e)
+            with open(config_path, "w", encoding="utf-8") as f:
+                f.write(json.dumps(config_dict, ensure_ascii=False, indent=2))
+            logger.info("Saved config yaml (JSON-compatible) -> %s", config_path)
 
     def _log_metrics(self, metrics: Dict[str, float], step: int) -> None:
         if not self.is_main_process:

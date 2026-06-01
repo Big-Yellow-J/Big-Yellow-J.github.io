@@ -81,20 +81,20 @@ class MeralionSERConfig(BasicConfig):
     audio_path_dir: str = "/home/huangjie/MdiriCode/SER/data/studio"
     data_path_list: List[str] = field(
         default_factory=lambda: [
-            "/home/huangjie/MdiriCode/SER/SER/train.csv",
+            "/home/huangjie/MdiriCode/SER/train.csv",
         ])
     eval_data_path_list: List[str] = field(
         default_factory=lambda: [
-            "/home/huangjie/MdiriCode/SER/SER/test.csv",
+            "/home/huangjie/MdiriCode/SER/test.csv",
         ])
 
     resample_target_count: int = None
     resample_labels: List[str] = field(default_factory=lambda: ["sad", "disgusted", "fearful", "surprised"])
     neutral_max_samples: int = 0  # neutral 最大保留数，0=不限制；推荐 4000~6000（配合 resample 可设更小）
     num_proc: int = 1
-    epoch: int = 60
+    epoch: int = 100
     max_length: int = 16000 * 30 # Whisper 编码器要求 mel 特征固定 3000 帧（= 30秒@16kHz)
-    batch_size: int = 64
+    batch_size: int = 32
     learning_rate: float = 1e-5
     checkpointing_steps: int = -1
     checkpoints_total_limit: int = 2
@@ -107,14 +107,15 @@ class MeralionSERConfig(BasicConfig):
     focal_alpha: Optional[List[float]] = field(
         default_factory=lambda: [0.0229, 0.1025, 0.2108, 0.0815, 0.2391, 0.1930, 0.1502]
     )
-    ccc_loss_weight: float = 0.0         # CCC loss 权重（模型输出 dims 用于 valence/arousal/dominance 回归）
+    ccc_loss_weight: float = 1.0         # CCC loss 权重（模型输出 dims 用于 valence/arousal/dominance 回归）
     label_smoothing: float = 0.0         # Cross Entropy 的 label smoothing
 
     # "lora_only" (只训 LoRA 层) 
     # "lora_plus_downstream" (LoRA + downstream_model 全量微调) 
     # "lora_plus_classifier" (LoRA + 情绪分类头微调) 
     # "classifier_only" (仅微调 emotion_classification_layer，使用模型自带分类头)
-    finetune_strategy: str = "classifier_only"
+    # "all_parameter" 全量微调
+    finetune_strategy: str = "all_parameter"
     ddp_find_unused_params: bool = False
 
     num_workers: int = 8
@@ -171,6 +172,18 @@ class MeralionSERTrainer(DDPTrainer):
     def __init__(self, config: MeralionSERConfig):
         super().__init__(config=config, model=None,
                          train_dataset=None, eval_dataset=None)
+        # all_parameter 时，模型里可能有分支参数未参与当前 loss（例如 dims 分支），
+        # DDP 需要 find_unused_parameters=True 才能安全反传。
+        if (
+            str(getattr(config, "distributed_strategy", "ddp")).lower() == "ddp"
+            and getattr(config, "finetune_strategy", "") == "all_parameter"
+            and not bool(getattr(config, "ddp_find_unused_params", False))
+        ):
+            config.ddp_find_unused_params = True
+            self.log(
+                "warning",
+                "[DDP] finetune_strategy=all_parameter detected; auto set ddp_find_unused_params=True.",
+            )
         model, processor = self._load_model(config)
         self.processor = processor
         self.model = model
@@ -261,12 +274,13 @@ class MeralionSERTrainer(DDPTrainer):
         )
         finetune_strategy = getattr(config, "finetune_strategy", "lora_only")
         if finetune_strategy == "classifier_only":
-            # 使用模型自带的 emotion_classification_layer，不做替换
             for n, p in model.named_parameters():
                 p.requires_grad = "emotion_classification_layer" in n
+        elif finetune_strategy == "all_parameter":
+            for n, p in model.named_parameters():
+                p.requires_grad = True
         else:
             model = get_peft_model(model, peft_config)
-
             if finetune_strategy == "lora_only":
                 for n, p in model.named_parameters():
                     p.requires_grad = "lora_" in n
@@ -731,7 +745,7 @@ class MeralionSERTrainer(DDPTrainer):
 
 if __name__ == "__main__":
     import json
-    # export HF_ENDPOINT=https://hf-mirror.com && CUDA_VISIBLE_DEVICES=4,5 torchrun --nproc_per_node=2 ddp_meralionser.py
+    # export HF_ENDPOINT=https://hf-mirror.com && CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2 ddp_meralionser.py
 
     config = MeralionSERConfig()
     trial_params_json = os.environ.get("TRIAL_PARAMS", "")
