@@ -6,7 +6,10 @@ Ray Tune — MERaLiON-SER DDP 双卡超参搜索 (GPU 4,5)
   export HF_ENDPOINT=https://hf-mirror.com && CUDA_VISIBLE_DEVICES=4,5 python ray_tune_meralion.py
 """
 
-import os, sys, subprocess, json
+import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 CURRENT_DIR = Path(__file__).resolve().parent
@@ -18,7 +21,6 @@ import ray
 from ray import tune
 from ray.tune.schedulers import ASHAScheduler
 from ray.tune.search.optuna import OptunaSearch
-from ray.air import RunConfig
 
 RAY_STORAGE = "/home/huangjie/MdiriCode/CodeLearning/ModelTrainingResult/ray_tune_results"
 TRAIN_SCRIPT = str(CURRENT_DIR / "ddp_meralionser.py")

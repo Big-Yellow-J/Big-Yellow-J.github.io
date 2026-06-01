@@ -116,13 +116,13 @@ rtk init --global
 > /compact 保留认证模块的变更细节和当前测试失败信息
 # 定向压缩：指定需要保留的重点内容
 ```
-2、`clear`：完全重置，清空当前会话的全部对话历史和上下文，回到初始状态；3、`/context`查看上下文使用，显示当前上下文的占用情况和分类统计。除了基础命令之外有些时候还需要去控制claude 在执行一些 **简单安全任务**（比如说去搜索整理文件这些任务）在启动时候可以直接开启 `claude --permission-mode auto`**强制自动判断需不要询问用户**（一定要让他执行可信任务，不然可能删除一些重要东西导致出现错误，可以先去跑通一个任务之后，后续再去实现类似任务可以直接开启强制自动判断）：
+2、`clear`：完全重置，清空当前会话的全部对话历史和上下文，回到初始状态；3、`/context`查看上下文使用，显示当前上下文的占用情况和分类统计。除了基础命令之外有些时候还需要去控制claude 在执行一些 **简单安全任务**（比如说去搜索整理文件这些任务）在启动时候可以直接开启 `claude --permission-mode auto`**强制自动判断需不要询问用户**（一定要让他执行可信任务，不然可能删除一些重要东西导致出现错误，可以先去跑通一个任务之后，后续再去实现类似任务可以直接开启强制自动判断）或者直接在对话系统里面按键 `shift+tab`进行切换（直接切换到 `auto mode on`即可）：
 ![20260520215009426](https://files.seeusercontent.com/2026/05/20/Y3oc/20260520215009426.webp)
 而后再去执行 `/sandbox`（建立一个 **沙盒**隔离环境避免直接操作自己电脑导致误删文件等）
 ![20260520225631202](https://files.seeusercontent.com/2026/05/20/2pNt/20260520225631202.webp)
 除此之外要**监控各类task任务**（比如说有些python自动脚本会到建立task）进行情况可以直接安装：`npx claude-task-viewer`然后就可以看到正在进行进程：
 ![20260520212935955](https://files.seeusercontent.com/2026/05/20/Cil9/20260520212935955.webp)
-除此之外有些时候可能需要[一次性进行多个任务](https://code.claude.com/docs/zh-CN/agent-view)（比如说去搜索A相关事情、搜索B相关事情）可以执行`claude agents --permission-mode auto`，这样就可以快速进行多组对话进行切换
+除此之外有些时候可能需要[一次性进行多个任务](https://code.claude.com/docs/zh-CN/agent-view)（比如说去搜索A相关事情、搜索B相关事情）可以执行`claude agents`，这样就可以快速进行多组对话进行切换（或者直接在对话系统里面直接按箭头左右也可以）
 ### 插件安装
 比如说安装[用量检查插件](https://github.com/jarrodwatts/claude-hud/blob/main/README.zh.md)或者安装superpowers：`/plugin install superpowers@claude-plugins-official`
 ### MCP
@@ -188,8 +188,7 @@ echo '{
 可以看到另外两个agent也开始执行了，**最后**所有的整理的材料以及最后的书写得到的辩护词在[百度网盘](https://pan.baidu.com/s/1wzkkb8n_HqIcmLZqeynuYA?pwd=ve8w)总共是花费了大概4元（DeepSeek-4-pro）
 
 ## Claude Code底层原理
-下面内容都是纯Agent技术内容，一般而言了解skills开发即可其他看不去了解
-### 抓包Claude Code
+## Claude Code抓包
 为了分析Claude Code中每一步系统层都在发生什么就需要最Claude Code进行抓包，具体过程如下，首先对环境进行配置：
 ```bash
 # 基于wsl
@@ -212,7 +211,7 @@ claude --permission-mode auto
 ![](https://files.seeusercontent.com/2026/05/27/4hnK/20260527214050041.png)
 而后直接去Claude code随便测试：1、你好；2、`/crawl4ai 搜索一下Yolo系列论文`，**直接去终端里面提供的url地址**然后可以直接`~c 200`（因为访问  https://api.anthropic.com/api/event_logging/v2/batch **可能会**有很多失败会显示400，因此重点看一下链接成功的），比如说通过解析：
 ![](https://files.seeusercontent.com/2026/05/27/5dcD/20260528001036233.png)
-在输入第一段对话 `你好` 模型会输入很多内容如tools/skills描述等，但是这些内容绝大部分会“命中缓存”（观察deepseek中就有这种内容）
+在输入第一段对话 `你好` 模型会输入很多内容如tools/skills描述等，但是这些内容绝大部分会“命中缓存”（观察deepseek中就有这种内容）[^8]
 > 所谓命中缓存意思就是说：**这部分内容不用模型去重新计算可以直接复用**，这是因为大模型生成过程是prefill+decode，prefill阶段就是对我的prompt进行编码，比如说上面输入模型是一个结构化文档，在[vllm的cache逻辑中](https://www.big-yellow-j.top/posts/2026/03/15/vllm-3.html)会将输入token进行block处理（比如每个block存储n个token）当出现block相同时候就会复用结果（必须保证如：输入1：QWERASDF和输入2：QWERASDF此时可以命中缓存，但是如果输入1改成WQERASDF就不行，因此**为了更加大的命中缓存会直接将容易命中缓存输入放到模型输入前面如tools、system等**），而decode就是对prefill后内容开始解码一个token一个token进行输出，**即使如此还是建议如果skills不用就不要开启**
 
 而后可以看模型输出部分think+输出：
@@ -229,13 +228,6 @@ claude --permission-mode auto
 结果： 搜索引擎返回了你看到的那一串包含 YOLOv1 到 YOLOv26 的 Arxiv 链接和详细摘要。
 总结： 最终 DeepSeek 拿到这些被精准定位后的素材，进行最后的整合输出。
 > *值得注意的是*,web_search返回内容还是通过模型/工具进行总结的，比如说一个搜索得到5-6结果模型进行总结即可
-
-<!-- 上面内容就带来很多有意思事情：1、prompt过长如何压缩，比如我的skills很长如何处理；2、tools如果没有命中怎么办？ 
-对于上述问题：https://grok.com/share/c2hhcmQtMi1jb3B5_374f2c52-8da4-4bfd-8133-d07070f91114
-争对上述问题主要涉及两个工程化内容：1、上下文工程（Context）；2、回退机制
-#### Context Engine
-所谓上下文工程指的是，随着用户之间对话那么窗口token就肯定会超出模型限制（比如DeepSeek的1M），那么就需要对历史对话进行处理如压缩等，以如下代码为例
--->
 
 ### Skills开发
 > **最简单方法直接看别人怎么写然后进行仿写即可**
@@ -289,6 +281,64 @@ When writing API endpoints:
 **第三步**、去构建一个reference，因为法律文书在书写上比较规划，模型可能不知道具体如何书写可以简单给一个参考让模型规范输出（规范文本可以直接用最高法院提供模板），这里只提供两种规范文本供参考：1、[广州市海珠区人民法院——民事答辩状](https://www.gzhzcourt.gov.cn/news/45007004.cshtml)；2、[广州市海珠区人民法院——民事起诉状)](https://www.gzhzcourt.gov.cn/news/45007009.cshtml)，最后所有的reference见[Github链接](https://github.com/Big-Yellow-J/Big-Yellow-J.github.io/tree/master/code/Python/skills/legaldocnorm)
 **skills底层原理**：还是一个function calling，所谓 **function calling**比如说：“北京今天天气如何？”输入模型模型（大模型本身只能输出文本不能去搜索网页等功能）通过分析用户文本输出结构化信息：`{"name": "get_weather", "arguments": {"date":xxx, ....}}` 而后通过结构化信息进行工具调用（比如说调用搜索天气相关的API进行天气检索）。因此虽然claude code中skills都是文本prompt，大模型在检索到要使用的skills之后通过分析skills中内容自动解析处需要进行操作，因此claude code中skills底层就是：`Prompt+Tool Description+ Few-shot examples+ Execution`
 <!-- ### MCP开发 -->
+
+## Agent架构问题
+上面无论式skills涉及还是tools使用其实都会带来很多Agent底层设计问题比如说：**1、上下文工程（Context Engine）** 随着用户不断对话那么对话历史就会不断变长，如果将对话历史全部塞到对话窗口里面就会导致上下文过长问题（导致模型可能丢失/处理不好）；2、tools如果没有命中怎么办？ 等等诸如此类问题，因此下面对Agent设计过程中会遇到问题以及架构设计上内容就行介绍
+### Context Engine
+所谓上下文工程指的是，随着用户之间对话那么窗口token就肯定会超出模型限制（比如DeepSeek的1M），那么就需要对历史对话进行处理如压缩等，以如下代码为例：
+```python
+from openai import OpenAI
+client = OpenAI(api_key="xxx",base_url="https://api.deepseek.com")
+messages = [
+    {
+        "role": "system",
+        "content": "你是一个专业AI助手"
+    }
+]
+
+while True:
+    user_input = input("User: ")
+    if user_input.lower() == "exit":
+        break
+
+    messages.append({
+        "role": "user",
+        "content": user_input
+    })
+    response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=messages,
+        temperature=0.7
+    )
+    assistant_reply = response.choices[0].message.content
+    messages.append({
+        "role": "assistant",
+        "content": assistant_reply
+    })
+    print("User:", user_input)
+    print("\nAssistant:", assistant_reply)
+```
+模拟进行对话最后得到输出文本:
+```markdown
+[{'content': '你是一个专业AI助手', 'role': 'system'},
+ {'content': '我是小红来自美国，我现在问你一些问题请不多于100个字进行输出，请简单介绍一下北京和上海', 'role': 'user'},
+ {'content': '北京是中国的首都，历史悠久，拥有故宫、长城等著名景点；上海是国际大都市，以现代金融和繁华商业闻名，外滩、东方明珠是标志性地标。',
+  'role': 'assistant'},
+ {'content': '北京和上海两个城市哪一个更加推荐我去？', 'role': 'user'},
+ {'content': '这取决于你的旅行偏好。如果你喜欢历史文化，推荐北京，可以探索故宫、长城和胡同。如果你偏爱现代都市与商业氛围，上海更合适，有外滩、陆家嘴和时尚购物区。',
+  'role': 'assistant'},
+ {'content': '我想去看无人机表演推荐去哪个城市？深圳怎么样？', 'role': 'user'},
+ {'content': '深圳是中国无人机表演最出色的城市之一，常有大疆等企业举办大型灯光秀。若想看科技感强的表演，深圳是首选。北京和上海也有相关活动，但深圳更具创新氛围。',
+  'role': 'assistant'},
+ {'content': '我是谁来自哪里？', 'role': 'user'},
+ {'content': '你叫小红，来自美国。', 'role': 'assistant'}]
+```
+下面简单介绍几种常见的上下面处理方式[^7]:
+**1、基于滑动窗口方案**：直接选择K进行保留，比如对于上述对话如果选择K=2那么当对话进行第3次时候就会直接将老的内容进行丢弃。
+**2、基于摘要压缩方案**：比如说当对话token达到模型60%时候就会直接进行压缩历史对话
+
+
+对于上述问题：https://grok.com/share/c2hhcmQtMi1jb3B5_374f2c52-8da4-4bfd-8133-d07070f91114
 ## 参考
 [^1]: [https://www.bilibili.com/video/BV1BFouBYERu/?spm_id_from=333.337.search-card.all.click&vd_source=881c4826193cfb648b5cdd0bad9f19f0](https://www.bilibili.com/video/BV1BFouBYERu/?spm_id_from=333.337.search-card.all.click&vd_source=881c4826193cfb648b5cdd0bad9f19f0)
 [^2]: [https://www.cnblogs.com/youring2/p/20065433](https://www.cnblogs.com/youring2/p/20065433)
@@ -296,3 +346,5 @@ When writing API endpoints:
 [^4]: [https://code.claude.com/docs/zh-CN/agent-teams](https://code.claude.com/docs/zh-CN/agent-teams)
 [^5]: [https://code.claude.com/docs/zh-CN/skills](https://code.claude.com/docs/zh-CN/skills)
 [^6]: [https://www.big-yellow-j.top/posts/2026/03/15/vllm-3.html](https://www.big-yellow-j.top/posts/2026/03/15/vllm-3.html)
+[^7]: [https://arxiv.org/pdf/2507.13334](https://arxiv.org/pdf/2507.13334)
+[^8]: [https://code.claude.com/docs/zh-CN/prompt-caching](https://code.claude.com/docs/zh-CN/prompt-caching)
