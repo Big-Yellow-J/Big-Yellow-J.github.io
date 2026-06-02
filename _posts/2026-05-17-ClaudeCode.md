@@ -186,23 +186,22 @@ echo '{
 很明显看到执行 *争取审查+任务重构*符合我的任务A要求，A执行完毕就会进行BC比如说得到如下：
 ![](https://files.seeusercontent.com/2026/05/22/Na8o/20260522224706671.png)
 可以看到另外两个agent也开始执行了，**最后**所有的整理的材料以及最后的书写得到的辩护词在[百度网盘](https://pan.baidu.com/s/1wzkkb8n_HqIcmLZqeynuYA?pwd=ve8w)总共是花费了大概4元（DeepSeek-4-pro）
-
-## Claude Code底层原理
 ## Claude Code抓包
-为了分析Claude Code中每一步系统层都在发生什么就需要最Claude Code进行抓包，具体过程如下，首先对环境进行配置：
+### 简单网络抓包
+为了分析Claude Code中每一步系统层都在发生什么就需要最Claude Code进行抓包，具体过程如下，首先对环境进行配置（**基于wsl**）：
 ```bash
 # 基于wsl
 conda create -n mitm python=3.11
 conda activate mitm
 pip install mitmproxy
-mitmweb --listen-host 0.0.0.0 --listen-port 8080 # 8080 为代理端口 cc走这里 8081 web ui看流量
+mitmweb --listen-host 0.0.0.0 --listen-port 9870 # 8080 为代理端口 cc走这里 8081 web ui看流量
 
 # 新建窗口
-export http_proxy=http://0.0.0.0:8080
-export https_proxy=http://0.0.0.0:8080
-export HTTP_PROXY=http://0.0.0.0:8080
-export HTTPS_PROXY=http://0.0.0.0:8080
-export ALL_PROXY=http://0.0.0.0:8080
+export http_proxy=http://0.0.0.0:9870
+export https_proxy=http://0.0.0.0:9870
+export HTTP_PROXY=http://0.0.0.0:9870
+export HTTPS_PROXY=http://0.0.0.0:9870
+export ALL_PROXY=http://0.0.0.0:9870
 export NODE_EXTRA_CA_CERTS=~/.mitmproxy/mitmproxy-ca-cert.pem
 export SSL_CERT_FILE=~/.mitmproxy/mitmproxy-ca-cert.pem
 claude --permission-mode auto
@@ -229,6 +228,41 @@ claude --permission-mode auto
 总结： 最终 DeepSeek 拿到这些被精准定位后的素材，进行最后的整合输出。
 > *值得注意的是*,web_search返回内容还是通过模型/工具进行总结的，比如说一个搜索得到5-6结果模型进行总结即可
 
+### 抓包分析功能
+通过上面抓包方式可以进一步去分析claude code中其中功能比如说 `/compact`，`/resume` 等，**抓包分析resume**：终端执行 `/resume` 之后而后直接输入新的内容在claude code直接加载历史对话而后补充到上下文中比如所大致结构如下：
+```json
+{
+    "model": "deepseek-v4-pro",
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {
+            历史用户输入对话信息
+          },
+          {
+            新的对话信息
+          }
+        ],
+        .....
+      }
+```
+在新的对话信息里面也会直接加载启用的skills等以及后续模型的tools也会加载（和第一次对话加载信息相同只是多了一组用户历史信息），**但是**这里简单介绍一些claude code中是如何去缓存对话信息的在路径 `~/.claude` 中文件结构如下，对于每一组对话都会存储在 history.jsonl 中每组对话结构为 `{"display":"你是什么模型","pastedContents":{},"timestamp":1780404540849,"project":"/home/huangjie/MdiriCode/Claude","sessionId":"5186f729-1c6e-4698-99e6-7ad2cd667cde"}` 最后的sessionid对应每次对话的id信息，都会在 **sessions文件夹**（_主要是记录上下文对话信息_）中记录[^9]
+![](https://files.seeusercontent.com/2026/06/02/5Ekt/20260602214220864.png)
+除此之外在**projects文件夹**中还会记录更加多内容，其大致结构如下：
+```bash
+projects/
+ ├── sessionid.jsonl   # 区别于上面 session 里面只记录对话信息，此sessionid.jsonl则是记录所有 “日志记录”，比如说  {"type":"permission-mode","permissionMode":"auto","sessionId":"b69647ef-a95b-428d-a0ac-530440c7853f"}
+ ├── memory/
+ ├── subagents/
+ ├──── xxxx.meta.jsonl # 主要记录 subagets 具体信息比如说：{"agentType":"claude-code-guide","description":"Explain Claude Code compaction","toolUseId":"call_00_0UXP3yM5PsH4VZ2ZbA1c5929"}
+ ├──── xxxx.jsonl      # 子agents产生对话信息
+```
+**主要介绍一些subagents**，在claude code中一般是 **主agent收到信息去分发给不同子agent，而后将子agent信息接收进行总结分析等**（具体构建等[见下面分析](#sub-agents服务)）。简单总结一些子agents：1、子代理只是向Anthropic发出的独立请求，每个请求都有自己的系统消息。 2、每个子代理都有自己的上下文窗口。它不会与其他子代理或主代理共享内存或聊天记录。 3、“主”Claude（委托代理）为子代理编写提示词，该提示词最终将成为子代理收到的第一条用户消息。 子代理完成任务后，会将其发现的摘要发送回主Claude，随后主Claude会尝试整合所有报告并对其进行解读。 在不断积累上下文之后就需要考虑对内容进行压缩，在claude中**压缩过程**有两种：1、直接 `/compact`；2、输入对应文本 `/compact xxxx`对于两种压缩方式通过抓包分析如下使用的提示词都是大致相同的（更加具体的压缩过程[见后续分析](#context-engine)）：
+```json
+"text": "CRITICAL: Respond with TEXT ONLY. Do NOT call any tools.\n\n- Do NOT use Read, Bash, Grep, Glob, Edit, Write, or ANY other tool.\n- You already have all the context you need in the conversation above.\n- Tool calls will be REJECTED and will waste your only turn — you will fail the task.\n- Your entire response must be plain text: an <analysis> block followed by a <summary> block.\n\nYour task is to create a detailed summary of the conversation so far, paying close attention to the user's explicit requests and your previous actions.\nThis summary should be thorough in capturing technical details, code patterns, and architectural decisions that would be essential for continuing development work without losing context.\n\nBefore providing your final summary, wrap your analysis in <analysis> tags to organize your thoughts and ensure you've covered all necessary points. In your analysis process:\n\n1. Chronologically analyze each message and section of the conversation. For each section thoroughly identify:\n   - The user's explicit requests and intents\n   - Your approach to addressing the user's requests\n   - Key decisions, technical concepts and code patterns\n   - Specific details like:\n     - file names\n     - full code snippets\n     - function signatures\n     - file edits\n   - Errors that you ran into and how you fixed them\n   - Pay special attention to specific user feedback that you received, especially if the user told you to do something differently.\n   - Note any security-relevant instructions or constraints the user stated (e.g., sensitive files or data to avoid, operations that must not be performed, credential or secret handling rules). These MUST be preserved verbatim in the summary so they continue to apply after compaction.\n2. Double-check for technical accuracy and completeness, addressing each required element thoroughly.\n\nYour summary should include the following sections:\n\n1. Primary Request and Intent: Capture all of the user's explicit requests and intents in detail\n2. Key Technical Concepts: List all important technical concepts, technologies, and frameworks discussed.\n3. Files and Code Sections: Enumerate specific files and code sections examined, modified, or created. Pay special attention to the most recent messages and include full code snippets where applicable and include a summary of why this file read or edit is important.\n4. Errors and fixes: List all errors that you ran into, and how you fixed them. Pay special attention to specific user feedback that you received, especially if the user told you to do something differently.\n5. Problem Solving: Document problems solved and any ongoing troubleshooting efforts.\n6. All user messages: List ALL user messages that are not tool results. These are critical for understanding the users' feedback and changing intent. Preserve any security-relevant instructions or constraints verbatim so they remain in effect after compaction.\n7. Pending Tasks: Outline any pending tasks that you have explicitly been asked to work on.\n8. Current Work: Describe in detail precisely what was being worked on immediately before this summary request, paying special attention to the most recent messages from both user and assistant. Include file names and code snippets where applicable.\n9. Optional Next Step: List the next step that you will take that is related to the most recent work you were doing. IMPORTANT: ensure that this step is DIRECTLY in line with the user's most recent explicit requests, and the task you were working on immediately before this summary request. If your last task was concluded, then only list next steps if they are explicitly in line with the users request. Do not start on tangential requests or really old requests that were already completed without confirming with the user first.\n                       If there is a next step, include direct quotes from the most recent conversation showing exactly what task you were working on and where you left off. This should be verbatim to ensure there's no drift in task interpretation.\n\nHere's an example of how your output should be structured:\n\n<example>\n<analysis>\n[Your thought process, ensuring all points are covered thoroughly and accurately]\n</analysis>\n\n<summary>\n1. Primary Request and Intent:\n   [Detailed description]\n\n2. Key Technical Concepts:\n   - [Concept 1]\n   - [Concept 2]\n   - [...]\n\n3. Files and Code Sections:\n   - [File Name 1]\n      - [Summary of why this file is important]\n      - [Summary of the changes made to this file, if any]\n      - [Important Code Snippet]\n   - [File Name 2]\n      - [Important Code Snippet]\n   - [...]\n\n4. Errors and fixes:\n    - [Detailed description of error 1]:\n      - [How you fixed the error]\n      - [User feedback on the error if any]\n    - [...]\n\n5. Problem Solving:\n   [Description of solved problems and ongoing troubleshooting]\n\n6. All user messages: \n    - [Detailed non tool use user message]\n    - [...]\n\n7. Pending Tasks:\n   - [Task 1]\n   - [Task 2]\n   - [...]\n\n8. Current Work:\n   [Precise description of current work]\n\n9. Optional Next Step:\n   [Optional Next step to take]\n\n</summary>\n</example>\n\nPlease provide your summary based on the conversation so far, following this structure and ensuring precision and thoroughness in your response. \n\nThere may be additional summarization instructions provided in the included context. If so, remember to follow these instructions when creating the above summary. Examples of instructions include:\n<example>\n## Compact Instructions\nWhen summarizing the conversation focus on typescript code changes and also remember the mistakes you made and how you fixed them.\n</example>\n\n<example>\n# Summary instructions\nWhen you are using compact - please focus on test output and code changes. Include file reads verbatim.\n</example>\n\n\nREMINDER: Do NOT call any tools. Respond with plain text only — an <analysis> block followed by a <summary> block. Tool calls will be rejected and you will fail the task."
+```
+## Claude Code工具开发
 ### Skills开发
 > **最简单方法直接看别人怎么写然后进行仿写即可**
 
@@ -282,6 +316,7 @@ When writing API endpoints:
 **skills底层原理**：还是一个function calling，所谓 **function calling**比如说：“北京今天天气如何？”输入模型模型（大模型本身只能输出文本不能去搜索网页等功能）通过分析用户文本输出结构化信息：`{"name": "get_weather", "arguments": {"date":xxx, ....}}` 而后通过结构化信息进行工具调用（比如说调用搜索天气相关的API进行天气检索）。因此虽然claude code中skills都是文本prompt，大模型在检索到要使用的skills之后通过分析skills中内容自动解析处需要进行操作，因此claude code中skills底层就是：`Prompt+Tool Description+ Few-shot examples+ Execution`
 <!-- ### MCP开发 -->
 
+[//]: # (### MCP 开发)
 ## Agent架构问题
 上面无论式skills涉及还是tools使用其实都会带来很多Agent底层设计问题比如说：**1、上下文工程（Context Engine）** 随着用户不断对话那么对话历史就会不断变长，如果将对话历史全部塞到对话窗口里面就会导致上下文过长问题（导致模型可能丢失/处理不好）；2、tools如果没有命中怎么办？ 等等诸如此类问题，因此下面对Agent设计过程中会遇到问题以及架构设计上内容就行介绍
 ### Context Engine
@@ -337,8 +372,9 @@ while True:
 **1、基于滑动窗口方案**：直接选择K进行保留，比如对于上述对话如果选择K=2那么当对话进行第3次时候就会直接将老的内容进行丢弃。
 **2、基于摘要压缩方案**：比如说当对话token达到模型60%时候就会直接进行压缩历史对话
 
-
 对于上述问题：https://grok.com/share/c2hhcmQtMi1jb3B5_374f2c52-8da4-4bfd-8133-d07070f91114
+[//]: # (### Sub Agents服务)
+[//]: # (在上面抓包分析过程中发现一个subagents服务，简单去了解一些其整个过程)
 ## 参考
 [^1]: [https://www.bilibili.com/video/BV1BFouBYERu/?spm_id_from=333.337.search-card.all.click&vd_source=881c4826193cfb648b5cdd0bad9f19f0](https://www.bilibili.com/video/BV1BFouBYERu/?spm_id_from=333.337.search-card.all.click&vd_source=881c4826193cfb648b5cdd0bad9f19f0)
 [^2]: [https://www.cnblogs.com/youring2/p/20065433](https://www.cnblogs.com/youring2/p/20065433)
@@ -348,3 +384,4 @@ while True:
 [^6]: [https://www.big-yellow-j.top/posts/2026/03/15/vllm-3.html](https://www.big-yellow-j.top/posts/2026/03/15/vllm-3.html)
 [^7]: [https://arxiv.org/pdf/2507.13334](https://arxiv.org/pdf/2507.13334)
 [^8]: [https://code.claude.com/docs/zh-CN/prompt-caching](https://code.claude.com/docs/zh-CN/prompt-caching)
+[^9]: [https://code.claude.com/docs/zh-CN/claude-directory#ce-global-projects](https://code.claude.com/docs/zh-CN/claude-directory#ce-global-projects)
