@@ -88,13 +88,13 @@ class MeralionSERConfig(BasicConfig):
             "/home/huangjie/MdiriCode/SER/test.csv",
         ])
 
-    resample_target_count: int = None
-    resample_labels: List[str] = field(default_factory=lambda: ["sad", "disgusted", "fearful", "surprised"])
+    resample_target_count: int = 150
+    resample_labels: List[str] = field(default_factory=lambda: ["sad", "disgusted", "fearful", "surprised", "happy"])
     neutral_max_samples: int = 0  # neutral 最大保留数，0=不限制；推荐 4000~6000（配合 resample 可设更小）
     num_proc: int = 1
     epoch: int = 100
     max_length: int = 16000 * 30 # Whisper 编码器要求 mel 特征固定 3000 帧（= 30秒@16kHz)
-    batch_size: int = 32
+    batch_size: int = 36
     learning_rate: float = 1e-5
     checkpointing_steps: int = -1
     checkpoints_total_limit: int = 2
@@ -118,7 +118,7 @@ class MeralionSERConfig(BasicConfig):
     finetune_strategy: str = "all_parameter"
     ddp_find_unused_params: bool = False
 
-    num_workers: int = 8
+    num_workers: int = 16
     pin_memory: bool = True
     persistent_workers: bool = True
     prefetch_factor: int = 2
@@ -133,6 +133,10 @@ class MeralionSERConfig(BasicConfig):
     gradient_checkpointing_kwargs: Optional[dict] = None
     gradient_checkpointing: bool = False  # MERaLiON-SER 不支持 gradient checkpointing
     distributed_strategy: str = "ddp"
+    # attention backend: ""(default/no override) | "flash_attention_2" | "sdpa" | "eager"
+    attn_implementation: str = ""
+    # legacy switch: True 等价于 attn_implementation="flash_attention_2"
+    use_flash_attn: bool = False
 
     def _concat_all_data(self, config):
         return _concat_all_data_static(config.data_path_list)
@@ -260,6 +264,7 @@ class MeralionSERTrainer(DDPTrainer):
             trust_remote_code=True,
             local_files_only=local_path is not None,
         )
+        self._configure_attention_backend(model, config)
         # LoRA 参数从 config 读取（支持 Ray Tune 调参）
         lora_r = getattr(config, "lora_r", 32)
         lora_alpha = getattr(config, "lora_alpha", 64)
@@ -313,6 +318,52 @@ class MeralionSERTrainer(DDPTrainer):
         )
         return model, processor
 
+    def _configure_attention_backend(self, model, config: MeralionSERConfig) -> None:
+        requested = str(getattr(config, "attn_implementation", "") or "").strip().lower()
+        if not requested and bool(getattr(config, "use_flash_attn", False)):
+            requested = "flash_attention_2"
+        if not requested:
+            return
+
+        alias_map = {
+            "flash": "flash_attention_2",
+            "flash2": "flash_attention_2",
+            "flash_attn": "flash_attention_2",
+            "flash-attn": "flash_attention_2",
+        }
+        requested = alias_map.get(requested, requested)
+
+        target_model = model.whisper if hasattr(model, "whisper") else model
+
+        def _try_set(impl: str) -> bool:
+            try:
+                if hasattr(target_model, "set_attn_implementation"):
+                    target_model.set_attn_implementation(impl)
+                    return True
+                if hasattr(target_model, "config") and hasattr(target_model.config, "_attn_implementation"):
+                    target_model.config._attn_implementation = impl
+                    return True
+            except Exception as e:
+                self.log("warning", "[AttnImpl] set '%s' failed: %s", impl, e)
+            return False
+
+        if _try_set(requested):
+            self.log("info", "[AttnImpl] whisper attention backend -> %s", requested)
+            return
+
+        if requested == "flash_attention_2" and _try_set("sdpa"):
+            self.log(
+                "warning",
+                "[AttnImpl] flash_attention_2 unavailable, fallback -> sdpa",
+            )
+            return
+
+        self.log(
+            "warning",
+            "[AttnImpl] backend override ignored. requested=%s, model has no usable attn switch.",
+            requested,
+        )
+
     def _patch_modeling_file(self, snapshot_dir: str) -> None:
         modeling_file = os.path.join(snapshot_dir, "modeling_ser_whisper_ecapa.py")
         if not os.path.isfile(modeling_file):
@@ -364,7 +415,8 @@ class MeralionSERTrainer(DDPTrainer):
         resampled_labels = list(labels)
 
         for lbl in minority_labels:
-            indices = [i for i, l in enumerate(labels) if l == lbl]
+            # indices = [i for i, l in enumerate(labels) if l == lbl] # 对所有标签重采用
+            indices = [i for i, l in enumerate(labels) if l == lbl and 'studio' in paths[i]] # 只对自己数据重采用
             current = len(indices)
             if current <= 0 or current >= target_count:
                 continue

@@ -77,3 +77,60 @@ class BasicConfig:
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
+
+@dataclass
+class RayBaseConfig:
+    # 训练入口与运行方式
+    train_script: str = ""
+    train_cwd: Optional[str] = None
+    python_executable: str = "python3"
+    use_torchrun: bool = True
+    nproc_per_node: int = 1
+
+    # Ray 运行配置
+    experiment_name: str = "ray_ddp_tune"
+    storage_path: str = "./outputs/ray_results"
+    local_dir: Optional[str] = None
+    seed: int = 42
+    num_samples: int = 10
+    max_concurrent_trials: Optional[int] = None
+    resources_per_trial: Dict[str, float] = field(
+        default_factory=lambda: {"CPU": 4, "GPU": 1}
+    )
+    verbose: int = 1
+    fail_fast: bool = False
+
+    # 优化目标
+    metric: str = "metric"
+    mode: str = "max"  # "max" | "min"
+
+    # 搜索空间与固定参数（固定参数会与 trial 参数合并）
+    param_space: Dict[str, Any] = field(default_factory=dict)
+    fixed_params: Dict[str, Any] = field(default_factory=dict)
+
+    # 搜索算法:
+    # "random" | "optuna" | "hyperopt" | "bayesopt" | "bohb"
+    search_alg: str = "random"
+    search_alg_kwargs: Dict[str, Any] = field(default_factory=dict)
+
+    # 调度器:
+    # "fifo" | "asha" | "median" | "hyperband" | "pbt" | "bohb"
+    scheduler: str = "asha"
+    scheduler_kwargs: Dict[str, Any] = field(
+        default_factory=lambda: {"max_t": 50, "grace_period": 5, "reduction_factor": 3}
+    )
+
+    # 环境变量注入
+    env_vars: Dict[str, str] = field(default_factory=dict)
+
+    # 自定义 Ray init 参数，例如 {"address": "auto"}
+    ray_init_kwargs: Dict[str, Any] = field(default_factory=dict)
+
+    # trial 完成后读取 metric 的文件名（位于 trial 目录）
+    result_filename: str = "ray_result.json"
+
+    # 是否把 trial 的 stdout/stderr 回传到 ray 日志
+    echo_subprocess_log: bool = True
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
