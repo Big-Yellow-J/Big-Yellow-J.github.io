@@ -1,14 +1,12 @@
+import sys
+import os
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict
-import sys
 
-import os
-
-import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
-
 from datasets import load_dataset
 from torch.utils.data import DataLoader
 
@@ -45,6 +43,8 @@ class ResNet50DDPConfig(BasicConfig):
     mixed_precision: str = "bf16"
     gradient_checkpointing: bool = True
     distributed_strategy: str = "ddp" # "ddp"  # "ddp" | "fsdp2"
+    # Ray trial 中可关闭 checkpoint 以减少 I/O 与磁盘占用
+    disable_checkpointing: bool = False
 
 class ResNet50DDPTrainer(DDPTrainer):
     def __init__(self, config: ResNet50DDPConfig):
@@ -175,12 +175,39 @@ class ResNet50DDPTrainer(DDPTrainer):
             "Eval/ACC": float(total_correct.item() / num_samples),
         }
 
+def _apply_trial_overrides(config: ResNet50DDPConfig) -> None:
+    trial_params_json = os.environ.get("TRIAL_PARAMS", "")
+    if not trial_params_json:
+        return
+    params = json.loads(trial_params_json)
+    for k, v in params.items():
+        if hasattr(config, k):
+            setattr(config, k, v)
+    print(f"[Trial] Overriding config: {json.dumps(params, indent=2, ensure_ascii=False)}")
+
+
+def _write_ray_metrics(metrics: Dict[str, float]) -> None:
+    result_file = os.environ.get("RAY_RESULT_FILE", "")
+    if not result_file:
+        return
+    os.makedirs(os.path.dirname(result_file), exist_ok=True)
+    with open(result_file, "w", encoding="utf-8") as f:
+        json.dump(metrics, f, ensure_ascii=False, indent=2)
+    print(f"[Ray] trial metrics saved to: {result_file}")
 
 if __name__ == "__main__":
     """
     export HF_ENDPOINT=https://hf-mirror.com && CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2 ddp_resnet50.py
     """
     config = ResNet50DDPConfig()
+    _apply_trial_overrides(config)
     # config.distributed_strategy = "fsdp2"
     trainer = ResNet50DDPTrainer(config)
+    if config.disable_checkpointing:
+        # 屏蔽 train() 内所有 checkpoint 保存（含 last/interrupted）
+        trainer.save_checkpoint = lambda *args, **kwargs: None
     trainer.train()
+    final_metrics = trainer.evaluate()
+    if final_metrics:
+        print(f"[Final Eval] {final_metrics}")
+        _write_ray_metrics(final_metrics)

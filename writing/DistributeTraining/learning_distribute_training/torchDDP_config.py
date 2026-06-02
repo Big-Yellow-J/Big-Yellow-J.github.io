@@ -2,7 +2,7 @@ import os
 import random
 from datetime import datetime
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 @dataclass
 class BasicConfig:
@@ -82,18 +82,18 @@ class BasicConfig:
 class RayBaseConfig:
     # 训练入口与运行方式
     train_script: str = ""
-    train_cwd: Optional[str] = None
+    train_cwd: str = None
     python_executable: str = "python3"
     use_torchrun: bool = True
     nproc_per_node: int = 1
 
     # Ray 运行配置
+    local_dir: str = None
     experiment_name: str = "ray_ddp_tune"
     storage_path: str = "./outputs/ray_results"
-    local_dir: Optional[str] = None
     seed: int = 42
-    num_samples: int = 10
-    max_concurrent_trials: Optional[int] = None
+    num_samples: int = 10 # 寻参次数
+    max_concurrent_trials: int = None
     resources_per_trial: Dict[str, float] = field(
         default_factory=lambda: {"CPU": 4, "GPU": 1}
     )
@@ -125,12 +125,22 @@ class RayBaseConfig:
 
     # 自定义 Ray init 参数，例如 {"address": "auto"}
     ray_init_kwargs: Dict[str, Any] = field(default_factory=dict)
+    runtime_env_excludes: List[str] = field(
+        default_factory=lambda: [
+            "ModelTrainingResult/**",
+            "outputs/**",
+            "**/__pycache__/**",
+            ".git/**",
+        ]
+    )
 
     # trial 完成后读取 metric 的文件名（位于 trial 目录）
     result_filename: str = "ray_result.json"
-
-    # 是否把 trial 的 stdout/stderr 回传到 ray 日志
     echo_subprocess_log: bool = True
+
+    # 是否启用 trial 内自动断点续训
+    auto_resume_trial: bool = True
+    trial_store_subdir: str = "ddp_outputs"
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
