@@ -18,6 +18,8 @@ jekyll-minifier:
   collapse_whitespace: true
   minify_js: true
   minify_css: true
+  uglifier_args:
+    harmony: true
 
 paginate: 30
 paginate_path: "/page:num/"
