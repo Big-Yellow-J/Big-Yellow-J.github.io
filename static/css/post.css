@@ -41,6 +41,14 @@ body {
   margin: 5px 0; /* Add this rule for consistent paragraph spacing */
 }
 .page-post .post h1,
+.page-post .post h2,
+.page-post .post h3,
+.page-post .post h4,
+.page-post .post h5,
+.page-post .post h6 {
+  scroll-margin-top: 80px;   /* 锚点跳转 / TOC 点击时与顶部保持距离 */
+}
+.page-post .post h1,
 .page-post .post h2 {
   font-family: "Noto Serif SC", "Georgia", serif;
   font-weight: normal;

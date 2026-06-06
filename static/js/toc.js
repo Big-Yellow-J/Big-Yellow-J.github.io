@@ -118,15 +118,35 @@ document.addEventListener('DOMContentLoaded', function () {
   window.addEventListener('resize', syncFloatingVisibility);
   syncFloatingVisibility();
 
-  // 平滑滚动
+  // 平滑滚动：用 getBoundingClientRect 替代 offsetTop（避免嵌套 offsetParent 错算）
+  // + 二次校正（图片懒加载导致 layout shift 后位置漂移）
+  function scrollToHeading(target) {
+    const headerHeight = document.querySelector('header')?.offsetHeight || 0;
+    const offset = headerHeight + 20;
+    const computeTop = () => target.getBoundingClientRect().top + window.scrollY - offset;
+    window.scrollTo({ top: computeTop(), behavior: 'smooth' });
+    // 700ms 后页面应已稳定，如位置仍漂移 > 4px 再补一次（一般是图片懒加载触发的 layout shift）
+    setTimeout(() => {
+      const drift = Math.abs(target.getBoundingClientRect().top - offset);
+      if (drift > 4) window.scrollTo({ top: computeTop(), behavior: 'smooth' });
+    }, 700);
+    // 1500ms 后再补最后一次，兜底慢加载的图
+    setTimeout(() => {
+      const drift = Math.abs(target.getBoundingClientRect().top - offset);
+      if (drift > 4) window.scrollTo({ top: computeTop(), behavior: 'auto' });
+    }, 1500);
+  }
+
   toc.querySelectorAll('a').forEach(link => {
     link.addEventListener('click', function (e) {
       e.preventDefault();
       const target = document.getElementById(this.getAttribute('data-target-id'));
       if (!target) return;
-      const headerHeight = document.querySelector('header')?.offsetHeight || 0;
-      window.scrollTo({ top: target.offsetTop - headerHeight - 20, behavior: 'smooth' });
       if (isMobile()) closeMobile();
+      // 移动端关闭抽屉时 body 会有 transform 变化，等下一帧再算位置
+      requestAnimationFrame(() => scrollToHeading(target));
+      // 把 hash 写进 URL 不触发原生 hashchange 跳转
+      history.replaceState(null, '', '#' + target.id);
     });
   });
 
