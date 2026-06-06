@@ -63,7 +63,7 @@ jobs:
           bundler-cache: true
 
       - name: Cache Jekyll incremental output
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .jekyll-cache
           key: jekyll-${{ runner.os }}-${{ github.sha }}
