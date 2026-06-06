@@ -16,10 +16,9 @@ plugins:
 jekyll-minifier:
   remove_comments: true
   collapse_whitespace: true
-  minify_js: true
+  minify_js: false      # uglifier 4.2.1 不识别 ES2020+ (?., ??, async)，inline JS 关掉压缩
   minify_css: true
-  uglifier_args:
-    harmony: true
+  preserve_php: false
 
 paginate: 30
 paginate_path: "/page:num/"
