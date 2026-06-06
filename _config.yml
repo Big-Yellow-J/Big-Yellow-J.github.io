@@ -60,7 +60,7 @@ include:
   - index_now.txt
   - preview_writing.html
   - life.html
-exclude: ['CNAME', 'README.md', 'LICENSE', '_site', 'code', 'dist', 'Gemfile', 'Gemfile.lock', 'blog.sh', 'writing/DistributeTraining/learning_distribute_training']
+exclude: ['CNAME', 'README.md', 'LICENSE', '_site', 'code', 'dist', 'Gemfile', 'Gemfile.lock', 'blog.sh', 'vendor', 'node_modules', 'scripts', '.bundle', 'writing/DistributeTraining/learning_distribute_training']
 
 # 域名配置
 # baseurl配置,如果网站部署在根目录下的其他目录中，请设置为 /目录名
