@@ -6,15 +6,21 @@ title: 文章分类
 <div class="page page-categories">
   <div class="list-category">
     <h2>所有分类</h2>
-    <div>
+    <div class="category-grid">
       {%- for category in site.categories %}
-      <a href="javascript:document.getElementById('{{ category[0] }}').scrollIntoView()">{{ category[0] }}</a>
+      <a href="#{{ category[0] }}" class="category-card">
+        <span class="category-name">{{ category[0] }}</span>
+        <span class="category-count">{{ category[1] | size }}</span>
+      </a>
       {%- endfor %}
     </div>
   </div>
   {%- for category in site.categories %}
   <div class="list-post">
-    <h2 id="{{ category[0] }}">{{ category[0] }}</h2>
+    <h2 id="{{ category[0] }}">
+      <i class="fas fa-folder-open"></i> {{ category[0] }}
+      <span class="category-count-inline">{{ category[1] | size }} 篇</span>
+    </h2>
     <ul>
       {%- for post in category[1] %}
       <li>

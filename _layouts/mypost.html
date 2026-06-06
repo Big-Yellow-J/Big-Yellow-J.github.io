@@ -7,6 +7,27 @@
 <div id="toc"></div>
 {%- endif -%}
 <div class="page page-post">
+  {%- if page.categories and page.categories.size > 0 -%}
+  {%- assign first_cat = page.categories | first -%}
+  <nav class="breadcrumbs" aria-label="面包屑">
+    <a href="{{ site.baseurl }}/">首页</a>
+    <span>/</span>
+    <a href="{{ site.baseurl }}/pages/categories.html#{{ first_cat | url_encode }}">{{ first_cat }}</a>
+    <span>/</span>
+    <span class="current">{{ page.title }}</span>
+  </nav>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "首页", "item": "{{ '/' | absolute_url }}" },
+      { "@type": "ListItem", "position": 2, "name": "{{ first_cat }}", "item": "{{ '/pages/categories.html' | absolute_url }}" },
+      { "@type": "ListItem", "position": 3, "name": "{{ page.title | escape }}", "item": "{{ page.url | absolute_url }}" }
+    ]
+  }
+  </script>
+  {%- endif -%}
   <h1 class="title" id="{{ page.title }}">{{ page.title }}</h1>
   {% assign words = content | number_of_words %}
   {% assign minutes = words | divided_by: 60 | plus: 1 %}
@@ -115,6 +136,24 @@
       <i class="fab fa-reddit-alien"></i>
     </button>
   </div>
+
+  {%- if page.categories and page.categories.size > 0 -%}
+  {%- assign cur_cat = page.categories | first -%}
+  {%- assign related = site.categories[cur_cat] | where_exp: "p", "p.url != page.url" -%}
+  {%- if related.size > 0 -%}
+  <aside class="related-posts">
+    <h3><i class="fas fa-bookmark"></i> 相关阅读 · {{ cur_cat }}</h3>
+    <ul>
+      {%- for p in related limit: 5 -%}
+      <li>
+        <span class="date">{{ p.date | date: "%Y-%m-%d" }}</span>
+        <a href="{{ site.baseurl }}{{ p.url }}">{{ p.title }}</a>
+      </li>
+      {%- endfor -%}
+    </ul>
+  </aside>
+  {%- endif -%}
+  {%- endif -%}
 
   <div class="navigation-buttons">
     {% unless page.categories contains "life" %}

@@ -103,8 +103,22 @@ def format_image(md_content, image_store_dir, max_threads):
             except Exception as e:
                 print(f"❌ 上传出错（token: {smms_api_key[:4]}***）：{webp_path} - {e}")
 
+    SKIP_HOSTS = ('s2.loli.net', 'i.loli.net', 'sm.ms', 's.ee')
+
     def download_convert(image_url, output_path, quality=85, image_bed='sm.ms'):
-        """下载图片将其转化为webp，返回 (源URL, 新URL, 宽, 高)"""
+        """下载图片将其转化为webp，返回 (源URL, 新URL, 宽, 高)。已是图床地址则跳过下载。"""
+        host = urlparse(image_url).netloc
+        if any(host.endswith(h) for h in SKIP_HOSTS):
+            try:
+                response = requests.get(image_url, timeout=10)
+                response.raise_for_status()
+                image = Image.open(BytesIO(response.content))
+                width, height = image.size
+                print(f"⏭️  跳过转换（已是图床地址）：{image_url} ({width}x{height})")
+                return image_url, image_url, width, height
+            except Exception as e:
+                print(f"⚠️  跳过但拉宽高失败：{image_url} - {e}")
+                return image_url, image_url, 0, 0
         try:
             response = requests.get(image_url, timeout=10)
             response.raise_for_status()
@@ -150,7 +164,9 @@ def format_image(md_content, image_store_dir, max_threads):
             return match.group(0)
         new_url, w, h = info_map[url]
         alt = (match.group('alt') or 'image').replace('"', '&quot;')
-        return f'<img src="{new_url}" alt="{alt}" width="{w}" height="{h}" loading="lazy" decoding="async" />'
+        if w and h:
+            return f'<img src="{new_url}" alt="{alt}" width="{w}" height="{h}" loading="lazy" decoding="async" />'
+        return f'<img src="{new_url}" alt="{alt}" loading="lazy" decoding="async" />'
 
     md_content = image_pattern.sub(render, md_content)
     return md_content

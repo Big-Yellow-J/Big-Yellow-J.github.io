@@ -1,0 +1,15 @@
+{
+  "name": "Big-Yellow-J",
+  "short_name": "BigYJ",
+  "description": "个人技术博客 - 算法原理、实现细节与代码实战",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3366cc",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "/static/img/logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/static/img/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

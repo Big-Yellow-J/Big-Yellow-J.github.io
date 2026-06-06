@@ -61,3 +61,9 @@ Thumbs.db
 /.obsidian/
 *.json
 /.junie/!/CLAUDE.md
+!manifest.json
+
+# ---- Distribute Training 训练产物（不入库） ----
+writing/DistributeTraining/learning_distribute_training/outputs/
+writing/DistributeTraining/learning_distribute_training/ModelTrainingResult
+writing/DistributeTraining/learning_distribute_training/__pycache__/

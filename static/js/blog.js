@@ -454,6 +454,44 @@ blog.addLoadEvent(function () {
   })
 })
 
+// 阅读进度条（仅文章页）
+blog.addLoadEvent(function () {
+  const article = document.querySelector('.post.page-post')
+  if (!article) return
+  const bar = document.createElement('div')
+  bar.className = 'read-progress'
+  document.body.appendChild(bar)
+  let ticking = false
+  function update() {
+    const top = article.offsetTop
+    const height = article.offsetHeight - window.innerHeight
+    const scrolled = Math.max(0, window.scrollY - top)
+    const pct = Math.min(100, Math.max(0, (scrolled / Math.max(1, height)) * 100))
+    bar.style.width = pct + '%'
+    ticking = false
+  }
+  window.addEventListener('scroll', () => {
+    if (ticking) return
+    ticking = true
+    requestAnimationFrame(update)
+  })
+  update()
+})
+
+// toast 工具：blog.toast('已复制')
+blog.toast = function (msg) {
+  let el = document.querySelector('.copy-toast')
+  if (!el) {
+    el = document.createElement('div')
+    el.className = 'copy-toast'
+    document.body.appendChild(el)
+  }
+  el.textContent = msg
+  el.classList.add('show')
+  clearTimeout(blog.toast._t)
+  blog.toast._t = setTimeout(() => el.classList.remove('show'), 1500)
+}
+
 // 切换夜间模式
 blog.addLoadEvent(function () {
   const $el = document.querySelector('.footer-btn.theme-toggler')

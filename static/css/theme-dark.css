@@ -93,3 +93,52 @@ html.dark .footer-btn {
 html.dark .footer-btn i {
   opacity: 0.7;
 }
+
+/* ===== 暗色覆盖：新增组件 ===== */
+html.dark #toc {
+  --toc-bg: rgba(22, 27, 34, 0.92);
+  --toc-border: rgba(255, 255, 255, 0.08);
+  --toc-text: #c9d1d9;
+  --toc-text-strong: #f0f6fc;
+  --toc-accent: #58a6ff;
+  --toc-accent-bg: rgba(88, 166, 255, 0.12);
+  color: var(--toc-text);
+}
+html.dark .toc-list a { color: var(--toc-text); }
+html.dark .toc-list ul a { color: #8b949e; }
+html.dark #toc.collapsed { background: transparent; border: none; }
+@media (max-width: 768px) {
+  html.dark #toc,
+  html.dark #toc.collapsed {
+    background: #161b22;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+}
+html.dark .post-description-llm {
+  background: #161b22;
+  color: #c9d1d9;
+  border-left-color: #58a6ff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+html.dark .post-description-llm.is-done { border-left-color: #3fb950; }
+
+html.dark .breadcrumbs { color: #8b949e; }
+html.dark .breadcrumbs a { color: #58a6ff; }
+html.dark .breadcrumbs .current { color: #c9d1d9; }
+html.dark .breadcrumbs span { color: #484f58; }
+
+html.dark .read-progress {
+  background: linear-gradient(90deg, #58a6ff, #79c0ff);
+}
+
+html.dark .nav-button {
+  background-color: #161b22;
+  color: #c9d1d9;
+  border: 1px solid #30363d;
+}
+html.dark .nav-button:hover:not(.disabled) { background-color: #21262d; }
+
+html.dark .share-button i { color: #c9d1d9; }
+html.dark .page-post th { background-color: #161b22; color: #c9d1d9; }
+html.dark .page-post td { background-color: #0d1117; color: #c9d1d9; }
+html.dark .page-post tr:hover td { background-color: #1c2129; }

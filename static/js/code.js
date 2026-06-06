@@ -46,6 +46,7 @@ document.addEventListener("DOMContentLoaded", function() {
             navigator.clipboard.writeText(code.textContent);
             this.innerText = 'Done!';
             setTimeout(() => this.innerText = 'Copy', 2000);
+            if (window.blog && blog.toast) blog.toast('代码已复制');
         });
     });
 

@@ -1,11 +1,18 @@
 {%- assign buildAt = site.time | date: "%Y%m%d%H%M%S" -%}
 {%- assign page_url_abs = page.url | absolute_url -%}
 {%- assign page_desc = page.description | default: site.description | strip_html | strip_newlines | truncate: 200 | escape -%}
-{%- assign og_image = page.cover | default: site.cover | default: 'https://s2.loli.net/2025/04/29/ntFU5SIfNCeK2Hy.png' -%}
+{%- assign og_image = page.image | default: page.cover | default: site.cover | default: 'https://s2.loli.net/2025/04/29/ntFU5SIfNCeK2Hy.png' -%}
 {%- if page.layout == 'mypost' -%}{%- assign og_type = 'article' -%}{%- else -%}{%- assign og_type = 'website' -%}{%- endif -%}
+{%- if page.url == '/' -%}
+  {%- assign page_title_full = site.title -%}
+{%- elsif page.layout == 'mypost' -%}
+  {%- assign page_title_full = page.title | append: ' | ' | append: site.title -%}
+{%- else -%}
+  {%- assign page_title_full = page.title | append: ' | ' | append: site.title -%}
+{%- endif -%}
 <head>
   <meta charset="utf-8" />
-  <title>{{ page.title }}</title>
+  <title>{{ page_title_full }}</title>
 
   <!-- 预连接：图床 / 字体 / CDN / 上报 -->
   <link rel="preconnect" href="https://s2.loli.net" crossorigin>
@@ -19,10 +26,16 @@
   <link rel="dns-prefetch" href="https://cloud.umami.is">
   <link rel="dns-prefetch" href="https://analytics.ahrefs.com">
 
+  <!-- 字体：首页/分类页只用 Sans，文章页才载 Serif -->
+  {%- if page.layout == 'mypost' %}
   <link href="https://fonts.loli.net/css2?family=Noto+Sans+SC:wght@400;700&family=Noto+Serif+SC:wght@400;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  {%- else %}
+  <link href="https://fonts.loli.net/css2?family=Noto+Sans+SC:wght@400;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  {%- endif %}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   {%- if page.layout == 'mypost' %}
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@5.4.4/dist/photoswipe.css" />
+  <link rel="preload" as="style" href="https://cdn.jsdelivr.net/npm/photoswipe@5.4.4/dist/photoswipe.css" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@5.4.4/dist/photoswipe.css"></noscript>
   {%- endif %}
 
   <meta http-equiv="content-language" content="zh-CN" />
@@ -85,6 +98,7 @@
 
   <link rel="icon" href="{{site.baseurl}}/static/img/favicon.ico" />
   <link rel="apple-touch-icon" href="{{site.baseurl}}/static/img/logo.png" />
+  <link rel="manifest" href="{{site.baseurl}}/manifest.json" />
   <link rel="stylesheet" href="{{site.baseurl}}/static/css/common.css?t={{buildAt}}" />
   <link rel="stylesheet" href="{{site.baseurl}}/static/css/theme-dark.css?t={{buildAt}}" />
   {%- if page.layout == "mypost" %}
