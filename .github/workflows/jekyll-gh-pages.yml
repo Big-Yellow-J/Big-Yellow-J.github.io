@@ -36,7 +36,7 @@ jobs:
     name: Lint front matter
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # jekyll-last-modified-at 需要历史
 
@@ -109,7 +109,7 @@ jobs:
             echo "GOOGLE_SA_JSON secret not set, skipping search-engine ping."
             echo "skip=1" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         if: steps.gate.outputs.skip != '1'
       - uses: actions/setup-python@v5
         if: steps.gate.outputs.skip != '1'
