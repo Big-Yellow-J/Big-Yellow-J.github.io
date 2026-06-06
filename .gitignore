@@ -60,4 +60,4 @@ Makefile
 Thumbs.db
 /.obsidian/
 *.json
-/.junie/
+/.junie/!/CLAUDE.md

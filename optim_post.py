@@ -104,50 +104,55 @@ def format_image(md_content, image_store_dir, max_threads):
                 print(f"❌ 上传出错（token: {smms_api_key[:4]}***）：{webp_path} - {e}")
 
     def download_convert(image_url, output_path, quality=85, image_bed='sm.ms'):
-        """下载图片将其转化为webp"""
+        """下载图片将其转化为webp，返回 (源URL, 新URL, 宽, 高)"""
         try:
             response = requests.get(image_url, timeout=10)
             response.raise_for_status()
             image = Image.open(BytesIO(response.content)).convert("RGB")
+            width, height = image.size
 
             output_path.parent.mkdir(parents=True, exist_ok=True)
             file_name_with_ext = Path(urlparse(image_url).path).name
             file_name = Path(file_name_with_ext).stem
-            save_path = output_path / f"{file_name}.webp"  
+            save_path = output_path / f"{file_name}.webp"
             image.save(save_path, format="webp", quality=quality)
 
             url_path = upload_webp_file(save_path, image_bed=image_bed)
-            print(f"✅ 处理完成：{image_url} → {save_path.name} → {url_path}")
-            return image_url, url_path
+            print(f"✅ 处理完成：{image_url} → {save_path.name} → {url_path} ({width}x{height})")
+            return image_url, url_path, width, height
         except Exception as e:
             print(f"❌ 下载/转换失败：{image_url} - {e}")
-            return image_url, None
+            return image_url, None, None, None
     image_pattern = re.compile(
-        r'!\[.*?\]\((https?://[^\s)]+\.(?:png|jpg|jpeg|webp|gif|bmp|svg))\)',
+        r'!\[(?P<alt>[^\]]*)\]\((?P<url>https?://[^\s)]+\.(?:png|jpg|jpeg|webp|gif|bmp|svg))\)',
         re.IGNORECASE
     )
-    matches = image_pattern.findall(md_content)
+    matches = list(image_pattern.finditer(md_content))
 
     if not matches:
         return md_content
 
-    future_to_url = {}
+    urls = list({m.group('url') for m in matches})
+    info_map = {}
     with ThreadPoolExecutor(max_workers=max_threads) as executor:
-        for image_url in matches:
-            future = executor.submit(download_convert, image_url, image_store_dir)
-            future_to_url[future] = image_url
-
-        url_map = {}
+        future_to_url = {executor.submit(download_convert, u, image_store_dir): u for u in urls}
         for future in as_completed(future_to_url):
-            image_url, url_path = future.result()
+            image_url, url_path, w, h = future.result()
             if url_path:
-                url_map[image_url] = url_path
+                info_map[image_url] = (url_path, w, h)
 
-    if url_map:
-        escaped = map(re.escape, url_map)
-        pattern = re.compile('|'.join(escaped))
-        md_content = pattern.sub(lambda m: url_map[m.group(0)], md_content)
+    if not info_map:
+        return md_content
 
+    def render(match):
+        url = match.group('url')
+        if url not in info_map:
+            return match.group(0)
+        new_url, w, h = info_map[url]
+        alt = (match.group('alt') or 'image').replace('"', '&quot;')
+        return f'<img src="{new_url}" alt="{alt}" width="{w}" height="{h}" loading="lazy" decoding="async" />'
+
+    md_content = image_pattern.sub(render, md_content)
     return md_content
 
 def format_description(md_content, yaml_dict, description, md_path):

@@ -244,7 +244,6 @@ for epoch in range(5):
         loss.backward()
         optimizer.step()
 ```
-
 ## 参考
 [^1]: [https://www.telesens.co/2019/04/04/distributed-data-parallel-training-using-pytorch-on-aws/](https://www.telesens.co/2019/04/04/distributed-data-parallel-training-using-pytorch-on-aws/)
 [^2]: [https://arxiv.org/pdf/1811.06965](https://arxiv.org/pdf/1811.06965)

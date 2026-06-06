@@ -445,125 +445,194 @@ body, p, div, span, a {
 }
 
 
+/* AI 摘要（从 mypost.html 抽离） */
+.post-description-llm {
+  font-family: 'Noto Serif SC', serif;
+  white-space: pre-wrap;
+  font-size: 1rem;
+  padding: 12px 14px 12px 16px;
+  border-left: 4px solid #4a90e2;
+  background: #f8fafc;
+  border-radius: 8px;
+  margin: 20px 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  line-height: 1.6;
+  color: #333;
+  opacity: 0;
+  transition: opacity .5s ease-in, border-left-color .4s ease;
+}
+.post-description-llm.is-ready { opacity: 1; }
+.post-description-llm.is-done { border-left-color: #2ecc71; }
+
+/* ===== 目录 TOC ===== */
 #toc {
+  --toc-bg: rgba(252, 252, 253, 0.92);
+  --toc-border: rgba(0, 0, 0, 0.06);
+  --toc-text: #4a4a4a;
+  --toc-text-strong: #1f1f1f;
+  --toc-accent: #3366cc;
+  --toc-accent-bg: rgba(51, 102, 204, 0.08);
   position: fixed;
   top: 100px;
   left: 20px;
-  width: 180px;
-  max-height: calc(100vh - 120px);
+  width: 220px;
+  max-height: calc(100vh - 140px);
   overflow-y: auto;
-  background: #f8f8f8;
-  padding: 10px;
-  border-radius: 5px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  font-size: 0.9em;
+  background: var(--toc-bg);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--toc-border);
+  padding: 12px 10px 12px 14px;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  font-family: "Noto Sans SC", "Helvetica Neue", Arial, sans-serif;
+  font-size: 13.5px;
+  line-height: 1.7;
   z-index: 10;
-  transition: all 0.3s ease;
+  transition: top .3s ease, transform .25s ease, opacity .25s ease;
 }
+#toc::-webkit-scrollbar { width: 4px; }
+#toc::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); border-radius: 4px; }
 
 #toc.collapsed {
   width: auto;
   padding: 0;
   background: transparent;
   box-shadow: none;
+  border: none;
   overflow: visible;
 }
-
 #toc.collapsed .toc-header,
 #toc.collapsed .toc-title,
-#toc.collapsed .toc-list {
-  display: none;
-}
-
-/* 透明浮动汉堡按钮 */
-.toc-toggle-floating {
-  position: fixed;
-  top: 100px; /* 可自定义位置 */
-  left: 20px;
-  background: transparent;
-  border: none;
-  font-size: 1.6em;
-  cursor: pointer;
-  padding: 8px;
-  z-index: 1000;
-}
-
-.toc-toggle-floating i {
-  color: rgba(0, 0, 0, 0.2); /* 半透明三条线 */
-}
-
-.toc-toggle-floating:hover i {
-  color: rgba(0, 123, 255, 0.5);
-}
+#toc.collapsed .toc-list { display: none; }
 
 .toc-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--toc-border);
 }
-
 .toc-title {
-  font-size: 1.1em;
-  font-weight: bold;
-  color: #333;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--toc-text-strong);
+  letter-spacing: 0.5px;
 }
-
 .toc-toggle {
   background: none;
   border: none;
-  font-size: 1.1em;
   cursor: pointer;
-  color: #333;
+  color: var(--toc-text);
   padding: 0;
+  font-size: 14px;
+  line-height: 1;
 }
-
-.toc-toggle:hover {
-  color: #007bff;
-}
+.toc-toggle:hover { color: var(--toc-accent); }
 
 .toc-list {
   list-style: none;
   padding: 0;
   margin: 0;
 }
-
-.toc-list li {
-  margin: 5px 0;
-}
-
+.toc-list li { margin: 0; }
 .toc-list a {
-  text-decoration: none;
-  color: #333;
-  transition: color 0.2s;
   display: block;
-  padding: 2px 0;
+  position: relative;
+  padding: 4px 8px 4px 14px;
+  text-decoration: none;
+  color: var(--toc-text);
+  border-left: 2px solid transparent;
+  border-radius: 0 4px 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color .15s, background-color .15s, border-color .15s;
 }
-
 .toc-list a:hover {
-  color: #007bff;
+  color: var(--toc-accent);
+  background: var(--toc-accent-bg);
 }
-
-.toc-list ul {
-  padding-left: 15px;
-}
-
 .toc-list a.active {
-  color: #007bff;
-  font-weight: bold;
+  color: var(--toc-accent);
+  font-weight: 600;
+  background: var(--toc-accent-bg);
+  border-left-color: var(--toc-accent);
 }
+/* 层级阶梯缩进（h2 → h6） */
+.toc-list ul { list-style: none; padding-left: 12px; margin: 0; }
+.toc-list ul ul { padding-left: 12px; }
+.toc-list ul a { font-size: 13px; color: #6a6a6a; }
+.toc-list ul ul a { font-size: 12.5px; }
+
+/* 浮动汉堡按钮（桌面端折叠时显示，移动端常驻） */
+.toc-toggle-floating {
+  position: fixed;
+  top: 100px;
+  left: 20px;
+  background: transparent;
+  border: none;
+  font-size: 1.5em;
+  cursor: pointer;
+  padding: 8px;
+  z-index: 1000;
+  line-height: 1;
+}
+.toc-toggle-floating i { color: rgba(0, 0, 0, 0.25); transition: color .2s; }
+.toc-toggle-floating:hover i { color: var(--toc-accent); }
+
+/* 抽屉遮罩（移动端用） */
+.toc-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 998;
+  opacity: 0;
+  transition: opacity .25s ease;
+}
+.toc-mask.is-open { opacity: 1; }
 
 @media (max-width: 768px) {
   #toc {
-    position: static;
-    width: 100%;
-    max-height: none;
-    margin: 20px 0;
+    position: fixed;
+    top: 0;
+    left: auto;
+    right: 0;
+    bottom: 0;
+    width: 78vw;
+    max-width: 320px;
+    max-height: 100vh;
+    margin: 0;
+    border-radius: 12px 0 0 12px;
+    padding: 18px 14px 18px 16px;
+    transform: translateX(100%);
+    background: #ffffff;
+    box-shadow: -6px 0 24px rgba(0, 0, 0, 0.12);
+    z-index: 999;
   }
+  body.toc-open #toc { transform: translateX(0); }
+  /* 移动端不再走 collapsed 隐藏，统一靠 body.toc-open 切换 */
+  #toc.collapsed { background: #ffffff; padding: 18px 14px 18px 16px; box-shadow: -6px 0 24px rgba(0, 0, 0, 0.12); border: 1px solid var(--toc-border); }
+  #toc.collapsed .toc-header,
+  #toc.collapsed .toc-title,
+  #toc.collapsed .toc-list { display: block; }
+  #toc.collapsed .toc-header { display: flex; }
 
   .toc-toggle-floating {
     top: auto;
-    left: 10px;
-    bottom: 20px;
+    left: auto;
+    right: 18px;
+    bottom: 84px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--toc-accent, #3366cc);
+    box-shadow: 0 6px 16px rgba(51, 102, 204, 0.35);
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1em;
   }
+  .toc-toggle-floating i { color: #ffffff !important; }
 }

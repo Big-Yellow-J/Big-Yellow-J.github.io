@@ -1,10 +1,30 @@
 {%- assign buildAt = site.time | date: "%Y%m%d%H%M%S" -%}
+{%- assign page_url_abs = page.url | absolute_url -%}
+{%- assign page_desc = page.description | default: site.description | strip_html | strip_newlines | truncate: 200 | escape -%}
+{%- assign og_image = page.cover | default: site.cover | default: 'https://s2.loli.net/2025/04/29/ntFU5SIfNCeK2Hy.png' -%}
+{%- if page.layout == 'mypost' -%}{%- assign og_type = 'article' -%}{%- else -%}{%- assign og_type = 'website' -%}{%- endif -%}
 <head>
-  <link href="https://fonts.loli.net/css2?family=Noto+Sans+SC:wght@400;700&family=Noto+Serif+SC:wght@400;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
-  <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"> -->
-  <link href="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/font-awesome/6.0.0/css/all.min.css" type="text/css" rel="stylesheet" />
-  <title>{{ page.title }}</title>
   <meta charset="utf-8" />
+  <title>{{ page.title }}</title>
+
+  <!-- 预连接：图床 / 字体 / CDN / 上报 -->
+  <link rel="preconnect" href="https://s2.loli.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.loli.net" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="dns-prefetch" href="https://lf3-cdn-tos.bytecdntp.com">
+  <link rel="dns-prefetch" href="https://lf6-cdn-tos.bytecdntp.com">
+  <link rel="dns-prefetch" href="https://lf9-cdn-tos.bytecdntp.com">
+  <link rel="dns-prefetch" href="https://events.vercount.one">
+  <link rel="dns-prefetch" href="https://cloud.umami.is">
+  <link rel="dns-prefetch" href="https://analytics.ahrefs.com">
+
+  <link href="https://fonts.loli.net/css2?family=Noto+Sans+SC:wght@400;700&family=Noto+Serif+SC:wght@400;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  {%- if page.layout == 'mypost' %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@5.4.4/dist/photoswipe.css" />
+  {%- endif %}
+
   <meta http-equiv="content-language" content="zh-CN" />
   <meta name="theme-color" content="#ffffff" />
   <meta name="supported-color-schemes" content="light dark" />
@@ -28,7 +48,29 @@
   {%- endif -%}
   {%- assign all_keywords = all_keywords | strip | strip_newlines | replace: ',,', ',' | replace: ' ', '' | escape -%}
   <meta name="keywords" content="{{ site.author }},{{ all_keywords | strip | remove_last: ',' }}" />
-  <meta name="description" content="{{ page.description | default: site.description | escape }}" />
+  <meta name="description" content="{{ page_desc }}" />
+  <meta name="robots" content="index,follow" />
+  <link rel="canonical" href="{{ page_url_abs }}" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="{{ page.title | escape }}" />
+  <meta property="og:description" content="{{ page_desc }}" />
+  <meta property="og:url" content="{{ page_url_abs }}" />
+  <meta property="og:type" content="{{ og_type }}" />
+  <meta property="og:site_name" content="{{ site.title | escape }}" />
+  <meta property="og:locale" content="zh_CN" />
+  <meta property="og:image" content="{{ og_image }}" />
+  {%- if page.layout == 'mypost' %}
+  <meta property="article:published_time" content="{{ page.date | date_to_xmlschema }}" />
+  <meta property="article:modified_time" content="{% if page.last_modified_at %}{{ page.last_modified_at | date_to_xmlschema }}{% else %}{{ page.date | date_to_xmlschema }}{% endif %}" />
+  <meta property="article:author" content="{{ site.author }}" />
+  {%- endif %}
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="{{ page.title | escape }}" />
+  <meta name="twitter:description" content="{{ page_desc }}" />
+  <meta name="twitter:image" content="{{ og_image }}" />
 
   <!-- 谷歌收录 -->
   <!-- <meta name="google-site-verification" content="IDS97Lzd7uweEA7adjgQuo1V__a3xp9oKGq6OuoxZYg" /> -->

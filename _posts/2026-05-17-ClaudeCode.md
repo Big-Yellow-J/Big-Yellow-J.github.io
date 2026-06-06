@@ -237,9 +237,7 @@ When writing API endpoints:
 **第二步**、去构建我的脚本 `script`（不会写直接让AI帮你写即可），最后的script见[Github链接](https://github.com/Big-Yellow-J/Big-Yellow-J.github.io/tree/master/code/Python/skills/legaldocnorm)
 **第三步**、去构建一个reference，因为法律文书在书写上比较规划，模型可能不知道具体如何书写可以简单给一个参考让模型规范输出（规范文本可以直接用最高法院提供模板），这里只提供两种规范文本供参考：1、[广州市海珠区人民法院——民事答辩状](https://www.gzhzcourt.gov.cn/news/45007004.cshtml)；2、[广州市海珠区人民法院——民事起诉状)](https://www.gzhzcourt.gov.cn/news/45007009.cshtml)，最后所有的reference见[Github链接](https://github.com/Big-Yellow-J/Big-Yellow-J.github.io/tree/master/code/Python/skills/legaldocnorm)
 **skills底层原理**：还是一个function calling，所谓 **function calling**比如说：“北京今天天气如何？”输入模型模型（大模型本身只能输出文本不能去搜索网页等功能）通过分析用户文本输出结构化信息：`{"name": "get_weather", "arguments": {"date":xxx, ....}}` 而后通过结构化信息进行工具调用（比如说调用搜索天气相关的API进行天气检索）。因此虽然claude code中skills都是文本prompt，大模型在检索到要使用的skills之后通过分析skills中内容自动解析处需要进行操作，因此claude code中skills底层就是：`Prompt+Tool Description+ Few-shot examples+ Execution`
-<!-- ### MCP开发 -->
-
-[//]: # (### MCP 开发)
+### MCP 开发
 
 ## Claude Code抓包
 ### 简单网络抓包
@@ -422,7 +420,11 @@ When you are using compact - please focus on test output and code changes. Inclu
 REMINDER: Do NOT call any tools. Respond with plain text only — an <analysis> block followed by a <summary> block. Tool calls will be rejected and you will fail the task.
 ```
 ## Agent架构问题
-上面无论式skills涉及还是tools使用其实都会带来很多Agent底层设计问题比如说：**1、上下文工程（Context Engine）** 随着用户不断对话那么对话历史就会不断变长，如果将对话历史全部塞到对话窗口里面就会导致上下文过长问题（导致模型可能丢失/处理不好）；2、tools如果没有命中怎么办？ 等等诸如此类问题，因此下面对Agent设计过程中会遇到问题以及架构设计上内容就行介绍
+上面无论式skills涉及还是tools使用其实都会带来很多Agent底层设计问题比如说：**1、上下文工程（Context Engine）** 随着用户不断对话那么对话历史就会不断变长，如果将对话历史全部塞到对话窗口里面就会导致上下文过长问题（导致模型可能丢失/处理不好）；2、tools如果没有命中怎么办？ 等等诸如此类问题，因此下面对Agent设计过程中会遇到问题以及架构设计上内容进行介绍
+### Cache机制
+最上面简单介绍一下缓存机制，通过相同cache缓存命中去选择复用，不过值得注意的是虽然在对话过程中（进行抓包分析）每次用户输入都是在最上面，但是模型会将这些信息进行编排 `tools + system+ messages`这种方式，保存缓存命中。 在不同模型中缓存命中方式存在些许差异，比如说：**1、DeepSeek缓存命中机制**：；**2、Claude缓存命中机制**
+https://grok.com/c/b083cb5c-cf7a-40dd-8890-6998438f3d2a?rid=7f9573b4-b0ac-44f8-baa5-015f9f9caf5e
+https://zhuanlan.zhihu.com/p/17239625983
 ### Context Engine
 所谓上下文工程指的是，随着用户之间对话那么窗口token就肯定会超出模型限制（比如DeepSeek的1M），那么就需要对历史对话进行处理如压缩等（不过值得注意的是假设模型上下文窗口是1M在claude code中不会将所有上下文都用完才会去压缩，会设定阈值进行压缩，比如说达到80%自动进行压缩），以如下代码为例：
 ```python
