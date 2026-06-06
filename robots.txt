@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /writing/
+
+Sitemap: https://www.big-yellow-j.top/static/xml/sitemap.xml
