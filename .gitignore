@@ -63,6 +63,9 @@ Thumbs.db
 /.junie/!/CLAUDE.md
 !manifest.json
 
+# ---- 孤儿 submodule（未配置 .gitmodules，避免再次入库） ----
+code/Python/Agent/HelloAgents
+
 # ---- Distribute Training 训练产物（不入库） ----
 writing/DistributeTraining/learning_distribute_training/outputs/
 writing/DistributeTraining/learning_distribute_training/ModelTrainingResult
