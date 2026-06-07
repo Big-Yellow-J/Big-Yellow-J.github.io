@@ -2,7 +2,9 @@ import os
 import re
 import json
 import yaml
+import argparse
 import requests
+import threading
 from PIL import Image
 from io import BytesIO
 from pathlib import Path
@@ -13,6 +15,44 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 load_dotenv('./API_KEY.env')
+
+
+def parse_smms_tokens(raw_tokens: str):
+    """支持逗号/分号/换行分隔的多个 token。"""
+    if not raw_tokens:
+        return []
+    items = re.split(r'[\n,;]+', raw_tokens)
+    return [t.strip() for t in items if t.strip()]
+
+
+def get_llm_config(provider: str):
+    """按 provider 读取对应配置，支持 provider 专用键并回退到通用键。"""
+    provider = provider.lower()
+    if provider == 'deepseek':
+        base_url = (
+            os.getenv('DEEPSEEK_LLM_URL')
+            or os.getenv('DEEPSEEK_BASE_URL')
+            or 'https://api.deepseek.com'
+        )
+        api_key = os.getenv('DEEPSEEK_API_KEY') or os.getenv('API_KEY')
+        model_list = [
+            'deepseek-v4-flash',
+            'deepseek-v4-pro',
+        ]
+        return base_url, api_key, model_list
+
+    base_url = os.getenv('DOUBAO_LLM_URL') or os.getenv('LLM_URL')
+    api_key = os.getenv('DOUBAO_API_KEY') or os.getenv('API_KEY')
+    model_list = [
+        'doubao-seed-2-0-pro-260215',
+        'doubao-seed-1-6-250615',
+        'doubao-seed-1-6-flash-250615',
+        'doubao-seed-1-8-251228',
+        'doubao-seed-2-0-mini-260215',
+        'doubao-1-5-pro-32k-250115',
+        'doubao-1-5-lite-32k-250115'
+    ]
+    return base_url, api_key, model_list
 
 def format_yaml_head(md_content):
     '''去除头部 YAML 标记'''
@@ -80,28 +120,59 @@ def format_markdown(md_content,
 
 
 def format_image(md_content, image_store_dir, max_threads):
+    thread_local = threading.local()
+
+    def get_session():
+        session = getattr(thread_local, "session", None)
+        if session is None:
+            session = requests.Session()
+            pool_size = max(8, max_threads * 2)
+            adapter = requests.adapters.HTTPAdapter(
+                pool_connections=pool_size,
+                pool_maxsize=pool_size
+            )
+            session.mount("http://", adapter)
+            session.mount("https://", adapter)
+            thread_local.session = session
+        return session
+
     def upload_webp_file(webp_path: Path, image_bed='sm.ms'):
         if image_bed == 'sm.ms':
-            smms_api_key = os.getenv("SMMS_API_LIST", "").strip()
-            if not smms_api_key:
+            smms_tokens = parse_smms_tokens(os.getenv("SMMS_API_LIST", ""))
+            if not smms_tokens:
                 print(f"❌ 上传失败：未设置 SMMS_API_LIST 环境变量，请检查 API_KEY.env 文件")
                 return None
-            url = 'https://s.ee/api/v1/file/upload'
-            headers = {'Authorization': smms_api_key}
-            try:
+
+            def post_once(url, token, data=None):
+                headers = {'Authorization': token}
                 with open(webp_path, 'rb') as f:
                     files = {'smfile': f}
-                    data = {'domain': 'sm.ms'}
-                    response = requests.post(url, files=files, data=data, headers=headers, timeout=30)
-                response.raise_for_status()
-                result = response.json()
+                    session = get_session()
+                    return session.post(url, files=files, data=data or {}, headers=headers, timeout=30)
 
-                if result.get("success"):
-                    return result["data"]["url"]
-                else:
-                    print(f"❌ 上传失败（token: {smms_api_key[:4]}***）：{webp_path.name} - {result.get('message')}")
-            except Exception as e:
-                print(f"❌ 上传出错（token: {smms_api_key[:4]}***）：{webp_path} - {e}")
+            for smms_api_key in smms_tokens:
+                token_mask = f"{smms_api_key[:4]}***"
+                upload_targets = [
+                    ('https://sm.ms/api/v2/upload', {}),
+                    ('https://s.ee/api/v1/file/upload', {'domain': 'sm.ms'})
+                ]
+                for url, data in upload_targets:
+                    try:
+                        response = post_once(url, smms_api_key, data=data)
+                        if response.status_code == 401:
+                            print(f"⚠️ token鉴权失败（token: {token_mask}）：{url}")
+                            continue
+                        response.raise_for_status()
+
+                        result = response.json()
+                        if result.get("success"):
+                            return result.get("data", {}).get("url")
+                        if result.get('code') == 'image_repeated':
+                            return result.get('images') or result.get("data", {}).get("url")
+                        print(f"❌ 上传失败（token: {token_mask}）：{webp_path.name} - {result.get('message')}")
+                    except Exception as e:
+                        print(f"❌ 上传出错（token: {token_mask}）：{webp_path} - {e}")
+            return None
 
     SKIP_HOSTS = ('s2.loli.net', 'i.loli.net', 'sm.ms', 's.ee')
 
@@ -110,7 +181,8 @@ def format_image(md_content, image_store_dir, max_threads):
         host = urlparse(image_url).netloc
         if any(host.endswith(h) for h in SKIP_HOSTS):
             try:
-                response = requests.get(image_url, timeout=10)
+                session = get_session()
+                response = session.get(image_url, timeout=10)
                 response.raise_for_status()
                 image = Image.open(BytesIO(response.content))
                 width, height = image.size
@@ -120,7 +192,8 @@ def format_image(md_content, image_store_dir, max_threads):
                 print(f"⚠️  跳过但拉宽高失败：{image_url} - {e}")
                 return image_url, image_url, 0, 0
         try:
-            response = requests.get(image_url, timeout=10)
+            session = get_session()
+            response = session.get(image_url, timeout=10)
             response.raise_for_status()
             image = Image.open(BytesIO(response.content)).convert("RGB")
             width, height = image.size
@@ -171,13 +244,17 @@ def format_image(md_content, image_store_dir, max_threads):
     md_content = image_pattern.sub(render, md_content)
     return md_content
 
-def format_description(md_content, yaml_dict, description, md_path):
+def format_description(md_content, yaml_dict, description, md_path, provider='doubao'):
     '''生成摘要'''
     def llm_generate(md_content):
         '''通过llm生成描述'''
+        base_url, api_key, model_list = get_llm_config(provider)
+        if not base_url or not api_key:
+            print(f"❌ LLM 配置缺失：provider={provider}，请检查 API_KEY.env")
+            return None
         client = OpenAI(
-            base_url= os.getenv("LLM_URL"),
-            api_key= os.getenv("API_KEY")
+            base_url=base_url,
+            api_key=api_key
         )
         messages = [{
             "role": "user",
@@ -203,17 +280,6 @@ def format_description(md_content, yaml_dict, description, md_path):
         """
         }]
 
-        model_list = [
-            # 'deepseek-v4-flash',
-            # 'deepseek-v4-pro',
-            'doubao-seed-2-0-pro-260215',
-            'doubao-seed-1-6-250615', 
-            'doubao-seed-1-6-flash-250615', 
-            'doubao-seed-1-8-251228',
-            'doubao-seed-2-0-mini-260215',
-            'doubao-1-5-pro-32k-250115',
-            'doubao-1-5-lite-32k-250115'
-        ]
         re_connrct = 0
         while re_connrct< len(model_list):
             try:
@@ -223,7 +289,7 @@ def format_description(md_content, yaml_dict, description, md_path):
                 )
                 return completion.choices[0].message.content
             except Exception as e:
-                print(f"❌ LLM生成摘要上传出错：{e}")
+                print(f"❌ LLM生成摘要出错（provider={provider}, model={model_list[re_connrct]}）：{e}")
                 re_connrct+=1
         return None
 
@@ -244,9 +310,13 @@ def format_description(md_content, yaml_dict, description, md_path):
     return md_content, description
 
 def process_file(file_path_list, 
-                 max_threads= 3,
+                 max_threads= None,
                  store_base= './images/post_image/',
-                 description_path = './DEAL-MD.json'):
+                 description_path = './DEAL-MD.json',
+                 provider='doubao',
+                 file_threads=None,
+                 image_threads=None,
+                 desc_threads=None):
     '''处理单个文件'''
     def mkdir_image_dir(md_path):
         md_path = Path(md_path)
@@ -274,24 +344,54 @@ def process_file(file_path_list,
                     return {}
             
     cpu_count = os.cpu_count() or 1
-    max_threads = min(max_threads, cpu_count * 2)
+    if max_threads is not None:
+        file_threads = max_threads
+        image_threads = max_threads
+        desc_threads = max_threads
+    else:
+        file_threads = file_threads or min(max(4, cpu_count), 32)
+        image_threads = image_threads or min(max(16, cpu_count * 8), 64)
+        desc_threads = desc_threads or min(max(4, cpu_count * 2), 16)
+
+    file_threads = max(1, file_threads)
+    image_threads = max(1, image_threads)
+    desc_threads = max(1, desc_threads)
+
+    print(
+        f"⚙️ 并发配置: file_threads={file_threads}, "
+        f"image_threads={image_threads}, desc_threads={desc_threads}"
+    )
     file_description_dict = defaultdict(list)
     description = open_file(description_path) or {}
 
-    for md_path in file_path_list:
-        if md_path.endswith('md'):
-            image_store_dir = mkdir_image_dir(md_path)
-            md_content = open_file(md_path)
-            md_content = format_image(md_content,
-                                      image_store_dir,
-                                      max_threads) # 优化图像转化为 webp 图像
-            _, yaml_dict = format_markdown(md_content)
-            file_description_dict[md_path] = (md_content, yaml_dict)
+    md_paths = [p for p in file_path_list if p.endswith('.md')]
 
-    with ThreadPoolExecutor(max_workers=max_threads) as executor:
+    def prepare_md(md_path):
+        image_store_dir = mkdir_image_dir(md_path)
+        md_content = open_file(md_path)
+        if md_content is None:
+            return None
+        md_content = format_image(md_content, image_store_dir, image_threads)
+        _, yaml_dict = format_markdown(md_content)
+        return md_path, md_content, yaml_dict
+
+    with ThreadPoolExecutor(max_workers=file_threads) as executor:
+        futures = {executor.submit(prepare_md, md_path): md_path for md_path in md_paths}
+        for future in as_completed(futures):
+            md_path = futures[future]
+            try:
+                result = future.result()
+                if not result:
+                    continue
+                md_path, md_content, yaml_dict = result
+                file_description_dict[md_path] = (md_content, yaml_dict)
+            except Exception as e:
+                print(f"❌ 预处理文件 {md_path} 出错: {e}")
+
+    with ThreadPoolExecutor(max_workers=desc_threads) as executor:
         futures = {
             executor.submit(format_description, md_info[0], md_info[1], 
-                            {}, md_path): md_path
+                            {}, md_path, provider): md_path
             for md_path, md_info in file_description_dict.items()
         }
 
@@ -311,14 +411,80 @@ def process_file(file_path_list,
         
 def main(post_dir_list = ['./_posts/', './writing/'],
          store_base= './images/post_image/',
-         max_threads= 3):
+         max_threads= None,
+         provider='doubao',
+         file_threads=None,
+         image_threads=None,
+         desc_threads=None,
+         target_files=None):
     # 获取文件路径
-    md_path_list = []
-    for path in post_dir_list:
-        for _ in os.listdir(path):
-            md_path_list.append(os.path.join(path, _))
-    process_file(md_path_list, max_threads, 
-                 store_base)
+    if target_files:
+        md_path_list = target_files
+    else:
+        md_path_list = []
+        for path in post_dir_list:
+            for _ in os.listdir(path):
+                md_path_list.append(os.path.join(path, _))
+    process_file(md_path_list,
+                 max_threads=max_threads,
+                 store_base=store_base,
+                 provider=provider,
+                 file_threads=file_threads,
+                 image_threads=image_threads,
+                 desc_threads=desc_threads)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='优化文章图片并生成摘要')
+    parser.add_argument(
+        '--provider',
+        choices=['doubao', 'deepseek'],
+        default='doubao',
+        help='摘要生成模型提供方，默认 doubao'
+    )
+    parser.add_argument(
+        '--max-threads',
+        type=int,
+        default=None,
+        help='统一并发线程数（覆盖 file/image/desc 三类线程）'
+    )
+    parser.add_argument(
+        '--file-threads',
+        type=int,
+        default=None,
+        help='文件预处理并发线程数（默认自动）'
+    )
+    parser.add_argument(
+        '--image-threads',
+        type=int,
+        default=None,
+        help='单文件内图片下载/上传并发线程数（默认自动）'
+    )
+    parser.add_argument(
+        '--desc-threads',
+        type=int,
+        default=None,
+        help='摘要生成并发线程数（默认自动）'
+    )
+    parser.add_argument(
+        '--store-base',
+        default='./images/post_image/',
+        help='图片本地缓存目录，默认 ./images/post_image/'
+    )
+    parser.add_argument(
+        '--files',
+        nargs='*',
+        default=None,
+        help='仅处理指定 Markdown 文件路径（可传多个）'
+    )
+    return parser.parse_args()
 
 if __name__ == '__main__':
-    main()
+    args = parse_args()
+    main(store_base=args.store_base,
+         max_threads=args.max_threads,
+         provider=args.provider,
+         file_threads=args.file_threads,
+         image_threads=args.image_threads,
+         desc_threads=args.desc_threads,
+         target_files=args.files)

@@ -625,13 +625,19 @@ body {
   flex-direction: column;
 }
 .page-archives.cols-2 .archives-timeline {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px 26px;
-  align-items: start;
+  column-count: 2;
+  column-gap: 26px;
+  display: block;
 }
-.page-archives.cols-2 .archives-year { margin: 0; }
-.page-archives.cols-1 .archives-timeline { display: block; }
+.page-archives.cols-2 .archives-year {
+  margin: 0 0 18px;
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  page-break-inside: avoid;
+}
+.page-archives.cols-2 .archives-year:first-of-type > .year-label { margin-top: 0; }
+.page-archives.cols-1 .archives-timeline { display: block; column-count: auto; }
+.page-archives.cols-1 .archives-year { margin: 22px 0 12px; }
 
 /* ===== 标签页点击展开 ===== */
 .page-tags .tag-cloud { padding: 18px 0 8px; }
@@ -703,9 +709,11 @@ body {
   .cat-list { padding: 4px 14px 12px 42px; }
   .year-label { font-size: 16px; }
   .page-index.cols-2 .post-cards,
-  .page-categories.cols-2 .categories-list,
-  .page-archives.cols-2 .archives-timeline {
+  .page-categories.cols-2 .categories-list {
     grid-template-columns: 1fr;
+  }
+  .page-archives.cols-2 .archives-timeline {
+    column-count: 1;
   }
   .layout-toolbar { display: none; }
   .list-toolbar .cols-toggle { display: none; }

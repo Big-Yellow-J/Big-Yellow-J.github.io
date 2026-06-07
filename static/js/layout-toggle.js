@@ -40,7 +40,7 @@
       var q = input ? (input.value || '').trim() : '';
       if (!q) return;
       var host = (location.host || 'www.big-yellow-j.top').replace(/^www\./, '');
-      var url = 'https://www.google.com/search?q=' + encodeURIComponent('site:' + host + ' ' + q);
+      var url = 'https://www.bing.com/search?q=' + encodeURIComponent('site:' + host + ' ' + q);
       window.open(url, '_blank', 'noopener,noreferrer');
     });
   });

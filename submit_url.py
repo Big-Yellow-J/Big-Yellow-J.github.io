@@ -1,12 +1,12 @@
+import concurrent.futures
+import json
+import os
+import xml.etree.ElementTree as ET
+
+import requests
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-import xml.etree.ElementTree as ET
-import json
-import os
-import requests
-from datetime import datetime, timedelta
-import concurrent.futures
 
 _proxy = os.getenv("BLOG_SUBMIT_PROXY")
 if _proxy:

@@ -70,7 +70,7 @@
       </span>
       <span class="meta-item">
         <i class="far fa-eye"></i>
-        <span><span id="vercount_value_page_pv">–</span> 次阅读</span>
+        <span><span id="umami-page-pv" data-page-url="{{ page.url | absolute_url }}">–</span> 次阅读</span>
       </span>
     </div>
     {%- endif -%}
@@ -191,7 +191,7 @@
 
 </div>
 
-<script defer src="https://events.vercount.one/js"></script>
+<script defer src="{{ site.baseurl }}/static/js/post-views.js"></script>
 
 <script type="module" defer src="{{ site.baseurl }}/static/js/gallery.js"></script>
 
