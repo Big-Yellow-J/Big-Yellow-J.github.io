@@ -1,0 +1,50 @@
+=== Batch Experiment Summary ===
+[Config]
++--------------------------------+-------------------+
+| Field                          | Value             |
++================================+===================+
+| data_name                      | cifar10           |
+| imbalance_factor               | 0.1               |
+| error_factor                   | 0.0               |
+| include_normal_condition       | True              |
+| loss_name(default)             | prior_sparse_ce   |
+| loss_names(grid)               | ce focal prior_ce |
+| use_accelerate                 | True              |
+| mixed_precision                | fp16              |
+| eval_prior_tau_list            | off 1.0           |
+| eval_logit_adjustment(default) | False             |
+| eval_prior_tau(default)        | None              |
+| early_stop_patience            | 0                 |
+| early_stop_min_delta           | 0.0               |
+| epochs                         | 30                |
++--------------------------------+-------------------+
+
+[Leaderboard]
++------------------+----------+-------------+----------+---------+----------+--------------+----------+-------------+------------------------------------------------------------------------------------------------------------+
+| condition        | model    | strategy    | loss     | eval_la | acc      | macro_recall | macro_f1 | weighted_f1 | best_ckpt                                                                                                  |
++==================+==========+=============+==========+=========+==========+==============+==========+=============+============================================================================================================+
+| normal           | resnet50 | none        | ce       | off     | 0.536071 | 0.535671     | 0.533267 | 0.533570    | ./DataDistributeResult/best_model.normal__resnet50__none__loss_ce__evalla_off.pth                          |
+| normal           | resnet50 | none        | ce       | tau_1   | 0.536071 | 0.535671     | 0.533267 | 0.533570    | ./DataDistributeResult/best_model.normal__resnet50__none__loss_ce__evalla_tau_1.pth                        |
+| normal           | resnet50 | none        | prior_ce | off     | 0.536071 | 0.535671     | 0.533267 | 0.533570    | ./DataDistributeResult/best_model.normal__resnet50__none__loss_prior_ce__evalla_off.pth                    |
+| normal           | resnet50 | none        | prior_ce | tau_1   | 0.536071 | 0.535671     | 0.533267 | 0.533570    | ./DataDistributeResult/best_model.normal__resnet50__none__loss_prior_ce__evalla_tau_1.pth                  |
+| normal           | resnet50 | none        | focal    | off     | 0.516964 | 0.516672     | 0.515965 | 0.516204    | ./DataDistributeResult/best_model.normal__resnet50__none__loss_focal__evalla_off.pth                       |
+| normal           | resnet50 | none        | focal    | tau_1   | 0.516964 | 0.516672     | 0.515965 | 0.516204    | ./DataDistributeResult/best_model.normal__resnet50__none__loss_focal__evalla_tau_1.pth                     |
+| imbalanced_noisy | resnet50 | oversample  | prior_ce | off     | 0.435089 | 0.435061     | 0.427842 | 0.427948    | ./DataDistributeResult/best_model.imbalanced_noisy__resnet50__oversample__loss_prior_ce__evalla_off.pth    |
+| imbalanced_noisy | resnet50 | oversample  | prior_ce | tau_1   | 0.435089 | 0.435061     | 0.427842 | 0.427948    | ./DataDistributeResult/best_model.imbalanced_noisy__resnet50__oversample__loss_prior_ce__evalla_tau_1.pth  |
+| imbalanced_noisy | resnet50 | oversample  | focal    | off     | 0.428750 | 0.428578     | 0.422077 | 0.422257    | ./DataDistributeResult/best_model.imbalanced_noisy__resnet50__oversample__loss_focal__evalla_off.pth       |
+| imbalanced_noisy | resnet50 | oversample  | focal    | tau_1   | 0.428750 | 0.428578     | 0.422077 | 0.422257    | ./DataDistributeResult/best_model.imbalanced_noisy__resnet50__oversample__loss_focal__evalla_tau_1.pth     |
+| imbalanced_noisy | resnet50 | oversample  | ce       | off     | 0.430982 | 0.430896     | 0.419984 | 0.420136    | ./DataDistributeResult/best_model.imbalanced_noisy__resnet50__oversample__loss_ce__evalla_off.pth          |
+| imbalanced_noisy | resnet50 | oversample  | ce       | tau_1   | 0.430982 | 0.430896     | 0.419984 | 0.420136    | ./DataDistributeResult/best_model.imbalanced_noisy__resnet50__oversample__loss_ce__evalla_tau_1.pth        |
+| imbalanced_noisy | resnet50 | none        | prior_ce | off     | 0.417054 | 0.416777     | 0.415649 | 0.415845    | ./DataDistributeResult/best_model.imbalanced_noisy__resnet50__none__loss_prior_ce__evalla_off.pth          |
+| imbalanced_noisy | resnet50 | none        | focal    | off     | 0.409286 | 0.409033     | 0.406058 | 0.406259    | ./DataDistributeResult/best_model.imbalanced_noisy__resnet50__none__loss_focal__evalla_off.pth             |
+| imbalanced_noisy | resnet50 | undersample | focal    | off     | 0.292054 | 0.292051     | 0.271307 | 0.271473    | ./DataDistributeResult/best_model.imbalanced_noisy__resnet50__undersample__loss_focal__evalla_off.pth      |
+| imbalanced_noisy | resnet50 | undersample | focal    | tau_1   | 0.292054 | 0.292051     | 0.271307 | 0.271473    | ./DataDistributeResult/best_model.imbalanced_noisy__resnet50__undersample__loss_focal__evalla_tau_1.pth    |
+| imbalanced_noisy | resnet50 | none        | prior_ce | tau_1   | 0.331161 | 0.330887     | 0.261699 | 0.261628    | ./DataDistributeResult/best_model.imbalanced_noisy__resnet50__none__loss_prior_ce__evalla_tau_1.pth        |
+| imbalanced_noisy | resnet50 | undersample | ce       | off     | 0.284643 | 0.284573     | 0.259998 | 0.260227    | ./DataDistributeResult/best_model.imbalanced_noisy__resnet50__undersample__loss_ce__evalla_off.pth         |
+| imbalanced_noisy | resnet50 | undersample | ce       | tau_1   | 0.284643 | 0.284573     | 0.259998 | 0.260227    | ./DataDistributeResult/best_model.imbalanced_noisy__resnet50__undersample__loss_ce__evalla_tau_1.pth       |
+| imbalanced_noisy | resnet50 | undersample | prior_ce | off     | 0.284643 | 0.284573     | 0.259998 | 0.260227    | ./DataDistributeResult/best_model.imbalanced_noisy__resnet50__undersample__loss_prior_ce__evalla_off.pth   |
+| imbalanced_noisy | resnet50 | undersample | prior_ce | tau_1   | 0.284643 | 0.284573     | 0.259998 | 0.260227    | ./DataDistributeResult/best_model.imbalanced_noisy__resnet50__undersample__loss_prior_ce__evalla_tau_1.pth |
+| imbalanced_noisy | resnet50 | none        | ce       | off     | 0.329018 | 0.328733     | 0.257091 | 0.257045    | ./DataDistributeResult/best_model.imbalanced_noisy__resnet50__none__loss_ce__evalla_off.pth                |
+| imbalanced_noisy | resnet50 | none        | focal    | tau_1   | 0.310982 | 0.310719     | 0.242115 | 0.242088    | ./DataDistributeResult/best_model.imbalanced_noisy__resnet50__none__loss_focal__evalla_tau_1.pth           |
+| imbalanced_noisy | resnet50 | none        | ce       | tau_1   | 0.287321 | 0.286931     | 0.184569 | 0.184555    | ./DataDistributeResult/best_model.imbalanced_noisy__resnet50__none__loss_ce__evalla_tau_1.pth              |
++------------------+----------+-------------+----------+---------+----------+--------------+----------+-------------+------------------------------------------------------------------------------------------------------------+

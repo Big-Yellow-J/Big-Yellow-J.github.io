@@ -1,6 +1,6 @@
 ---
 layout: mypost
-title: 深入浅出了解生成模型-10：Flow Matching基本原理
+title: 深入浅出了解生成模型-11：Flow Matching基本原理
 categories: 生成模型
 extMath: true
 images: true

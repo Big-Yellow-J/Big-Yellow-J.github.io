@@ -70,3 +70,6 @@ code/Python/Agent/HelloAgents
 writing/DistributeTraining/learning_distribute_training/outputs/
 writing/DistributeTraining/learning_distribute_training/ModelTrainingResult
 writing/DistributeTraining/learning_distribute_training/__pycache__/
+!/writing/DataDistributeResult-1/
+!/writing/DataDistributeResult/
+!/writing/DataDistributeResult/
