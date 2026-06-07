@@ -195,8 +195,12 @@
 
 <script type="module" defer src="{{ site.baseurl }}/static/js/gallery.js"></script>
 
-<link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/themes/prism-tomorrow.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/themes/prism-tomorrow.css" media="print" onload="this.media='all';this.onload=null">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.css" media="print" onload="this.media='all';this.onload=null">
+<noscript>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/themes/prism-tomorrow.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.css">
+</noscript>
 <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/prism.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-javascript.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-python.min.js"></script>

@@ -1,4 +1,5 @@
 {%- assign buildAt = site.time | date: "%Y%m%d%H%M%S" -%}
+{%- assign buildVer = site.time | date: "%Y%m%d" -%}
 {%- assign page_url_abs = page.url | absolute_url -%}
 {%- assign page_desc = page.description | default: site.description | strip_html | strip_newlines | truncate: 200 | escape -%}
 {%- assign og_image = page.image | default: page.cover | default: site.cover | default: 'https://s2.loli.net/2025/04/29/ntFU5SIfNCeK2Hy.png' -%}
@@ -108,14 +109,14 @@
   <link rel="icon" href="{{site.baseurl}}/static/img/favicon.ico" />
   <link rel="apple-touch-icon" href="{{site.baseurl}}/static/img/logo.png" />
   <link rel="manifest" href="{{site.baseurl}}/manifest.json" />
-  <link rel="stylesheet" href="{{site.baseurl}}/static/css/common.css?t={{buildAt}}" />
-  <link rel="stylesheet" href="{{site.baseurl}}/static/css/theme-dark.css?t={{buildAt}}" />
+  <link rel="stylesheet" href="{{site.baseurl}}/static/css/common.css?v={{buildVer}}" />
+  <link rel="stylesheet" href="{{site.baseurl}}/static/css/theme-dark.css?v={{buildVer}}" />
   {%- if page.layout == "mypost" %}
-  <link rel="stylesheet" href="{{site.baseurl}}/static/css/post.css?t={{buildAt}}" />
-  <link rel="stylesheet" href="{{site.baseurl}}/static/css/code-dark.css?t={{buildAt}}" />
-  <link rel="stylesheet" href="{{site.baseurl}}/static/css/code-light.css?t={{buildAt}}" />
+  <link rel="stylesheet" href="{{site.baseurl}}/static/css/post.css?v={{buildVer}}" />
+  <link rel="stylesheet" href="{{site.baseurl}}/static/css/code-dark.css?v={{buildVer}}" />
+  <link rel="stylesheet" href="{{site.baseurl}}/static/css/code-light.css?v={{buildVer}}" />
   {%- endif %} {%- if page.layout == "page" %}
-  <link rel="stylesheet" href="{{site.baseurl}}/static/css/page.css?t={{buildAt}}" />
+  <link rel="stylesheet" href="{{site.baseurl}}/static/css/page.css?v={{buildVer}}" />
   {%- endif %}
   <script>
     window.blog = {
@@ -177,6 +178,28 @@
       "@type": "SearchAction",
       "target": { "@type": "EntryPoint", "urlTemplate": "https://www.google.com/search?q=site%3Abig-yellow-j.top+{search_term_string}" },
       "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+  {%- endif -%}
+  {%- assign collection_kind = '' -%}
+  {%- if page.url contains '/pages/archives' -%}{%- assign collection_kind = '归档' -%}{%- endif -%}
+  {%- if page.url contains '/pages/categories' -%}{%- assign collection_kind = '分类' -%}{%- endif -%}
+  {%- if page.url contains '/pages/tags' -%}{%- assign collection_kind = '标签' -%}{%- endif -%}
+  {%- if collection_kind != '' -%}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "url": "{{ page_url_abs }}",
+    "name": "{{ page.title | escape }} · {{ site.title | escape }}",
+    "description": "{{ site.title }} 全部文章按{{ collection_kind }}聚合",
+    "inLanguage": "zh-CN",
+    "isPartOf": { "@type": "WebSite", "url": "{{ site.domainUrl }}/", "name": "{{ site.title | escape }}" },
+    "mainEntity": {
+      "@type": "ItemList",
+      "numberOfItems": {{ site.posts | size }},
+      "itemListOrder": "https://schema.org/ItemListOrderDescending"
     }
   }
   </script>
