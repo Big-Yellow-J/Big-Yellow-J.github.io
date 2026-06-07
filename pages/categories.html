@@ -3,34 +3,66 @@ layout: page
 title: 文章分类
 ---
 
-<div class="page page-categories">
-  <div class="list-category">
-    <h2>所有分类</h2>
-    <div class="category-grid">
-      {%- for category in site.categories %}
-      <a href="#{{ category[0] }}" class="category-card">
-        <span class="category-name">{{ category[0] }}</span>
-        <span class="category-count">{{ category[1] | size }}</span>
-      </a>
-      {%- endfor %}
-    </div>
+<div class="page page-categories cols-2">
+  <header class="categories-header">
+    <h1 class="categories-title"><i class="fas fa-stream"></i> 文章分类</h1>
+    <p class="categories-meta">
+      共 {{ site.categories | size }} 个分类 · {{ site.posts | size }} 篇文章
+    </p>
+  </header>
+
+  <div class="list-toolbar">
+    <form class="list-search" role="search">
+      <i class="fas fa-search"></i>
+      <input type="text" name="q" placeholder="在站内搜索文章…" aria-label="搜索">
+    </form>
+    <button class="cols-toggle" type="button"
+            data-scope="categories"
+            data-target=".page-categories"
+            data-default="2"
+            aria-label="切换单栏/双栏">
+      <i class="fas fa-th-large cols-icon"></i>
+      <span class="cols-label">双栏</span>
+    </button>
   </div>
-  {%- for category in site.categories %}
-  <div class="list-post">
-    <h2 id="{{ category[0] }}">
-      <i class="fas fa-folder-open"></i> {{ category[0] }}
-      <span class="category-count-inline">{{ category[1] | size }} 篇</span>
-    </h2>
-    <ul>
-      {%- for post in category[1] %}
-      <li>
-        <span class="date">{{ post.date | date: "%Y/%m/%d" }}</span>
-        <div class="title">
-          <a href="{{ site.baseurl | append: post.url }}" class="hover-underline">{{ post.title }}</a>
-        </div>
-      </li>
-      {%- endfor %}
-    </ul>
+
+  <div class="categories-list">
+  {%- for category in site.categories -%}
+    {%- assign cat_name = category[0] -%}
+    {%- assign cat_posts = category[1] -%}
+    <details class="cat-card" id="{{ cat_name | url_encode }}">
+      <summary class="cat-summary">
+        <i class="far fa-folder cat-icon"></i>
+        <span class="cat-name">{{ cat_name }}</span>
+        <span class="cat-count">{{ cat_posts | size }}</span>
+        <i class="fas fa-chevron-down cat-chevron" aria-hidden="true"></i>
+      </summary>
+      <ul class="cat-list">
+        {%- for post in cat_posts -%}
+        <li>
+          <span class="date">{{ post.date | date: "%Y-%m-%d" }}</span>
+          <a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }}</a>
+        </li>
+        {%- endfor -%}
+      </ul>
+    </details>
+  {%- endfor -%}
   </div>
-  {%- endfor %}
 </div>
+
+<script>
+(function () {
+  function openByHash() {
+    var hash = decodeURIComponent((location.hash || '').replace(/^#/, ''));
+    if (!hash) return;
+    var el = document.getElementById(hash);
+    if (el && el.tagName === 'DETAILS') {
+      el.open = true;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+  document.addEventListener('DOMContentLoaded', openByHash);
+  window.addEventListener('hashchange', openByHash);
+})();
+</script>
+<script src="{{ site.baseurl }}/static/js/layout-toggle.js" defer></script>

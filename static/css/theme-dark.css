@@ -142,3 +142,114 @@ html.dark .share-button i { color: #c9d1d9; }
 html.dark .page-post th { background-color: #161b22; color: #c9d1d9; }
 html.dark .page-post td { background-color: #0d1117; color: #c9d1d9; }
 html.dark .page-post tr:hover td { background-color: #1c2129; }
+
+/* ===== 暗色：Chirpy 风格卡片 / 归档 / 分类 ===== */
+html.dark {
+  --bk-accent: #58a6ff;
+  --bk-accent-soft: rgba(88, 166, 255, 0.12);
+  --bk-card-bg: #161b22;
+  --bk-card-border: #30363d;
+  --bk-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --bk-card-shadow-hover: 0 4px 8px rgba(0, 0, 0, 0.5), 0 12px 24px rgba(0, 0, 0, 0.4);
+  --bk-muted: #8b949e;
+  --bk-meta: #b1b8c0;
+  --bk-chip-bg: rgba(88, 166, 255, 0.14);
+  --bk-chip-text: #79c0ff;
+}
+html.dark .year-label,
+html.dark .archives-title,
+html.dark .categories-title,
+html.dark .post-card-title a,
+html.dark .archives-link,
+html.dark .cat-summary,
+html.dark .cat-list a { color: #f0f6fc; }
+html.dark .post-card-title a:hover,
+html.dark .archives-link:hover,
+html.dark .cat-list a:hover { color: var(--bk-accent); }
+html.dark .post-card-title .post-card-tag { color: #ff7b72; }
+html.dark .archives-search { background: #0d1117; }
+html.dark .archives-search:focus-within { background: #161b22; }
+html.dark .archives-search input { color: #f0f6fc; }
+html.dark .pagination a, html.dark .pagination span {
+  background: #161b22;
+  border-color: #30363d;
+  color: #c9d1d9;
+}
+html.dark .pagination .disabled { background: #0d1117; color: #484f58; }
+html.dark .pagination .page_number { background: transparent; border-color: transparent; }
+html.dark .archives-item::before { background: #0d1117; }
+html.dark .cat-list li::before { background: #30363d; }
+
+html.dark .cols-toggle {
+  background: #161b22;
+  border-color: #30363d;
+  color: #c9d1d9;
+}
+html.dark .cols-toggle:hover { color: var(--bk-accent); border-color: var(--bk-accent); }
+
+html.dark .list-search {
+  background: #0d1117;
+  border-color: #30363d;
+}
+html.dark .list-search:focus-within {
+  background: #161b22;
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+}
+html.dark .list-search input { color: #f0f6fc; }
+html.dark .list-search input::placeholder { color: #6e7681; }
+
+/* ===== 暗色：文章页现代化 ===== */
+html.dark .page-post .post-title { color: #f0f6fc; }
+html.dark .post-meta-bar {
+  background: #161b22;
+  border-color: #30363d;
+  color: #c9d1d9;
+}
+html.dark .post-meta-bar .meta-item i { color: #8b949e; }
+html.dark .post-meta-bar .meta-updated { color: #3fb950; }
+html.dark .post-meta-bar .meta-updated i { color: #3fb950; }
+html.dark .post-status-badge { background: rgba(248, 81, 73, 0.15); color: #ff7b72; }
+html.dark .post-share {
+  border-color: #30363d;
+}
+html.dark .post-share-label { color: #c9d1d9; }
+html.dark .post-share-buttons .share-button {
+  background: #161b22;
+  border-color: #30363d;
+  color: #c9d1d9;
+}
+html.dark .post-share-buttons .share-button:hover {
+  background: var(--bk-accent);
+  color: #0d1117;
+  border-color: var(--bk-accent);
+}
+html.dark .page-post .nav-button {
+  background: #161b22;
+  border-color: #30363d;
+  color: #c9d1d9;
+}
+html.dark .page-post .nav-button:hover:not(.disabled) {
+  background: #1c2129;
+  border-color: var(--bk-accent);
+}
+html.dark .page-post .nav-button i { color: #8b949e; }
+html.dark .nav-tag { color: #8b949e; }
+html.dark .nav-title { color: #f0f6fc; }
+html.dark .page-post .post-description-llm > i { color: #79c0ff; }
+
+html.dark .page-tags .tag-cloud-list {
+  background: #0d1117;
+  border-color: #30363d;
+}
+html.dark .page-tags .tag-cloud-item {
+  background: #161b22;
+  border-color: #30363d;
+  color: #79c0ff;
+}
+html.dark .page-tags .tag-cloud-item:hover { background: rgba(88, 166, 255, 0.15); }
+html.dark .page-tags .tag-cloud-item.is-active { background: var(--bk-accent); color: #0d1117; }
+html.dark .tag-empty {
+  background: #0d1117;
+  border-color: #30363d;
+  color: #8b949e;
+}

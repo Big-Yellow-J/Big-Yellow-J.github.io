@@ -6,188 +6,210 @@
 {%- if page.path contains '_posts/' -%}
 <div id="toc"></div>
 {%- endif -%}
+
 <div class="page page-post">
+
   {%- if page.categories and page.categories.size > 0 -%}
   {%- assign first_cat = page.categories | first -%}
   <nav class="breadcrumbs" aria-label="面包屑">
-    <a href="{{ site.baseurl }}/">首页</a>
-    <span>/</span>
+    <a href="{{ site.baseurl }}/"><i class="fas fa-home"></i> 首页</a>
+    <span class="sep">/</span>
     <a href="{{ site.baseurl }}/pages/categories.html#{{ first_cat | url_encode }}">{{ first_cat }}</a>
-    <span>/</span>
+    <span class="sep">/</span>
     <span class="current">{{ page.title }}</span>
   </nav>
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
+  { "@context": "https://schema.org", "@type": "BreadcrumbList",
     "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "首页", "item": "{{ '/' | absolute_url }}" },
       { "@type": "ListItem", "position": 2, "name": "{{ first_cat }}", "item": "{{ '/pages/categories.html' | absolute_url }}" },
       { "@type": "ListItem", "position": 3, "name": "{{ page.title | escape }}", "item": "{{ page.url | absolute_url }}" }
-    ]
-  }
+    ] }
   </script>
   {%- endif -%}
-  <h1 class="title" id="{{ page.title }}">{{ page.title }}</h1>
-  {% assign words = content | number_of_words %}
-  {% assign minutes = words | divided_by: 60 | plus: 1 %}
 
-  <!-- 记录访问量 -->
-  <script defer src="https://events.vercount.one/js"></script>
+  {%- assign words = content | number_of_words -%}
+  {%- assign minutes = words | divided_by: 60 | plus: 1 -%}
 
-  <!-- 标题更新日期等 -->
-  {% if page.date %}
-  <div class="subtitle">
-    <span>{{site.author}} 于 
-      {{ page.date | date: "%Y-%m-%d" }} 
-      在 {{ page.address }} 发布
-        ⏳ 预计阅读 {{ minutes }} 分钟 
-        <strong> 🕛更新于 {{ page.last_modified_at | date: "%Y-%m-%d" }}</strong>
-       👀阅读量：<span id="vercount_value_page_pv">Loading</span>
-    </span>
-    {% if page.url contains "TODO" %}
-      <span style="color: red; font-weight: bold; font-size: large;">writing.....</span>
-    {% endif %}
-  </div>
-  {% endif %}
+  <header class="post-header">
+    <h1 class="post-title" id="{{ page.title }}">{{ page.title }}</h1>
 
-  <!-- AI 摘要 -->
-  {% if page.description %}
-    <div id="description-llm" class="post-description-llm">
-      🫸🫸 豆包总结：{{ page.description | strip_newlines | escape }} 🫷🫷
+    {%- if page.url contains "TODO" -%}
+      <span class="post-status-badge writing"><i class="fas fa-pen-nib"></i> writing…</span>
+    {%- endif -%}
+
+    {%- if page.date -%}
+    <div class="post-meta-bar">
+      <span class="meta-item">
+        <i class="far fa-user"></i>
+        <span>{{ site.author }}</span>
+      </span>
+      <span class="meta-item">
+        <i class="far fa-calendar-alt"></i>
+        <time datetime="{{ page.date | date_to_xmlschema }}">{{ page.date | date: "%Y-%m-%d" }}</time>
+      </span>
+      {%- if page.address -%}
+      <span class="meta-item">
+        <i class="fas fa-map-marker-alt"></i>
+        <span>{{ page.address }}</span>
+      </span>
+      {%- endif -%}
+      {%- if page.last_modified_at and page.last_modified_at != page.date -%}
+      <span class="meta-item meta-updated">
+        <i class="fas fa-sync-alt"></i>
+        <span>更新于 <time datetime="{{ page.last_modified_at | date_to_xmlschema }}">{{ page.last_modified_at | date: "%Y-%m-%d" }}</time></span>
+      </span>
+      {%- endif -%}
+      <span class="meta-item">
+        <i class="far fa-file-alt"></i>
+        <span>{{ words }} 字</span>
+      </span>
+      <span class="meta-item">
+        <i class="far fa-clock"></i>
+        <span>{{ minutes }} 分钟</span>
+      </span>
+      <span class="meta-item">
+        <i class="far fa-eye"></i>
+        <span><span id="vercount_value_page_pv">–</span> 次阅读</span>
+      </span>
     </div>
-  {% endif %}
+    {%- endif -%}
+
+    {%- if page.description -%}
+    <div id="description-llm" class="post-description-llm">
+      <i class="fas fa-magic"></i>
+      <div class="post-description-llm-text">{{ page.description | strip_newlines | escape }}</div>
+    </div>
+    {%- endif -%}
+  </header>
 
   <article class="post page-post post-content"
     data-title="{{ page.title | strip_html | strip_newlines | escape }}"
     data-url="{{ page.url | absolute_url }}"
     data-date="{{ page.date | date: '%Y-%m-%d' }}"
     data-author="{{ site.author.name | default: site.author | default: '佚名' | strip_html | escape }}">
-
-    <!-- 在这里处理图片 lazyload + 标记类，相册由 gallery.js 接管 -->
-    {% assign content_with_images = content
+    {%- assign content_with_images = content
+      | replace_first: '<img', '§§FIRST_IMG§§'
       | replace: '<img', '<img loading="lazy" decoding="async" class="content-image"'
-      | replace: 'alt=""', 'alt="image"' %}
-
+      | replace: '§§FIRST_IMG§§', '<img fetchpriority="high" decoding="async" class="content-image"'
+      | replace: 'alt=""', 'alt="image"' -%}
     {{ content_with_images }}
-
   </article>
-  
-  <!-- 图片相册（PhotoSwipe v5） -->
-  <script type="module" defer src="{{ site.baseurl }}/static/js/gallery.js"></script>
 
-  <!-- Prism 代码样式与插件 -->
-  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/themes/prism-tomorrow.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.css" rel="stylesheet">
-  <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/prism.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-javascript.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-python.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
-  <script defer src="/static/js/code.js"></script>
-  
-  <!-- 在文章内容下方添加微信公众号 -->
-  <!-- {% unless page.categories contains "life" %}
-    {% if page.show_footer_image %}
-      <div style="text-align: center; margin-top: 20px;">
-        <img 
-          src="https://s2.loli.net/2025/04/29/ntFU5SIfNCeK2Hy.png"
-          alt="Footer Image" 
-          style="max-width: 70%; height: auto;"
-        >
+  <footer class="post-footer">
+
+    <section class="post-share">
+      <div class="post-share-label">
+        <i class="fas fa-share-alt"></i> 分享到
       </div>
-      {% endif %}
-  {% endunless %} -->
-  
+      <div class="post-share-buttons">
+        <button class="share-button" onclick="shareOnSocial('weibo')" aria-label="分享到微博" title="微博"><i class="fab fa-weibo"></i></button>
+        <button class="share-button" onclick="shareOnSocial('qq')" aria-label="分享到 QQ" title="QQ"><i class="fab fa-qq"></i></button>
+        <button class="share-button" onclick="shareOnWeChat()" aria-label="分享到微信" title="微信"><i class="fab fa-weixin"></i></button>
+        <button class="share-button" onclick="shareOnSocial('facebook')" aria-label="分享到 Facebook" title="Facebook"><i class="fab fa-facebook-f"></i></button>
+        <button class="share-button" onclick="shareOnSocial('twitter')" aria-label="分享到 Twitter" title="Twitter"><i class="fab fa-twitter"></i></button>
+        <button class="share-button" onclick="shareOnSocial('linkedin')" aria-label="分享到 LinkedIn" title="LinkedIn"><i class="fab fa-linkedin-in"></i></button>
+        <button class="share-button" onclick="shareOnSocial('reddit')" aria-label="分享到 Reddit" title="Reddit"><i class="fab fa-reddit-alien"></i></button>
+      </div>
+    </section>
 
-  <!-- 添加分享按钮 -->
-  <div class="share-buttons">
-    <!-- 微博 -->
-    <button class="share-button" onclick="shareOnSocial('weibo')">
-      <i class="fab fa-weibo"></i>
-    </button>
-
-    <!-- QQ -->
-    <button class="share-button" onclick="shareOnSocial('qq')">
-      <i class="fab fa-qq"></i>
-    </button>
-
-    <!-- 微信 -->
-    <button class="share-button" onclick="shareOnWeChat()">
-      <i class="fab fa-weixin"></i>
-    </button>
-
-    <!-- Facebook -->
-    <button class="share-button" onclick="shareOnSocial('facebook')">
-      <i class="fab fa-facebook-f"></i>
-    </button>
-
-    <!-- Twitter -->
-    <button class="share-button" onclick="shareOnSocial('twitter')">
-      <i class="fab fa-twitter"></i>
-    </button>
-
-    <!-- LinkedIn -->
-    <button class="share-button" onclick="shareOnSocial('linkedin')">
-      <i class="fab fa-linkedin-in"></i>
-    </button>
-
-    <!-- Reddit -->
-    <button class="share-button" onclick="shareOnSocial('reddit')">
-      <i class="fab fa-reddit-alien"></i>
-    </button>
-  </div>
-
-  {%- if page.categories and page.categories.size > 0 -%}
-  {%- assign cur_cat = page.categories | first -%}
-  {%- assign related = site.categories[cur_cat] | where_exp: "p", "p.url != page.url" -%}
-  {%- if related.size > 0 -%}
-  <aside class="related-posts">
-    <h3><i class="fas fa-bookmark"></i> 相关阅读 · {{ cur_cat }}</h3>
-    <ul>
-      {%- for p in related limit: 5 -%}
-      <li>
-        <span class="date">{{ p.date | date: "%Y-%m-%d" }}</span>
-        <a href="{{ site.baseurl }}{{ p.url }}">{{ p.title }}</a>
-      </li>
+    {%- comment -%} 相关阅读：TAG×1 + CATEGORY×0.5 加权 Top 5 {%- endcomment -%}
+    {%- if page.tags.size > 0 or page.categories.size > 0 -%}
+    {%- assign related_list = "" | split: "" -%}
+    {%- for post in site.posts -%}
+      {%- if post.url == page.url -%}{%- continue -%}{%- endif -%}
+      {%- if post.show == false -%}{%- continue -%}{%- endif -%}
+      {%- assign score = 0 -%}
+      {%- for tag in post.tags -%}
+        {%- if page.tags contains tag -%}{%- assign score = score | plus: 10 -%}{%- endif -%}
       {%- endfor -%}
-    </ul>
-  </aside>
-  {%- endif -%}
-  {%- endif -%}
+      {%- for cat in post.categories -%}
+        {%- if page.categories contains cat -%}{%- assign score = score | plus: 5 -%}{%- endif -%}
+      {%- endfor -%}
+      {%- if score > 0 -%}
+        {%- assign padded = score | prepend: "00000" | slice: -5, 5 -%}
+        {%- assign entry = padded | append: "|" | append: post.url | append: "|" | append: post.title | append: "|" | append: post.date -%}
+        {%- assign related_list = related_list | push: entry -%}
+      {%- endif -%}
+    {%- endfor -%}
+    {%- assign related_sorted = related_list | sort | reverse -%}
+    {%- if related_sorted.size > 0 -%}
+    <section class="related-posts">
+      <h3><i class="fas fa-bookmark"></i> 相关阅读</h3>
+      <ul>
+      {%- for entry in related_sorted limit: 5 -%}
+        {%- assign parts = entry | split: "|" -%}
+        <li>
+          <span class="date">{{ parts[3] | date: "%Y-%m-%d" }}</span>
+          <a href="{{ site.baseurl }}{{ parts[1] }}">{{ parts[2] }}</a>
+        </li>
+      {%- endfor -%}
+      </ul>
+    </section>
+    {%- endif -%}
+    {%- endif -%}
 
-  <div class="navigation-buttons">
-    {% unless page.categories contains "life" %}
-      {% if page.previous.url %}
-        <a href="{{ page.previous.url | relative_url }}" class="nav-button previous" title="{{ page.previous.title }}">
-          <i class="fas fa-arrow-left"></i> {{ page.previous.title }}
-        </a>
-      {% else %}
-        <span class="nav-button previous disabled">
-          <i class="fas fa-arrow-left"></i> 没有上一篇文章
+    {%- unless page.categories contains "life" -%}
+    <nav class="navigation-buttons" aria-label="文章导航">
+      {%- if page.previous.url -%}
+      <a href="{{ page.previous.url | relative_url }}" class="nav-button previous" title="{{ page.previous.title }}">
+        <i class="fas fa-arrow-left"></i>
+        <span class="nav-label">
+          <span class="nav-tag">上一篇</span>
+          <span class="nav-title">{{ page.previous.title }}</span>
         </span>
-      {% endif %}
-    
-      {% if page.next.url %}
-        <a href="{{ page.next.url | relative_url }}" class="nav-button next" title="{{ page.next.title }}">
-          {{ page.next.title }} <i class="fas fa-arrow-right"></i>
-        </a>
-      {% else %}
-        <span class="nav-button next disabled">
-          没有下一篇文章 <i class="fas fa-arrow-right"></i>
-        </span>
-      {% endif %}
-    {% endunless %}
-  </div>
+      </a>
+      {%- else -%}
+      <span class="nav-button previous disabled">
+        <i class="fas fa-arrow-left"></i>
+        <span class="nav-label"><span class="nav-tag">上一篇</span><span class="nav-title">没有了</span></span>
+      </span>
+      {%- endif -%}
 
-  <!-- 评论区 -->
-  <div id="tcomment"></div>
-  <script src="/static/js/comment-twikoo.js" defer></script>
-  <!-- 目录功能 -->
-  <script src="/static/js/toc.js"></script>
-  <!-- 网页分析器 -->
-  <script defer src="https://cloud.umami.is/script.js" data-website-id="b1118f16-642d-4b6b-99b0-fb2b4b34134c"></script>
-  <script defer src="https://analytics.ahrefs.com/analytics.js" data-key="4/nmCEy0+wcsPpIqB0+afg"></script>
-  {% include footer.html -%}
-  {% include script.html -%}
-  </body>
+      {%- if page.next.url -%}
+      <a href="{{ page.next.url | relative_url }}" class="nav-button next" title="{{ page.next.title }}">
+        <span class="nav-label">
+          <span class="nav-tag">下一篇</span>
+          <span class="nav-title">{{ page.next.title }}</span>
+        </span>
+        <i class="fas fa-arrow-right"></i>
+      </a>
+      {%- else -%}
+      <span class="nav-button next disabled">
+        <span class="nav-label"><span class="nav-tag">下一篇</span><span class="nav-title">没有了</span></span>
+        <i class="fas fa-arrow-right"></i>
+      </span>
+      {%- endif -%}
+    </nav>
+    {%- endunless -%}
+
+    <section class="post-comments">
+      <div id="tcomment"></div>
+    </section>
+
+  </footer>
+
+</div>
+
+<script defer src="https://events.vercount.one/js"></script>
+
+<script type="module" defer src="{{ site.baseurl }}/static/js/gallery.js"></script>
+
+<link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/themes/prism-tomorrow.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.css" rel="stylesheet">
+<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/prism.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-javascript.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/components/prism-python.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.26.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+<script defer src="/static/js/code.js"></script>
+
+<script defer src="/static/js/comment-twikoo.js"></script>
+<script defer src="/static/js/toc.js"></script>
+
+<script defer src="https://cloud.umami.is/script.js" data-website-id="b1118f16-642d-4b6b-99b0-fb2b4b34134c"></script>
+<script defer src="https://analytics.ahrefs.com/analytics.js" data-key="4/nmCEy0+wcsPpIqB0+afg"></script>
+
+{% include footer.html -%}
+{% include script.html -%}
+</body>
 </html>

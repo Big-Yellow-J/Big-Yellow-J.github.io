@@ -4,8 +4,14 @@ title: 标签
 ---
 
 <div class="page page-tags">
+  <header class="categories-header">
+    <h1 class="categories-title"><i class="fas fa-tags"></i> 标签</h1>
+    <p class="categories-meta">
+      共 {{ site.tags | size }} 个标签 · {{ site.posts | size }} 篇文章 · 点击标签查看对应文章
+    </p>
+  </header>
+
   <div class="tag-cloud">
-    <h2>所有标签</h2>
     <div class="tag-cloud-list">
       {%- assign max_count = 0 -%}
       {%- for tag in site.tags -%}
@@ -17,28 +23,75 @@ title: 标签
         {%- assign ratio = s | times: 100 | divided_by: max_count -%}
         <a href="#tag-{{ forloop.index }}"
            class="tag-cloud-item"
-           style="font-size: calc(12px + {{ ratio }} * 0.12px);">
+           data-tag-target="tag-{{ forloop.index }}"
+           style="font-size: calc(12px + {{ ratio }} * 0.14px);">
           {{ tag[0] }}<sup>{{ s }}</sup>
         </a>
       {%- endfor -%}
     </div>
   </div>
 
-  {%- for tag in site.tags %}
-  <div class="list-post tag-section">
-    <h2 id="tag-{{ forloop.index }}">
-      <i class="fas fa-tag"></i> {{ tag[0] }} <span class="tag-count">{{ tag[1] | size }} 篇</span>
-    </h2>
-    <ul>
-      {%- for post in tag[1] %}
-      <li>
-        <span class="date">{{ post.date | date: "%Y/%m/%d" }}</span>
-        <div class="title">
-          <a href="{{ site.baseurl | append: post.url }}" class="hover-underline">{{ post.title }}</a>
-        </div>
-      </li>
-      {%- endfor %}
-    </ul>
+  <div id="tag-empty" class="tag-empty">
+    <i class="far fa-hand-pointer"></i>
+    <p>点击上方任意标签，查看该标签下的文章</p>
   </div>
-  {%- endfor %}
+
+  <div id="tag-panels">
+  {%- for tag in site.tags -%}
+    <section class="tag-section" id="tag-{{ forloop.index }}" hidden>
+      <h2 class="year-label">
+        <i class="fas fa-tag"></i> {{ tag[0] }}
+        <span class="tag-count">{{ tag[1] | size }} 篇</span>
+      </h2>
+      <ul class="year-posts tag-post-list">
+        {%- for post in tag[1] -%}
+        <li class="archives-item">
+          <span class="archives-date">{{ post.date | date: "%Y-%m-%d" }}</span>
+          <a href="{{ site.baseurl }}{{ post.url }}" class="archives-link">{{ post.title }}</a>
+        </li>
+        {%- endfor -%}
+      </ul>
+    </section>
+  {%- endfor -%}
+  </div>
 </div>
+
+<script>
+(function () {
+  var panels = document.querySelectorAll('#tag-panels .tag-section');
+  var cloud  = document.querySelectorAll('.tag-cloud-item');
+  var empty  = document.getElementById('tag-empty');
+
+  function showTag(id) {
+    if (!id) return false;
+    var found = false;
+    panels.forEach(function (p) {
+      if (p.id === id) { p.hidden = false; found = true; }
+      else { p.hidden = true; }
+    });
+    cloud.forEach(function (a) {
+      a.classList.toggle('is-active', a.dataset.tagTarget === id);
+    });
+    if (empty) empty.style.display = found ? 'none' : '';
+    return found;
+  }
+
+  cloud.forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      var id = this.dataset.tagTarget;
+      showTag(id);
+      history.replaceState(null, '', '#' + id);
+      var el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  function fromHash() {
+    var id = decodeURIComponent((location.hash || '').replace(/^#/, ''));
+    if (id && document.getElementById(id)) showTag(id);
+  }
+  document.addEventListener('DOMContentLoaded', fromHash);
+  window.addEventListener('hashchange', fromHash);
+})();
+</script>

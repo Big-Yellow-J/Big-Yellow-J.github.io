@@ -3,204 +3,143 @@ layout: page
 title: 首页
 ---
 
-<style>
-/* 分页导航样式 */
-.pagination {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-}
+<div class="page page-index cols-2">
 
-.pagination a, .pagination span {
-  padding: 5px 10px;
-  text-decoration: none;
-  color: #333;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
+  <div class="list-toolbar">
+    <form class="list-search" role="search">
+      <i class="fas fa-search"></i>
+      <input type="text" name="q" placeholder="在站内搜索文章…" aria-label="搜索">
+    </form>
+    <button class="cols-toggle" type="button"
+            data-scope="index"
+            data-target=".page-index"
+            data-default="2"
+            aria-label="切换单栏/双栏">
+      <i class="fas fa-th-large cols-icon"></i>
+      <span class="cols-label">双栏</span>
+    </button>
+  </div>
 
-.pagination a:hover {
-  background-color: #f0f0f0;
-}
-
-.pagination .previous, .pagination .next {
-  background-color: #e8e8e8;
-  border: 1px solid #ccc;
-}
-
-.pagination .previous:hover, .pagination .next:hover {
-  background-color: #d0d0d0;
-}
-
-.pagination .disabled {
-  color: #aaa;
-  border: 1px solid #ddd;
-  background-color: #f5f5f5;
-  cursor: not-allowed;
-}
-
-.pagination .page_number {
-  font-size: 0.85em;
-  color: #555;
-}
-
-.flame {
-  display: inline-block;
-  margin-right: 4px;
-  animation: beat 1.2s infinite ease-in-out;
-  vertical-align: middle;
-}
-@keyframes beat {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.35); }
-}
-
-/* 文章标题容器 */
-.title {
-  position: relative;
-  display: inline-block;
-  line-height: 1.4;
-}
-
-/* 链接本身 */
-.post-link {
-  position: relative;
-  text-decoration: none;
-  color: inherit;
-}
-
-/* 更新提示 */
-.update-hint {
-  position: absolute;
-  left: 0;
-  top: calc(100% + 8px);     /* 更安全的下方距离 */
-  padding: 5px 10px;
-  font-size: 0.85rem;
-  color: #ffffff;
-  background-color: rgba(0, 0, 0, 0.92);
-  border-radius: 6px;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  transform: translateY(-4px);
-  z-index: 999;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-}
-
-/* hover 触发 */
-.post-link:hover .update-hint {
-  opacity: 1;
-  transform: translateY(0);
-}
-</style>
-
-<div class="page page-index">
-  <!-- 置顶文章 -->
-  {% assign stickie_posts = site.posts | where: "stickie", true %}
-  {% if stickie_posts.size > 0 %}
-    <div class="list-post">
-      <h2>置顶文章</h2>
-      <ul>
-        {% for post in stickie_posts %}
-          {% unless post.categories contains "life" %}
-            {% if post.show != false %}
-              <li>
-                <span class="date">{{ post.date | date: "%Y-%m-%d" }}</span>
-                <div class="title">
-                  <a href="{{ site.baseurl }}{{ post.url }}" class="hover-underline">
-                    <span class="flame">🔥</span>
-                    <span style="color: red;">[持续更新] </span>
-                    {{ post.title }}
-                  </a>
-                </div>
-                <div class="categories">
-                  {% for categorie in post.categories %}
-                    <a href="{{ site.baseurl }}/pages/categories.html#{{ categorie }}" class="hover-underline">{{ categorie }}</a>
-                  {% endfor %}
-                </div>
-              </li>
-            {% endif %}
-          {% endunless %}
-        {% endfor %}
-      </ul>
-    </div>
-  {% endif %}
-
-  <!-- 普通文章按年份分组 -->
-  {% assign current_year = "" %}
-  {% for post in paginator.posts %}
-    {% unless post.categories contains "life" %}
-      {% if post.show != false and post.stickie != true %}
-        {% capture post_year %}{{ post.date | date: "%Y" }}{% endcapture %}
-        {% if post_year != current_year %}
-          {% if current_year != "" %}
-            </ul>
-          </div>
-          {% endif %}
-          
-          <div class="list-post">
-            <h2 id="{{ post_year }}">{{ post_year }}</h2>
-            <ul>
-            {% assign current_year = post_year %}
-        {% endif %}
-        <li>
-          <span class="date">{{ post.date | date: "%Y-%m-%d" }}</span>
-
-          <div class="title">
-            <a href="{{ site.baseurl }}{{ post.url }}" class="hover-underline post-link">
-              {% if post.special_tag %}
-                <span class="flame">🔥</span>
-                <span style="color: red;">[{{ post.special_tag }}]</span>
-              {% endif %}
+  {%- assign stickie_posts = site.posts | where: "stickie", true -%}
+  {%- if stickie_posts.size > 0 -%}
+  <section class="post-section">
+    <h2 class="year-label"><i class="fas fa-thumbtack"></i> 置顶</h2>
+    <div class="post-cards">
+      {%- for post in stickie_posts -%}
+        {%- if post.categories contains "life" -%}{%- continue -%}{%- endif -%}
+        {%- if post.show == false -%}{%- continue -%}{%- endif -%}
+        <article class="post-card pinned">
+          <h3 class="post-card-title">
+            <a href="{{ site.baseurl }}{{ post.url }}">
+              <span class="flame">🔥</span>
+              {%- if post.special_tag -%}
+                <span class="post-card-tag">[{{ post.special_tag }}]</span>
+              {%- else -%}
+                <span class="post-card-tag">[持续更新]</span>
+              {%- endif -%}
               {{ post.title }}
             </a>
-
-            {% if post.last_modified_at and post.last_modified_at != post.date %}
-              <span class="update-hint">
-                更新于 {{ post.last_modified_at | date: "%Y-%m-%d" }}
-              </span>
-            {% endif %}
+          </h3>
+          {%- if post.description -%}
+          <p class="post-card-desc">{{ post.description | strip_html | strip_newlines | truncate: 140 }}</p>
+          {%- endif -%}
+          <div class="post-card-meta">
+            <span><i class="far fa-calendar-alt"></i> {{ post.date | date: "%Y-%m-%d" }}</span>
+            {%- if post.categories.size > 0 -%}
+            <span><i class="far fa-folder"></i>
+              {%- for c in post.categories -%}
+                <a href="{{ site.baseurl }}/pages/categories.html#{{ c | url_encode }}">{{ c }}</a>{%- unless forloop.last %} / {% endunless -%}
+              {%- endfor -%}
+            </span>
+            {%- endif -%}
+            {%- if post.tags.size > 0 -%}
+            <span class="post-card-tags"><i class="fas fa-hashtag"></i>
+              {%- for t in post.tags limit: 4 -%}
+                <span class="tagchip">{{ t }}</span>
+              {%- endfor -%}
+            </span>
+            {%- endif -%}
           </div>
+        </article>
+      {%- endfor -%}
+    </div>
+  </section>
+  {%- endif -%}
 
-          <div class="categories">
-            {% for categorie in post.categories %}
-              <a href="{{ site.baseurl }}/pages/categories.html#{{ categorie }}" class="hover-underline">
-                {{ categorie }}
-              </a>
-              {% unless forloop.last %}, {% endunless %}
-            {% endfor %}
-          </div>
-        </li>
+  {%- assign current_year = "" -%}
+  {%- for post in paginator.posts -%}
+    {%- if post.categories contains "life" -%}{%- continue -%}{%- endif -%}
+    {%- if post.show == false -%}{%- continue -%}{%- endif -%}
+    {%- if post.stickie == true -%}{%- continue -%}{%- endif -%}
+    {%- assign post_year = post.date | date: "%Y" -%}
+    {%- if post_year != current_year -%}
+      {%- unless current_year == "" -%}
+        </div></section>
+      {%- endunless -%}
+      <section class="post-section">
+        <h2 class="year-label" id="{{ post_year }}"><i class="far fa-calendar"></i> {{ post_year }}</h2>
+        <div class="post-cards">
+      {%- assign current_year = post_year -%}
+    {%- endif -%}
+    <article class="post-card">
+      <h3 class="post-card-title">
+        <a href="{{ site.baseurl }}{{ post.url }}">
+          {%- if post.special_tag -%}
+            <span class="flame">🔥</span><span class="post-card-tag">[{{ post.special_tag }}]</span>
+          {%- endif -%}
+          {{ post.title }}
+        </a>
+        {%- if post.last_modified_at and post.last_modified_at != post.date -%}
+          <span class="updated-badge" title="更新于 {{ post.last_modified_at | date: '%Y-%m-%d' }}">
+            <i class="fas fa-sync-alt"></i>
+          </span>
+        {%- endif -%}
+      </h3>
+      {%- if post.description -%}
+      <p class="post-card-desc">{{ post.description | strip_html | strip_newlines | truncate: 140 }}</p>
+      {%- endif -%}
+      <div class="post-card-meta">
+        <span><i class="far fa-calendar-alt"></i> {{ post.date | date: "%Y-%m-%d" }}</span>
+        <span class="card-views" data-page-url="{{ post.url | absolute_url }}"><i class="far fa-eye"></i> <span class="card-views-num">–</span></span>
+        {%- if post.categories.size > 0 -%}
+        <span><i class="far fa-folder"></i>
+          {%- for c in post.categories -%}
+            <a href="{{ site.baseurl }}/pages/categories.html#{{ c | url_encode }}">{{ c }}</a>{%- unless forloop.last %} / {% endunless -%}
+          {%- endfor -%}
+        </span>
+        {%- endif -%}
+        {%- if post.tags.size > 0 -%}
+        <span class="post-card-tags"><i class="fas fa-hashtag"></i>
+          {%- for t in post.tags limit: 4 -%}
+            <span class="tagchip">{{ t }}</span>
+          {%- endfor -%}
+        </span>
+        {%- endif -%}
+      </div>
+    </article>
+  {%- endfor -%}
+  {%- unless current_year == "" -%}
+        </div>
+      </section>
+  {%- endunless -%}
 
-        {% if forloop.last %}
-            </ul>
-          </div>
-        {% endif %}
-      {% endif %}
-    {% endunless %}
-  {% endfor %}
+  {%- if paginator.total_pages > 1 -%}
+  <nav class="pagination" aria-label="分页">
+    {%- if paginator.previous_page -%}
+      <a href="{{ site.baseurl }}{{ paginator.previous_page_path }}" class="previous"><i class="fas fa-angle-left"></i> 上一页</a>
+    {%- else -%}
+      <span class="previous disabled"><i class="fas fa-angle-left"></i> 上一页</span>
+    {%- endif -%}
+    <span class="page_number">第 {{ paginator.page }} / {{ paginator.total_pages }} 页</span>
+    {%- if paginator.next_page -%}
+      <a href="{{ site.baseurl }}{{ paginator.next_page_path }}" class="next">下一页 <i class="fas fa-angle-right"></i></a>
+    {%- else -%}
+      <span class="next disabled">下一页 <i class="fas fa-angle-right"></i></span>
+    {%- endif -%}
+  </nav>
+  {%- endif -%}
 
-  <!-- 分页导航 -->
-  {% if paginator.total_pages > 1 %}
-  <div class="pagination">
-    {% if paginator.previous_page %}
-      <a href="{{ site.baseurl }}{{ paginator.previous_page_path }}" class="previous">上一页</a>
-    {% else %}
-      <span class="previous disabled">上一页</span>
-    {% endif %}
-
-    <span class="page_number">
-      第 {{ paginator.page }} 页 / 共 {{ paginator.total_pages }} 页
-    </span>
-
-    {% if paginator.next_page %}
-      <a href="{{ site.baseurl }}{{ paginator.next_page_path }}" class="next">下一页</a>
-    {% else %}
-      <span class="next disabled">下一页</span>
-    {% endif %}
-  </div>
-  {% endif %}
 </div>
+
+<script src="{{ site.baseurl }}/static/js/layout-toggle.js" defer></script>
+<script src="{{ site.baseurl }}/static/js/post-views.js" defer></script>

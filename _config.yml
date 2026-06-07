@@ -75,16 +75,12 @@ tucaoUrl: https://support.qq.com/product/86335
 menu:
   - title: 🎆首页
     url: /
-  - title: 👨Code
-    url: /pages/code.html
   - title: 🗂️归类
     url: /pages/categories.html
   - title: 🏷️标签
     url: /pages/tags.html
-  - title: 🔎搜索
-    url: /pages/search.html
-  # - title: 😁关于
-  #   url: /pages/about.html
+  - title: 🗓️归档
+    url: /pages/archives.html
   - title: 🦄生活
     url: /pages/life.html
   - title: 📃CV

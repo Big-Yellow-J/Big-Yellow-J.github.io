@@ -1,0 +1,49 @@
+---
+layout: page
+title: 归档
+---
+
+<div class="page page-archives cols-2">
+  <header class="archives-header">
+    <h1 class="archives-title"><i class="fas fa-archive"></i> 归档</h1>
+    <p class="archives-meta">共 {{ site.posts | size }} 篇文章 · 按时间倒序</p>
+  </header>
+
+  <div class="list-toolbar">
+    <form class="list-search" role="search">
+      <i class="fas fa-search"></i>
+      <input type="text" name="q" placeholder="在站内搜索文章…" aria-label="搜索">
+    </form>
+    <button class="cols-toggle" type="button"
+            data-scope="archives"
+            data-target=".page-archives"
+            data-default="2"
+            aria-label="切换单栏/双栏">
+      <i class="fas fa-th-large cols-icon"></i>
+      <span class="cols-label">双栏</span>
+    </button>
+  </div>
+
+  {%- assign last_year = "" -%}
+  <div class="archives-timeline">
+  {%- for post in site.posts -%}
+    {%- if post.show == false -%}{%- continue -%}{%- endif -%}
+    {%- if post.categories contains "life" -%}{%- continue -%}{%- endif -%}
+    {%- assign cur_year = post.date | date: "%Y" -%}
+    {%- if cur_year != last_year -%}
+      {%- unless forloop.first -%}</ul></section>{%- endunless -%}
+      <section class="archives-year" id="y-{{ cur_year }}">
+        <h2 class="year-label">{{ cur_year }}</h2>
+        <ul class="year-posts">
+      {%- assign last_year = cur_year -%}
+    {%- endif -%}
+      <li class="archives-item">
+        <span class="archives-date">{{ post.date | date: "%m-%d" }}</span>
+        <a href="{{ site.baseurl }}{{ post.url }}" class="archives-link">{{ post.title }}</a>
+      </li>
+  {%- endfor -%}
+  {%- unless last_year == "" -%}</ul></section>{%- endunless -%}
+  </div>
+</div>
+
+<script src="{{ site.baseurl }}/static/js/layout-toggle.js" defer></script>
