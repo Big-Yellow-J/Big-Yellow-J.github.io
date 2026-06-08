@@ -11,7 +11,11 @@ tags:
 - 分布式训练
 - ray
 - 分布式框架
+description: Ray是支持以本地Python写法实现分布式/并行计算的开源框架，核心计算仍由PyTorch等执行，覆盖模型部署、服务器调度等场景。其架构包含五大核心组件：Head与Worker两类节点、两层分布式调度器、基于Apache
+  Arrow/Plasma的内存分布式对象存储、GCS全局控制存储、节点级守护进程Raylet，可实现低延迟调度、零拷贝数据访问、节点自治等特性。上层基于Ray
+  Core的Task、Actor、Object基础分布式原语，封装Ray Data分布式数据预处理、Ray Train多框架分布式训练、Ray Tune分布式超参数搜索能力，大幅降低分布式开发门槛。
 ---
+
 前面介绍了在[pytorch中不同的分布式训练实现方式](https://www.big-yellow-j.top/posts/2026/04/20/torch-basic-distribute-1.html)，这里简单介绍一些使用过程中用的比较多的分布式框架（更加多的设计到了模型部署、服务器调度之间内容，非严格的pytorch内容）。
 
 ## Ray

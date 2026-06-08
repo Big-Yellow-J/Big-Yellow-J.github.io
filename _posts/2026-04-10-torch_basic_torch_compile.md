@@ -9,8 +9,8 @@ tags:
 - pytorch
 - torch.compile
 - 计算图
-description: PyTorch动态计算图为有向无环结构，节点对应张量或运算，边代表数据流，forward时即时构建，backward时按拓扑顺序反向传播累加梯度，执行后默认释放，可通过retain_graph=True保留中间变量与梯度信息。torch.compile基于三阶段流程实现提速：TorchDynamo捕获PyTorch操作生成FX
-  Graph，搭配输入形状、类型等Guard校验规则；AOTAutograd提前生成反向计算图，拆分基础操作实现前后向联合优化，降低内存开销；TorchInductor完成算子融合、内存复用等优化，GPU端生成Triton代码、CPU端生成C++代码。该功能不影响模型精度，可降低训练耗时，已适配TRL、Accelerator等主流训练框架。
+description: PyTorch计算图是有向无环图，节点代表操作，边代表数据流，动态图在每次前向传播时即时构建并默认释放，支持灵活调试。反向传播时框架沿图计算梯度并累加到叶子张量。静态图则提前构建完整计算图以优化执行。torch.compile引入三个核心组件：TorchDynamo通过捕获Python字节码将Tensor操作记录为FX
+  Graph，遇复杂控制流产生图断开；AOTAutograd提前从前向图生成反向图，避免运行时动态建图；TorchInductor作为默认后端，融合算子、优化内存并生成Triton或C++代码。使用torch.compile可显著减少训练时间，模型效果差异不大。关键参数包括backend（默认inductor）、mode（default/reduce-overhead/max-autotune）、fullgraph及options。
 ---
 
 ## torch计算图概念

@@ -8,8 +8,11 @@ show_footer_image: true
 tags:
 - agent
 - claude code
-description: Windows端Claude Code支持桌面端、终端两种安装路径，终端安装可通过CMD或PowerShell执行官方命令完成，遇网络连接报错可切换美国VPN节点、开启全局代理或虚拟网卡模式解决，安装完成后需配置系统环境变量，可搭配rtk工具优化token消耗。终端输入claude即可启动，输入/可调用操作命令，支持切换模型、安装superpowers等官方插件。内置技能分为项目级、全局级两类，可通过复制文件夹或命令行安装第三方可复用prompt，也支持自定义技能，适配自动、手动两种触发方式。
+description: 在Windows上通过WSL安装Claude Code是推荐方式，支持桌面端和终端安装，需配置环境变量并处理VPN节点或全局代理以解决安装报错。Skills分为项目目录和根目录，可自动触发（基于description字段）或手动触发（/命令联想），安装他人Skills可通过复制文件夹或执行npx命令。自定义Skills需在SKILL.md中定义name、description、when_to_use等YAML头部字段，结合prompt和脚本实现function
+  calling机制。Agent Team模式允许任务拆分给多个子Agent并行执行，子Agent各自拥有独立上下文窗口。抓包分析显示，Claude Code通过缓存命中（复用相同block）降低计算开销，上下文工程采用分阶段压缩：先廉价清理工具输出（文件预览+本地路径缓存），再手动/自动执行LLM压缩（输出`<analysis>`+`<summary>`双层结果），最后将压缩后内容替换到上下文。基础命令包括/compact压缩对话、clear重置、/context查看占用、/sandbox沙盒隔离、claude
+  --permission-mode auto强制自动判断权限，以及npx claude-task-viewer监控任务。插件与MCP赋予工具调用能力，如playwright实现浏览器操作。整体Agent架构需处理上下文不受限时的缓存设计与压缩策略。
 ---
+
 本文详细介绍Claude Code在windows上安装使用，对于一般非计算机行业用户或者对底层技术了解兴趣不深的可以只看：1、第一部分Claude Code简单使用；2、Claude Code进阶使用；3、Claude Code底层原理中的Skills开发。
 ## Claude Code简单使用
 ### 安装环境准备

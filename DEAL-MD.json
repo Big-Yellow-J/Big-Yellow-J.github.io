@@ -816,7 +816,7 @@
     ],
     [
       "new_description",
-      "PyTorch动态计算图为有向无环结构，节点对应张量或运算，边代表数据流，forward时即时构建，backward时按拓扑顺序反向传播累加梯度，执行后默认释放，可通过retain_graph=True保留中间变量与梯度信息。torch.compile基于三阶段流程实现提速：TorchDynamo捕获PyTorch操作生成FX Graph，搭配输入形状、类型等Guard校验规则；AOTAutograd提前生成反向计算图，拆分基础操作实现前后向联合优化，降低内存开销；TorchInductor完成算子融合、内存复用等优化，GPU端生成Triton代码、CPU端生成C++代码。该功能不影响模型精度，可降低训练耗时，已适配TRL、Accelerator等主流训练框架。"
+      "PyTorch计算图是有向无环图，节点代表操作，边代表数据流，动态图在每次前向传播时即时构建并默认释放，支持灵活调试。反向传播时框架沿图计算梯度并累加到叶子张量。静态图则提前构建完整计算图以优化执行。torch.compile引入三个核心组件：TorchDynamo通过捕获Python字节码将Tensor操作记录为FX Graph，遇复杂控制流产生图断开；AOTAutograd提前从前向图生成反向图，避免运行时动态建图；TorchInductor作为默认后端，融合算子、优化内存并生成Triton或C++代码。使用torch.compile可显著减少训练时间，模型效果差异不大。关键参数包括backend（默认inductor）、mode（default/reduce-overhead/max-autotune）、fullgraph及options。"
     ]
   ],
   "./writing/2026-05-17-OpenCode.md": [
@@ -836,7 +836,27 @@
     ],
     [
       "new_description",
-      "Windows端Claude Code支持桌面端、终端两种安装路径，终端安装可通过CMD或PowerShell执行官方命令完成，遇网络连接报错可切换美国VPN节点、开启全局代理或虚拟网卡模式解决，安装完成后需配置系统环境变量，可搭配rtk工具优化token消耗。终端输入claude即可启动，输入/可调用操作命令，支持切换模型、安装superpowers等官方插件。内置技能分为项目级、全局级两类，可通过复制文件夹或命令行安装第三方可复用prompt，也支持自定义技能，适配自动、手动两种触发方式。"
+      "在Windows上通过WSL安装Claude Code是推荐方式，支持桌面端和终端安装，需配置环境变量并处理VPN节点或全局代理以解决安装报错。Skills分为项目目录和根目录，可自动触发（基于description字段）或手动触发（/命令联想），安装他人Skills可通过复制文件夹或执行npx命令。自定义Skills需在SKILL.md中定义name、description、when_to_use等YAML头部字段，结合prompt和脚本实现function calling机制。Agent Team模式允许任务拆分给多个子Agent并行执行，子Agent各自拥有独立上下文窗口。抓包分析显示，Claude Code通过缓存命中（复用相同block）降低计算开销，上下文工程采用分阶段压缩：先廉价清理工具输出（文件预览+本地路径缓存），再手动/自动执行LLM压缩（输出`<analysis>`+`<summary>`双层结果），最后将压缩后内容替换到上下文。基础命令包括/compact压缩对话、clear重置、/context查看占用、/sandbox沙盒隔离、claude --permission-mode auto强制自动判断权限，以及npx claude-task-viewer监控任务。插件与MCP赋予工具调用能力，如playwright实现浏览器操作。整体Agent架构需处理上下文不受限时的缓存设计与压缩策略。"
+    ]
+  ],
+  "./writing/2026-06-05-RayArchUse.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "Ray是支持以本地Python写法实现分布式/并行计算的开源框架，核心计算仍由PyTorch等执行，覆盖模型部署、服务器调度等场景。其架构包含五大核心组件：Head与Worker两类节点、两层分布式调度器、基于Apache Arrow/Plasma的内存分布式对象存储、GCS全局控制存储、节点级守护进程Raylet，可实现低延迟调度、零拷贝数据访问、节点自治等特性。上层基于Ray Core的Task、Actor、Object基础分布式原语，封装Ray Data分布式数据预处理、Ray Train多框架分布式训练、Ray Tune分布式超参数搜索能力，大幅降低分布式开发门槛。"
+    ]
+  ],
+  "./_posts/2026-04-20-torch-basic-distribute-1.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "模型微调多卡训练依赖分布式策略。数据并行中DDP采用独立运行机制，每个进程拥有独立优化器，通过all-reduce同步梯度，避免DP的主GPU瓶颈与模型冗余拷贝。张量并行按行或列拆分权重矩阵，列并行需all-reduce聚合完整输入梯度，行并行则通过all-gather汇总分片梯度。流水线并行将模型按顺序分配到不同设备，面临气泡问题。GPipe引入micro-batch与梯度累积，结合梯度检查点降低显存，按1F1B策略交替前反向；PipeDream通过Weight stashing确保同一micro-batch前后向使用相同权重版本，Vertical Sync虽保证全局一致但通常弃用以避免浪费。专家并行作为补充。为优化显存，DeepSpeed ZeRO系列对优化器状态、梯度、模型参数依次分片，将单卡占用量从O(N)降至O(1/N)；FSDP作为PyTorch原生ZeRO-3实现，在前反向时临时All-Gather完整参数并即时释放，实现均匀分片。"
     ]
   ]
 }

@@ -456,7 +456,7 @@ def process_file(file_path_list,
         md_content = open_file(md_path)
         if md_content is None:
             return None
-        md_content = format_image(md_content, image_store_dir, image_threads, gen_avif=gen_avif)
+        # md_content = format_image(md_content, image_store_dir, image_threads, gen_avif=gen_avif)
         _, yaml_dict = format_markdown(md_content)
         return md_path, md_content, yaml_dict
 
@@ -526,8 +526,8 @@ def parse_args():
     parser.add_argument(
         '--provider',
         choices=['doubao', 'deepseek'],
-        default='doubao',
-        help='摘要生成模型提供方，默认 doubao'
+        default='deepseek',
+        help='摘要生成模型提供方，默认 deepseek'
     )
     parser.add_argument(
         '--max-threads',
