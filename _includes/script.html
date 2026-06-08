@@ -1,5 +1,9 @@
 {%- assign buildVer = site.time | date: "%Y%m%d" -%}
 <script type="text/javascript" src="{{site.baseurl}}/static/js/blog.js?v={{ buildVer }}"></script>
+<script defer src="{{site.baseurl}}/static/js/prefetch.js?v={{ buildVer }}"></script>
+<script defer src="{{site.baseurl}}/static/js/web-vitals-report.js?v={{ buildVer }}"></script>
+
+{%- if site.extServiceWorker %}{% include ext-serviceWorker.html %}{%- endif %}
 
 {%- if site.extClickEffect %}
 <script>
@@ -15,3 +19,25 @@
     {% include ext-mathjax.html %}
   {%- endif %}
 {%- endif %}
+
+<!-- Google Analytics: defer + idle 加载，避免阻塞关键渲染路径 -->
+<script>
+(function(){
+  function loadGtag(){
+    var s = document.createElement('script');
+    s.defer = true;
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-WEKR7CWKHH';
+    document.head.appendChild(s);
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){ dataLayer.push(arguments); }
+    window.gtag = gtag;
+    gtag('js', new Date());
+    gtag('config', 'G-WEKR7CWKHH', { 'anonymize_ip': true });
+  }
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(loadGtag, { timeout: 3000 });
+  } else {
+    window.addEventListener('load', function(){ setTimeout(loadGtag, 1500); });
+  }
+})();
+</script>

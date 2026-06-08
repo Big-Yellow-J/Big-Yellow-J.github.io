@@ -10,27 +10,24 @@
 
     const katexCSS = document.createElement('link');
     katexCSS.rel = 'stylesheet';
-    katexCSS.href = 'https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css';
-    katexCSS.integrity = 'sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X';
+    katexCSS.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css';
     katexCSS.crossOrigin = 'anonymous';
     document.head.appendChild(katexCSS);
 
     const katexJS = document.createElement('script');
-    katexJS.src = 'https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js';
-    katexJS.integrity = 'sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4';
+    katexJS.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js';
     katexJS.crossOrigin = 'anonymous';
     katexJS.defer = true;
     document.head.appendChild(katexJS);
 
     const katexAutoRender = document.createElement('script');
-    katexAutoRender.src = 'https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js';
-    katexAutoRender.integrity = 'sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa';
+    katexAutoRender.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js';
     katexAutoRender.crossOrigin = 'anonymous';
     katexAutoRender.defer = true;
     document.head.appendChild(katexAutoRender);
 
     const twikooJS = document.createElement('script');
-    twikooJS.src = 'https://cdn.jsdelivr.net/npm/twikoo@1.4.18/dist/twikoo.min.js';
+    twikooJS.src = 'https://cdn.jsdelivr.net/npm/twikoo@1.6.41/dist/twikoo.min.js';
     document.head.appendChild(twikooJS);
 
     twikooJS.onload = () => {

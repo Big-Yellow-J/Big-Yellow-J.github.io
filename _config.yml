@@ -95,8 +95,12 @@ extClickEffect: false
 # _includes/ext-adsense.html 里面修改为自己的配置
 extAdsense: false
 
-# 数学公式支持，比较影响加载速度,不需要请设置为false
-extMath: true # false
+# 数学公式支持（KaTeX 0.16，仅文章页生效）
+# 全站默认关，含公式的文章在 frontmatter 中声明 extMath: true 单独加载
+extMath: false
+
+# Service Worker：二次访问全站缓存，离线可访问
+extServiceWorker: true
 
 # 显示访问量统计，由不蒜子提供服务
 extCount: true

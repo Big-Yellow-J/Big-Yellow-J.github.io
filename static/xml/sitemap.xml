@@ -2,35 +2,19 @@
 layout: null
 ---
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   {%- assign latest_post = site.posts | first -%}
   {%- if latest_post -%}
     {%- assign site_lastmod = latest_post.last_modified_at | default: latest_post.date | date: "%Y-%m-%d" -%}
   {%- else -%}
     {%- assign site_lastmod = site.time | date: "%Y-%m-%d" -%}
   {%- endif -%}
-  <url>
-    <loc>{{ site.domainUrl }}{{ site.baseurl }}/</loc>
+  <sitemap>
+    <loc>{{ site.domainUrl }}{{ site.baseurl }}/static/xml/sitemap-posts.xml</loc>
     <lastmod>{{ site_lastmod }}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  {%- for post in site.posts %}
-  <url>
-    <loc>{{ site.domainUrl }}{{ site.baseurl }}{{ post.url }}</loc>
-    <lastmod>{{ post.last_modified_at | default: post.date | date: "%Y-%m-%d" }}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  {%- endfor %}
-  {%- for page in site.pages %}
-    {%- if page.url contains '/pages/' and page.layout %}
-  <url>
-    <loc>{{ site.domainUrl }}{{ site.baseurl }}{{ page.url }}</loc>
-    <lastmod>{{ page.last_modified_at | default: site_lastmod | date: "%Y-%m-%d" }}</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.5</priority>
-  </url>
-    {%- endif %}
-  {%- endfor %}
-</urlset>
+  </sitemap>
+  <sitemap>
+    <loc>{{ site.domainUrl }}{{ site.baseurl }}/static/xml/sitemap-pages.xml</loc>
+    <lastmod>{{ site_lastmod }}</lastmod>
+  </sitemap>
+</sitemapindex>

@@ -1,4 +1,19 @@
+/* 明色 CSS 变量基线（暗色覆盖） */
+:root {
+  --bk-text: #24292e;
+  --bk-bg: #ffffff;
+  --bk-muted: #6e7681;
+  --bk-link: #0366d6;
+  --bk-card-bg: #ffffff;
+  --bk-card-border: #d0d7de;
+}
 html.dark {
+  --bk-text: #c9d1d9;
+  --bk-bg: #0d1117;
+  --bk-muted: #8b949e;
+  --bk-link: #58a6ff;
+  --bk-card-bg: #161b22;
+  --bk-card-border: #30363d;
   color: #c9d1d9;
   background: #0d1117;
 }
@@ -253,3 +268,201 @@ html.dark .tag-empty {
   border-color: #30363d;
   color: #8b949e;
 }
+
+/* 修复硬编码的黑色字体（page.css / common.css 里 #000 #24292e #333 在亮色场景写死，暗色下需覆盖） */
+html.dark body,
+html.dark .page,
+html.dark .page-index,
+html.dark .page-categories,
+html.dark .page-tags,
+html.dark .page-archives,
+html.dark .post-card-title,
+html.dark .post-card-title a,
+html.dark .post-card-desc,
+html.dark .post-card-meta,
+html.dark .post-card-meta a,
+html.dark .archives-link,
+html.dark .archives-item,
+html.dark .year-label,
+html.dark .cat-summary,
+html.dark .cat-summary a,
+html.dark .cat-list a,
+html.dark .categories-title,
+html.dark .archives-title,
+html.dark .archives-meta,
+html.dark .categories-meta,
+html.dark .post-title,
+html.dark .post-meta-bar,
+html.dark .meta-item,
+html.dark .meta-item span,
+html.dark .related-posts h3,
+html.dark .related-posts li,
+html.dark .related-posts a,
+html.dark .pagination span,
+html.dark .pagination a {
+  color: var(--bk-text);
+}
+html.dark .post-card-desc,
+html.dark .post-card-meta,
+html.dark .post-card-meta a,
+html.dark .archives-date,
+html.dark .archives-meta,
+html.dark .categories-meta,
+html.dark .post-meta-bar .meta-item,
+html.dark .pagination .disabled {
+  color: var(--bk-muted);
+}
+html.dark .post-card-title a:hover,
+html.dark .archives-link:hover,
+html.dark .related-posts a:hover { color: var(--bk-link); }
+html.dark .tagchip {
+  background: rgba(88, 166, 255, 0.12);
+  color: #79c0ff;
+  border-color: #30363d;
+}
+html.dark .updated-badge { color: #d29922; }
+html.dark .cat-card,
+html.dark .post-card {
+  background: var(--bk-card-bg);
+  border-color: var(--bk-card-border);
+}
+html.dark .list-search {
+  background: var(--bk-card-bg);
+  border-color: var(--bk-card-border);
+}
+html.dark .list-search input { color: var(--bk-text); background: transparent; }
+html.dark .list-search input::placeholder { color: var(--bk-muted); }
+html.dark .cols-toggle {
+  background: var(--bk-card-bg);
+  border-color: var(--bk-card-border);
+  color: var(--bk-text);
+}
+html.dark .post-share { color: var(--bk-text); }
+html.dark .post-share-buttons .share-button {
+  background: var(--bk-card-bg);
+  border-color: var(--bk-card-border);
+  color: var(--bk-text);
+}
+html.dark .nav-button {
+  background: var(--bk-card-bg);
+  border-color: var(--bk-card-border);
+  color: var(--bk-text);
+}
+html.dark .nav-button:hover { border-color: var(--bk-link); }
+html.dark .breadcrumbs,
+html.dark .breadcrumbs .current { color: var(--bk-text); }
+html.dark .archives-item::before { background: #0d1117; }
+
+/* 文章正文暗色字体修复（覆盖 post.css 中硬编码黑色字体） */
+html.dark .page-post .title,
+html.dark .page-post .subtitle,
+html.dark .page-post .post p,
+html.dark .page-post .post h1,
+html.dark .page-post .post h2,
+html.dark .page-post .post h3,
+html.dark .page-post .post h4,
+html.dark .page-post .post h5,
+html.dark .page-post .post h6,
+html.dark .page-post .post li,
+html.dark .page-post .post blockquote,
+html.dark .page-post b,
+html.dark .page-post strong { color: var(--bk-text) !important; }
+
+html.dark .page-post .post h2::before,
+html.dark .page-post .post h3::before,
+html.dark .page-post .post h4::before { color: #58a6ff; }
+
+html.dark .page-post .post a { color: #58a6ff; }
+
+html.dark .page-post .post code,
+html.dark .page-post .post p code,
+html.dark .page-post .post li code {
+  background-color: #21262d;
+  color: #f0883e;
+  border: 1px solid #30363d;
+}
+
+html.dark .page-post .post table th,
+html.dark .page-post th {
+  background-color: #21262d;
+  color: var(--bk-text);
+  border-color: #30363d;
+}
+html.dark .page-post .post table td,
+html.dark .page-post td {
+  border-color: #30363d;
+  color: var(--bk-text);
+}
+html.dark .page-post .post table tr:nth-child(2n) { background: rgba(255,255,255,0.03); }
+
+html.dark .page-post .post blockquote {
+  background-color: #161b22;
+  border-left-color: #58a6ff;
+  color: #c9d1d9;
+}
+
+html.dark .share-button,
+html.dark .share-button i { color: var(--bk-text); }
+html.dark .share-button:hover { background: rgba(88,166,255,0.12); }
+
+html.dark .navigation-buttons .nav-button { color: var(--bk-text); }
+html.dark .navigation-buttons .nav-button .nav-tag { color: var(--bk-muted); }
+html.dark .navigation-buttons .nav-button .nav-title { color: var(--bk-text); }
+html.dark .navigation-buttons .nav-button.disabled,
+html.dark .navigation-buttons .nav-button.disabled .nav-title { color: #484f58; }
+
+html.dark .breadcrumbs { color: var(--bk-muted); }
+html.dark .breadcrumbs a { color: #58a6ff; }
+html.dark .breadcrumbs .current { color: var(--bk-text); }
+
+html.dark .related-posts {
+  background: var(--bk-card-bg);
+  border-color: var(--bk-card-border);
+}
+html.dark .related-posts h3 { color: var(--bk-text); }
+html.dark .related-posts .date { color: var(--bk-muted); }
+html.dark .related-posts a { color: #58a6ff; }
+
+html.dark .post-meta-bar .meta-item,
+html.dark .post-meta-bar .meta-item i,
+html.dark .post-meta-bar .meta-item span,
+html.dark .post-meta-bar .meta-item time { color: var(--bk-muted); }
+
+html.dark .copy-toast { background: #21262d; color: var(--bk-text); border: 1px solid #30363d; }
+
+/* page.css 中遗漏的暗色覆盖 */
+html.dark .category-card { background: var(--bk-card-bg); border-color: var(--bk-card-border); color: var(--bk-text); }
+html.dark .category-card a { color: var(--bk-text); }
+html.dark .category-count-inline { color: var(--bk-muted); }
+html.dark .archives-search input,
+html.dark .archives-search input::placeholder { background: var(--bk-card-bg); color: var(--bk-text); border-color: var(--bk-card-border); }
+html.dark .pagination a,
+html.dark .pagination span { color: var(--bk-text); }
+html.dark .pagination .disabled { color: #484f58; background: #161b22; }
+html.dark .tag-count { color: var(--bk-muted); }
+
+/* common.css 中遗漏的暗色覆盖 */
+html.dark code,
+html.dark pre code,
+html.dark :not(pre) > code {
+  background-color: #21262d;
+  color: #f0883e;
+}
+html.dark input,
+html.dark textarea,
+html.dark select { color: var(--bk-text); background: var(--bk-card-bg); border-color: var(--bk-card-border); }
+html.dark input::placeholder,
+html.dark textarea::placeholder { color: var(--bk-muted); }
+
+/* Pagefind 暗色 */
+html.dark .pagefind-ui__search-input {
+  background: var(--bk-card-bg) !important;
+  border-color: var(--bk-card-border) !important;
+  color: var(--bk-text) !important;
+}
+html.dark .pagefind-ui__result-link { color: var(--bk-link) !important; }
+html.dark .pagefind-ui__result-excerpt { color: var(--bk-text) !important; }
+html.dark .pagefind-ui__result-tags { color: var(--bk-muted) !important; }
+html.dark .pagefind-ui__message,
+html.dark .pagefind-ui__result-title { color: var(--bk-text) !important; }
+html.dark mark.pagefind-ui__result-excerpt-highlight { background: rgba(88,166,255,.2); color: #79c0ff; }

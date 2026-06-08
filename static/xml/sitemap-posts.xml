@@ -1,0 +1,17 @@
+---
+layout: null
+permalink: /static/xml/sitemap-posts.xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  {%- for post in site.posts %}
+    {%- if post.show == false -%}{%- continue -%}{%- endif -%}
+  <url>
+    <loc>{{ site.domainUrl }}{{ site.baseurl }}{{ post.url }}</loc>
+    <lastmod>{{ post.last_modified_at | default: post.date | date: "%Y-%m-%d" }}</lastmod>
+    <changefreq>monthly</changefreq>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="{{ site.domainUrl }}{{ site.baseurl }}{{ post.url }}" />
+  </url>
+  {%- endfor %}
+</urlset>

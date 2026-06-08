@@ -1,5 +1,6 @@
 import os
 import re
+import time
 import json
 import yaml
 import argparse
@@ -15,6 +16,30 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 load_dotenv('./API_KEY.env')
+
+
+class RateLimiter:
+    """线程安全的最小间隔限速器，按 key 隔离（每个 token 一个独立时钟）。"""
+    def __init__(self, qps: float):
+        self._min_interval = 1.0 / qps if qps > 0 else 0.0
+        self._lock = threading.Lock()
+        self._next_allowed = defaultdict(float)
+
+    def wait(self, key: str):
+        if self._min_interval <= 0:
+            return
+        with self._lock:
+            now = time.monotonic()
+            wait_for = self._next_allowed[key] - now
+            if wait_for > 0:
+                time.sleep(wait_for)
+                now = time.monotonic()
+            self._next_allowed[key] = now + self._min_interval
+
+
+_SMMS_LIMITER = RateLimiter(qps=1.5)
+_SMMS_SEMAPHORE = threading.BoundedSemaphore(2)
+_LLM_LIMITER = RateLimiter(qps=1.0)
 
 
 def parse_smms_tokens(raw_tokens: str):
@@ -119,7 +144,14 @@ def format_markdown(md_content,
     return md_content, yaml_dict
 
 
-def format_image(md_content, image_store_dir, max_threads):
+try:
+    import pillow_avif  # noqa: F401
+    _AVIF_AVAILABLE = True
+except ImportError:
+    _AVIF_AVAILABLE = False
+
+
+def format_image(md_content, image_store_dir, max_threads, gen_avif=False):
     thread_local = threading.local()
 
     def get_session():
@@ -137,47 +169,79 @@ def format_image(md_content, image_store_dir, max_threads):
         return session
 
     def upload_webp_file(webp_path: Path, image_bed='sm.ms'):
-        if image_bed == 'sm.ms':
-            smms_tokens = parse_smms_tokens(os.getenv("SMMS_API_LIST", ""))
-            if not smms_tokens:
-                print(f"❌ 上传失败：未设置 SMMS_API_LIST 环境变量，请检查 API_KEY.env 文件")
-                return None
+        """按 https://s.ee/docs/zh-CN/api/UploadFile/ 与 sm.ms v2 文档实现。
 
-            def post_once(url, token, data=None):
-                headers = {'Authorization': token}
-                with open(webp_path, 'rb') as f:
-                    files = {'smfile': f}
-                    session = get_session()
-                    return session.post(url, files=files, data=data or {}, headers=headers, timeout=30)
-
-            for smms_api_key in smms_tokens:
-                token_mask = f"{smms_api_key[:4]}***"
-                upload_targets = [
-                    ('https://sm.ms/api/v2/upload', {}),
-                    ('https://s.ee/api/v1/file/upload', {'domain': 'sm.ms'})
-                ]
-                for url, data in upload_targets:
-                    try:
-                        response = post_once(url, smms_api_key, data=data)
-                        if response.status_code == 401:
-                            print(f"⚠️ token鉴权失败（token: {token_mask}）：{url}")
-                            continue
-                        response.raise_for_status()
-
-                        result = response.json()
-                        if result.get("success"):
-                            return result.get("data", {}).get("url")
-                        if result.get('code') == 'image_repeated':
-                            return result.get('images') or result.get("data", {}).get("url")
-                        print(f"❌ 上传失败（token: {token_mask}）：{webp_path.name} - {result.get('message')}")
-                    except Exception as e:
-                        print(f"❌ 上传出错（token: {token_mask}）：{webp_path} - {e}")
+        - Authorization 头直接放 API key，无 Bearer / token 前缀
+        - sm.ms 字段名为 smfile；s.ee 兼容端点字段名为 file（smfile 为别名）
+        - 不传 domain（domain 是 s.ee 短链域名设置，错误的取值会被服务端拒绝）
+        - 全局 Semaphore 限制同时上传 ≤ 2；同一 token 限速 ≤ 1.5 QPS
+        - 429 / 5xx / 业务限流：指数退避重试最多 3 次
+        - 401：跳过当前 token；其他业务错误：跳到下一个端点
+        """
+        if image_bed != 'sm.ms':
             return None
+        smms_tokens = parse_smms_tokens(os.getenv("SMMS_API_LIST", ""))
+        if not smms_tokens:
+            print("❌ 上传失败：未设置 SMMS_API_LIST 环境变量，请检查 API_KEY.env")
+            return None
+
+        targets = [
+            ('https://sm.ms/api/v2/upload', 'smfile'),
+            ('https://s.ee/api/v1/file/upload', 'file'),
+        ]
+        session = get_session()
+
+        def parse(resp):
+            try:
+                r = resp.json()
+            except Exception:
+                return None, f'HTTP {resp.status_code} 非 JSON'
+            if r.get('success') or r.get('code') in (0, '0', 'success'):
+                return (r.get('data') or {}).get('url'), None
+            if r.get('code') == 'image_repeated':
+                return r.get('images') or (r.get('data') or {}).get('url'), None
+            return None, r.get('message') or f'code={r.get("code")}'
+
+        for token in smms_tokens:
+            mask = f"{token[:4]}***"
+            for url, field in targets:
+                for attempt in range(3):
+                    _SMMS_LIMITER.wait(token)
+                    with _SMMS_SEMAPHORE:
+                        try:
+                            with open(webp_path, 'rb') as f:
+                                resp = session.post(
+                                    url,
+                                    files={field: f},
+                                    headers={'Authorization': token},
+                                    timeout=30,
+                                )
+                        except Exception as e:
+                            print(f"⚠️  网络错误 [{mask} {url}] 第{attempt+1}次：{e}")
+                            time.sleep(2 ** attempt)
+                            continue
+                    if resp.status_code == 401:
+                        print(f"⚠️  token 鉴权失败（{mask}）：{url}")
+                        break
+                    if resp.status_code == 429 or resp.status_code >= 500:
+                        print(f"⚠️  限流/5xx [{mask} {url}] HTTP{resp.status_code} 第{attempt+1}次")
+                        time.sleep(2 ** attempt + 1)
+                        continue
+                    image_url, err = parse(resp)
+                    if image_url:
+                        return image_url
+                    if err and re.search(r'flood|too many|rate|频繁|限制', err, re.I):
+                        print(f"⚠️  业务限流（{mask}）：{err} 第{attempt+1}次")
+                        time.sleep(2 ** attempt + 1)
+                        continue
+                    print(f"❌ 上传失败（{mask}）：{webp_path.name} - {err}")
+                    break
+        return None
 
     SKIP_HOSTS = ('s2.loli.net', 'i.loli.net', 'sm.ms', 's.ee')
 
     def download_convert(image_url, output_path, quality=85, image_bed='sm.ms'):
-        """下载图片将其转化为webp，返回 (源URL, 新URL, 宽, 高)。已是图床地址则跳过下载。"""
+        """下载图片转 WebP（+ 可选 AVIF），返回 (源URL, webp_URL, avif_URL, 宽, 高)。"""
         host = urlparse(image_url).netloc
         if any(host.endswith(h) for h in SKIP_HOSTS):
             try:
@@ -187,10 +251,10 @@ def format_image(md_content, image_store_dir, max_threads):
                 image = Image.open(BytesIO(response.content))
                 width, height = image.size
                 print(f"⏭️  跳过转换（已是图床地址）：{image_url} ({width}x{height})")
-                return image_url, image_url, width, height
+                return image_url, image_url, None, width, height
             except Exception as e:
                 print(f"⚠️  跳过但拉宽高失败：{image_url} - {e}")
-                return image_url, image_url, 0, 0
+                return image_url, image_url, None, 0, 0
         try:
             session = get_session()
             response = session.get(image_url, timeout=10)
@@ -203,13 +267,22 @@ def format_image(md_content, image_store_dir, max_threads):
             file_name = Path(file_name_with_ext).stem
             save_path = output_path / f"{file_name}.webp"
             image.save(save_path, format="webp", quality=quality)
+            webp_url = upload_webp_file(save_path, image_bed=image_bed)
 
-            url_path = upload_webp_file(save_path, image_bed=image_bed)
-            print(f"✅ 处理完成：{image_url} → {save_path.name} → {url_path} ({width}x{height})")
-            return image_url, url_path, width, height
+            avif_url = None
+            if gen_avif and _AVIF_AVAILABLE:
+                avif_path = output_path / f"{file_name}.avif"
+                try:
+                    image.save(avif_path, format="AVIF", quality=max(quality - 5, 50))
+                    avif_url = upload_webp_file(avif_path, image_bed=image_bed)
+                except Exception as e:
+                    print(f"⚠️  AVIF 生成/上传失败（回退 WebP）：{e}")
+
+            print(f"✅ 处理完成：{image_url} → {save_path.name} → {webp_url} ({width}x{height}){' +AVIF' if avif_url else ''}")
+            return image_url, webp_url, avif_url, width, height
         except Exception as e:
             print(f"❌ 下载/转换失败：{image_url} - {e}")
-            return image_url, None, None, None
+            return image_url, None, None, None, None
     image_pattern = re.compile(
         r'!\[(?P<alt>[^\]]*)\]\((?P<url>https?://[^\s)]+\.(?:png|jpg|jpeg|webp|gif|bmp|svg))\)',
         re.IGNORECASE
@@ -224,9 +297,9 @@ def format_image(md_content, image_store_dir, max_threads):
     with ThreadPoolExecutor(max_workers=max_threads) as executor:
         future_to_url = {executor.submit(download_convert, u, image_store_dir): u for u in urls}
         for future in as_completed(future_to_url):
-            image_url, url_path, w, h = future.result()
-            if url_path:
-                info_map[image_url] = (url_path, w, h)
+            image_url, webp_url, avif_url, w, h = future.result()
+            if webp_url:
+                info_map[image_url] = (webp_url, avif_url, w, h)
 
     if not info_map:
         return md_content
@@ -235,11 +308,18 @@ def format_image(md_content, image_store_dir, max_threads):
         url = match.group('url')
         if url not in info_map:
             return match.group(0)
-        new_url, w, h = info_map[url]
+        webp_url, avif_url, w, h = info_map[url]
         alt = (match.group('alt') or 'image').replace('"', '&quot;')
-        if w and h:
-            return f'<img src="{new_url}" alt="{alt}" width="{w}" height="{h}" loading="lazy" decoding="async" />'
-        return f'<img src="{new_url}" alt="{alt}" loading="lazy" decoding="async" />'
+        size_attr = f' width="{w}" height="{h}"' if w and h else ''
+        if avif_url:
+            return (
+                f'<picture>'
+                f'<source type="image/avif" srcset="{avif_url}">'
+                f'<source type="image/webp" srcset="{webp_url}">'
+                f'<img src="{webp_url}" alt="{alt}"{size_attr} loading="lazy" decoding="async" />'
+                f'</picture>'
+            )
+        return f'<img src="{webp_url}" alt="{alt}"{size_attr} loading="lazy" decoding="async" />'
 
     md_content = image_pattern.sub(render, md_content)
     return md_content
@@ -282,6 +362,7 @@ def format_description(md_content, yaml_dict, description, md_path, provider='do
 
         re_connrct = 0
         while re_connrct< len(model_list):
+            _LLM_LIMITER.wait(provider)
             try:
                 completion = client.chat.completions.create(
                     model = model_list[re_connrct],
@@ -289,6 +370,9 @@ def format_description(md_content, yaml_dict, description, md_path, provider='do
                 )
                 return completion.choices[0].message.content
             except Exception as e:
+                msg = str(e)
+                if re.search(r'429|rate|limit|quota|too many|频繁', msg, re.I):
+                    time.sleep(2 ** min(re_connrct, 4) + 1)
                 print(f"❌ LLM生成摘要出错（provider={provider}, model={model_list[re_connrct]}）：{e}")
                 re_connrct+=1
         return None
@@ -309,14 +393,15 @@ def format_description(md_content, yaml_dict, description, md_path, provider='do
             return new_md_content, description
     return md_content, description
 
-def process_file(file_path_list, 
+def process_file(file_path_list,
                  max_threads= None,
                  store_base= './images/post_image/',
                  description_path = './DEAL-MD.json',
                  provider='doubao',
                  file_threads=None,
                  image_threads=None,
-                 desc_threads=None):
+                 desc_threads=None,
+                 gen_avif=False):
     '''处理单个文件'''
     def mkdir_image_dir(md_path):
         md_path = Path(md_path)
@@ -349,9 +434,9 @@ def process_file(file_path_list,
         image_threads = max_threads
         desc_threads = max_threads
     else:
-        file_threads = file_threads or min(max(4, cpu_count), 32)
-        image_threads = image_threads or min(max(16, cpu_count * 8), 64)
-        desc_threads = desc_threads or min(max(4, cpu_count * 2), 16)
+        file_threads = file_threads or min(max(2, cpu_count // 2), 8)
+        image_threads = image_threads or 4
+        desc_threads = desc_threads or 4
 
     file_threads = max(1, file_threads)
     image_threads = max(1, image_threads)
@@ -371,7 +456,7 @@ def process_file(file_path_list,
         md_content = open_file(md_path)
         if md_content is None:
             return None
-        md_content = format_image(md_content, image_store_dir, image_threads)
+        md_content = format_image(md_content, image_store_dir, image_threads, gen_avif=gen_avif)
         _, yaml_dict = format_markdown(md_content)
         return md_path, md_content, yaml_dict
 
@@ -416,7 +501,8 @@ def main(post_dir_list = ['./_posts/', './writing/'],
          file_threads=None,
          image_threads=None,
          desc_threads=None,
-         target_files=None):
+         target_files=None,
+         gen_avif=False):
     # 获取文件路径
     if target_files:
         md_path_list = target_files
@@ -431,7 +517,8 @@ def main(post_dir_list = ['./_posts/', './writing/'],
                  provider=provider,
                  file_threads=file_threads,
                  image_threads=image_threads,
-                 desc_threads=desc_threads)
+                 desc_threads=desc_threads,
+                 gen_avif=gen_avif)
 
 
 def parse_args():
@@ -477,6 +564,12 @@ def parse_args():
         default=None,
         help='仅处理指定 Markdown 文件路径（可传多个）'
     )
+    parser.add_argument(
+        '--avif',
+        action='store_true',
+        default=False,
+        help='额外生成 AVIF 格式并渲染为 <picture> 标签（需 pip install pillow-avif-plugin，会双倍占用图床配额）'
+    )
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -487,4 +580,5 @@ if __name__ == '__main__':
          file_threads=args.file_threads,
          image_threads=args.image_threads,
          desc_threads=args.desc_threads,
-         target_files=args.files)
+         target_files=args.files,
+         gen_avif=args.avif)

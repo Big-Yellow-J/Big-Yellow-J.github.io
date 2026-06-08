@@ -1,0 +1,31 @@
+---
+layout: null
+permalink: /static/xml/sitemap-pages.xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  {%- assign latest_post = site.posts | first -%}
+  {%- if latest_post -%}
+    {%- assign site_lastmod = latest_post.last_modified_at | default: latest_post.date | date: "%Y-%m-%d" -%}
+  {%- else -%}
+    {%- assign site_lastmod = site.time | date: "%Y-%m-%d" -%}
+  {%- endif -%}
+  <url>
+    <loc>{{ site.domainUrl }}{{ site.baseurl }}/</loc>
+    <lastmod>{{ site_lastmod }}</lastmod>
+    <changefreq>daily</changefreq>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="{{ site.domainUrl }}{{ site.baseurl }}/" />
+  </url>
+  {%- for p in site.pages -%}
+    {%- if p.url contains '/pages/' and p.layout -%}
+      {%- if p.url contains 'search' -%}{%- continue -%}{%- endif -%}
+  <url>
+    <loc>{{ site.domainUrl }}{{ site.baseurl }}{{ p.url }}</loc>
+    <lastmod>{{ p.last_modified_at | default: site_lastmod | date: "%Y-%m-%d" }}</lastmod>
+    <changefreq>yearly</changefreq>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="{{ site.domainUrl }}{{ site.baseurl }}{{ p.url }}" />
+  </url>
+    {%- endif -%}
+  {%- endfor %}
+</urlset>

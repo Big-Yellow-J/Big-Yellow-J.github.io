@@ -722,3 +722,16 @@ body {
   .list-search input { padding: 7px 0; font-size: 13px; }
 }
 
+/* ===== Pagefind 搜索页 ===== */
+.page-search .search-header { margin: 18px 0 14px; }
+.page-search .search-title { font-size: 22px; margin: 0; }
+.page-search .search-title i { color: var(--bk-accent, #4BB596); margin-right: 8px; }
+.page-search .search-meta { color: var(--bk-muted, #6e7681); font-size: 13px; margin: 4px 0 0; }
+.page-search #search { margin: 12px 0 40px; }
+.pagefind-ui { font-family: inherit; }
+.pagefind-ui__search-input {
+  background: #fff;
+  border: 1px solid var(--bk-card-border, #d0d7de) !important;
+  border-radius: 10px !important;
+}
+

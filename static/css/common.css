@@ -1,6 +1,6 @@
 html {
-  color: #333333;
-  background: #ffffff;
+  color: var(--bk-text, #24292e);
+  background: var(--bk-bg, #ffffff);
   scroll-behavior: smooth;
   -ms-text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
@@ -8,7 +8,7 @@ html {
   text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-family: 'Cascadia Code', Consolas, Helvetica, 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', sans-serif;
   overflow-y: overlay;
 }
 html[transition] {

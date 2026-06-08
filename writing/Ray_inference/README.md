@@ -1,128 +1,108 @@
-# Ray 多模型推理平台
+# Ray 推理服务(ResNet50 + YOLO)
 
-单卡 40G GPU 上部署 4 个模型（ResNet50 / YOLO / SAM / CLIP），通过 Ray Actor 实现 **GPU 常驻**，避免重复加载。
+单卡 GPU 上以 Ray Actor 形式常驻 ResNet50 与 YOLOv8 两个模型,FastAPI 暴露同步 HTTP 接口。
 
 ## 架构
 
 ```
-main.py                     # 一键启动入口
-└── ray_deploy.py           # Ray 初始化、Actor 创建、健康监控
+main.py            一键入口(serve / status)
+└── ray_deploy.py  Ray 初始化、Actor 创建、健康监控、FastAPI 装配
     ├── models/
-    │   ├── base.py         # Actor 基类（GPU 常驻 + 健康上报）
-    │   ├── resnet_actor.py # ResNet50 图像分类
-    │   ├── yolo_actor.py   # YOLOv8 目标检测
-    │   ├── sam_actor.py    # SAM 实体分割
-    │   └── clip_actor.py   # CLIP 图文匹配/对话
+    │   ├── base.py            Actor 基类
+    │   ├── image_loader.py    统一图像加载(path / URL / base64 / bytes)
+    │   ├── resnet_actor.py    ResNet50
+    │   └── yolo_actor.py      YOLOv8
     └── services/
-        ├── online_api.py   # FastAPI 在线推理（单图 + 多图并发）
-        ├── batch_api.py    # 离线批处理 API（提交/查询/取消）
-        └── batch_worker.py # 批处理调度引擎
+        └── online_api.py      FastAPI 端点
 ```
 
 ## 快速开始
 
 ```bash
-# 1. 安装依赖
 pip install -r requirements.txt
-
-# 2. 启动服务（在线 API + 离线批处理 API）
-python main.py serve
-
-# 3. 访问 API 文档
-open http://localhost:8000/docs
+python main.py serve                       # 默认 0.0.0.0:8000
+python main.py serve --host 127.0.0.1 --port 9000
+python main.py status                       # 查看已运行 actor
 ```
 
-## API 端点
+API 文档:`http://localhost:8000/docs`,Ray Dashboard:`http://localhost:8265`。
 
-### 在线推理（单图 / 多图并发）
+## 端点
 
-| 方法 | 端点 | 说明 |
+| 方法 | 路径 | 说明 |
 |------|------|------|
-| `GET` | `/health` | 全模型健康检查 |
-| `POST` | `/classify` | ResNet50 单图分类 |
-| `POST` | `/classify/batch` | ResNet50 **多图并发**分类 |
-| `POST` | `/detect` | YOLO 单图目标检测 |
-| `POST` | `/detect/batch` | YOLO **多图并发**检测 |
-| `POST` | `/segment` | SAM 单图实体分割 |
-| `POST` | `/segment/batch` | SAM **多图并发**分割 |
-| `POST` | `/clip/similarity` | CLIP 单图图文相似度 |
-| `POST` | `/clip/similarity/batch` | CLIP **多图并发**相似度 |
-| `POST` | `/clip/chat` | CLIP 单图简短对话 |
-| `POST` | `/clip/chat/batch` | CLIP **多图并发**对话 |
+| `GET`  | `/health`   | 全模型健康状态 |
+| `GET`  | `/actors`   | Actor 详情 |
+| `POST` | `/classify` | ResNet50 分类(`top_k` 可选) |
+| `POST` | `/detect`   | YOLOv8 目标检测(`conf` 可选) |
 
-### 离线批处理 API
+## 输入方式(三种,任选其一)
 
-| 方法 | 端点 | 说明 |
-|------|------|------|
-| `POST` | `/batch/jobs` | 提交 JSON 任务（多模型混合） |
-| `POST` | `/batch/jobs/upload` | 上传多图提交统一任务 |
-| `GET` | `/batch/jobs` | 列出所有批处理任务 |
-| `GET` | `/batch/jobs/{job_id}` | 查询任务状态与结果 |
-| `DELETE` | `/batch/jobs/{job_id}` | 取消/清理任务 |
-
-## 使用示例
-
-### 1. 在线多图并发推理
+### 1. 上传文件
 
 ```bash
-# 同时传 5 张图片做分类
-curl -X POST http://localhost:8000/classify/batch \
-  -F "files=@cat1.jpg" \
-  -F "files=@cat2.jpg" \
-  -F "files=@dog1.jpg" \
-  -F "top_k=3"
-
-# 响应：{"total": 3, "success_count": 3, "results": {"cat1.jpg": {...}, ...}}
+curl -X POST 'http://localhost:8000/classify?top_k=3' \
+  -F 'file=@cat.jpg'
 ```
 
-### 2. 离线批处理 - JSON 提交
+### 2. JSON + 本地路径 / URL
 
 ```bash
-# 提交混合任务
-curl -X POST http://localhost:8000/batch/jobs \
-  -H "Content-Type: application/json" \
-  -d '{
-    "tasks": [
-      {"model": "resnet", "image_path": "/data/cat.jpg", "top_k": 3},
-      {"model": "yolo",   "image_path": "/data/dog.jpg", "conf": 0.5},
-      {"model": "sam",    "image_path": "/data/bird.jpg"}
-    ],
-    "output_dir": "/tmp/batch_results"
-  }'
+curl -X POST 'http://localhost:8000/detect?conf=0.3' \
+  -H 'Content-Type: application/json' \
+  -d '{"source": "/data/dog.jpg"}'
 
-# 查询任务状态
-curl http://localhost:8000/batch/jobs/<job_id>
+curl -X POST 'http://localhost:8000/classify' \
+  -H 'Content-Type: application/json' \
+  -d '{"source": "https://example.com/img.jpg"}'
 ```
 
-### 3. 离线批处理 - 上传多图
+### 3. JSON + base64 / data URI
 
 ```bash
-curl -X POST http://localhost:8000/batch/jobs/upload \
-  -F "files=@img1.jpg" \
-  -F "files=@img2.jpg" \
-  -F "model=resnet" \
-  -F "top_k=5"
+curl -X POST 'http://localhost:8000/classify' \
+  -H 'Content-Type: application/json' \
+  -d '{"source": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB..."}'
+
+curl -X POST 'http://localhost:8000/classify' \
+  -H 'Content-Type: application/json' \
+  -d '{"source": "data:image/png;base64,iVBORw0KGgo..."}'
 ```
 
-## GPU 显存分配（单卡 40G）
+服务端 `models/image_loader.py` 会按 `URL → 本地路径 → base64` 顺序自动判别。
 
-| 模型 | GPU 比例 | 预估显存 |
-|------|----------|----------|
-| ResNet50 | 15% | ~100MB |
-| YOLOv8 | 30% | ~2GB |
-| SAM | 40% | ~2.5GB |
-| CLIP | 15% | ~1.5GB |
+## 高吞吐设计
 
-总计 < 7GB，40G 显存充裕。
-
-## 健康保障
-
-- **Ray Actor `max_restarts=3`**：模型崩溃自动重启
-- **`lifetime="detached"`**：Actor 独立于主进程存活
-- **后台健康监控**：每 30s 检查 Actor 状态并打印
-- **任务超时保护**：`max_task_retries=2`
-- **GPU 常驻**：Actor 初始化后模型始终加载在 GPU
+- **GPU 常驻**:Actor 由 `lifetime="detached"` 保持,不随主进程退出。
+- **Actor 内并发**:`max_concurrency=4`,同一 actor 可同时处理多个请求。
+- **异步不阻塞**:FastAPI 端点用 `asyncio.wrap_future(ref.future())` 等待 Ray,事件循环不卡死;客户端用 `asyncio.gather` 并发即可拿到批量吞吐(因此**没有 `/batch` 端点**)。
+- **半精度/cuDNN benchmark** 默认开启。
 
 ## 配置
 
-编辑 `config.py` 修改模型路径、GPU 分配比例、服务端口等。
+`config.py` 集中管理 GPU 比例、端口、超时、最大图像字节数(默认 20 MB)等。
+
+---
+
+## 用 Ray vs 不用 Ray:差异分析
+
+下面把同样的需求(单卡上常驻 ResNet50 + YOLO,通过 HTTP 暴露)用两套方案对比。
+
+### 方案 A:不用 Ray,直接 FastAPI + torch
+
+```python
+# 启动时各加载一次,模型作为全局对象
+model_resnet = resnet50(...).cuda().eval()
+model_yolo   = YOLO(...)
+
+@app.post("/classify")
+def classify(file):  # 同步:GIL 串行
+    ...
+```
+
+### 方案 B:Ray Actor + FastAPI(本仓库)
+
+```python
+ResNetActor.options(num_gpus=0.15, lifetime="detached", max_restarts=3).remote()
+YOLOActor  .options(num_gpus=0.30, lifetime="detached", max_restarts=3).remote()
+```

@@ -1,2 +1,2 @@
-# Ray Inference Platform
-# 多模型 GPU 常驻推理服务
+"""Ray inference: ResNet50 + YOLO,GPU 常驻服务。"""
+__version__ = "2.0.0"

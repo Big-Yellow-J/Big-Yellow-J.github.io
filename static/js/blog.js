@@ -588,3 +588,13 @@ function shareOnWeChat() {
   `);
 }
 
+// 安全加固：给所有 target="_blank" 链接自动补 rel="noopener noreferrer"，防 reverse tabnabbing
+blog.addLoadEvent(function () {
+  document.querySelectorAll('a[target="_blank"]').forEach(function (a) {
+    var rel = (a.getAttribute('rel') || '').split(/\s+/).filter(Boolean);
+    if (!rel.includes('noopener')) rel.push('noopener');
+    if (!rel.includes('noreferrer')) rel.push('noreferrer');
+    a.setAttribute('rel', rel.join(' '));
+  });
+})
+

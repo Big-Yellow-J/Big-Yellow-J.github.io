@@ -1,44 +1,18 @@
-<!-- MathJax 数学公式支持 -->
-<style>
-  /* 公式容器样式 */
-  .has-jax {
-    user-select: text !important; /* 允许选中公式 */
-    background-color: transparent !important;
-    line-height: inherit !important; /* 继承全局行距，避免异常 */
-    word-break: normal !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    display: inline-block !important; /* 避免影响周围文本布局 */
-  }
+<!-- KaTeX 0.16 数学公式渲染：仅在 frontmatter 声明 extMath: true 的文章页加载 -->
+<link rel="preload" as="style" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" media="print" onload="this.media='all';this.onload=null">
+<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css"></noscript>
 
-  /* 公式字体优化 */
-  .has-jax .MathJax {
-    font-family: "Noto Serif SC", "Times New Roman", "STIX Two Math", serif !important;
-    font-size: 1em !important;
-  }
-
-  /* 公式内部元素样式 */
-  .has-jax * {
-    outline: 0;
-  }
-</style>
-
-<!-- MathJax 3 配置 -->
-<script>
-  window.MathJax = {
-    tex: {
-      inlineMath: [['$', '$'], ['\\(', '\\)']], // 行内公式分隔符
-      displayMath: [['$$', '$$'], ['\\[', '\\]']] // 块级公式分隔符
-    },
-    svg: {
-      fontCache: 'global'
-    }
-  };
-</script>
-
-<!-- 加载 MathJax 3 -->
-<script type="text/javascript" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-<!-- <script src="https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/mathjax/3.2.0/es5/tex-mml-chtml.js" type="application/javascript"></script> -->
-<!-- <script src="https://lf9-cdn-tos.bytecdntp.com/cdn/expire-1-M/mathjax/3.2.0/es5/tex-svg-full.min.js" type="application/javascript"></script> -->
-<!-- <script type="text/javascript" async src="https://cdn.bootcdn.net/ajax/libs/polyfill/3.101.0/polyfill.min.js?features=es6"></script> -->
-<!-- <script type="text/javascript" async src="https://cdn.bootcdn.net/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>  -->
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.body, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '\\[', right: '\\]', display: true },
+            { left: '$', right: '$', display: false },
+            { left: '\\(', right: '\\)', display: false }
+          ],
+          ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+          throwOnError: false,
+          errorColor: '#cc0000'
+        });"></script>

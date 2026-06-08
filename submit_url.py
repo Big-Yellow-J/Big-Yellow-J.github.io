@@ -71,19 +71,38 @@ def get_sitemap_urls(local_path, online_url, days=None):
         print(f"Error: Sitemap contains Liquid template or YAML front matter. Jekyll did not render it correctly.")
         return []
 
-    # 解析 XML 并提取 URL
+    # 解析 XML 并提取 URL（兼容 sitemapindex：递归展开子 sitemap）
     try:
         tree = ET.fromstring(content)
         namespace = {'ns': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
         urls = []
 
-        # 如果传入了 days 参数，限制返回的 URL 数量
-        if days is not None:
-            urls = [url_elem.find('ns:loc', namespace).text for url_elem in tree.findall('.//ns:url', namespace)][:days]
+        # sitemapindex：先把子 sitemap 全部取回再合并 URL
+        child_locs = [s.find('ns:loc', namespace).text for s in tree.findall('.//ns:sitemap', namespace)]
+        if child_locs:
+            for child_url in child_locs:
+                # 优先尝试同目录本地文件，找不到再走 HTTP
+                child_local = os.path.join(os.path.dirname(local_path), os.path.basename(child_url))
+                child_content = None
+                if os.path.exists(child_local):
+                    with open(child_local, 'r', encoding='utf-8-sig') as f:
+                        child_content = f.read()
+                else:
+                    try:
+                        r = requests.get(child_url, timeout=10)
+                        r.raise_for_status()
+                        child_content = r.text
+                    except requests.RequestException as e:
+                        print(f"  跳过子 sitemap {child_url}: {e}")
+                        continue
+                if child_content and '{%' not in child_content:
+                    child_tree = ET.fromstring(child_content)
+                    urls.extend(u.find('ns:loc', namespace).text for u in child_tree.findall('.//ns:url', namespace))
         else:
-            # 如果没有传入 days 参数，返回所有的 URL
-            urls = [url_elem.find('ns:loc', namespace).text for url_elem in tree.findall('.//ns:url', namespace)]
+            urls = [u.find('ns:loc', namespace).text for u in tree.findall('.//ns:url', namespace)]
 
+        if days is not None:
+            urls = urls[:days]
         return urls
     except ET.ParseError as e:
         print(f"Error parsing sitemap: {e}")

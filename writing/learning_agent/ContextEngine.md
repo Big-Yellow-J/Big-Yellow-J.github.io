@@ -1,3 +1,12 @@
+---
+layout: mypost
+title: A Survey of Context Engineering for Large Language Models — 论文精读
+categories: [Agent, LLM]
+tags: [Context Engineering, Survey, LLM]
+extMath: true
+show: false
+---
+
 # A Survey of Context Engineering for Large Language Models — 论文精读
 
 > **论文**: [A Survey of Context Engineering for Large Language Models](https://arxiv.org/abs/2507.13334)
