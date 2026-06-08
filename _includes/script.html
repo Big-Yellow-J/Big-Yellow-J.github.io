@@ -18,6 +18,9 @@
   {%- if site.extMath or page.extMath %}
     {% include ext-mathjax.html %}
   {%- endif %}
+  {%- if site.extMermaid or page.mermaid %}
+    {% include ext-mermaid.html %}
+  {%- endif %}
 {%- endif %}
 
 <!-- Google Analytics: defer + idle 加载，避免阻塞关键渲染路径 -->

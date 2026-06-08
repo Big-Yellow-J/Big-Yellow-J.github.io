@@ -1,0 +1,125 @@
+<!-- Mermaid 11：仅在 frontmatter 声明 mermaid: true 的文章页加载，按需 ESM import；支持全屏 pan/zoom -->
+<script type="module">
+(function () {
+  var blocks = document.querySelectorAll('pre > code.language-mermaid');
+  if (!blocks.length) return;
+
+  blocks.forEach(function (code) {
+    var pre = code.parentElement;
+    var src = code.textContent;
+    var div = document.createElement('div');
+    div.className = 'mermaid';
+    div.textContent = src;
+    div.dataset.mermaidSrc = src;
+    pre.parentElement.replaceChild(div, pre);
+  });
+
+  var panZoomMod = null;
+  function loadPanZoom() {
+    if (panZoomMod) return Promise.resolve(panZoomMod);
+    return import('https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.2/+esm').then(function (m) {
+      panZoomMod = m.default || m;
+      return panZoomMod;
+    });
+  }
+
+  function openZoom(source) {
+    var svg = source.querySelector('svg');
+    if (!svg) return;
+    var modal = document.createElement('div');
+    modal.className = 'mermaid-modal';
+    modal.innerHTML =
+      '<button class="mermaid-modal-close" type="button" aria-label="关闭 (ESC)" title="ESC 关闭">&times;</button>' +
+      '<div class="mermaid-modal-body"></div>' +
+      '<div class="mermaid-modal-hint">滚轮缩放 · 拖动平移 · 双击复位 · ESC 关闭</div>';
+    var body = modal.querySelector('.mermaid-modal-body');
+    var clone = svg.cloneNode(true);
+    clone.removeAttribute('style');
+    clone.setAttribute('width', '100%');
+    clone.setAttribute('height', '100%');
+    body.appendChild(clone);
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+
+    var panInstance = null;
+    function close() {
+      if (panInstance) { try { panInstance.destroy(); } catch (e) {} panInstance = null; }
+      modal.remove();
+      document.body.style.overflow = '';
+      document.removeEventListener('keydown', onKey);
+    }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    modal.querySelector('.mermaid-modal-close').addEventListener('click', close);
+    modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+    document.addEventListener('keydown', onKey);
+
+    loadPanZoom().then(function (svgPanZoom) {
+      panInstance = svgPanZoom(clone, {
+        controlIconsEnabled: true,
+        fit: true,
+        center: true,
+        zoomScaleSensitivity: 0.35,
+        minZoom: 0.3,
+        maxZoom: 12,
+        dblClickZoomEnabled: false
+      });
+      clone.addEventListener('dblclick', function () {
+        panInstance.resetZoom();
+        panInstance.center();
+        panInstance.fit();
+      });
+    }).catch(function (e) { console.warn('[mermaid] pan-zoom 加载失败:', e); });
+  }
+
+  function attachZoomUI() {
+    document.querySelectorAll('.mermaid[data-processed="true"]').forEach(function (el) {
+      if (el.dataset.zoomUi) return;
+      el.dataset.zoomUi = '1';
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'mermaid-zoom-btn';
+      btn.title = '全屏查看 (可缩放/拖动)';
+      btn.setAttribute('aria-label', '全屏查看');
+      btn.innerHTML = '<i class="fas fa-expand"></i>';
+      btn.addEventListener('click', function (e) { e.stopPropagation(); openZoom(el); });
+      el.appendChild(btn);
+    });
+  }
+
+  import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs')
+    .then(function (mod) {
+      var mermaid = mod.default;
+      var isDark = function () { return document.documentElement.classList.contains('dark'); };
+
+      function render() {
+        document.querySelectorAll('.mermaid').forEach(function (el) {
+          var src = el.dataset.mermaidSrc;
+          if (src) {
+            el.removeAttribute('data-zoomUi');
+            el.removeAttribute('data-processed');
+            el.innerHTML = src;
+          }
+        });
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: 'loose',
+          theme: isDark() ? 'dark' : 'default',
+          flowchart: { htmlLabels: true, curve: 'basis' },
+          sequence: { useMaxWidth: true },
+          fontFamily: 'system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif'
+        });
+        mermaid.run({ querySelector: '.mermaid', suppressErrors: false }).then(attachZoomUI);
+      }
+
+      render();
+
+      var ob = new MutationObserver(function (muts) {
+        for (var i = 0; i < muts.length; i++) {
+          if (muts[i].attributeName === 'class') { render(); break; }
+        }
+      });
+      ob.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    })
+    .catch(function (e) { console.warn('[mermaid] 加载失败:', e); });
+})();
+</script>

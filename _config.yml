@@ -83,8 +83,10 @@ menu:
     url: /pages/archives.html
   - title: 🦄生活
     url: /pages/life.html
-  - title: 📃CV
-    url: /pages/cv.html
+#  - title: 📃CV
+#    url: /pages/cv.html
+#  - title: 👋关于
+#    url: /pages/about.html
   # - title: Writing
   #   url: /pages/writing.html
 
@@ -98,6 +100,10 @@ extAdsense: false
 # 数学公式支持（KaTeX 0.16，仅文章页生效）
 # 全站默认关，含公式的文章在 frontmatter 中声明 extMath: true 单独加载
 extMath: false
+
+# Mermaid 流程图支持（mermaid@11，仅文章页生效）
+# 全站默认关，含 ```mermaid 代码块的文章在 frontmatter 中声明 mermaid: true 单独加载
+extMermaid: false
 
 # Service Worker：二次访问全站缓存，离线可访问
 extServiceWorker: true

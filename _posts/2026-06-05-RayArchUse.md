@@ -1,9 +1,10 @@
 ---
 layout: mypost
-title: 🔥Pytorch使用-5：常见的分布式框架
+title: 🔥Pytorch使用-5：服务部署
 categories: pytorch
 address: 武汉🏯
 extMath: true
+mermaid: true
 special_tag: 更新中
 show_footer_image: true
 tags:
@@ -15,8 +16,15 @@ description: Ray是支持以本地Python写法实现分布式/并行计算的开
   Arrow/Plasma的内存分布式对象存储、GCS全局控制存储、节点级守护进程Raylet，可实现低延迟调度、零拷贝数据访问、节点自治等特性。上层基于Ray
   Core的Task、Actor、Object基础分布式原语，封装Ray Data分布式数据预处理、Ray Train多框架分布式训练、Ray Tune分布式超参数搜索能力，大幅降低分布式开发门槛。
 ---
+前面介绍了在[pytorch中不同的分布式训练实现方式](https://www.big-yellow-j.top/posts/2026/04/20/torch-basic-distribute-1.html)，这里简单介绍分布式框架（更加多的设计到了模型部署、服务器调度之间内容，非严格的pytorch内容）Ray以及Docker等内容。
 
-前面介绍了在[pytorch中不同的分布式训练实现方式](https://www.big-yellow-j.top/posts/2026/04/20/torch-basic-distribute-1.html)，这里简单介绍一些使用过程中用的比较多的分布式框架（更加多的设计到了模型部署、服务器调度之间内容，非严格的pytorch内容）。
+## 前置知识
+
+### Docker
+
+### FastAPI
+
+### 异步
 
 ## Ray
 
@@ -166,94 +174,133 @@ data = ray.get(data_ref)            # 惰性拉取，零拷贝共享内存
 
 > **一句话总结 Ray Core**：`@ray.remote` 把函数/类变成可分布式执行的 Task/Actor，`ObjectRef` 让数据在集群中透明流转。理解了这三者，就理解了 Ray 的编程基础。
 
-#### Ray Data
+## Ray实战
+### 模型部署
 
-Ray Data 是**分布式数据加载与预处理**库，解决的是"数据太大，单机读不动"的问题。它提供了一套类 Spark 的 API，但底层利用 Ray Core 的 Object Store 和调度器做分布式执行。
+考虑将优化好的模型进行服务器部署，那么就需要考虑如下几个问题：**1、资源使用**，比如说对于每一个模型如何去划分他所需要的资源；**2、服务可靠性**，比如说我的节点挂掉了能不能自动恢复；**3、可观测结果**，比如说我需要监控模型的运行情况，比如说模型的运行时间，模型的运行结果等等；**4、部署**，考虑到k8s/docker部署就需要去完成对应优化；**5、服务安全**，比如 Ray Dashboard监控面板不可能让他暴露公网。**具体到实际应用**比如说服务器上部署如下几个模型：1、CLIP进行图像分类；2、Yolo进行目标识别（这里直接用v8）；4、oneformer-large进行实体分割。那么**整体结构**如下：
 
-核心流程：**读取 → 变换 → 写入/消费**：
+```mermaid
+flowchart TB
+    C["客户端 HTTP JSON<br/>source: path / URL / base64"]
 
-```python
-import ray
+    subgraph API["FastAPI 进程"]
+        MW1["RequestIDMiddleware<br/>X-Request-ID + 访问日志"]
+        MW2["ConcurrencyLimitMiddleware<br/>超额 429"]
+        EC["POST /classify"]
+        ED["POST /detect"]
+        ES["POST /segment"]
+        EH["GET /health"]
+        EM["GET /metrics"]
+        TO["_await_with_timeout<br/>超时 ray.cancel + 504"]
+    end
 
-ds = ray.data.read_parquet("s3://bucket/terabytes_of_data/")  # 分布式读取
-ds = ds.map_batches(preprocess_fn, batch_size=1024)           # 批量预处理（多节点并行）
-ds = ds.filter(lambda row: row["label"] is not None)          # 过滤
-ds.write_parquet("s3://bucket/processed/")                    # 写回
+    IL["image_loader<br/>path/URL/base64 统一加载<br/>SSRF 防护 + PIL.verify"]
 
-# 也可以直接喂给 Ray Train
-trainer = TorchTrainer(model_fn, datasets={"train": ds}, ...)
+    subgraph Ray["Ray 集群 namespace=inference"]
+        A1["CLIPActor<br/>num_gpus=0.20"]
+        A2["YOLOActor<br/>num_gpus=0.20"]
+        A3["OneFormerActor<br/>num_gpus=0.50"]
+        BM["BaseModelActor<br/>health_check + 指标"]
+        DASH["Ray Dashboard 127.0.0.1:8265"]
+    end
+
+    HL["health_loop 每 30s 巡检"]
+    OUT["日志 / Prometheus"]
+
+    C --> MW1 --> MW2
+    MW2 --> EC --> TO
+    MW2 --> ED --> TO
+    MW2 --> ES --> TO
+    MW2 --> EH
+    MW2 --> EM
+
+    TO --> A1
+    TO --> A2
+    TO --> A3
+
+    A1 --> IL
+    A2 --> IL
+    A3 --> IL
+
+    A1 -.-> BM
+    A2 -.-> BM
+    A3 -.-> BM
+
+    EH -.-> A1
+    EH -.-> A2
+    EH -.-> A3
+    EM -.-> A1
+    EM -.-> A2
+    EM -.-> A3
+    HL -.-> A1
+    HL -.-> A2
+    HL -.-> A3
+
+    MW1 --> OUT
+    EM --> OUT
+    HL --> OUT
 ```
 
-> 传统做法是每个 GPU 各自读一份数据，N 个 GPU 就要 N 倍 IO。Ray Data 让数据只读一次，通过 Object Store 的共享内存机制分发到各 Worker，大幅减少磁盘/网络 IO。
+**首先确定我们每一个节点服务**，因为所有的服务都是一样的都去加载模型然后进行模型推理，因此可以直接创建一个 `BaseModelActor`而后让其他模型去继承即可，对于这个**基类设计**：1、模型加载/推理/warm-up（让模型直接“常驻”显存避免每次都去加载）等（不会去基类里面具体写如何加载模型因为每个模型加载/推理方式不同）；2、记录模型状态（或者说“健康检测”），比如说去记录模型显卡、推理时间等。**具体节点设计**（以CLIP为例）。**对所有节点进行部署。**
 
-**一句话**：把数据 pipeline 也分布式化，让 IO 不再成为训练的瓶颈。
+**而后确定服务**，这块主要是FastAPI
 
-#### Ray Train
+#### 服务启动与监控
 
-Ray Train 是**分布式模型训练**库，封装了 PyTorch、TensorFlow、Hugging Face 等框架的分布式训练逻辑。你只需要写单机训练代码，Ray Train 负责把它"复制"到多卡/多机上跑。
+启动一般而言分为两种，直接一键启动以及热启动（只去修改代码不去改模型，避免每次都要重启服务）
 
-```python
-from ray.train.torch import TorchTrainer
-from ray.train import ScalingConfig
+* **1、一键启动(生产 / 临时跑通)**
 
-def train_func(config):
-    # 这就是你普通的单机 PyTorch 训练代码
-    model = MyModel()
-    model = ray.train.torch.prepare_model(model)   # 自动包装 DDP/FSDP
-    for epoch in range(config["epochs"]):
-        ...
-        ray.train.report({"loss": loss})            # 上报指标
-
-trainer = TorchTrainer(
-    train_func,
-    scaling_config=ScalingConfig(
-        num_workers=4,        # 4 个 GPU
-        use_gpu=True,
-    ),
-    datasets={"train": ds},   # 从 Ray Data 喂数据
-)
-trainer.fit()
+```bash
+pip install-rrequirements.txt
+CUDA_VISIBLE_DEVICES=0 pythonmain.pyserve --port 7890
 ```
 
-对应到架构：TorchTrainer 调用 Ray Core 的 Actor 创建 4 个 Worker，每个绑定一个 GPU；训练数据通过 Object Store 分发；`train.report()` 的指标通过 GCS 的 Pub/Sub 汇总。
+`main.py serve` 内部依次:启动 Ray → 创建三个 detached actor(自动加载模型权重)→ 装配 FastAPI → uvicorn 运行。一个进程包圆,Ctrl+C 整套退出。
 
-**一句话**：把你的单机 PyTorch 代码变成多机多卡的分布式训练，改动极少。
+* **2、热重载开发**
 
-#### Ray Tune
+把 Ray 集群和 API 进程解耦:Ray actor 常驻不动,只重启 uvicorn。三步:
 
-Ray Tune 是**分布式超参数搜索**库，就是我们前面贝叶斯调参例子的工程化版本。它把"试参数→看结果→再试"这个循环自动化，并利用 Ray Core 在集群上并行搜索。
-
-```python
-from ray import tune
-from ray.tune.schedulers import ASHAScheduler
-
-def trainable(config):
-    # config 就是一组候选超参数，如 {"lr": 0.01, "n_layers": 3}
-    model = train_model(lr=config["lr"], n_layers=config["n_layers"])
-    tune.report({"accuracy": model.eval()})   # 上报结果
-
-tuner = tune.Tuner(
-    trainable,
-    param_space={
-        "lr": tune.loguniform(1e-4, 1e-1),
-        "n_layers": tune.choice([2, 3, 4, 5]),
-    },
-    tune_config=tune.TuneConfig(
-        scheduler=ASHAScheduler(),   # 早停策略：差的参数组合提前淘汰
-        num_samples=50,              # 总共试 50 组
-    ),
-)
-results = tuner.fit()
+```bash
+# 1) 启 Ray 集群(一次性,后续不动)
+CUDA_VISIBLE_DEVICES=0 ray start --head --dashboard-host =127.0.0.1
+# 2) 创建/确保 detached actor 就绪(一次性,模型权重在此加载)
+python main.py bootstrap
+# 3) 启 API 进程,代码改动自动重载(模型不会被重载)
+uvicorn ray_deploy:app --host 0.0.0.0 --port 7890 --reload --reload-dir services --reload-dir models
 ```
 
-Ray Tune 内置了多种搜索算法（贝叶斯优化、HyperBand、PBT 等）和早停策略，也支持与 Optuna、Hyperopt 等第三方库集成。
+之后改 `services/` 或 `models/` 下的代码,uvicorn 秒级重启 API 进程,但 actor 进程不动 —— **模型权重无需重新加载**(OneFormer-large 加载一次 ~30s,这个差距很大)。API 进程的 FastAPI startup hook 会自动 `ray.init(address="auto")` attach 已存在的集群,并通过 `ray.get_actor(name)` 拿到 bootstrap 阶段创建的 actor 句柄。如果有些时候**对模型进行了替换只需要执行**:
 
-**一句话**：让超参数搜索从"手动一个个试"变成"自动并行搜索 + 智能淘汰"，大幅缩短调参周期。
+```bash
+# 仅替换模型（Ray 集群 + API 进程均不受影响） 可以直接新的终端执行即可
+python main.py teardown        # 杀掉 detached actor
+python main.py bootstrap       # 用新权重重建 actor
+# 完全关闭（开发结束后）
+# 先 ctrl+c 停 uvicorn，再：
+ray stop
+```
 
-> **四层关系总结**：`Ray Core` 提供 Task/Actor/Object 基础原语 → `Ray Data` 处理数据流水线 → `Ray Train` 封装分布式训练 → `Ray Tune` 在训练之上做超参搜索。四层层层递进，但底层都基于同一套 Ray Core 架构。
+在热启动中执行第一段命令之后
+
+![](https://files.seeusercontent.com/2026/06/08/u3aU/3e5c5e61-6297-4b74-888d-42b0bf9e.png)
+
+本地会启动8625端口直接可以去访问ray dashboard面板（目前只是启动Ray服务，所有模型都还没有加载），而后执行第二条命令去加载所有的服务就可以看到所有actor信息日志等，除此之外对于ray本地日志：
+
+* Actor 内部日志(每个模型独立) → `/tmp/ray/session_latest/logs/worker-*.out|.err`
+
+* Ray 系统日志(raylet/gcs/dashboard) → `/tmp/ray/session_latest/logs/`
+
+![](https://files.seeusercontent.com/2026/06/08/k1We/20260608233046373.png)
+最后命令启动服务：
+![](https://files.seeusercontent.com/2026/06/08/tbC3/0f8ac621-2c6d-407b-8b4d-9fa1258e.png)
+#### 服务调用
+在启动服务之后可以直接访问`http://localhost:7890/docs#`就可以看到所有服务并且可以直接去里面看到所有服务参数，这里直接使用 `postman`进行服务调用并且去看测试结果比如说要去使用**分类测服务**可以直接：**1、首先去 `docs`中去看我的请求参数是什么**
+![](https://files.seeusercontent.com/2026/06/08/s7zQ/9ee07da4-c261-4d4c-97ff-de76bc17.png)
+**2、而后直接去postman中发送请求即可**（里面的脚本都是JavaScript）
+![](https://files.seeusercontent.com/2026/06/08/Sav9/20260608235256111.png)
 
 ## 参考
-
 [^1]: [https://docs.rayai.org.cn/en/latest/index.html](https://docs.rayai.org.cn/en/latest/index.html)
-    
 [^2]: [Ray v2 Architecture](https://docs.google.com/document/d/1tBw9A4j62ruI5omIJbMxly-la5w4q_TjyJgJL_jN2fI/preview?tab=t.0#heading=h.iyrm5j2gcdoq)

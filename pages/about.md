@@ -3,11 +3,9 @@ layout: mypost
 title: 关于
 show_footer_image: false
 ---
+{% include writing-heatmap.html %}
+
 # Who
-
-Hi！欢迎来自<span id="visitor-location">某地</span>
-
-我是黄杰  
 
 我现在在：  
 

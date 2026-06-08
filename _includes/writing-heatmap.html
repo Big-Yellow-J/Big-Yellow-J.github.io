@@ -1,0 +1,101 @@
+<!-- 博主名片：头像 + 365 天写作热力图（仿 GitHub 贡献图）；markdown="0" 阻止 kramdown 把 4 空格缩进的 HTML 误判为代码块 -->
+<section class="profile-hero" aria-label="博主名片" markdown="0">
+<div class="profile-avatar">
+<img src="{{ site.baseurl }}/static/img/logo.jpg" alt="{{ site.author }}" width="96" height="96">
+<div class="profile-name">{{ site.author }}</div>
+<div class="profile-loc">Hi！欢迎来自<span id="visitor-location">某地</span></div>
+</div>
+<div class="writing-heatmap">
+<div class="heatmap-header">
+<strong>过去 365 天写作热度</strong>
+<span class="heatmap-total" id="heatmap-total">—</span>
+</div>
+<div class="heatmap-grid" id="heatmap-grid" aria-label="写作日历"></div>
+<div class="heatmap-footer">
+<span class="heatmap-legend-label">少</span>
+<span class="heatmap-cell" data-level="0"></span>
+<span class="heatmap-cell" data-level="1"></span>
+<span class="heatmap-cell" data-level="2"></span>
+<span class="heatmap-cell" data-level="3"></span>
+<span class="heatmap-cell" data-level="4"></span>
+<span class="heatmap-legend-label">多</span>
+</div>
+</div>
+</section>
+
+<script id="writing-heatmap-data" type="application/json">
+[
+{%- assign first = true -%}
+{%- for post in site.posts -%}
+  {%- assign d = post.date | date: "%Y-%m-%d" -%}
+  {%- assign w = post.content | number_of_words -%}
+  {%- if first %}{%- assign first = false -%}{%- else -%},{%- endif -%}
+  {"d":"{{ d }}","w":{{ w }}}
+{%- endfor -%}
+]
+</script>
+
+<script>
+(function () {
+  var raw;
+  try { raw = JSON.parse(document.getElementById('writing-heatmap-data').textContent); }
+  catch (e) { return; }
+
+  var daily = Object.create(null);
+  var totalWords = 0;
+  raw.forEach(function (p) {
+    daily[p.d] = (daily[p.d] || 0) + p.w;
+  });
+
+  var today = new Date();
+  today.setHours(0, 0, 0, 0);
+  var start = new Date(today);
+  start.setDate(today.getDate() - 364);
+  // 对齐到本列第一天为周日
+  start.setDate(start.getDate() - start.getDay());
+
+  var grid = document.getElementById('heatmap-grid');
+  var totalEl = document.getElementById('heatmap-total');
+
+  function levelOf(n) {
+    if (n >= 3000) return 4;
+    if (n >= 1500) return 3;
+    if (n >= 500)  return 2;
+    if (n > 0)     return 1;
+    return 0;
+  }
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function isoDate(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+
+  var totalDays = Math.round((today - start) / 86400000) + 1;
+  var weeks = Math.ceil(totalDays / 7);
+
+  var frag = document.createDocumentFragment();
+  var windowTotal = 0;
+  for (var w = 0; w < weeks; w++) {
+    var col = document.createElement('div');
+    col.className = 'heatmap-col';
+    for (var d = 0; d < 7; d++) {
+      var date = new Date(start);
+      date.setDate(start.getDate() + w * 7 + d);
+      var cell = document.createElement('span');
+      cell.className = 'heatmap-cell';
+      if (date > today) {
+        cell.dataset.level = '-1';
+      } else {
+        var key = isoDate(date);
+        var count = daily[key] || 0;
+        cell.dataset.date = key;
+        cell.dataset.count = count;
+        cell.dataset.level = levelOf(count);
+        cell.title = count > 0 ? (key + ' · ' + count + ' 字') : (key + ' · 无写作');
+        if (count > 0) windowTotal += count;
+      }
+      col.appendChild(cell);
+    }
+    frag.appendChild(col);
+  }
+  grid.appendChild(frag);
+  if (totalEl) totalEl.textContent = '共 ' + windowTotal.toLocaleString() + ' 字 · ' + raw.length + ' 篇';
+})();
+</script>

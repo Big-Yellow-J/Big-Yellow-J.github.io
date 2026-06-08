@@ -382,18 +382,23 @@ html.dark .page-post .post li code {
   border: 1px solid #30363d;
 }
 
-html.dark .page-post .post table th,
-html.dark .page-post th {
-  background-color: #21262d;
-  color: var(--bk-text);
+html.dark .page-post .table-container {
+  background: #0d1117;
   border-color: #30363d;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
 }
-html.dark .page-post .post table td,
+html.dark .page-post thead th {
+  background: #161b22;
+  color: var(--bk-text);
+  border-bottom-color: #30363d;
+}
 html.dark .page-post td {
-  border-color: #30363d;
   color: var(--bk-text);
+  border-bottom-color: #21262d;
 }
-html.dark .page-post .post table tr:nth-child(2n) { background: rgba(255,255,255,0.03); }
+html.dark .page-post tbody tr:nth-child(2n) td { background: rgba(255,255,255,0.025); }
+html.dark .page-post tbody tr:hover td { background: rgba(56,139,253,0.12); }
+html.dark .page-post td strong { color: #58a6ff; }
 
 html.dark .page-post .post blockquote {
   background-color: #161b22;
@@ -466,3 +471,40 @@ html.dark .pagefind-ui__result-tags { color: var(--bk-muted) !important; }
 html.dark .pagefind-ui__message,
 html.dark .pagefind-ui__result-title { color: var(--bk-text) !important; }
 html.dark mark.pagefind-ui__result-excerpt-highlight { background: rgba(88,166,255,.2); color: #79c0ff; }
+
+/* Mermaid 暗色容器 */
+html.dark .page-post .post .mermaid {
+  background: #161b22;
+  border-color: #30363d;
+  color: #8b949e;
+}
+html.dark .mermaid-zoom-btn {
+  background: rgba(33, 38, 45, 0.7);
+  border-color: #30363d;
+  color: #8b949e;
+}
+html.dark .mermaid-zoom-btn:hover {
+  background: #21262d;
+  color: #58a6ff;
+}
+html.dark .mermaid-modal-body { background: #0d1117; }
+
+/* Profile Hero + 写作热力图：暗色 */
+html.dark .profile-hero {
+  background: #161b22;
+  border-color: #30363d;
+}
+html.dark .profile-avatar img { border-color: #30363d; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+html.dark .profile-name { color: var(--bk-text); }
+html.dark .profile-loc { color: var(--bk-muted); }
+html.dark .heatmap-header strong { color: var(--bk-text); }
+html.dark .heatmap-header,
+html.dark .heatmap-total,
+html.dark .heatmap-footer { color: var(--bk-muted); }
+html.dark .heatmap-cell { background: #161b22; outline: 1px solid rgba(110,118,129,0.15); }
+html.dark .heatmap-cell[data-level="1"] { background: #0e4429; outline: none; }
+html.dark .heatmap-cell[data-level="2"] { background: #006d32; outline: none; }
+html.dark .heatmap-cell[data-level="3"] { background: #26a641; outline: none; }
+html.dark .heatmap-cell[data-level="4"] { background: #39d353; outline: none; }
+html.dark .heatmap-cell[data-level="-1"] { background: transparent; outline: none; }
+html.dark .heatmap-grid::-webkit-scrollbar-thumb { background: #30363d; }

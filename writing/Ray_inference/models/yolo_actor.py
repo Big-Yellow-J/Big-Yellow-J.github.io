@@ -1,9 +1,17 @@
 """YOLOv8 目标检测 Actor。"""
+import time
+
 import numpy as np
 import ray
 from ultralytics import YOLO
 
-from config import ACTOR_MAX_CONCURRENCY, ACTOR_MAX_RESTARTS, ACTOR_MAX_TASK_RETRIES, GPU_FRACTION_YOLO, YOLO_MODEL_NAME
+from config import (
+    ACTOR_MAX_CONCURRENCY,
+    ACTOR_MAX_RESTARTS,
+    ACTOR_MAX_TASK_RETRIES,
+    GPU_FRACTION_YOLO,
+    YOLO_MODEL,
+)
 from models.base import BaseModelActor
 from models.image_loader import load_image
 
@@ -20,7 +28,10 @@ class YOLOActor(BaseModelActor):
         super().__init__(model_name="YOLOv8", gpu_fraction=GPU_FRACTION_YOLO)
 
     def _load_model(self):
-        self._model = YOLO(YOLO_MODEL_NAME)
+        # 不要套 torch.compile:YOLO 内部含 numpy 预处理(letterbox),
+        # dynamo trace 不兼容,首次推理会抛 fake tensor 类型错误。
+        # 想加速请用 YOLO 官方的 model.export(format="engine") → TensorRT。
+        self._model = YOLO(YOLO_MODEL)
 
     def _warm_up(self):
         try:
@@ -29,10 +40,18 @@ class YOLOActor(BaseModelActor):
             pass
 
     def infer(self, source, conf_threshold: float = 0.25) -> dict:
+        """对图像做目标检测。
+
+        Args:
+            source: 任意 image_loader 支持的输入。
+            conf_threshold: 置信度过滤阈值。
+        Returns:
+            {"success": True, "detections": [{"bbox":[x1,y1,x2,y2], "class": str, "conf": float}, ...]}
+        """
+        t0 = time.time()
         try:
             arr = np.array(load_image(source))
             results = self._model(arr, conf=conf_threshold, verbose=False)
-
             detections = []
             if results and results[0].boxes is not None:
                 names = results[0].names
@@ -43,8 +62,8 @@ class YOLOActor(BaseModelActor):
                         "class": names[int(box.cls[0])],
                         "conf": round(float(box.conf[0]), 4),
                     })
-
-            self._record_request()
+            self._track(t0, ok=True)
             return {"success": True, "detections": detections}
         except Exception as e:
-            return self._handle_error(e, "detect")
+            self._track(t0, ok=False)
+            return self._error(e, "detect")

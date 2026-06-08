@@ -3,6 +3,7 @@ layout: mypost
 title: 机器学习基础原理————数据预处理原理及代码
 categories: 机器学习
 extMath: true
+mermaid: true
 images: true
 show: true
 address: changsha

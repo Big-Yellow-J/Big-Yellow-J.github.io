@@ -1,2 +1,2 @@
-"""Ray inference: ResNet50 + YOLO,GPU 常驻服务。"""
-__version__ = "2.0.0"
+"""Ray inference: CLIP + YOLOv8 + OneFormer,GPU 常驻 + 入口限流 + 超时 + 指标。"""
+__version__ = "3.0.0"
