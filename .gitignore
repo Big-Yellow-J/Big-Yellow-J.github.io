@@ -3,9 +3,9 @@
 /dist.tar.gz
 /.jekyll-cache
 /.bundle
+# 凭证（保留显式名称，便于审计）
 ./jeklly-blog-dfbf0971c0f1.json
 ./google_api.json
-# *.json
 *.pth
 *.pt
 *.log
@@ -59,9 +59,17 @@ Makefile
 # Windows
 Thumbs.db
 /.obsidian/
+/.junie/
+# 默认忽略所有 .json，配置/数据型 json 通过下方白名单显式放行
 *.json
-/.junie/!/CLAUDE.md
+!CLAUDE.md
 !manifest.json
+!DEAL-MD.json
+!_data/*.json
+!_config*.json
+!package.json
+!package-lock.json
+!tsconfig*.json
 
 # ---- 孤儿 submodule（未配置 .gitmodules，避免再次入库） ----
 code/Python/Agent/HelloAgents

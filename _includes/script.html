@@ -1,5 +1,5 @@
 {%- assign buildVer = site.time | date: "%Y%m%d" -%}
-<script type="text/javascript" src="{{site.baseurl}}/static/js/blog.js?v={{ buildVer }}"></script>
+<script defer src="{{site.baseurl}}/static/js/blog.js?v={{ buildVer }}"></script>
 <script defer src="{{site.baseurl}}/static/js/header-scroll.js?v={{ buildVer }}"></script>
 <script defer src="{{site.baseurl}}/static/js/prefetch.js?v={{ buildVer }}"></script>
 <script defer src="{{site.baseurl}}/static/js/web-vitals-report.js?v={{ buildVer }}"></script>
@@ -8,10 +8,10 @@
 
 {%- if site.extClickEffect %}
 <script>
-;(function(){
+document.addEventListener('DOMContentLoaded', function(){
   var textArr = ['富强', '民主', '文明', '和谐', '自由', '平等', '公正', '法治', '爱国', '敬业', '诚信', '友善']
-  window.blog.initClickEffect(textArr)
-})()
+  if (window.blog && window.blog.initClickEffect) window.blog.initClickEffect(textArr)
+})
 </script>
 {%- endif %}
 

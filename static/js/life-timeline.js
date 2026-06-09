@@ -22,11 +22,15 @@
     }
     function bind(el, delta) {
       if (!el) return;
-      el.addEventListener('click', function (e) {
+      function trigger(e) {
         e.preventDefault();
         e.stopPropagation();
         if (typeof delta === 'number') go(current + delta);
-        else go(Number(this.dataset.idx) || 0);
+        else go(Number(el.dataset.idx) || 0);
+      }
+      el.addEventListener('click', trigger);
+      el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') trigger(e);
       });
     }
     bind(prev, -1);

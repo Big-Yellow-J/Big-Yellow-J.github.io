@@ -58,9 +58,13 @@ title: 生活
             {%- if post.gallery.size > 1 -%}
             <button class="life-card-arrow life-card-prev" type="button" aria-label="上一张">&#10094;</button>
             <button class="life-card-arrow life-card-next" type="button" aria-label="下一张">&#10095;</button>
-            <div class="life-card-dots">
+            <div class="life-card-dots" role="tablist" aria-label="图片切换">
               {%- for img in post.gallery -%}
-              <span class="life-card-dot{% if forloop.first %} is-active{% endif %}" data-idx="{{ forloop.index0 }}"></span>
+              <span class="life-card-dot{% if forloop.first %} is-active{% endif %}"
+                    data-idx="{{ forloop.index0 }}"
+                    role="button"
+                    tabindex="0"
+                    aria-label="切到第 {{ forloop.index }} 张"></span>
               {%- endfor -%}
             </div>
             <span class="life-card-count"><i class="far fa-images"></i> {{ post.gallery.size }}</span>

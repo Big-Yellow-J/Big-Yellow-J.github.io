@@ -3,6 +3,7 @@ import re
 import time
 import json
 import yaml
+import hashlib
 import argparse
 import requests
 import threading
@@ -40,6 +41,23 @@ class RateLimiter:
 _SMMS_LIMITER = RateLimiter(qps=1.5)
 _SMMS_SEMAPHORE = threading.BoundedSemaphore(2)
 _LLM_LIMITER = RateLimiter(qps=1.0)
+
+
+def _content_md5(text: str) -> str:
+    """正文指纹：用于跳过未改动文章的重复 LLM 调用。"""
+    return hashlib.md5((text or '').encode('utf-8')).hexdigest()
+
+
+def _desc_record_to_dict(record):
+    """DEAL-MD.json 兼容旧 list[tuple] 与新 dict 两种格式。"""
+    if isinstance(record, dict):
+        return record
+    if isinstance(record, list):
+        try:
+            return dict(record)
+        except Exception:
+            return {}
+    return {}
 
 
 def parse_smms_tokens(raw_tokens: str):
@@ -324,8 +342,25 @@ def format_image(md_content, image_store_dir, max_threads, gen_avif=False):
     md_content = image_pattern.sub(render, md_content)
     return md_content
 
+def _is_life_category(yaml_dict):
+    """判断文章是否属于 life 分类（兼容字符串与列表两种 categories 写法）。"""
+    if not yaml_dict:
+        return False
+    cats = yaml_dict.get('categories')
+    if cats is None:
+        return False
+    if isinstance(cats, str):
+        return cats.strip().lower() == 'life'
+    if isinstance(cats, list):
+        return any(str(c).strip().lower() == 'life' for c in cats)
+    return False
+
+
 def format_description(md_content, yaml_dict, description, md_path, provider='doubao'):
-    '''生成摘要'''
+    '''生成摘要（life 分类直接跳过）'''
+    if _is_life_category(yaml_dict):
+        print(f"⏭️  跳过 life 分类摘要：{md_path}")
+        return md_content, description
     def llm_generate(md_content):
         '''通过llm生成描述'''
         base_url, api_key, model_list = get_llm_config(provider)
@@ -379,17 +414,29 @@ def format_description(md_content, yaml_dict, description, md_path, provider='do
 
     if yaml_dict.get('description', None) is None:
         old_md_content, yaml_dict = format_markdown(md_content)
-        md_content, _ = format_yaml_head(md_content)
+        body, _ = format_yaml_head(md_content)
+
+        # 内容指纹命中 → 直接复用历史 LLM 输出，不再请求 API
+        fingerprint = _content_md5(old_md_content)
+        prev = _desc_record_to_dict(description.get(md_path))
+        cached_desc = prev.get('new_description')
+        if cached_desc and prev.get('content_md5') == fingerprint:
+            print(f"💾 命中摘要缓存：{md_path}")
+            yaml_dict['description'] = cached_desc
+            new_yaml_str = yaml.dump(yaml_dict, allow_unicode=True, sort_keys=False).strip()
+            return f"---\n{new_yaml_str}\n---\n\n{body.lstrip()}", description
+
         llm_description = llm_generate(old_md_content)
         if llm_description:
             description[md_path] = [
-                ('old_description', yaml_dict.get('description', None)),
-                ('new_description', llm_description)]
-            
+                ('old_description', prev.get('new_description')),
+                ('new_description', llm_description),
+                ('content_md5', fingerprint)]
+
             # 更新markdown的 yaml头标记
             yaml_dict['description'] = llm_description
             new_yaml_str = yaml.dump(yaml_dict, allow_unicode=True, sort_keys=False).strip()
-            new_md_content = f"---\n{new_yaml_str}\n---\n\n{md_content.lstrip()}"
+            new_md_content = f"---\n{new_yaml_str}\n---\n\n{body.lstrip()}"
             return new_md_content, description
     return md_content, description
 

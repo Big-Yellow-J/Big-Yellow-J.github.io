@@ -535,6 +535,28 @@ html.dark .life-timeline[data-view="axis"] .life-node-card::after {
   border-color: #30363d;
 }
 html.dark .life-back-link a { color: #ff7b7b; }
+/* 卡片轮播：箭头与圆点暗色微调 */
+html.dark .life-card-arrow {
+  background: rgba(0, 0, 0, 0.65);
+}
+html.dark .life-card-arrow:hover {
+  background: rgba(255, 107, 107, 0.85);
+}
+html.dark .life-card-dot {
+  background: rgba(255, 255, 255, 0.4);
+}
+html.dark .life-card-dot.is-active {
+  background: #ff6b6b;
+}
+html.dark .life-card-count {
+  background: rgba(0, 0, 0, 0.7);
+}
+/* 时间线键盘焦点可见 */
+html.dark .life-card-dot:focus-visible,
+html.dark .life-card-arrow:focus-visible {
+  outline: 2px solid #58a6ff;
+  outline-offset: 2px;
+}
 
 /* Profile Hero + 写作热力图：暗色 */
 html.dark .profile-hero {

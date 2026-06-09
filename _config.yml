@@ -7,6 +7,11 @@ plugins:
   - jekyll-feed
 #   - jekyll-assets
 
+# 增量构建：serve --watch 大幅提速；如分页/集合出现异常，临时注释掉
+incremental: true
+keep_files:
+  - pagefind
+
 # assets:
 #   compress:
 #     css: true
@@ -60,7 +65,35 @@ include:
   - _jupyter
   - index_now.txt
   - life.html
-exclude: ['CNAME', 'README.md', 'LICENSE', '_site', 'code', 'dist', 'Gemfile', 'Gemfile.lock', 'blog.sh', 'vendor', 'node_modules', 'scripts', '.bundle', 'writing']
+exclude:
+  - CNAME
+  - README.md
+  - LICENSE
+  - CLAUDE.md
+  - _site
+  - code
+  - dist
+  - Gemfile
+  - Gemfile.lock
+  - blog.sh
+  - submit_github.sh
+  - optim_post.py
+  - submit_url.py
+  - DEAL-MD.json
+  - API_KEY.env
+  - google_api.json
+  - vendor
+  - node_modules
+  - scripts
+  - .bundle
+  - .jekyll-cache
+  - .idea
+  - .vscode
+  - .claude
+  - .obsidian
+  - .junie
+  - writing
+  - _framework
 
 # 域名配置
 # baseurl配置,如果网站部署在根目录下的其他目录中，请设置为 /目录名

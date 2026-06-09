@@ -13,7 +13,7 @@ from config import (
     YOLO_MODEL,
 )
 from models.base import BaseModelActor
-from models.image_loader import load_image
+from utils.image_loader import load_image
 
 
 @ray.remote(
@@ -39,19 +39,37 @@ class YOLOActor(BaseModelActor):
         except Exception:
             pass
 
-    def infer(self, source, conf_threshold: float = 0.25) -> dict:
+    def infer(
+        self,
+        source,
+        conf: float = 0.25,
+        iou: float = 0.45,
+        max_det: int = 300,
+        imgsz: int = 640,
+        classes: list = None,
+        agnostic_nms: bool = False,
+        _rid: str = "",
+    ) -> dict:
         """对图像做目标检测。
 
         Args:
             source: 任意 image_loader 支持的输入。
-            conf_threshold: 置信度过滤阈值。
+            conf: 置信度阈值。
+            iou: NMS IoU 阈值。
+            max_det: 单图最大检测数。
+            imgsz: 推理输入尺寸,32 倍数最佳。
+            classes: 只检测指定类索引(COCO 80 类),None 表示全部。
+            agnostic_nms: True 时类无关 NMS。
         Returns:
             {"success": True, "detections": [{"bbox":[x1,y1,x2,y2], "class": str, "conf": float}, ...]}
         """
         t0 = time.time()
         try:
             arr = np.array(load_image(source))
-            results = self._model(arr, conf=conf_threshold, verbose=False)
+            results = self._model(
+                arr, conf=conf, iou=iou, max_det=max_det, imgsz=imgsz,
+                classes=classes, agnostic_nms=agnostic_nms, verbose=False,
+            )
             detections = []
             if results and results[0].boxes is not None:
                 names = results[0].names
@@ -66,4 +84,4 @@ class YOLOActor(BaseModelActor):
             return {"success": True, "detections": detections}
         except Exception as e:
             self._track(t0, ok=False)
-            return self._error(e, "detect")
+            return self._error(e, "detect", rid=_rid)

@@ -1,6 +1,5 @@
-"""Ray 部署编排:初始化集群、创建 Actor、健康巡检、装配并运行 FastAPI。"""
+"""Ray 部署:初始化集群、创建/attach Actor、健康巡检、装配并运行 FastAPI。"""
 import asyncio
-import logging
 import signal
 from typing import Optional
 
@@ -23,8 +22,10 @@ from models.clip_actor import CLIPActor
 from models.oneformer_actor import OneFormerActor
 from models.yolo_actor import YOLOActor
 from services.online_api import app, set_actors
+from utils.logging_setup import setup_logger
+from utils.tmp_cleanup import cleanup_tmp
 
-log = logging.getLogger("ray_inference.deploy")
+log = setup_logger("deploy")
 
 # (logical_key, actor_class, gpu_fraction, ray_actor_name)
 ACTOR_SPECS = [
@@ -38,7 +39,7 @@ _health_task: Optional[asyncio.Task] = None
 
 
 def init_ray():
-    """初始化或附加到 Ray 集群,dashboard 默认绑回环避免公网暴露。"""
+    """初始化或附加到 Ray 集群,dashboard 绑回环避免公网暴露。"""
     if ray.is_initialized():
         return
     ray.init(
@@ -52,11 +53,7 @@ def init_ray():
 
 
 def create_actors() -> dict:
-    """按 ACTOR_SPECS 创建/复用 detached Actor 并等待就绪(幂等)。
-
-    Returns:
-        {logical_key: ray_actor_handle}
-    """
+    """按 ACTOR_SPECS 创建/复用 detached actor 并阻塞到就绪(幂等)。"""
     actors = {}
     for key, cls, gpu_frac, ray_name in ACTOR_SPECS:
         try:
@@ -69,7 +66,7 @@ def create_actors() -> dict:
         actors[key] = cls.options(
             name=ray_name,
             num_gpus=gpu_frac,
-            lifetime="detached",        # API 重启不重载模型
+            lifetime="detached",
             namespace=RAY_NAMESPACE,
             max_restarts=ACTOR_MAX_RESTARTS,
         ).remote()
@@ -114,17 +111,11 @@ async def _health_loop(interval: float = HEALTH_CHECK_INTERVAL_SEC):
 
 @app.on_event("startup")
 async def _startup_attach():
-    """uvicorn 模式启动钩子:attach 到已存在的 Ray 集群和 detached actor。
-
-    `python main.py serve` 模式下 main() 已经填充 _actors,此 hook 直接跳过。
-    """
+    """uvicorn 模式启动钩子:清理过期 tmp + attach detached actor。"""
     global _actors
     if _actors:
         return
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(name)s %(levelname)s %(message)s",
-    )
+    log.info("startup: cleanup_tmp result=%s", cleanup_tmp())
     init_ray()
     _actors = attach_actors()
     set_actors(_actors)
@@ -144,14 +135,10 @@ async def list_actors():
 
 
 async def main(host: Optional[str] = None, port: Optional[int] = None):
-    """部署入口:Ray 集群 → Actor → FastAPI,捕获 SIGINT/SIGTERM 优雅退出。"""
+    """`python main.py serve` 入口:Ray + Actor + FastAPI 一键启动,SIGINT/SIGTERM 优雅退出。"""
     global _actors, _health_task
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(name)s %(levelname)s %(message)s",
-    )
-
+    log.info("serve mode: cleanup_tmp result=%s", cleanup_tmp())
     init_ray()
     _actors = create_actors()
     set_actors(_actors)

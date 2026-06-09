@@ -125,7 +125,7 @@ body.nav-hidden .header { transform: translateY(-110%); }
   margin-right: 10px;
   -webkit-user-drag: none;
   box-shadow: 0 0 6px 1px rgba(0, 0, 0, 0.18);
-  background-image: url(../img/logo.jpg);
+  background-image: url(../img/logo-192.webp);
   background-size: cover;
 }
 .header .menu {
@@ -223,5 +223,17 @@ body.nav-hidden .header { transform: translateY(-110%); }
   .header .menu a {
     margin: 2px 5px;
     font-size: 15px;
+  }
+}
+
+/* 可访问性：尊重系统的"减少动画"偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }

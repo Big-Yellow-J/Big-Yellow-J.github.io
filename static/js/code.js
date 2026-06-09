@@ -4,7 +4,16 @@ document.addEventListener("DOMContentLoaded", function() {
     codeBlocks.forEach(code => {
         const pre = code.parentNode;
         pre.classList.add('line-numbers'); // 必须在渲染前添加
-        
+
+        // 提取首行 `@highlight: 1,3-5` 元数据 → 设为 pre.data-line（被 prism-line-highlight 识别）
+        // 支持注释前缀：# // /* -- <!-- 等
+        const firstLine = code.textContent.split('\n', 1)[0];
+        const hl = firstLine.match(/@highlight[:\s]+([\d,\-\s]+)/);
+        if (hl) {
+            pre.setAttribute('data-line', hl[1].replace(/\s+/g, ''));
+            code.textContent = code.textContent.replace(/^[^\n]*\n?/, '');
+        }
+
         const lang = code.className.match(/language-(\w+)/)?.[1] || 'code';
 
         // 构建 DOM
