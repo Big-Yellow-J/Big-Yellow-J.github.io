@@ -1,0 +1,334 @@
+/* ========== 生活栏目 · 多视图时间线 ==========
+   默认视图由 _config.yml 的 life_view 控制：
+     magazine（默认）：杂志网格
+     curve：曲线错落 + SVG 贝塞尔连线
+     axis：中轴左右交替
+   ==================================== */
+
+.life-empty { text-align: center; padding: 64px 16px; color: #6e7681; }
+.life-empty i { font-size: 36px; opacity: 0.4; display: block; margin-bottom: 12px; }
+
+/* ---------- 时间线容器 ---------- */
+.life-timeline {
+  position: relative;
+  padding: 24px 12px 60px;
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+/* SVG 连线层（仅曲线视图显示） */
+.life-timeline-path {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+.life-timeline-path path {
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.12));
+}
+
+/* ---------- 节点：共用基础样式 ---------- */
+.life-node {
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+  transform: translateY(16px);
+  animation: lifeNodeIn 0.5s ease-out forwards;
+}
+@keyframes lifeNodeIn { to { opacity: 1; transform: translateY(0); } }
+
+/* 节点圆点 */
+.life-node-dot {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border: 3px solid #ff6b6b;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.18);
+  z-index: 3;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.life-node:hover .life-node-dot {
+  transform: scale(1.25);
+  box-shadow: 0 0 0 6px rgba(255, 107, 107, 0.22);
+}
+
+/* 卡片本体 */
+.life-node-card {
+  background: #fff;
+  border: 1px solid #eaecef;
+  border-radius: 14px;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.life-node:hover .life-node-card {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
+  border-color: #d0d7de;
+}
+
+/* 卡片轮播 */
+.life-card-gallery {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: #f6f8fa;
+}
+.life-card-track { position: relative; width: 100%; height: 100%; }
+.life-card-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.32s ease;
+}
+.life-card-slide.is-active { opacity: 1; }
+.life-card-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.life-card-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.16s ease, background 0.16s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+.life-card-gallery:hover .life-card-arrow { opacity: 1; }
+.life-card-arrow:hover { background: rgba(0, 0, 0, 0.78); }
+.life-card-prev { left: 8px; }
+.life-card-next { right: 8px; }
+
+.life-card-dots {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+  z-index: 2;
+}
+.life-card-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  transition: width 0.18s ease, background 0.18s ease;
+}
+.life-card-dot.is-active { width: 16px; background: #fff; border-radius: 3px; }
+
+.life-card-count {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 11px;
+  padding: 3px 7px;
+  border-radius: 8px;
+  z-index: 2;
+}
+.life-card-count i { margin-right: 3px; }
+
+/* 卡片正文区 */
+.life-node-body { padding: 12px 14px 14px; }
+.life-node-title {
+  margin: 0 0 6px;
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.life-node-title a {
+  color: #24292e;
+  text-decoration: none;
+  display: block;
+}
+.life-node:hover .life-node-title a { color: #0969da; }
+.life-node-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #6e7681;
+}
+.life-node-loc i { margin-right: 2px; }
+.life-node-excerpt {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: #57606a;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 无图节点 */
+.life-node--text .life-node-card {
+  background: linear-gradient(135deg, #fff5f5, #fff);
+  border-color: #ffd8d8;
+}
+.life-node--text .life-node-body {
+  min-height: 110px;
+  padding: 22px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.life-node--text .life-node-title { font-size: 17px; }
+
+/* =================================================================
+   视图 1：杂志（magazine，默认） — 3 列瀑布密集网格
+   ================================================================= */
+.life-timeline[data-view="magazine"] {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+.life-timeline[data-view="magazine"] .life-timeline-path { display: none; }
+.life-timeline[data-view="magazine"] .life-node {
+  width: 100%;
+  max-width: none;
+}
+/* 杂志视图圆点隐藏 */
+.life-timeline[data-view="magazine"] .life-node-dot { display: none; }
+/* 第一篇若带图则跨 2 列做封面（按总顺序的首篇） */
+.life-timeline[data-view="magazine"] .life-node:first-of-type:not(.life-node--text) {
+  grid-column: span 2;
+}
+.life-timeline[data-view="magazine"] .life-node:first-of-type:not(.life-node--text) .life-card-gallery {
+  aspect-ratio: 21 / 10;
+}
+.life-timeline[data-view="magazine"] .life-node:first-of-type:not(.life-node--text) .life-node-title {
+  font-size: 18px;
+}
+
+/* =================================================================
+   视图 2：曲线（curve） — 4 列错落 + SVG 贝塞尔连线
+   ================================================================= */
+.life-timeline[data-view="curve"] {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 44px 16px;
+  max-width: 980px;
+}
+.life-timeline[data-view="curve"] .life-node { max-width: 300px; }
+.life-timeline[data-view="curve"] .life-node[data-pos="0"] { grid-column: 1 / span 2; }
+.life-timeline[data-view="curve"] .life-node[data-pos="1"] { grid-column: 4 / span 2; justify-self: end; }
+.life-timeline[data-view="curve"] .life-node[data-pos="2"] { grid-column: 2 / span 2; justify-self: center; }
+.life-timeline[data-view="curve"] .life-node[data-pos="3"] { grid-column: 5 / span 2; justify-self: end; }
+
+.life-timeline[data-view="curve"] .life-node-dot { top: 16px; }
+.life-timeline[data-view="curve"] .life-node[data-pos="0"] .life-node-dot,
+.life-timeline[data-view="curve"] .life-node[data-pos="2"] .life-node-dot { left: -14px; }
+.life-timeline[data-view="curve"] .life-node[data-pos="1"] .life-node-dot,
+.life-timeline[data-view="curve"] .life-node[data-pos="3"] .life-node-dot { right: -14px; }
+
+/* =================================================================
+   视图 3：中轴（axis） — 中央一条直线，左右交替
+   ================================================================= */
+.life-timeline[data-view="axis"] {
+  display: block;
+  max-width: 880px;
+}
+.life-timeline[data-view="axis"] .life-timeline-path { display: none; }
+.life-timeline[data-view="axis"]::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 24px;
+  bottom: 60px;
+  width: 3px;
+  margin-left: -1.5px;
+  background: linear-gradient(to bottom, #ff6b6b, #ffa94d 40%, #4dabf7);
+  border-radius: 3px;
+  z-index: 0;
+}
+.life-timeline[data-view="axis"] .life-node {
+  width: 46%;
+  margin-bottom: 22px;
+  position: relative;
+}
+.life-timeline[data-view="axis"] .life-node[data-side="left"] { margin-right: auto; }
+.life-timeline[data-view="axis"] .life-node[data-side="right"] { margin-left: auto; }
+.life-timeline[data-view="axis"] .life-node-dot { top: 18px; }
+.life-timeline[data-view="axis"] .life-node[data-side="left"]  .life-node-dot { right: -8.5%; left: auto; }
+.life-timeline[data-view="axis"] .life-node[data-side="right"] .life-node-dot { left: -8.5%; right: auto; }
+.life-timeline[data-view="axis"] .life-node-card { position: relative; }
+.life-timeline[data-view="axis"] .life-node-card::after {
+  content: "";
+  position: absolute;
+  top: 20px;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border: 1px solid #eaecef;
+  transform: rotate(45deg);
+  z-index: 1;
+}
+.life-timeline[data-view="axis"] .life-node[data-side="left"]  .life-node-card::after { right: -7px; border-left: 0; border-bottom: 0; }
+.life-timeline[data-view="axis"] .life-node[data-side="right"] .life-node-card::after { left: -7px;  border-right: 0; border-top: 0; }
+
+/* ---------- 响应式：移动端单列 ---------- */
+@media (max-width: 720px) {
+  .life-timeline[data-view="magazine"],
+  .life-timeline[data-view="curve"] {
+    grid-template-columns: 1fr;
+    gap: 18px 0;
+    padding: 16px 12px 40px;
+  }
+  .life-timeline[data-view="magazine"] .life-node:first-of-type:not(.life-node--text) {
+    grid-column: 1;
+  }
+  .life-timeline[data-view="magazine"] .life-node:first-of-type:not(.life-node--text) .life-card-gallery {
+    aspect-ratio: 16 / 10;
+  }
+  .life-timeline[data-view="curve"] .life-node {
+    grid-column: 1 / -1 !important;
+    justify-self: start !important;
+    max-width: 100%;
+    margin-left: 24px;
+  }
+  .life-timeline[data-view="curve"] .life-node-dot {
+    left: -18px !important;
+    right: auto !important;
+    top: 16px;
+  }
+  /* 中轴：移动端左侧轴 */
+  .life-timeline[data-view="axis"]::before { left: 14px; }
+  .life-timeline[data-view="axis"] .life-node {
+    width: calc(100% - 36px);
+    margin-left: 36px !important;
+    margin-right: 0 !important;
+  }
+  .life-timeline[data-view="axis"] .life-node-dot {
+    left: -22px !important;
+    right: auto !important;
+  }
+  .life-timeline[data-view="axis"] .life-node-card::after {
+    left: -7px !important;
+    right: auto !important;
+    border-right: 0 !important;
+    border-top: 0 !important;
+    border-left: 1px solid #eaecef !important;
+    border-bottom: 1px solid #eaecef !important;
+  }
+  .life-card-arrow { opacity: 1; }
+}

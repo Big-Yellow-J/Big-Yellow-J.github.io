@@ -57,12 +57,10 @@ kramdown:
     disable: true
   parse_block_html: true
 include:
-  - writing
   - _jupyter
   - index_now.txt
-  - preview_writing.html
   - life.html
-exclude: ['CNAME', 'README.md', 'LICENSE', '_site', 'code', 'dist', 'Gemfile', 'Gemfile.lock', 'blog.sh', 'vendor', 'node_modules', 'scripts', '.bundle', 'writing/DistributeTraining/learning_distribute_training']
+exclude: ['CNAME', 'README.md', 'LICENSE', '_site', 'code', 'dist', 'Gemfile', 'Gemfile.lock', 'blog.sh', 'vendor', 'node_modules', 'scripts', '.bundle', 'writing']
 
 # 域名配置
 # baseurl配置,如果网站部署在根目录下的其他目录中，请设置为 /目录名
@@ -104,6 +102,10 @@ extMath: false
 # Mermaid 流程图支持（mermaid@11，仅文章页生效）
 # 全站默认关，含 ```mermaid 代码块的文章在 frontmatter 中声明 mermaid: true 单独加载
 extMermaid: false
+
+# 生活栏目 (/pages/life.html) 时间线显示方式
+# 可选值：magazine（杂志网格，默认）/ curve（曲线错落）/ axis（中轴交替）
+life_view: magazine
 
 # Service Worker：二次访问全站缓存，离线可访问
 extServiceWorker: true

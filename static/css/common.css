@@ -105,11 +105,18 @@ input:-webkit-autofill {
   transform: scaleX(1);
 }
 .header {
-  padding: 40px 0;
+  padding: 22px 0 18px 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bk-bg, #ffffff);
+  transition: transform 260ms cubic-bezier(.4,0,.2,1);
+  will-change: transform;
 }
+body.nav-hidden .header { transform: translateY(-110%); }
 .header .logo {
   flex-shrink: 0;
   width: 40px;
@@ -206,7 +213,7 @@ input:-webkit-autofill {
 }
 @media screen and (max-width: 560px) {
   .header {
-    padding: 35px 0 20px 0;
+    padding: 16px 0 12px 0;
     justify-content: flex-start;
   }
   .header .menu {

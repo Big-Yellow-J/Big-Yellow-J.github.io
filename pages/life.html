@@ -3,86 +3,90 @@ layout: page
 title: 生活
 ---
 
-<style>
-/* 分页导航样式 */
-.pagination {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-}
+<link rel="stylesheet" href="{{ site.baseurl }}/static/css/life.css">
 
-.pagination a, .pagination span {
-  padding: 5px 10px;
-  text-decoration: none;
-  color: #333;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-.pagination a:hover {
-  background-color: #f0f0f0;
-}
-
-.pagination .previous, .pagination .next {
-  background-color: #e8e8e8;
-  border: 1px solid #ccc;
-}
-
-.pagination .previous:hover, .pagination .next:hover {
-  background-color: #d0d0d0;
-}
-
-.pagination .disabled {
-  color: #aaa;
-  border: 1px solid #ddd;
-  background-color: #f5f5f5;
-  cursor: not-allowed;
-}
-
-.pagination .page_number {
-  font-size: 0.85em;
-  color: #555;
-}
-</style>
+{%- assign view_mode = site.life_view | default: "magazine" -%}
 
 <div class="page page-life">
-  <!-- 生活文章按年份分组 -->
-  {% assign current_year = "" %}
-  {% assign life_posts = site.posts | where: "categories", "life" %}
-  {% for post in life_posts %}
-    {% if post.show != false %}
-      {% capture post_year %}{{ post.date | date: "%Y" }}{% endcapture %}
+  {%- assign life_posts = site.posts | where: "categories", "life" -%}
+  {%- assign visible_posts = "" | split: "" -%}
+  {%- for post in life_posts -%}
+    {%- if post.show != false -%}
+      {%- assign visible_posts = visible_posts | push: post -%}
+    {%- endif -%}
+  {%- endfor -%}
 
-      {% if post_year != current_year %}
-        {% if current_year != "" %}
-          </ul>
-        </div>
-        {% endif %}
-        
-        <div class="list-post">
-          <h2 id="{{ post_year }}">{{ post_year }}</h2>
-          <ul>
-          {% assign current_year = post_year %}
-      {% endif %}
+  {%- if visible_posts.size == 0 -%}
+  <div class="life-empty">
+    <i class="far fa-comment-dots"></i>
+    <p>还没有内容，敬请期待</p>
+  </div>
+  {%- else -%}
+  <div class="life-timeline" id="life-timeline" data-view="{{ view_mode }}">
+    <svg class="life-timeline-path" aria-hidden="true">
+      <defs>
+        <linearGradient id="life-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#ff6b6b"/>
+          <stop offset="50%" stop-color="#ffa94d"/>
+          <stop offset="100%" stop-color="#4dabf7"/>
+        </linearGradient>
+      </defs>
+      <path d="" fill="none" stroke="url(#life-grad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
 
-      <li>
-        <span class="date">{{ post.date | date: "%Y/%m/%d" }}</span>
-        <div class="title">
-          <a href="{{ site.baseurl }}{{ post.url }}" class="hover-underline">{{ post.title }}</a>
+    {%- assign node_idx = 0 -%}
+    {%- for post in visible_posts -%}
+      {%- assign has_gallery = false -%}
+      {%- if post.gallery and post.gallery.size > 0 -%}{%- assign has_gallery = true -%}{%- endif -%}
+      {%- assign pos = node_idx | modulo: 4 -%}
+      {%- assign side_idx = node_idx | modulo: 2 -%}
+      <article class="life-node{% unless has_gallery %} life-node--text{% endunless %}"
+               data-pos="{{ pos }}"
+               data-side="{% if side_idx == 0 %}left{% else %}right{% endif %}"
+               style="animation-delay: {{ node_idx | times: 70 }}ms">
+        <span class="life-node-dot" aria-hidden="true"></span>
+        <div class="life-node-card">
+          {%- if has_gallery -%}
+          <div class="life-card-gallery" data-life-card-gallery data-count="{{ post.gallery.size }}">
+            <div class="life-card-track">
+              {%- for img in post.gallery -%}
+              <div class="life-card-slide{% if forloop.first %} is-active{% endif %}" data-idx="{{ forloop.index0 }}">
+                <img src="{{ img }}" alt="{{ post.title | escape }} {{ forloop.index }}" loading="lazy" decoding="async">
+              </div>
+              {%- endfor -%}
+            </div>
+            {%- if post.gallery.size > 1 -%}
+            <button class="life-card-arrow life-card-prev" type="button" aria-label="上一张">&#10094;</button>
+            <button class="life-card-arrow life-card-next" type="button" aria-label="下一张">&#10095;</button>
+            <div class="life-card-dots">
+              {%- for img in post.gallery -%}
+              <span class="life-card-dot{% if forloop.first %} is-active{% endif %}" data-idx="{{ forloop.index0 }}"></span>
+              {%- endfor -%}
+            </div>
+            <span class="life-card-count"><i class="far fa-images"></i> {{ post.gallery.size }}</span>
+            {%- endif -%}
+          </div>
+          {%- endif -%}
+          <div class="life-node-body">
+            <h2 class="life-node-title">
+              <a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }}</a>
+            </h2>
+            <div class="life-node-meta">
+              <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%Y-%m-%d" }}</time>
+              {%- if post.address %}
+              <span class="life-node-loc"><i class="fas fa-map-marker-alt"></i> {{ post.address }}</span>
+              {%- endif %}
+            </div>
+            {%- if post.excerpt -%}
+            <p class="life-node-excerpt">{{ post.excerpt | strip_html | truncate: 70 }}</p>
+            {%- endif -%}
+          </div>
         </div>
-        <div class="categories">
-          {% for categorie in post.categories %}
-            <a href="{{ site.baseurl }}/pages/categories.html#{{ categorie }}" class="hover-underline">{{ categorie }}</a>
-          {% endfor %}
-        </div>
-      </li>
-
-      {% if forloop.last %}
-          </ul>
-        </div>
-      {% endif %}
-    {% endif %}
-  {% endfor %}
+      </article>
+      {%- assign node_idx = node_idx | plus: 1 -%}
+    {%- endfor -%}
+  </div>
+  {%- endif -%}
 </div>
+
+<script defer src="{{ site.baseurl }}/static/js/life-timeline.js"></script>

@@ -489,6 +489,53 @@ html.dark .mermaid-zoom-btn:hover {
 }
 html.dark .mermaid-modal-body { background: #0d1117; }
 
+/* 生活栏目：时间线暗色覆盖 */
+html.dark .life-title { color: var(--bk-text); }
+html.dark .life-subtitle,
+html.dark .life-empty,
+html.dark .life-node-meta { color: var(--bk-muted); }
+html.dark .life-node-card {
+  background: #161b22;
+  border-color: #30363d;
+}
+html.dark .life-node:hover .life-node-card {
+  border-color: #58a6ff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55);
+}
+html.dark .life-node-title a { color: var(--bk-text); }
+html.dark .life-node:hover .life-node-title a { color: #58a6ff; }
+html.dark .life-node--text .life-node-card {
+  background: linear-gradient(135deg, #1c1217, #161b22);
+  border-color: #3d1f24;
+}
+html.dark .life-card-gallery { background: #0d1117; }
+html.dark .life-node-dot {
+  background: #0d1117;
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 3px rgba(255,107,107,0.22);
+}
+html.dark .life-year-bubble {
+  box-shadow: 0 4px 10px rgba(255, 107, 107, 0.4);
+}
+html.dark .life-timeline-path path {
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.55));
+}
+html.dark .life-node-excerpt { color: var(--bk-muted); }
+/* 视图切换器：暗色 */
+html.dark .life-view-switcher {
+  background: #161b22;
+  border-color: #30363d;
+}
+html.dark .life-view-btn { color: var(--bk-muted); }
+html.dark .life-view-btn:hover { color: var(--bk-text); }
+html.dark .life-view-btn.is-active { color: #fff; }
+/* 中轴视图：中线 + 卡片箭头 */
+html.dark .life-timeline[data-view="axis"] .life-node-card::after {
+  background: #161b22;
+  border-color: #30363d;
+}
+html.dark .life-back-link a { color: #ff7b7b; }
+
 /* Profile Hero + 写作热力图：暗色 */
 html.dark .profile-hero {
   background: #161b22;
