@@ -100,7 +100,6 @@ title: 首页
       {%- endif -%}
       <div class="post-card-meta">
         <span><i class="far fa-calendar-alt"></i> {{ post.date | date: "%Y-%m-%d" }}</span>
-        <span class="card-views" data-page-url="{{ post.url | absolute_url }}"><i class="far fa-eye"></i> <span class="card-views-num">–</span></span>
         {%- if post.categories.size > 0 -%}
         <span><i class="far fa-folder"></i>
           {%- for c in post.categories -%}
@@ -142,4 +141,3 @@ title: 首页
 </div>
 
 <script src="{{ site.baseurl }}/static/js/layout-toggle.js" defer></script>
-<script src="{{ site.baseurl }}/static/js/post-views.js" defer></script>
