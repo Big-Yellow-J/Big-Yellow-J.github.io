@@ -89,6 +89,9 @@
 }
 .life-card-slide.is-active { opacity: 1; }
 .life-card-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.life-card-slide a[data-pswp-width] { cursor: zoom-in; }
+.life-card-slide a[data-pswp-width] img { transition: transform 0.25s ease; }
+.life-card-slide a[data-pswp-width]:hover img { transform: scale(1.03); }
 
 .life-card-arrow {
   position: absolute;
