@@ -3,7 +3,10 @@
 {% include head.html -%}
 <body class="layout-post">
 {% include header.html -%}
-{%- if page.path contains '_posts/' -%}
+{%- comment -%}is_life：用于关闭对生活记录无意义的区块（TOC / 字数分钟 / AI 摘要 / 字数）{%- endcomment -%}
+{%- assign is_life = false -%}
+{%- if page.categories contains 'life' -%}{%- assign is_life = true -%}{%- endif -%}
+{%- if page.path contains '_posts/' and is_life == false -%}
 <div id="toc"></div>
 {%- endif -%}
 
@@ -60,6 +63,7 @@
         <span>更新于 <time datetime="{{ page.last_modified_at | date_to_xmlschema }}">{{ page.last_modified_at | date: "%Y-%m-%d" }}</time></span>
       </span>
       {%- endif -%}
+      {%- unless is_life -%}
       <span class="meta-item">
         <i class="far fa-file-alt"></i>
         <span>{{ words }} 字</span>
@@ -68,6 +72,7 @@
         <i class="far fa-clock"></i>
         <span>{{ minutes }} 分钟</span>
       </span>
+      {%- endunless -%}
       <span class="meta-item">
         <i class="far fa-eye"></i>
         <span><span id="vercount_value_page_pv">–</span> 次阅读</span>
@@ -75,7 +80,7 @@
     </div>
     {%- endif -%}
 
-    {%- if page.description -%}
+    {%- if page.description and is_life == false -%}
     <div id="description-llm" class="post-description-llm">
       <i class="fas fa-magic"></i>
       <div class="post-description-llm-text">{{ page.description | strip_newlines | escape }}</div>
@@ -94,6 +99,19 @@
       | replace: '§§FIRST_IMG§§', '<img fetchpriority="high" decoding="async" class="content-image"'
       | replace: 'alt=""', 'alt="image"' -%}
     {{ content_with_images }}
+    {%- comment -%}life 文章：把 YAML gallery 在正文末尾渲染为图集网格；img 加 content-image 让 gallery.js 接管 PhotoSwipe{%- endcomment -%}
+    {%- if is_life and page.gallery and page.gallery.size > 0 -%}
+    <section class="life-detail-gallery" aria-label="本篇图集">
+      <h3 class="life-detail-title"><i class="far fa-images"></i> 全部 {{ page.gallery.size }} 张</h3>
+      <div class="life-detail-grid">
+        {%- for img in page.gallery -%}
+        <figure class="life-detail-item">
+          <img src="{{ img }}" alt="{{ page.title | escape }} {{ forloop.index }}" class="content-image" loading="lazy" decoding="async">
+        </figure>
+        {%- endfor -%}
+      </div>
+    </section>
+    {%- endif -%}
   </article>
 
   <footer class="post-footer">
@@ -149,14 +167,35 @@
     {%- endif -%}
     {%- endif -%}
 
-    {%- unless page.categories contains "life" -%}
+    {%- comment -%}上下篇导航：life 文章在 categories=life 内部计算相邻；其他文章按 page.previous/next{%- endcomment -%}
+    {%- assign nav_prev = nil -%}
+    {%- assign nav_next = nil -%}
+    {%- if is_life -%}
+      {%- assign life_posts = site.posts | where: "categories", "life" -%}
+      {%- assign cur_idx = -1 -%}
+      {%- for p in life_posts -%}
+        {%- if p.url == page.url -%}{%- assign cur_idx = forloop.index0 -%}{%- endif -%}
+      {%- endfor -%}
+      {%- if cur_idx >= 0 -%}
+        {%- if cur_idx > 0 -%}
+          {%- assign pi = cur_idx | minus: 1 -%}
+          {%- assign nav_prev = life_posts[pi] -%}
+        {%- endif -%}
+        {%- assign ni = cur_idx | plus: 1 -%}
+        {%- if ni < life_posts.size -%}{%- assign nav_next = life_posts[ni] -%}{%- endif -%}
+      {%- endif -%}
+    {%- else -%}
+      {%- if page.previous.url -%}{%- assign nav_prev = page.previous -%}{%- endif -%}
+      {%- if page.next.url -%}{%- assign nav_next = page.next -%}{%- endif -%}
+    {%- endif -%}
+
     <nav class="navigation-buttons" aria-label="文章导航">
-      {%- if page.previous.url -%}
-      <a href="{{ page.previous.url | relative_url }}" class="nav-button previous" title="{{ page.previous.title }}">
+      {%- if nav_prev -%}
+      <a href="{{ nav_prev.url | relative_url }}" class="nav-button previous" title="{{ nav_prev.title }}">
         <i class="fas fa-arrow-left"></i>
         <span class="nav-label">
-          <span class="nav-tag">上一篇</span>
-          <span class="nav-title">{{ page.previous.title }}</span>
+          <span class="nav-tag">上一篇{%- if is_life %} · 生活{%- endif -%}</span>
+          <span class="nav-title">{{ nav_prev.title }}</span>
         </span>
       </a>
       {%- else -%}
@@ -166,11 +205,11 @@
       </span>
       {%- endif -%}
 
-      {%- if page.next.url -%}
-      <a href="{{ page.next.url | relative_url }}" class="nav-button next" title="{{ page.next.title }}">
+      {%- if nav_next -%}
+      <a href="{{ nav_next.url | relative_url }}" class="nav-button next" title="{{ nav_next.title }}">
         <span class="nav-label">
-          <span class="nav-tag">下一篇</span>
-          <span class="nav-title">{{ page.next.title }}</span>
+          <span class="nav-tag">下一篇{%- if is_life %} · 生活{%- endif -%}</span>
+          <span class="nav-title">{{ nav_next.title }}</span>
         </span>
         <i class="fas fa-arrow-right"></i>
       </a>
@@ -181,7 +220,6 @@
       </span>
       {%- endif -%}
     </nav>
-    {%- endunless -%}
 
     <section class="post-comments">
       <div id="tcomment"></div>
@@ -206,23 +244,9 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-highlight/prism-line-highlight.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/diff-highlight/prism-diff-highlight.css">
 </noscript>
+<!-- Prism：autoloader 按页面实际出现的语言按需拉取组件，替代全量语言包 -->
 <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-json.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-yaml.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-go.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-rust.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-c.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-cpp.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-java.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-sql.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-jsx.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-tsx.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-typescript.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-markdown.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-diff.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-highlight/prism-line-highlight.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/diff-highlight/prism-diff-highlight.min.js"></script>

@@ -61,8 +61,10 @@ body {
   white-space: nowrap;
   font-size: 15px;
   display: inline-block;
-  border-bottom: 1px solid #000000;
+  /* 与文章内链接统一：半透明主题色下划线 */
+  border-bottom: 1px solid rgba(51, 102, 204, 0.35);
 }
+.list-category div a:hover { border-bottom-color: var(--bk-accent, #3366cc); }
 .page-search #search-input {
   text-align: center;
   font-size: 14px;

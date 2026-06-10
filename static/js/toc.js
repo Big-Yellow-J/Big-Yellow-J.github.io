@@ -156,9 +156,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (ticking) return;
     ticking = true;
     requestAnimationFrame(() => {
-      const fromTop = window.scrollY + 100;
+      // getBoundingClientRect 每次实时取位置：嵌套 offsetParent 与图片懒加载导致的 layout shift 都不会算错
       let activeId = null;
-      headings.forEach(h => { if (h.offsetTop <= fromTop) activeId = h.id; });
+      headings.forEach(h => { if (h.getBoundingClientRect().top <= 100) activeId = h.id; });
       toc.querySelectorAll('a').forEach(link => {
         link.classList.toggle('active', link.getAttribute('data-target-id') === activeId);
       });

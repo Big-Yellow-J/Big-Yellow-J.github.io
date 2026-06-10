@@ -8,6 +8,23 @@
 .life-empty { text-align: center; padding: 64px 16px; color: #6e7681; }
 .life-empty i { font-size: 36px; opacity: 0.4; display: block; margin-bottom: 12px; }
 
+/* 顶部统计徽章：篇 / 张 / 城 */
+.life-stats {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  margin: 18px auto 8px;
+  font-size: 13px;
+  color: #6e7681;
+}
+.life-stat b {
+  display: inline-block;
+  margin-right: 4px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ff6b6b;
+}
+
 /* ---------- 时间线容器 ---------- */
 .life-timeline {
   position: relative;
@@ -338,5 +355,23 @@
     border-left: 1px solid #eaecef !important;
     border-bottom: 1px solid #eaecef !important;
   }
-  .life-card-arrow { opacity: 1; }
+  /* 触摸设备无 hover：箭头常驻并放大触摸目标 */
+  .life-card-arrow {
+    opacity: 1;
+    width: 40px;
+    height: 40px;
+    font-size: 15px;
+  }
+  .life-card-dots { gap: 10px; }
+  .life-card-dot {
+    position: relative;
+    width: 8px;
+    height: 8px;
+  }
+  /* 扩大圆点点击热区而不改变视觉尺寸 */
+  .life-card-dot::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+  }
 }

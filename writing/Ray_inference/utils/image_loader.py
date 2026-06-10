@@ -14,7 +14,15 @@ from urllib.parse import urlparse
 import requests
 from PIL import Image
 
-from config import MAX_IMAGE_BYTES, TMP_IMAGE_DIR, URL_FETCH_TIMEOUT_SEC
+from config import (
+    MAX_IMAGE_BYTES,
+    MAX_IMAGE_PIXELS,
+    TMP_IMAGE_DIR,
+    URL_FETCH_TIMEOUT_SEC,
+)
+
+# 全局解压炸弹防护:超过此像素数 PIL 抛 DecompressionBombError
+Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 
 _URL_RE = re.compile(r"^https?://", re.IGNORECASE)
 _DATA_URI_RE = re.compile(r"^data:image/[^;]+;base64,", re.IGNORECASE)
@@ -29,9 +37,14 @@ def load_image(source) -> Image.Image:
     Returns:
         PIL.Image.Image (mode=RGB)。
     Raises:
-        ValueError: 超过 MAX_IMAGE_BYTES,或源无法解析。
+        ValueError: 超过 MAX_IMAGE_BYTES / 像素超限 / 文件不是合法图像 / base64 解码失败。
     """
     data = _to_bytes(source)
+    # 二次校验:先 verify(不解码到内存)防御恶意构造,再重新 open 真正使用。
+    try:
+        Image.open(BytesIO(data)).verify()
+    except Exception as e:
+        raise ValueError(f"invalid image: {e}") from e
     return Image.open(BytesIO(data)).convert("RGB")
 
 

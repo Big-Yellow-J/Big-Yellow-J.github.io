@@ -75,6 +75,14 @@ jobs:
           JEKYLL_ENV: production
         run: bundle exec jekyll build --trace
 
+      # jekyll-minifier 的 uglifier 不支持 ES2020+，自有 JS 在产物里用 terser 压缩
+      - name: Minify JS with terser
+        run: |
+          npm i -g terser@5
+          find _site/static/js -name '*.js' -print0 | while IFS= read -r -d '' f; do
+            terser "$f" --compress --mangle -o "$f" || echo "skip $f"
+          done
+
       - name: Generate Pagefind search index
         run: npx -y pagefind --site _site --output-path _site/pagefind
 

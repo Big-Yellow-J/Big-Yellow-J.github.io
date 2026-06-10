@@ -47,16 +47,16 @@ class OneFormerActor(BaseModelActor):
         self._processor = OneFormerProcessor.from_pretrained(ONEFORMER_MODEL, local_files_only=True)
         self._model = (
             OneFormerForUniversalSegmentation
-            .from_pretrained(ONEFORMER_MODEL, local_files_only=True)
+            .from_pretrained(ONEFORMER_MODEL, local_files_only=True, torch_dtype=self._dtype)
             .to(self._device)
             .eval()
         )
 
         # dynamic=True 让多种输入分辨率共用一份编译产物,避免反复 recompile
-        try:
-            self._model = torch.compile(self._model, dynamic=True)
-        except Exception:
-            pass
+        # try:
+        #     self._model = torch.compile(self._model, dynamic=True)
+        # except Exception:
+        #     pass
         self._id2label = self._model.config.id2label
 
     def _warm_up(self):
@@ -112,6 +112,8 @@ class OneFormerActor(BaseModelActor):
         inputs = self._processor(
             images=image, task_inputs=[task], return_tensors="pt",
         ).to(self._device)
+        # pixel_values cast 到 fp16,task_inputs/mask_labels 等整型张量保持不变
+        self._cast_floats(inputs)
         with torch.inference_mode():
             outputs = self._model(**inputs)
         target_size = [image.size[::-1]]   # PIL.size=(W,H),OneFormer 需要 (H,W)

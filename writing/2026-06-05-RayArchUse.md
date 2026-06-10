@@ -246,12 +246,21 @@ python main.py bootstrap
 # 3) 启 API 进程,改代码自动重载
 uvicorn ray_deploy:app --host 0.0.0.0 --port 7890 --reload --reload-dir services --reload-dir models
 ```
+> 有些时候如果模型没有下载/网速慢不影响具体代码使用可以在 `bootstrap` 执行之后如果有些模型一直在下载/加载不影响 `uvicorn` 启动（可以新建终端启动服务即可）。
 
 之后改 `services/` 或 `models/` 下的代码,uvicorn 秒级重启 API 进程，但 actor 进程不动也就是说**模型权重无需重新加载**。API 进程的 FastAPI startup hook 会自动 `ray.init(address="auto")` attach 已存在的集群,并通过 `ray.get_actor(name)` 拿到 bootstrap 阶段创建的 actor 句柄。如果有些时候**对模型进行了替换**:
 
 ```bash
 # 如果仅替换模型（Ray 集群 + API 进程均不受影响） 可以直接新的终端执行如下两端命令即可
 python main.py teardown        # 杀掉 detached actor
+# 如果不想kill 所有actor直接kill指定actor即可
+python -c "import ray
+from config import RAY_NAMESPACE
+ray.init(namespace=RAY_NAMESPACE)
+ray.kill(ray.get_actor('clip', namespace=RAY_NAMESPACE), no_restart=True)
+print('killed clip')
+"
+
 python main.py bootstrap       # 用新权重重建 actor
 # 如果要去完全关闭（开发结束后）先 ctrl+c 停 uvicorn，再去停ray服务
 python main.py teardown

@@ -1,5 +1,5 @@
 """HTTP 请求体 Pydantic 模型集中定义。所有非 source 字段都有默认值,保证客户端兼容。"""
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -57,3 +57,46 @@ class SegmentBody(BaseModel):
     mask_threshold: float = Field(
         0.5, ge=0.0, le=1.0, description="mask 二值化阈值",
     )
+
+
+class EmbedBody(BaseModel):
+    """图像 Embedding 请求(默认顺手写入 milvus)。"""
+    source: str = Field(..., description="path / http(s) URL / base64 / data URI")
+    model: Literal["clip", "qwen_vl"] = Field(
+        "clip", description="编码模型,默认 clip;不同模型存到独立 collection",
+    )
+    metadata: Optional[Dict] = Field(
+        None,
+        description="与向量一起入库的业务字段(如 image_url / tags / source_id),后续 search 可用 filter 过滤",
+    )
+    write_db: bool = Field(
+        True, description="True = 入 milvus(同 source md5 幂等 upsert);False = 只返回向量不写库",
+    )
+
+
+class SearchBody(BaseModel):
+    """以图搜图请求。"""
+    source: str = Field(..., description="path / http(s) URL / base64 / data URI")
+    model: Literal["clip", "qwen_vl"] = Field(
+        "clip", description="必须与入库时使用的 model 一致,否则 collection 不匹配",
+    )
+    top_k: int = Field(10, ge=1, le=100)
+    filter: Optional[str] = Field(
+        None, description="milvus filter 表达式,如 'metadata[\"tag\"] == \"cat\"';留空 = 全量检索",
+    )
+
+
+class EmbedTextBody(BaseModel):
+    """文本 Embedding 请求(目前仅 CLIP,文本/图像共享向量空间)。"""
+    text: str = Field(..., min_length=1, max_length=2048)
+    model: Literal["clip"] = Field("clip", description="目前仅支持 CLIP 文本侧")
+    write_db: bool = Field(False, description="文本通常是 query,默认不入库")
+    metadata: Optional[Dict] = Field(None, description="如要入库,可附 metadata")
+
+
+class SearchTextBody(BaseModel):
+    """以文搜图请求:文本 → 向量 → 在图像 collection 检索。"""
+    text: str = Field(..., min_length=1, max_length=2048)
+    model: Literal["clip"] = Field("clip", description="目前仅 CLIP 跨模态可用")
+    top_k: int = Field(10, ge=1, le=100)
+    filter: Optional[str] = Field(None, description="milvus filter 表达式")

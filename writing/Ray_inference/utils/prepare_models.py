@@ -7,34 +7,56 @@
 """
 from pathlib import Path
 
-from huggingface_hub import snapshot_download
-
 from config import (
     CLIP_LOCAL_DIR,
     CLIP_REPO,
+    CLIP_REVISION,
     ONEFORMER_LOCAL_DIR,
     ONEFORMER_REPO,
+    ONEFORMER_REVISION,
+    QWEN_EMBED_LOCAL_DIR,
+    QWEN_EMBED_REPO,
+    QWEN_EMBED_DOWNLOAD_FROM,
+    QWEN_EMBED_REVISION,
     WEIGHTS_DIR,
 )
 
 
-def _snapshot(repo: str, local_dir: Path, force: bool) -> str:
-    """单个 HF repo → 本地目录;非空且非 force 时早返回跳过。"""
+def _snapshot(repo: str, local_dir: Path, revision: str, force: bool, download_from: str="hf") -> str:
+    """单个 HF repo → 本地目录;非空且非 force 时早返回跳过。revision 为空时跟主分支。"""
     if local_dir.is_dir() and any(local_dir.iterdir()) and not force:
         print(f"[skip] {repo}: already exists at {local_dir}")
         return str(local_dir)
-    print(f"[download] {repo} -> {local_dir}")
-    snapshot_download(repo_id=repo, local_dir=str(local_dir), local_dir_use_symlinks=False)
-    print(f"[done] {local_dir}")
+    if download_from == "hf":
+        from huggingface_hub import snapshot_download
+        rev_str = f" @ {revision[:8]}" if revision else " @ HEAD"
+        print(f"[download-HuggingFace] {repo}{rev_str} -> {local_dir}")
+        snapshot_download(
+            repo_id=repo,
+            revision=revision or None,
+            local_dir=str(local_dir),
+            local_dir_use_symlinks=False,
+        )
+        print(f"[done] {local_dir}")
+    elif download_from == "modelscope":
+        from modelscope import snapshot_download
+        print(f"[download-ModelScope] {repo} -> {local_dir}")
+        snapshot_download(
+            repo_id=repo,
+            local_dir=str(local_dir),
+            max_workers= 16
+        )
+        print(f"[done] {local_dir}")
     return str(local_dir)
 
-
 def download_all(force: bool = False) -> dict:
-    """下载所有 HF 模型(CLIP + OneFormer),返回 {repo: local_dir}。"""
+    """下载所有 HF 模型(CLIP + OneFormer + Qwen-Embed),返回 {repo: local_dir}。"""
     WEIGHTS_DIR.mkdir(parents=True, exist_ok=True)
     return {
-        CLIP_REPO: _snapshot(CLIP_REPO, CLIP_LOCAL_DIR, force),
-        ONEFORMER_REPO: _snapshot(ONEFORMER_REPO, ONEFORMER_LOCAL_DIR, force),
+        CLIP_REPO: _snapshot(CLIP_REPO, CLIP_LOCAL_DIR, CLIP_REVISION, force),
+        ONEFORMER_REPO: _snapshot(ONEFORMER_REPO, ONEFORMER_LOCAL_DIR, ONEFORMER_REVISION, force),
+        QWEN_EMBED_REPO: _snapshot(QWEN_EMBED_REPO, QWEN_EMBED_LOCAL_DIR, 
+                                   QWEN_EMBED_REVISION, force, download_from=QWEN_EMBED_DOWNLOAD_FROM),
     }
 
 

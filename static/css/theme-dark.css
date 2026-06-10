@@ -4,6 +4,8 @@
   --bk-bg: #ffffff;
   --bk-muted: #6e7681;
   --bk-link: #0366d6;
+  --bk-accent: #3366cc;
+  --bk-accent-soft: rgba(51, 102, 204, 0.08);
   --bk-card-bg: #ffffff;
   --bk-card-border: #d0d7de;
 }
@@ -49,7 +51,7 @@ html.dark .hover-underline:after {
 html.dark .page-post .title {
   color: #ffffff;
 }
-html.dark .page-post img {
+html.dark .page-post .content-image {
   box-shadow: none;
 }
 html.dark .page-post code {
@@ -401,9 +403,9 @@ html.dark .page-post tbody tr:hover td { background: rgba(56,139,253,0.12); }
 html.dark .page-post td strong { color: #58a6ff; }
 
 html.dark .page-post .post blockquote {
-  background-color: #161b22;
+  background-color: rgba(88, 166, 255, 0.08);
   border-left-color: #58a6ff;
-  color: #c9d1d9;
+  color: #e6edf3;
 }
 
 html.dark .share-button,
@@ -535,6 +537,8 @@ html.dark .life-timeline[data-view="axis"] .life-node-card::after {
   border-color: #30363d;
 }
 html.dark .life-back-link a { color: #ff7b7b; }
+html.dark .life-stats { color: var(--bk-muted); }
+html.dark .life-stat b { color: #ff7b7b; }
 /* 卡片轮播：箭头与圆点暗色微调 */
 html.dark .life-card-arrow {
   background: rgba(0, 0, 0, 0.65);
@@ -577,3 +581,9 @@ html.dark .heatmap-cell[data-level="3"] { background: #26a641; outline: none; }
 html.dark .heatmap-cell[data-level="4"] { background: #39d353; outline: none; }
 html.dark .heatmap-cell[data-level="-1"] { background: transparent; outline: none; }
 html.dark .heatmap-grid::-webkit-scrollbar-thumb { background: #30363d; }
+
+/* life 详情页底部图集：暗色 */
+html.dark .life-detail-gallery { border-top-color: #30363d; }
+html.dark .life-detail-title { color: var(--bk-muted); }
+html.dark .life-detail-title i { color: #ff7b7b; }
+html.dark .life-detail-item { background: #161b22; }

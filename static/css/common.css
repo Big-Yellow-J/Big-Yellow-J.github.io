@@ -224,6 +224,12 @@ body.nav-hidden .header { transform: translateY(-110%); }
     margin: 2px 5px;
     font-size: 15px;
   }
+  /* 右下三件套：移动端放大触摸目标 */
+  .footer-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+  }
 }
 
 /* 可访问性：尊重系统的"减少动画"偏好 */

@@ -140,6 +140,11 @@ extMermaid: false
 # 可选值：magazine（杂志网格，默认）/ curve（曲线错落）/ axis（中轴交替）
 life_view: magazine
 
+# 列表卡片缩略图代理（首屏图体积大才需要开；置空 = 用原图）
+# 注意：开启后 PhotoSwipe 仍打开原图（src/href 双源），但弹窗显示前会先读缩略图尺寸做容器
+# 推荐：原图 < 200KB 时保持空；原图很大时填 https://wsrv.nl/
+life_thumb_proxy: ""
+
 # Service Worker：二次访问全站缓存，离线可访问
 extServiceWorker: true
 

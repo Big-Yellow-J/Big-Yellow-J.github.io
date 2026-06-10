@@ -356,6 +356,118 @@ def _is_life_category(yaml_dict):
     return False
 
 
+_SMMS_KNOWN_HOSTS = ('s2.loli.net', 'i.loli.net', 'sm.ms', 's.ee')
+
+
+def _smms_upload_bytes(webp_bytes, name_hint='gallery'):
+    """简版：上传二进制 webp 到 sm.ms / s.ee，成功返回新 URL，失败返回 None。"""
+    tokens = parse_smms_tokens(os.getenv("SMMS_API_LIST", ""))
+    if not tokens:
+        return None
+    endpoints = [
+        ('https://sm.ms/api/v2/upload', 'smfile'),
+        ('https://s.ee/api/v1/file/upload', 'file'),
+    ]
+    for token in tokens:
+        for url, field in endpoints:
+            try:
+                _SMMS_LIMITER.wait(token)
+                with _SMMS_SEMAPHORE:
+                    resp = requests.post(
+                        url,
+                        files={field: (f'{name_hint}.webp', BytesIO(webp_bytes), 'image/webp')},
+                        headers={'Authorization': token},
+                        timeout=30,
+                    )
+                if resp.status_code == 401:
+                    continue
+                j = resp.json()
+                if j.get('success') or j.get('code') in (0, '0', 'success'):
+                    return (j.get('data') or {}).get('url')
+                if j.get('code') == 'image_repeated':
+                    return j.get('images') or (j.get('data') or {}).get('url')
+            except Exception as e:
+                print(f"⚠️  gallery 上传异常 [{token[:4]}*** {url}]：{e}")
+                continue
+    return None
+
+
+def _download_and_reupload(url, image_store_dir, quality=88):
+    """下载远端图 → 转 webp → 落本地存档 → 上传 sm.ms。成功返回新 URL，失败返回 None。"""
+    try:
+        resp = requests.get(url, timeout=15)
+        resp.raise_for_status()
+        image = Image.open(BytesIO(resp.content)).convert('RGB')
+        buf = BytesIO()
+        image.save(buf, format='webp', quality=quality)
+        webp_bytes = buf.getvalue()
+        name_hint = Path(urlparse(url).path).stem or 'gallery'
+        # 落档本地备份
+        if image_store_dir:
+            image_store_dir.mkdir(parents=True, exist_ok=True)
+            (image_store_dir / f'{name_hint}.webp').write_bytes(webp_bytes)
+        return _smms_upload_bytes(webp_bytes, name_hint)
+    except Exception as e:
+        print(f"⚠️  下载/转 webp 失败：{url} - {e}")
+        return None
+
+
+def collect_life_gallery(md_content, yaml_dict, image_store_dir):
+    """life 文章专用：
+       - 从正文 ![](url) 提取图片 URL 合并进 yaml.gallery（去重保序）
+       - 非 sm.ms 域名的 URL 自动下载 + 上传 sm.ms 替换
+       返回 (新 md_content, 是否被修改 bool)。
+    """
+    if not _is_life_category(yaml_dict):
+        return md_content, False
+
+    body_urls = re.findall(
+        r'!\[[^\]]*\]\((https?://[^\s)]+)\)',
+        md_content,
+    )
+
+    existing = yaml_dict.get('gallery') or []
+    if isinstance(existing, str):
+        existing = [existing]
+
+    seen = set()
+    merged = []
+    for u in list(existing) + body_urls:
+        if u and u not in seen:
+            merged.append(u)
+            seen.add(u)
+
+    if not merged:
+        return md_content, False
+
+    # 非 sm.ms 域名 → 重传
+    new_list = []
+    changed = False
+    for u in merged:
+        host = urlparse(u).netloc
+        if any(host.endswith(h) for h in _SMMS_KNOWN_HOSTS):
+            new_list.append(u)
+            continue
+        print(f"🔁 重传非 sm.ms 图片到图床：{u}")
+        new_url = _download_and_reupload(u, Path(image_store_dir))
+        if new_url:
+            new_list.append(new_url)
+            changed = True
+        else:
+            new_list.append(u)  # 上传失败保留原 URL
+
+    # 与原 gallery 不同才写回
+    if new_list != list(existing):
+        changed = True
+    if not changed:
+        return md_content, False
+
+    yaml_dict['gallery'] = new_list
+    body, _ = format_yaml_head(md_content)
+    new_yaml_str = yaml.dump(yaml_dict, allow_unicode=True, sort_keys=False).strip()
+    return f"---\n{new_yaml_str}\n---\n\n{body.lstrip()}", True
+
+
 def format_description(md_content, yaml_dict, description, md_path, provider='doubao'):
     '''生成摘要（life 分类直接跳过）'''
     if _is_life_category(yaml_dict):
@@ -505,6 +617,14 @@ def process_file(file_path_list,
             return None
         # md_content = format_image(md_content, image_store_dir, image_threads, gen_avif=gen_avif)
         _, yaml_dict = format_markdown(md_content)
+        # life 文章：自动收集正文图为 gallery，非 sm.ms 域名重传
+        new_md, changed = collect_life_gallery(md_content, yaml_dict, image_store_dir)
+        if changed:
+            md_content = new_md
+            _, yaml_dict = format_markdown(md_content)
+            with open(md_path, 'w', encoding='utf-8') as f:
+                f.write(md_content)
+            print(f"📷 已更新 life gallery：{md_path}")
         return md_path, md_content, yaml_dict
 
     with ThreadPoolExecutor(max_workers=file_threads) as executor:

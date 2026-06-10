@@ -8,23 +8,27 @@
     if (loaded) return;
     loaded = true;
 
-    const katexCSS = document.createElement('link');
-    katexCSS.rel = 'stylesheet';
-    katexCSS.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css';
-    katexCSS.crossOrigin = 'anonymous';
-    document.head.appendChild(katexCSS);
+    // extMath 文章已在 head 加载过 KaTeX，这里跳过避免重复请求
+    if (!document.querySelector('link[href*="katex"]')) {
+      const katexCSS = document.createElement('link');
+      katexCSS.rel = 'stylesheet';
+      katexCSS.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css';
+      katexCSS.crossOrigin = 'anonymous';
+      document.head.appendChild(katexCSS);
+    }
+    if (!window.katex && !document.querySelector('script[src*="katex.min.js"]')) {
+      const katexJS = document.createElement('script');
+      katexJS.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js';
+      katexJS.crossOrigin = 'anonymous';
+      katexJS.defer = true;
+      document.head.appendChild(katexJS);
 
-    const katexJS = document.createElement('script');
-    katexJS.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js';
-    katexJS.crossOrigin = 'anonymous';
-    katexJS.defer = true;
-    document.head.appendChild(katexJS);
-
-    const katexAutoRender = document.createElement('script');
-    katexAutoRender.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js';
-    katexAutoRender.crossOrigin = 'anonymous';
-    katexAutoRender.defer = true;
-    document.head.appendChild(katexAutoRender);
+      const katexAutoRender = document.createElement('script');
+      katexAutoRender.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js';
+      katexAutoRender.crossOrigin = 'anonymous';
+      katexAutoRender.defer = true;
+      document.head.appendChild(katexAutoRender);
+    }
 
     const twikooJS = document.createElement('script');
     twikooJS.src = 'https://cdn.jsdelivr.net/npm/twikoo@1.6.41/dist/twikoo.min.js';
@@ -75,7 +79,7 @@
         load();
         io.disconnect();
       }
-    }, { rootMargin: '400px 0px' });
+    }, { rootMargin: '150px 0px' });
     io.observe(target);
   } else {
     load();

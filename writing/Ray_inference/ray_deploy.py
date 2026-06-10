@@ -10,6 +10,7 @@ from config import (
     ACTOR_MAX_RESTARTS,
     GPU_FRACTION_CLIP,
     GPU_FRACTION_ONEFORMER,
+    GPU_FRACTION_QWEN_EMBED,
     GPU_FRACTION_YOLO,
     HEALTH_CHECK_INTERVAL_SEC,
     ONLINE_API_HOST,
@@ -17,12 +18,17 @@ from config import (
     RAY_ADDRESS,
     RAY_DASHBOARD_HOST,
     RAY_NAMESPACE,
+    SHUTDOWN_GRACE_SEC,
 )
+from services.middleware import inflight_count
 from models.clip_actor import CLIPActor
 from models.oneformer_actor import OneFormerActor
+from models.qwen_embed_actor import QwenEmbedActor
 from models.yolo_actor import YOLOActor
-from services.online_api import app, set_actors
+from services.dispatch import set_actors
+from services.online_api import app
 from utils.logging_setup import setup_logger
+from utils.milvus_backup import backup_lite
 from utils.tmp_cleanup import cleanup_tmp
 
 log = setup_logger("deploy")
@@ -32,6 +38,7 @@ ACTOR_SPECS = [
     ("clip", CLIPActor, GPU_FRACTION_CLIP, "clip"),
     ("yolo", YOLOActor, GPU_FRACTION_YOLO, "yolo"),
     ("oneformer", OneFormerActor, GPU_FRACTION_ONEFORMER, "oneformer"),
+    ("qwen_embed", QwenEmbedActor, GPU_FRACTION_QWEN_EMBED, "qwen_embed"),
 ]
 
 _actors: dict = {}
@@ -111,11 +118,16 @@ async def _health_loop(interval: float = HEALTH_CHECK_INTERVAL_SEC):
 
 @app.on_event("startup")
 async def _startup_attach():
-    """uvicorn 模式启动钩子:清理过期 tmp + attach detached actor。"""
+    """uvicorn 模式启动钩子:清理过期 tmp + 尝试备份 milvus + attach detached actor。"""
     global _actors
     if _actors:
         return
     log.info("startup: cleanup_tmp result=%s", cleanup_tmp())
+    try:
+        log.info("startup: milvus backup result=%s", backup_lite())
+    except Exception as e:
+        # 备份失败不应该阻断服务启动(IO/权限/磁盘满都可能);只告警
+        log.warning("startup: milvus backup FAILED (non-fatal): %s", e)
     init_ray()
     _actors = attach_actors()
     set_actors(_actors)
@@ -124,14 +136,18 @@ async def _startup_attach():
 
 @app.get("/actors")
 async def list_actors():
-    """完整 actor 状态(比 /health 多 device/gpu_fraction/last_inference 等字段)。"""
-    results = {}
-    for name, actor in _actors.items():
-        try:
-            results[name] = await asyncio.wrap_future(actor.health_check.remote().future())
-        except Exception as e:
-            results[name] = {"alive": False, "error": str(e)}
-    return {"actors": results}
+    """完整 actor 状态(比 /health 多 device/gpu_fraction/last_inference 等字段)。
+
+    每个 actor 独立 3s 超时;还在 __init__ 加载权重的 actor 标 timeout,不拖累其他。
+    """
+    from services.online_api import _probe_actor   # 复用同款带超时的 probe
+    keys = list(_actors.keys())
+    if not keys:
+        return {"actors": {}}
+    probes = await asyncio.gather(*[
+        _probe_actor(_actors[k].health_check.remote()) for k in keys
+    ])
+    return {"actors": dict(zip(keys, probes))}
 
 
 async def main(host: Optional[str] = None, port: Optional[int] = None):
@@ -139,6 +155,10 @@ async def main(host: Optional[str] = None, port: Optional[int] = None):
     global _actors, _health_task
 
     log.info("serve mode: cleanup_tmp result=%s", cleanup_tmp())
+    try:
+        log.info("serve mode: milvus backup result=%s", backup_lite())
+    except Exception as e:
+        log.warning("serve mode: milvus backup FAILED (non-fatal): %s", e)
     init_ray()
     _actors = create_actors()
     set_actors(_actors)
@@ -157,10 +177,18 @@ async def main(host: Optional[str] = None, port: Optional[int] = None):
 
 
 async def _shutdown():
-    """优雅退出:取消巡检 → 杀掉 actor(不重启)→ shutdown Ray。"""
-    log.info("shutdown signal received")
+    """优雅退出:停巡检 → 等 inflight 归零(最多 SHUTDOWN_GRACE_SEC)→ 杀 actor → shutdown Ray。"""
+    log.info("shutdown signal received, draining inflight (grace=%ds)", SHUTDOWN_GRACE_SEC)
     if _health_task:
         _health_task.cancel()
+
+    deadline = asyncio.get_event_loop().time() + SHUTDOWN_GRACE_SEC
+    while inflight_count() > 0 and asyncio.get_event_loop().time() < deadline:
+        log.info("draining: inflight=%d", inflight_count())
+        await asyncio.sleep(1)
+    if inflight_count() > 0:
+        log.warning("grace expired, %d inflight requests will be cut", inflight_count())
+
     for actor in _actors.values():
         try:
             ray.kill(actor, no_restart=True)

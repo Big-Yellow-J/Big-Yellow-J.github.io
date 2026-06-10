@@ -23,6 +23,21 @@ title: 生活
     <p>还没有内容，敬请期待</p>
   </div>
   {%- else -%}
+  {%- comment -%}顶部统计徽章：篇数 / 总图数 / 不重复城市数{%- endcomment -%}
+  {%- assign total_imgs = 0 -%}
+  {%- assign city_list = "" | split: "" -%}
+  {%- for p in visible_posts -%}
+    {%- if p.gallery -%}{%- assign total_imgs = total_imgs | plus: p.gallery.size -%}{%- endif -%}
+    {%- if p.address -%}
+      {%- assign c = p.address | split: "·" | first | split: " " | first | split: "," | first | strip -%}
+      {%- unless city_list contains c -%}{%- assign city_list = city_list | push: c -%}{%- endunless -%}
+    {%- endif -%}
+  {%- endfor -%}
+  <div class="life-stats" aria-label="生活栏目统计">
+    <span class="life-stat"><b>{{ visible_posts.size }}</b> 篇</span>
+    <span class="life-stat"><b>{{ total_imgs }}</b> 张照片</span>
+    <span class="life-stat"><b>{{ city_list.size }}</b> 城</span>
+  </div>
   <div class="life-timeline" id="life-timeline" data-view="{{ view_mode }}">
     <svg class="life-timeline-path" aria-hidden="true">
       <defs>
@@ -51,8 +66,12 @@ title: 生活
           <div class="life-card-gallery" data-life-card-gallery data-count="{{ post.gallery.size }}">
             <div class="life-card-track">
               {%- for img in post.gallery -%}
+              {%- assign thumb_src = img -%}
+              {%- if site.life_thumb_proxy and site.life_thumb_proxy != '' -%}
+                {%- assign thumb_src = site.life_thumb_proxy | append: '?url=' | append: img | append: '&w=600&output=webp' -%}
+              {%- endif -%}
               <div class="life-card-slide{% if forloop.first %} is-active{% endif %}" data-idx="{{ forloop.index0 }}">
-                <img src="{{ img }}" alt="{{ post.title | escape }} {{ forloop.index }}" loading="lazy" decoding="async">
+                <img src="{{ thumb_src }}" data-pswp-full="{{ img }}" alt="{{ post.title | escape }} {{ forloop.index }}" loading="lazy" decoding="async">
               </div>
               {%- endfor -%}
             </div>
@@ -79,7 +98,9 @@ title: 生活
             <div class="life-node-meta">
               <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%Y-%m-%d" }}</time>
               {%- if post.address %}
-              <span class="life-node-loc"><i class="fas fa-map-marker-alt"></i> {{ post.address }}</span>
+              {%- comment -%}列表只显示城市级（首段，按 · / 空格 / 逗号截断），完整地址作 hover tooltip{%- endcomment -%}
+              {%- assign addr_city = post.address | split: "·" | first | split: " " | first | split: "," | first | strip -%}
+              <span class="life-node-loc" title="{{ post.address | escape }}"><i class="fas fa-map-marker-alt"></i> {{ addr_city }}</span>
               {%- endif %}
             </div>
             {%- if post.excerpt -%}
@@ -94,5 +115,4 @@ title: 生活
   {%- endif -%}
 </div>
 
-<script defer src="{{ site.baseurl }}/static/js/life-timeline.js"></script>
-<script type="module" src="{{ site.baseurl }}/static/js/life-gallery.js"></script>
+<script type="module" src="{{ site.baseurl }}/static/js/life.js"></script>

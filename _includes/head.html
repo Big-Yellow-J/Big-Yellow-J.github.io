@@ -2,7 +2,12 @@
 {%- assign buildVer = site.time | date: "%Y%m%d" -%}
 {%- assign page_url_abs = page.url | absolute_url -%}
 {%- assign page_desc = page.description | default: site.description | strip_html | strip_newlines | truncate: 200 | escape -%}
-{%- assign og_image = page.image | default: page.cover | default: site.cover | default: 'https://s2.loli.net/2025/04/29/ntFU5SIfNCeK2Hy.png' -%}
+{%- comment -%}life 文章优先用 gallery 首图作 og:image，分享卡片直接显示生活照{%- endcomment -%}
+{%- assign og_image = page.image | default: page.cover -%}
+{%- if og_image == nil or og_image == '' -%}
+  {%- if page.gallery and page.gallery.size > 0 -%}{%- assign og_image = page.gallery | first -%}{%- endif -%}
+{%- endif -%}
+{%- assign og_image = og_image | default: site.cover | default: 'https://s2.loli.net/2025/04/29/ntFU5SIfNCeK2Hy.png' -%}
 {%- if page.layout == 'mypost' -%}{%- assign og_type = 'article' -%}{%- else -%}{%- assign og_type = 'website' -%}{%- endif -%}
 {%- if page.url == '/' -%}
   {%- assign page_title_full = site.title -%}
@@ -75,19 +80,22 @@
   {%- assign kw_str = kw_top | join: ',' | escape -%}
   <meta name="keywords" content="{{ site.author }}{% if kw_str != '' %},{{ kw_str }}{% endif %}" />
   <meta name="description" content="{{ page_desc }}" />
+  {%- if page.sitemap == false %}
+  <meta name="robots" content="noindex,follow" />
+  {%- else %}
   <meta name="robots" content="index,follow" />
+  {%- endif %}
   <link rel="canonical" href="{{ page_url_abs }}" />
+  <link rel="alternate" type="application/rss+xml" title="{{ site.title | escape }}" href="{{ site.baseurl }}/static/xml/rss.xml" />
 
   <!-- Open Graph -->
-  <meta property="og:title" content="{{ page.title | escape }}" />
+  <meta property="og:title" content="{{ page.title | default: site.title | escape }}" />
   <meta property="og:description" content="{{ page_desc }}" />
   <meta property="og:url" content="{{ page_url_abs }}" />
   <meta property="og:type" content="{{ og_type }}" />
   <meta property="og:site_name" content="{{ site.title | escape }}" />
   <meta property="og:locale" content="zh_CN" />
   <meta property="og:image" content="{{ og_image }}" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="{{ page.title | default: site.title | escape }}" />
   {%- if page.layout == 'mypost' %}
   <meta property="article:published_time" content="{{ page.date | date_to_xmlschema }}" />
@@ -103,32 +111,29 @@
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="{{ page.title | escape }}" />
+  <meta name="twitter:title" content="{{ page.title | default: site.title | escape }}" />
   <meta name="twitter:description" content="{{ page_desc }}" />
   <meta name="twitter:image" content="{{ og_image }}" />
 
-  <!-- 谷歌收录 -->
-  <!-- <meta name="google-site-verification" content="IDS97Lzd7uweEA7adjgQuo1V__a3xp9oKGq6OuoxZYg" /> -->
+  <!-- 搜索引擎站点验证 -->
   <meta name="google-site-verification" content="g_m-HBELAun6xxJBwslS9NdEm0ZL0_s52LqD-onNtfM" />
   <meta name="360-site-verification" content="4ee3a4097817ccd63c8ef03afc8231dd" />
   <meta name="shenma-site-verification" content="57f18cebccee65426483a5b0b21090c9_1748138846">
-  <!-- <meta name="google-site-verification" content="g_m-HBELAun6xxJBwslS9NdEm0ZL0_s52LqD-onNtfM" /> -->
   <meta name="baidu-site-verification" content="codeva-wi8OtiCuBU" />
   <meta name="msvalidate.01" content="81407BB95B6B10326AFF04EEC297B4F2" />
   <meta name="google-adsense-account" content="ca-pub-9891924623460585">
-  <meta name="shenma-site-verification" content="57f18cebccee65426483a5b0b21090c9_1737188350">
 
   <link rel="icon" href="{{site.baseurl}}/static/img/favicon.ico" />
   <link rel="apple-touch-icon" sizes="180x180" href="{{site.baseurl}}/static/img/apple-touch-icon.png" />
   <link rel="manifest" href="{{site.baseurl}}/manifest.json" />
-  <link rel="stylesheet" href="{{site.baseurl}}/static/css/common.css?v={{buildVer}}" />
-  <link rel="stylesheet" href="{{site.baseurl}}/static/css/theme-dark.css?v={{buildVer}}" />
+  <link rel="stylesheet" href="{{site.baseurl}}/static/css/common.css?v={{buildAt}}" />
+  <link rel="stylesheet" href="{{site.baseurl}}/static/css/theme-dark.css?v={{buildAt}}" />
   {%- if page.layout == "mypost" %}
-  <link rel="stylesheet" href="{{site.baseurl}}/static/css/post.css?v={{buildVer}}" />
-  <link rel="stylesheet" href="{{site.baseurl}}/static/css/code-dark.css?v={{buildVer}}" />
-  <link rel="stylesheet" href="{{site.baseurl}}/static/css/code-light.css?v={{buildVer}}" />
+  <link rel="stylesheet" href="{{site.baseurl}}/static/css/post.css?v={{buildAt}}" />
+  <link rel="stylesheet" href="{{site.baseurl}}/static/css/code-dark.css?v={{buildAt}}" />
+  <link rel="stylesheet" href="{{site.baseurl}}/static/css/code-light.css?v={{buildAt}}" />
   {%- endif %} {%- if page.layout == "page" %}
-  <link rel="stylesheet" href="{{site.baseurl}}/static/css/page.css?v={{buildVer}}" />
+  <link rel="stylesheet" href="{{site.baseurl}}/static/css/page.css?v={{buildAt}}" />
   {%- endif %}
   <script>
     window.blog = {

@@ -2,13 +2,15 @@
 
 端点:
     GET  /healthz       Liveness:进程活就 200
-    GET  /readyz        Readiness:三 actor 都 alive 才 200,否则 503
+    GET  /readyz        Readiness:所有 actor 都 alive 才 200,否则 503
     GET  /health        详细健康(每次 ray.get_actor 刷新业务缓存)
-    GET  /version       版本号 + git commit + 各模型 repo
+    GET  /version       版本号 + git commit + 各模型 repo + milvus 元信息
     GET  /metrics       Prometheus 文本格式指标
     POST /classify      CLIP zero-shot 分类
     POST /detect        YOLOv8 目标检测
     POST /segment       OneFormer 分割
+    POST /v1/embed      图像 embedding(CLIP 默认 / Qwen)+ 自动写 milvus
+    POST /v1/search     以图搜图(走 milvus 向量检索)
 """
 import asyncio
 import subprocess
@@ -17,68 +19,42 @@ from pathlib import Path
 
 import ray
 from fastapi import FastAPI, HTTPException, Request, Response
-from ray.exceptions import RayActorError
 
 from config import (
-    APP_VERSION, CLIP_MODEL, INFER_TIMEOUT_SEC, ONEFORMER_MODEL,
-    RAY_NAMESPACE, YOLO_MODEL,
+    APP_VERSION,
+    CLIP_MODEL,
+    CLIP_REVISION,
+    MILVUS_COLLECTION_PREFIX,
+    MILVUS_URI,
+    ONEFORMER_MODEL,
+    ONEFORMER_REVISION,
+    QWEN_EMBED_MODEL,
+    QWEN_EMBED_REVISION,
+    RAY_NAMESPACE,
+    YOLO_MODEL,
+)
+from services.db.milvus import close_milvus, ping as milvus_ping
+from services.dispatch import (
+    _RAY_NAMES,
+    actor_call,
+    circuit_snapshot,
+    get_actors,
 )
 from services.metrics import render_metrics
-from services.middleware import ConcurrencyLimitMiddleware, RequestIDMiddleware
+from services.middleware import (
+    ConcurrencyLimitMiddleware,
+    RequestIDMiddleware,
+)
+from services.routers.embed import cache_stats, router as embed_router
 from services.schemas import ClassifyBody, DetectBody, SegmentBody
 from utils.logging_setup import setup_logger
 
 log = setup_logger("api")
-_actors: dict = {}
-
-# logical_key → ray actor 注册名(与 ray_deploy.ACTOR_SPECS 保持一致)
-_RAY_NAMES = {"clip": "clip", "yolo": "yolo", "oneformer": "oneformer"}
-
-
-def set_actors(actors: dict):
-    """由 ray_deploy 在 startup 钩子里注入 actor handle。"""
-    global _actors
-    _actors = actors
-
-
-def _refresh_actor(key: str):
-    """从 Ray 重新拿 actor 句柄并覆盖缓存;找不到则 503。"""
-    try:
-        _actors[key] = ray.get_actor(_RAY_NAMES[key], namespace=RAY_NAMESPACE)
-    except ValueError as e:
-        raise HTTPException(503, f"model '{key}' not available") from e
-
-
-def _actor(key: str):
-    """按 key 取 actor,缓存未命中则 lazy attach。"""
-    if key not in _actors:
-        _refresh_actor(key)
-    return _actors[key]
-
-
-async def _await_with_timeout(ref, rid: str) -> dict:
-    """异步等待 Ray 任务,超时 → ray.cancel + 504。"""
-    fut = asyncio.wrap_future(ref.future())
-    try:
-        return await asyncio.wait_for(fut, timeout=INFER_TIMEOUT_SEC)
-    except asyncio.TimeoutError:
-        ray.cancel(ref, force=False)
-        raise HTTPException(504, f"inference timeout > {INFER_TIMEOUT_SEC}s (rid={rid})")
 
 
 async def _infer_call(key: str, source, kwargs: dict, rid: str) -> dict:
-    """调 actor.infer.remote(source, _rid=rid, **kwargs);遇 RayActorError 自动 refresh + 重试一次。"""
-    kwargs = dict(kwargs)
-    kwargs["_rid"] = rid                           # 透传到 actor 内的错误日志
-    for attempt in (1, 2):
-        ref = _actor(key).infer.remote(source, **kwargs)
-        try:
-            return await _await_with_timeout(ref, rid)
-        except RayActorError as e:
-            if attempt == 2:
-                raise HTTPException(503, f"actor '{key}' died: {e} (rid={rid})") from e
-            log.warning("actor '%s' died, refreshing handle (rid=%s)", key, rid)
-            _actors.pop(key, None)
+    """薄包装:复用 dispatch.actor_call 调 actor.infer 方法。"""
+    return await actor_call(key, "infer", source, kwargs, rid)
 
 
 @lru_cache(maxsize=1)
@@ -93,9 +69,16 @@ def _git_commit() -> str:
         return "unknown"
 
 
-app = FastAPI(title="Ray Inference (CLIP + YOLO + OneFormer)", version=APP_VERSION)
+app = FastAPI(title="Ray Inference (CLIP + YOLO + OneFormer + Qwen-Embed)", version=APP_VERSION)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(ConcurrencyLimitMiddleware)
+app.include_router(embed_router)
+
+
+@app.on_event("shutdown")
+async def _on_shutdown():
+    """优雅退出:关闭 milvus 连接。"""
+    close_milvus()
 
 
 @app.get("/healthz")
@@ -104,57 +87,90 @@ async def healthz():
     return {"status": "ok"}
 
 
+HEALTH_PROBE_TIMEOUT_SEC = 3.0   # 单个 actor health_check 超时;防止某 actor __init__ 卡住拖死整个探针
+
+
+async def _probe_actor(ref) -> dict:
+    """对单个 actor health_check ref 做有超时的 await,超时记为 timeout 而非阻塞整个探针。"""
+    try:
+        return await asyncio.wait_for(
+            asyncio.wrap_future(ref.future()),
+            timeout=HEALTH_PROBE_TIMEOUT_SEC,
+        )
+    except asyncio.TimeoutError:
+        return {"alive": False, "error": f"timeout >{HEALTH_PROBE_TIMEOUT_SEC}s (actor loading or stuck)"}
+
+
 @app.get("/readyz")
 async def readyz():
-    """Readiness probe:三个 actor 都能拿到且 alive 才 200,否则 503。"""
+    """Readiness probe:所有 actor + milvus 都就绪才 200,否则 503。单 actor 卡住 3s 超时。"""
     for key, ray_name in _RAY_NAMES.items():
         try:
             actor = ray.get_actor(ray_name, namespace=RAY_NAMESPACE)
-            h = await asyncio.wrap_future(actor.health_check.remote().future())
-            if not h.get("alive"):
-                raise HTTPException(503, f"actor '{key}' not alive")
-        except HTTPException:
-            raise
         except Exception as e:
             raise HTTPException(503, f"actor '{key}' unavailable: {e}")
+        h = await _probe_actor(actor.health_check.remote())
+        if not h.get("alive"):
+            raise HTTPException(503, f"actor '{key}' not alive: {h.get('error', '')}")
+
+    try:
+        milvus_ping()
+    except Exception as e:
+        raise HTTPException(503, f"milvus unavailable: {e}")
     return {"status": "ready"}
 
 
 @app.get("/health")
 async def health():
-    """详细健康:每次 ray.get_actor 重新拿句柄,顺带刷新业务端点缓存。"""
+    """详细健康:每个 actor 独立超时,慢的不拖累快的。"""
     results, refs = {}, {}
+    actors = get_actors()
     for key, ray_name in _RAY_NAMES.items():
         try:
             actor = ray.get_actor(ray_name, namespace=RAY_NAMESPACE)
-            _actors[key] = actor
+            actors[key] = actor
             refs[key] = actor.health_check.remote()
         except ValueError as e:
-            _actors.pop(key, None)
+            actors.pop(key, None)
             results[key] = {"alive": False, "error": f"not found: {e}"}
-    for key, ref in refs.items():
-        try:
-            results[key] = await asyncio.wrap_future(ref.future())
-        except Exception as e:
-            results[key] = {"alive": False, "error": str(e)}
+
+    # 并发等待所有 actor,每个独立超时,慢的会标 timeout 而不阻塞其他
+    keys = list(refs.keys())
+    probes = await asyncio.gather(*[_probe_actor(refs[k]) for k in keys])
+    for k, h in zip(keys, probes):
+        results[k] = h
+
     ok = all(r.get("alive") for r in results.values())
     return {"status": "ok" if ok else "degraded", "models": results}
 
 
 @app.get("/version")
 async def version():
-    """返回应用版本、git commit、各模型 repo。"""
+    """返回应用版本、git commit、各模型 repo + revision sha、milvus 元信息、运行时状态。"""
     return {
         "version": APP_VERSION,
         "git_commit": _git_commit(),
-        "models": {"clip": CLIP_MODEL, "yolo": YOLO_MODEL, "oneformer": ONEFORMER_MODEL},
+        "models": {
+            "clip": {"path": CLIP_MODEL, "revision": CLIP_REVISION or "HEAD"},
+            "yolo": {"path": YOLO_MODEL, "revision": "n/a"},
+            "oneformer": {"path": ONEFORMER_MODEL, "revision": ONEFORMER_REVISION or "HEAD"},
+            "qwen_embed": {"path": QWEN_EMBED_MODEL, "revision": QWEN_EMBED_REVISION or "HEAD"},
+        },
+        "milvus": {
+            "uri": MILVUS_URI,
+            "collection_prefix": MILVUS_COLLECTION_PREFIX,
+        },
+        "runtime": {
+            "circuit": circuit_snapshot(),
+            "cache": cache_stats(),
+        },
     }
 
 
 @app.get("/metrics")
 async def metrics():
     """Prometheus 抓取入口。"""
-    return Response(await render_metrics(_actors), media_type="text/plain; version=0.0.4")
+    return Response(await render_metrics(get_actors()), media_type="text/plain; version=0.0.4")
 
 
 @app.post("/classify")

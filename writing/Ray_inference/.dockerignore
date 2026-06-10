@@ -1,0 +1,41 @@
+# VCS
+.git
+.gitignore
+.gitattributes
+
+# Python 编译产物
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.egg-info
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# 大体积运行时目录(必须 volume 挂载)
+weights/
+data/
+tmp/
+
+# 本机环境
+.env
+.env.*
+!.env.example
+
+# IDE / 编辑器
+.idea
+.vscode
+*.swp
+
+# 文档不必进镜像(代码里不读)
+docs/
+*.md
+!README.md
+
+# 测试代码不进运行镜像
+test/
+tests/
+
+# 杂项
+*.log
