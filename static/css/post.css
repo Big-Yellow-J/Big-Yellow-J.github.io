@@ -2,7 +2,7 @@ body {
   font-family: "Helvetica Neue", Arial, "Noto Sans SC", "Noto Serif SC", "Microsoft YaHei", "WenQuanYi Micro Hei", SimSun, sans-serif;
   margin: 0 auto;
   padding: 0;
-  max-width: 800px; /* 正文行宽控制在舒适阅读范围（约 45 字/行） */
+  max-width: 1000px; /* 正文行宽控制在舒适阅读范围（约 45 字/行） */
   width: 90%;
 }
 
