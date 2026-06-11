@@ -50,6 +50,24 @@ function init() {
     showHideAnimationType: 'fade',
     wheelToZoom: true,
   });
+
+  // 底部图注：取当前图片的 alt（占位的 "image" 不显示）
+  lightbox.on('uiRegister', () => {
+    lightbox.pswp.ui.registerElement({
+      name: 'custom-caption',
+      appendTo: 'root',
+      onInit: (el, pswp) => {
+        el.className = 'pswp__custom-caption';
+        pswp.on('change', () => {
+          const link = pswp.currSlide && pswp.currSlide.data && pswp.currSlide.data.element;
+          const img = link && link.querySelector('img');
+          const alt = img ? (img.getAttribute('alt') || '').trim() : '';
+          el.textContent = alt && alt !== 'image' ? alt : '';
+          el.hidden = !el.textContent;
+        });
+      }
+    });
+  });
   lightbox.init();
 
   function refresh() { /* PhotoSwipe v5 自动在 init 后基于 DOM 查询，无需显式刷新 */ }

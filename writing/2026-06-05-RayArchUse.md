@@ -19,6 +19,11 @@ description: Ray是支持以本地Python写法实现分布式/并行计算的开
 前面介绍了在[pytorch中不同的分布式训练实现方式](https://www.big-yellow-j.top/posts/2026/04/20/torch-basic-distribute-1.html)，这里简单介绍分布式框架（更加多的设计到了模型部署、服务器调度之间内容，非严格的pytorch内容）Ray以及Docker等内容。
 ## 前置知识
 所有内容只去介绍基本概念与使用，更加丰富的细节建议去看官方文档（或者直接AI）。docker文档[^3]、FastAPI[^4]
+### 异步/多线程/多进程
+**首先程序任务主要为两类**：*1、CPU 密集*：一直在"**算**"，CPU 满载（图片处理、模型推理、加密、大量计算）；*2、IO 密集*：大量时间在"**等**"（网络请求/读写文件）。而对于异步/多线程/多进程可以简单理解为（以餐厅服务多人为例）：一个服务员等菜的时候去别的桌子（*异步*）、多个服务员当时公用一个厨师（*多线程*）、直接开多家餐厅（*多进程*）
+> 进程好理解，在python有 GIL（全局解释器锁），同一时刻只有一个线程能执行 Python 代码，因此对于多线程和异步（两个都是处理IO密集的）使用“差异不大”，如果并发大（比如1w请求）可以考虑异步（不可能开1w个进程）、如果库是同步的就多线程（入request）
+
+**异步核心语法**：
 ### Docker
 > 安装配置好docker之后运维国内监管可能需要去配置[docker镜像](https://github.com/dongyubin/DockerHub)
 
@@ -35,11 +40,29 @@ description: Ray是支持以本地Python写法实现分布式/并行计算的开
 | 查看日志 | `docker logs my-nginx` |
 | 进入容器 | `docker exec -it my-nginx bash`（交互模式：-i、终端模式：-t） |
 
-对于上述语法中启动容器 `docker run xxx`里面 `xxx`一般就是镜像名称，在构建镜像之后可以直接 `run`即可，一般而言[run的参数](https://www.runoob.com/docker/docker-run-command.html)。
-<!-- **docker基础常识**： -->
+对于上述语法中启动容器 `docker run xxx`里面 `xxx`一般就是镜像名称，在构建镜像之后可以直接 `run`即可，一般而言[run的参数](https://www.runoob.com/docker/docker-run-command.html)。所以一般而言Docker启动命令如下：
+```bash
+# 1、首先构建docker镜像，直接基于本目录去构建
+docker build -t xxx:xxx . # 其中 xxx:xxx 代表具体镜像名称 . 代表当前目录，也就是说基于当前文件夹 Dockerfile 去构建docker镜像
+
+# 2、创建docker容器
+docker run -d --name example \
+  --env-file .env.example \
+  -e PORT=59420 \
+  -v /data_share/model:/data_share/model \
+  -p 59420:8080 \
+  xxx:xxx
+# example为具体容器名称 xxx:xxx 为镜像名称 -p 分别代表本地端口:docker端口，也就是说docker内部放行8080走本地59420去访问 -v 去挂载目录，一般就是项目代码/模型权重
+
+# 3、容器使用
+docker logs example # 查看日志
+docker stop example # 停止容器
+docker rm -fexample # 停止容器
+docker rmi xxx:xxx  # 删除镜像
+```
+
 ### FastAPI
-#### 简单语法
-#### 异步
+
 
 ## Ray
 一句话介绍Ray：主要是进行分布式计算 / 并行计算的开源框架，核心目标是：让你用“写本地 Python 的方式”，轻松把程序扩展到多台机器上运行。**不过**Ray只负责管理核心计算还是Pytorch进行。 Ray 架构简单介绍，参考官方v2架构说明[^2]简单介绍Ray架构设计：
@@ -180,47 +203,111 @@ data = ray.get(data_ref)            # 惰性拉取，零拷贝共享内存
 
 ## Ray实战
 ### 模型部署
-考虑将优化好的模型进行服务器部署，那么就需要考虑如下几个问题：**1、资源使用**，比如说对于每一个模型如何去划分他所需要的资源；**2、服务可靠性**，比如说我的节点挂掉了能不能自动恢复；**3、可观测结果**，比如说我需要监控模型的运行情况，比如说模型的运行时间，模型的运行结果等等；**4、部署**，考虑到k8s/docker部署就需要去完成对应优化；**5、服务安全**，比如 Ray Dashboard监控面板不可能让他暴露公网。**具体到实际应用**比如说服务器上部署如下几个模型：1、CLIP进行图像分类；2、Yolo进行目标识别（这里直接用v8）；4、oneformer-large进行实体分割；5、并且启动milvus向量数据库（考虑数据比较少不会太复杂）；6、补充压力测试脚本。那么**项目整体结构**如下：
+考虑将优化好的模型进行服务器部署，那么就需要考虑如下几个问题：**1、资源使用**，比如说对于每一个模型如何去划分他所需要的资源；**2、服务可靠性**，比如说我的节点挂掉了能不能自动恢复；**3、可观测结果**，比如说我需要监控模型的运行情况，比如说模型的运行时间，模型的运行结果等等；**4、部署**，考虑到k8s/docker部署就需要去完成对应优化；**5、服务安全**，比如 Ray Dashboard监控面板不可能让他暴露公网。**具体到实际应用**比如说服务器上部署如下几个模型：1、CLIP进行图像分类；2、Yolo进行目标识别（实时目标识别）；4、oneformer-large进行实体分割；5、并且启动milvus向量数据库（考虑数据比较少不会太复杂）；6、补充压力测试脚本。那么**项目整体结构**如下：
 
-```text
-ray_inference/
-├── main.py                入口:prepare / serve / bootstrap / teardown / status / milvus
-├── ray_deploy.py          Ray 初始化、Actor 创建/attach、健康巡检、装配 FastAPI
-├── config.py              GPU/限流/超时/tmp/data/向量库/熔断/缓存 全部参数
-├── utils/
-│   ├── image_loader.py        path/URL/base64 三分支加载,verify + 像素上限防炸弹
-│   ├── logging_setup.py       setup_logger:按日期建 tmp/ray_log/<日期>/<name>.log
-│   ├── tmp_cleanup.py         启动清理 N 天前 tmp 子目录
-│   ├── milvus_backup.py       Lite db 备份到 data/backup/,保留最新 N 个
-│   └── prepare_models.py      snapshot HF 权重(支持 revision 锁定)
-├── models/
-│   ├── base.py                Actor 基类(指标 + health_check + _error 带 rid)
-│   ├── clip_actor.py          CLIP 分类 / 图 embed / 文本 embed
-│   ├── yolo_actor.py          YOLOv8 检测
-│   ├── oneformer_actor.py     OneFormer 分割(instance/semantic/panoptic)
-│   └── qwen_embed_actor.py    Qwen3-VL-Embedding 图像 embedding
-├── services/
-│   ├── schemas.py             所有请求体 Pydantic 模型
-│   ├── middleware.py          request_id + 限流 + inflight 计数 + 慢请求 WARNING
-│   ├── dispatch.py            actor 调用层(句柄缓存 + 自愈 + 熔断)
-│   ├── metrics.py             Prometheus 文本指标
-│   ├── online_api.py          FastAPI 端点 + lifecycle
-│   ├── db/
-│   │   └── milvus.py              Milvus Lite 客户端单例 + collection 管理
-│   └── routers/
-│       └── embed.py               /v1/embed、/v1/embed_text、/v1/search、/v1/search_text
-├── tests/                  pytest 套件(image_loader / dispatch / milvus / schemas)
-├── weights/                HF 模型本地权重(.gitignore)
-├── data/                   Milvus Lite db + backup(.gitignore)
-└── tmp/                    运行时日志和图片下载缓存(.gitignore)
+```mermaid
+flowchart LR
+    Client["客户端<br/>curl / SDK / WebSocket 设备"]
+
+    subgraph Host["宿主机 (或 Docker 容器)"]
+        direction LR
+
+        subgraph API["FastAPI 进程 (uvicorn)"]
+            direction TB
+            MW["Middleware<br/>request_id · 限流32 · histogram · 慢请求 WARN"]
+            R1["/classify · /detect · /segment"]
+            R2["/v1/embed · /v1/search 系列"]
+            R3["/v1/video/* 任务式 + /live 实时流"]
+            OPS["/healthz · /readyz · /version<br/>/metrics · /health · /actors"]
+            CACHE[("LRU Cache<br/>(model, md5(src)) → vector")]
+            DISP["Dispatch 层<br/>句柄缓存 + 自愈 + 熔断"]
+        end
+
+        subgraph Ray["Ray Head 节点 (detached actors)"]
+            direction TB
+
+            subgraph GPU0["GPU 0 (软配额 num_gpus)"]
+                A1["CLIP Actor<br/>fp16 ~300MB · 0.20"]
+                A2["YOLO Actor<br/>~50MB · 0.20"]
+                A3["OneFormer Actor<br/>fp16 ~1.8GB · 0.50"]
+                A4["Qwen-Embed Actor<br/>fp16 ~4GB · 0.30"]
+            end
+
+            VW["VideoWorker<br/>@ray.remote 函数 (任务级)"]
+        end
+
+        subgraph DB["Milvus Lite (FastAPI 进程内单例)"]
+            COL1[("embeddings_clip")]
+            COL2[("embeddings_qwen_vl")]
+        end
+
+        subgraph FS["持久化"]
+            W["weights/"]
+            D["data/ (milvus + video_tasks + backup)"]
+            T["tmp/ray_log/YYYY-MM-DD"]
+        end
+    end
+
+    Client -->|HTTP / WS| MW
+
+    MW --> R1
+    MW --> R2
+    MW --> R3
+    MW --> OPS
+
+    R1 --> DISP
+
+    R2 --> CACHE
+    CACHE -.->|miss| DISP
+
+    R2 --> COL1
+    R2 --> COL2
+
+    R3 -.submit.-> VW
+    VW -.infer_frame.-> A2
+
+    DISP -.->|ray.remote| A1
+    DISP -.->|ray.remote| A2
+    DISP -.->|ray.remote| A3
+    DISP -.->|ray.remote| A4
+
+    A1 -.->|local_files_only| W
+    A3 -.->|local_files_only| W
+    A4 -.->|local_files_only| W
+
+    COL1 --> D
+    COL2 --> D
+
+    MW -.->|log| T
+
+    classDef proc fill:#eef,stroke:#557
+    classDef actor fill:#fee,stroke:#a44
+    classDef store fill:#efe,stroke:#484
+
+    class API,Ray proc
+    class A1,A2,A3,A4,VW actor
+    class DB,FS,COL1,COL2,W,D,T store
 ```
 
-**首先确定我们每一个节点服务**，因为所有的服务都是一样的都去加载模型然后进行模型推理，因此可以直接创建一个 `BaseModelActor`而后让其他模型去继承即可，对于这个**基类设计**：1、模型加载/推理/warm-up（让模型直接“常驻”显存避免每次都去加载）等（不会去基类里面具体写如何加载模型因为每个模型加载/推理方式不同）；2、记录模型状态（或者说“健康检测”），比如说去记录模型显卡、推理时间等。**具体节点设计**（以CLIP为例）：节点语法没有太多特殊语法：
+**首先确定我们每一个节点服务**，因为所有的服务都是一样的都去加载模型然后进行模型推理，因此可以直接创建一个 `BaseModelActor`而后让其他模型去继承即可，对于这个**基类设计**：1、模型加载/推理/warm-up（让模型直接“常驻”显存避免每次都去加载）等（不会去基类里面具体写如何加载模型因为每个模型加载/推理方式不同）；2、记录模型状态（或者说“健康检测”），比如说去记录模型显卡、推理时间等。**具体节点设计**（以CLIP为例），只需要对我们的节点[补充一个Ray修饰器](#ray-core)即可：
 ```python
+@ray.remote(
+    max_restarts=ACTOR_MAX_RESTARTS,
+    max_task_retries=ACTOR_MAX_TASK_RETRIES,
+    max_concurrency=ACTOR_MAX_CONCURRENCY,
+)
+class CLIPActor(BaseModelActor):
+    def __init__(self):
+        super().__init__(model_name="CLIP", gpu_fraction=GPU_FRACTION_CLIP)
 
+    def _load_model(self):
+        ...
+    def _warm_up(self):
+        ...
+    def infer():
+        ...
 ```
-
-**对所有节点进行部署。**
+在设计actor过程中语法就和平时模型推理相同，在完成所有节点设计之后就只需要将**所有节点进行Ray部署即可**，
 
 **而后确定服务**，这块主要是FastAPI
 **而后确定启动参数**

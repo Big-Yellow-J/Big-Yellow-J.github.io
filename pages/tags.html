@@ -11,6 +11,11 @@ title: 标签
     </p>
   </header>
 
+  <div class="tag-filter">
+    <i class="fas fa-filter"></i>
+    <input type="text" id="tag-filter-input" placeholder="筛选标签…" aria-label="筛选标签">
+  </div>
+
   <div class="tag-cloud">
     <div class="tag-cloud-list">
       {%- assign max_count = 0 -%}
@@ -18,12 +23,15 @@ title: 标签
         {%- assign s = tag[1] | size -%}
         {%- if s > max_count -%}{%- assign max_count = s -%}{%- endif -%}
       {%- endfor -%}
+      {%- comment -%}锚点用标签名（空格转下划线），站内其他页可直接 #tag-<名> 链接进来{%- endcomment -%}
       {%- for tag in site.tags -%}
         {%- assign s = tag[1] | size -%}
         {%- assign ratio = s | times: 100 | divided_by: max_count -%}
-        <a href="#tag-{{ forloop.index }}"
+        {%- assign tag_id = tag[0] | replace: ' ', '_' -%}
+        <a href="#tag-{{ tag_id | url_encode }}"
            class="tag-cloud-item"
-           data-tag-target="tag-{{ forloop.index }}"
+           data-tag-target="tag-{{ tag_id }}"
+           data-tag-count="{{ s }}"
            style="font-size: calc(12px + {{ ratio }} * 0.14px);">
           {{ tag[0] }}<sup>{{ s }}</sup>
         </a>
@@ -38,7 +46,7 @@ title: 标签
 
   <div id="tag-panels">
   {%- for tag in site.tags -%}
-    <section class="tag-section" id="tag-{{ forloop.index }}" hidden>
+    <section class="tag-section" id="tag-{{ tag[0] | replace: ' ', '_' }}" hidden>
       <h2 class="year-label">
         <i class="fas fa-tag"></i> {{ tag[0] }}
         <span class="tag-count">{{ tag[1] | size }} 篇</span>
@@ -89,9 +97,35 @@ title: 标签
 
   function fromHash() {
     var id = decodeURIComponent((location.hash || '').replace(/^#/, ''));
-    if (id && document.getElementById(id)) showTag(id);
+    if (id && document.getElementById(id)) return showTag(id);
+    return false;
   }
-  document.addEventListener('DOMContentLoaded', fromHash);
+
+  // 无 hash 时默认展开文章数最多的标签，避免初始空面板
+  function showHottest() {
+    var hottest = null, max = -1;
+    cloud.forEach(function (a) {
+      var n = Number(a.dataset.tagCount) || 0;
+      if (n > max) { max = n; hottest = a; }
+    });
+    if (hottest) showTag(hottest.dataset.tagTarget);
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    if (!fromHash()) showHottest();
+  });
   window.addEventListener('hashchange', fromHash);
+
+  // 标签云即时筛选（纯前端，按标签名包含匹配）
+  var filterInput = document.getElementById('tag-filter-input');
+  if (filterInput) {
+    filterInput.addEventListener('input', function () {
+      var q = this.value.trim().toLowerCase();
+      cloud.forEach(function (a) {
+        var name = a.textContent.replace(/\d+\s*$/, '').trim().toLowerCase();
+        a.style.display = !q || name.indexOf(q) !== -1 ? '' : 'none';
+      });
+    });
+  }
 })();
 </script>

@@ -41,6 +41,12 @@ function initCardGallery(root) {
   bind(next, +1);
   dots.forEach((d) => bind(d, null));
 
+  // 焦点在轮播内任意控件时支持左右方向键切图
+  root.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') { e.preventDefault(); go(current - 1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); go(current + 1); }
+  });
+
   // 触摸滑动
   let startX = 0;
   let moved = false;

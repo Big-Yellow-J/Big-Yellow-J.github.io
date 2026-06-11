@@ -24,6 +24,22 @@ title: 归档
     </button>
   </div>
 
+  {%- comment -%}年份快捷跳转条：长归档不用一路滚{%- endcomment -%}
+  {%- assign year_list = "" | split: "" -%}
+  {%- for post in site.posts -%}
+    {%- if post.show == false -%}{%- continue -%}{%- endif -%}
+    {%- if post.categories contains "life" -%}{%- continue -%}{%- endif -%}
+    {%- assign y = post.date | date: "%Y" -%}
+    {%- unless year_list contains y -%}{%- assign year_list = year_list | push: y -%}{%- endunless -%}
+  {%- endfor -%}
+  {%- if year_list.size > 1 -%}
+  <nav class="archives-year-nav" aria-label="按年份跳转">
+    {%- for y in year_list -%}
+    <a href="#y-{{ y }}">{{ y }}</a>
+    {%- endfor -%}
+  </nav>
+  {%- endif -%}
+
   {%- assign last_year = "" -%}
   <div class="archives-timeline">
   {%- for post in site.posts -%}

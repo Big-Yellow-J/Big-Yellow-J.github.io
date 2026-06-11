@@ -31,7 +31,6 @@ title: 首页
         <article class="post-card pinned">
           <h3 class="post-card-title">
             <a href="{{ site.baseurl }}{{ post.url }}">
-              <span class="flame">🔥</span>
               {%- if post.special_tag -%}
                 <span class="post-card-tag">[{{ post.special_tag }}]</span>
               {%- else -%}
@@ -85,7 +84,7 @@ title: 首页
       <h3 class="post-card-title">
         <a href="{{ site.baseurl }}{{ post.url }}">
           {%- if post.special_tag -%}
-            <span class="flame">🔥</span><span class="post-card-tag">[{{ post.special_tag }}]</span>
+            <span class="post-card-tag">[{{ post.special_tag }}]</span>
           {%- endif -%}
           {{ post.title }}
         </a>
@@ -110,7 +109,7 @@ title: 首页
         {%- if post.tags.size > 0 -%}
         <span class="post-card-tags"><i class="fas fa-hashtag"></i>
           {%- for t in post.tags limit: 4 -%}
-            <span class="tagchip">{{ t }}</span>
+            <a class="tagchip" href="{{ site.baseurl }}/pages/tags.html#tag-{{ t | replace: ' ', '_' | url_encode }}">{{ t }}</a>
           {%- endfor -%}
         </span>
         {%- endif -%}
@@ -129,7 +128,25 @@ title: 首页
     {%- else -%}
       <span class="previous disabled"><i class="fas fa-angle-left"></i> 上一页</span>
     {%- endif -%}
-    <span class="page_number">第 {{ paginator.page }} / {{ paginator.total_pages }} 页</span>
+    {%- comment -%}数字分页：当前页 ±2 + 首末页，间隔用省略号{%- endcomment -%}
+    {%- assign window_lo = paginator.page | minus: 2 -%}
+    {%- assign window_hi = paginator.page | plus: 2 -%}
+    {%- assign skipped = false -%}
+    {%- for p in (1..paginator.total_pages) -%}
+      {%- if p == 1 or p == paginator.total_pages or p >= window_lo and p <= window_hi -%}
+        {%- if p == paginator.page -%}
+          <span class="page-num current" aria-current="page">{{ p }}</span>
+        {%- elsif p == 1 -%}
+          <a class="page-num" href="{{ site.baseurl }}/">1</a>
+        {%- else -%}
+          <a class="page-num" href="{{ site.baseurl }}/page{{ p }}/">{{ p }}</a>
+        {%- endif -%}
+        {%- assign skipped = false -%}
+      {%- elsif skipped == false -%}
+        <span class="page-ellipsis">…</span>
+        {%- assign skipped = true -%}
+      {%- endif -%}
+    {%- endfor -%}
     {%- if paginator.next_page -%}
       <a href="{{ site.baseurl }}{{ paginator.next_page_path }}" class="next">下一页 <i class="fas fa-angle-right"></i></a>
     {%- else -%}

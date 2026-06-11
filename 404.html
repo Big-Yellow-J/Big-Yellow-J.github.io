@@ -1,54 +1,35 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="robots" content="noindex,follow">
-  <title>404 - 页面未找到</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <style>
-    body {
-      background-color: #f3f4f6;
-      font-family: 'Inter', sans-serif;
-    }
-    .container {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-      padding: 1rem;
-    }
-    .error-code {
-      font-size: 6rem;
-      font-weight: bold;
-      color: #1f2937;
-    }
-    .error-message {
-      font-size: 1.5rem;
-      color: #4b5563;
-      margin-bottom: 2rem;
-    }
-    .home-button {
-      background-color: #3b82f6;
-      color: white;
-      padding: 0.75rem 1.5rem;
-      border-radius: 0.375rem;
-      text-decoration: none;
-      transition: background-color 0.3s ease;
-    }
-    .home-button:hover {
-      background-color: #2563eb;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1 class="error-code">404</h1>
-    <p class="error-message">抱歉，页面走丢了！</p>
-    <p class="error-message">所有代码：<a href="https://www.big-yellow-j.top/pages/code.html"><font color="#9900FF">https://www.big-yellow-j.top/pages/code.html</font></a></p>
-    <a href="https://www.big-yellow-j.top/" class="home-button">返回首页</a>
+---
+layout: page
+title: 404 - 页面未找到
+permalink: /404.html
+sitemap: false
+---
+
+<div class="page page-404">
+  <div class="page-404-hero">
+    <p class="page-404-code">404</p>
+    <p class="page-404-msg">抱歉，页面走丢了</p>
+    <p class="page-404-hint">链接可能已失效或被移动，试试下面的入口：</p>
+    <div class="page-404-actions">
+      <a class="page-404-btn primary" href="{{ site.baseurl }}/"><i class="fas fa-home"></i> 返回首页</a>
+      <a class="page-404-btn" href="{{ site.baseurl }}/pages/search.html"><i class="fas fa-search"></i> 站内搜索</a>
+      <a class="page-404-btn" href="{{ site.baseurl }}/pages/archives.html"><i class="fas fa-archive"></i> 全部文章</a>
+    </div>
   </div>
-</body>
-</html>
+
+  <section class="page-404-recent">
+    <h2 class="year-label"><i class="far fa-newspaper"></i> 最新文章</h2>
+    <ul class="year-posts">
+      {%- assign shown = 0 -%}
+      {%- for post in site.posts -%}
+        {%- if post.show == false -%}{%- continue -%}{%- endif -%}
+        {%- if shown >= 5 -%}{%- break -%}{%- endif -%}
+        <li class="archives-item">
+          <span class="archives-date">{{ post.date | date: "%Y-%m-%d" }}</span>
+          <a href="{{ site.baseurl }}{{ post.url }}" class="archives-link">{{ post.title }}</a>
+        </li>
+        {%- assign shown = shown | plus: 1 -%}
+      {%- endfor -%}
+    </ul>
+  </section>
+</div>

@@ -494,6 +494,12 @@ function shareOnSocial(platform) {
     case 'qq':
       shareUrl = `https://connect.qq.com/widget/shareqq/index.html?url=${pageUrl}&title=${pageTitle}`;
       break;
+    case 'linkedin':
+      shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${pageUrl}`;
+      break;
+    case 'reddit':
+      shareUrl = `https://www.reddit.com/submit?url=${pageUrl}&title=${pageTitle}`;
+      break;
     default:
       console.error('未知的分享平台');
       return;
@@ -521,6 +527,118 @@ function shareOnWeChat() {
     </html>
   `);
 }
+
+/**
+ * 复制当前页链接到剪贴板
+ */
+function copyPageLink() {
+  navigator.clipboard.writeText(window.location.href).then(function () {
+    blog.toast('链接已复制')
+  }).catch(function () {
+    blog.toast('复制失败，请手动复制地址栏')
+  })
+}
+
+/**
+ * 调用系统原生分享面板（移动端），不支持时降级为复制链接
+ */
+function nativeShare() {
+  if (navigator.share) {
+    navigator.share({ title: document.title, url: window.location.href }).catch(function () {})
+  } else {
+    copyPageLink()
+  }
+}
+
+// 支持原生分享的环境才显示"系统分享"按钮
+blog.addLoadEvent(function () {
+  var btn = document.querySelector('.share-button.share-native')
+  if (btn && navigator.share) btn.hidden = false
+})
+
+// 阅读位置记忆（仅文章页）：滚动时记录，重进时恢复，7 天过期
+blog.addLoadEvent(function () {
+  if (!document.querySelector('.post.page-post')) return
+  var KEY = 'readpos:' + location.pathname
+  try {
+    var now = Date.now()
+    Object.keys(localStorage).forEach(function (k) {
+      if (k.indexOf('readpos:') !== 0) return
+      var v = JSON.parse(localStorage.getItem(k) || '{}')
+      if (!v.t || now - v.t > 7 * 864e5) localStorage.removeItem(k)
+    })
+    var saved = JSON.parse(localStorage.getItem(KEY) || 'null')
+    // 带锚点进入说明用户有明确目标，不抢滚动
+    if (saved && saved.y > 800 && !location.hash) {
+      window.scrollTo(0, saved.y)
+      blog.toast('已回到上次阅读位置')
+    }
+  } catch (e) {}
+  var t = null
+  window.addEventListener('scroll', function () {
+    if (t) return
+    t = setTimeout(function () {
+      t = null
+      try {
+        if (window.scrollY > 800) localStorage.setItem(KEY, JSON.stringify({ y: window.scrollY, t: Date.now() }))
+        else localStorage.removeItem(KEY)
+      } catch (e) {}
+    }, 250)
+  }, { passive: true })
+})
+
+// 点击正文标题复制本节锚点链接（post.css 中标题为 pointer 样式）
+blog.addLoadEvent(function () {
+  var article = document.querySelector('.post.page-post')
+  if (!article) return
+  article.querySelectorAll('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]').forEach(function (h) {
+    h.addEventListener('click', function () {
+      var url = location.origin + location.pathname + '#' + encodeURIComponent(h.id)
+      history.replaceState(null, '', '#' + h.id)
+      navigator.clipboard.writeText(url).then(function () {
+        blog.toast('已复制本节链接')
+      }).catch(function () {})
+    })
+  })
+})
+
+// 字数/阅读时长修正：排除代码块后按正文字符数估算（约 400 字/分钟）
+blog.addLoadEvent(function () {
+  var article = document.querySelector('.post.page-post')
+  var wEl = document.getElementById('word-count')
+  if (!article || !wEl) return
+  var clone = article.cloneNode(true)
+  clone.querySelectorAll('pre, .code-fold-container, .mermaid, .table-container').forEach(function (n) { n.remove() })
+  var chars = (clone.innerText || '').replace(/\s+/g, '').length
+  if (!chars) return
+  wEl.textContent = chars + ' 字'
+  var mEl = document.getElementById('read-minutes')
+  if (mEl) mEl.textContent = Math.max(1, Math.ceil(chars / 400)) + ' 分钟'
+})
+
+// AI 摘要：窄屏上过长时折叠为 3 行 + 展开按钮
+blog.addLoadEvent(function () {
+  if (!window.matchMedia('(max-width: 560px)').matches) return
+  var box = document.getElementById('description-llm')
+  var textEl = box && box.querySelector('.post-description-llm-text')
+  if (!textEl) return
+  box.classList.add('clamped')
+  requestAnimationFrame(function () {
+    if (textEl.scrollHeight <= textEl.clientHeight + 4) {
+      box.classList.remove('clamped')
+      return
+    }
+    var btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = 'desc-toggle'
+    btn.textContent = '展开'
+    btn.addEventListener('click', function () {
+      var collapsed = box.classList.toggle('clamped')
+      btn.textContent = collapsed ? '展开' : '收起'
+    })
+    box.appendChild(btn)
+  })
+})
 
 // 安全加固：给所有 target="_blank" 链接自动补 rel="noopener noreferrer"，防 reverse tabnabbing
 blog.addLoadEvent(function () {

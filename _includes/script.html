@@ -24,6 +24,18 @@ document.addEventListener('DOMContentLoaded', function(){
   {%- endif %}
 {%- endif %}
 
+<!-- Ctrl/Cmd+K：聚焦当前页搜索框，没有则跳转搜索页 -->
+<script>
+document.addEventListener('keydown', function (e) {
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+    e.preventDefault()
+    var input = document.querySelector('.pagefind-ui__search-input') || document.querySelector('.list-search input')
+    if (input) input.focus()
+    else location.href = '{{ site.baseurl }}/pages/search.html'
+  }
+})
+</script>
+
 <!-- Google Analytics: defer + idle 加载，避免阻塞关键渲染路径 -->
 <script>
 (function(){

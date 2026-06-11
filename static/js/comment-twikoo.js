@@ -1,5 +1,6 @@
 // 评论区滚入视口后再加载 KaTeX + Twikoo，节省首屏 ~800KB
 (function () {
+  const ENV_ID = 'https://meek-halva-a18f24.netlify.app/.netlify/functions/twikoo';
   const target = document.getElementById('tcomment');
   if (!target) return;
 
@@ -34,9 +35,16 @@
     twikooJS.src = 'https://cdn.jsdelivr.net/npm/twikoo@1.6.41/dist/twikoo.min.js';
     document.head.appendChild(twikooJS);
 
+    // CDN 加载失败 / 初始化异常时给出可见提示，而不是评论区永远空白
+    const showError = () => {
+      target.innerHTML = '<p class="comment-load-error">评论加载失败，请刷新页面重试</p>';
+    };
+    twikooJS.onerror = showError;
+
     twikooJS.onload = () => {
+      try {
       twikoo.init({
-        envId: 'https://meek-halva-a18f24.netlify.app/.netlify/functions/twikoo',
+        envId: ENV_ID,
         el: '#tcomment',
         katex: {
           delimiters: [
@@ -70,6 +78,20 @@
         commentCount: true,
         requiredFields: ['nick', 'mail']
       });
+      // 填充 meta 栏评论数（与 vercount 一样懒填充，加载前显示 "–"）
+      if (typeof twikoo.getCommentsCount === 'function') {
+        twikoo.getCommentsCount({
+          envId: ENV_ID,
+          urls: [window.location.pathname],
+          includeReply: false
+        }).then((res) => {
+          const el = document.getElementById('comment-count');
+          if (el && res && res[0]) el.textContent = res[0].count;
+        }).catch(() => {});
+      }
+      } catch (e) {
+        showError();
+      }
     };
   }
 

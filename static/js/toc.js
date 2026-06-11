@@ -84,13 +84,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function openMobile() {
     document.body.classList.add('toc-open');
+    document.body.style.overflow = 'hidden'; // 锁定背景滚动，避免抽屉后页面跟着滚
     const m = ensureMask();
     requestAnimationFrame(() => m.classList.add('is-open'));
   }
   function closeMobile() {
     document.body.classList.remove('toc-open');
+    document.body.style.overflow = '';
     if (mask) mask.classList.remove('is-open');
   }
+
+  // Esc 关闭移动端抽屉
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && document.body.classList.contains('toc-open')) closeMobile();
+  });
 
   function syncFloatingVisibility() {
     if (isMobile()) {
@@ -120,15 +127,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // 平滑滚动：用 getBoundingClientRect 替代 offsetTop（避免嵌套 offsetParent 错算）
   // + 二次校正（图片懒加载导致 layout shift 后位置漂移）
+  // JS 滚动也尊重系统"减少动画"偏好（CSS 的 scroll-behavior 管不到 scrollTo 显式指定的 behavior）
+  const smoothBehavior = () =>
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+
   function scrollToHeading(target) {
     const headerHeight = document.querySelector('header')?.offsetHeight || 0;
     const offset = headerHeight + 20;
     const computeTop = () => target.getBoundingClientRect().top + window.scrollY - offset;
-    window.scrollTo({ top: computeTop(), behavior: 'smooth' });
+    window.scrollTo({ top: computeTop(), behavior: smoothBehavior() });
     // 700ms 后页面应已稳定，如位置仍漂移 > 4px 再补一次（一般是图片懒加载触发的 layout shift）
     setTimeout(() => {
       const drift = Math.abs(target.getBoundingClientRect().top - offset);
-      if (drift > 4) window.scrollTo({ top: computeTop(), behavior: 'smooth' });
+      if (drift > 4) window.scrollTo({ top: computeTop(), behavior: smoothBehavior() });
     }, 700);
     // 1500ms 后再补最后一次，兜底慢加载的图
     setTimeout(() => {
@@ -157,11 +168,26 @@ document.addEventListener('DOMContentLoaded', function () {
     ticking = true;
     requestAnimationFrame(() => {
       // getBoundingClientRect 每次实时取位置：嵌套 offsetParent 与图片懒加载导致的 layout shift 都不会算错
+      // 阈值按 header 实际高度算，与 scrollToHeading 的落点一致
+      const threshold = (document.querySelector('header')?.offsetHeight || 80) + 24;
       let activeId = null;
-      headings.forEach(h => { if (h.getBoundingClientRect().top <= 100) activeId = h.id; });
+      headings.forEach(h => { if (h.getBoundingClientRect().top <= threshold) activeId = h.id; });
       toc.querySelectorAll('a').forEach(link => {
         link.classList.toggle('active', link.getAttribute('data-target-id') === activeId);
       });
+
+      // 长目录时让高亮项保持在 TOC 可视区内（只滚 TOC 容器，不动页面）
+      if (!isMobile() && !toc.classList.contains('collapsed')) {
+        const activeLink = toc.querySelector('a.active');
+        if (activeLink) {
+          const linkTop = activeLink.offsetTop;
+          const viewTop = toc.scrollTop;
+          const viewBottom = viewTop + toc.clientHeight;
+          if (linkTop < viewTop + 24 || linkTop > viewBottom - 36) {
+            toc.scrollTop = linkTop - toc.clientHeight / 2;
+          }
+        }
+      }
 
       // 避免 footer 遮挡（仅桌面）
       if (!isMobile()) {

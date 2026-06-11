@@ -140,6 +140,16 @@ body.nav-hidden .header { transform: translateY(-110%); }
   white-space: nowrap;
   user-select: auto;
 }
+/* 当前页菜单高亮：主题色 + 常驻下划线 */
+.header .menu a.active {
+  color: var(--bk-accent, #3366cc);
+  font-weight: 600;
+}
+.header .menu a.active:after {
+  visibility: visible;
+  transform: scaleX(1);
+  background-color: var(--bk-accent, #3366cc);
+}
 .footer {
   padding: 15px 0;
   font-size: 14px;
@@ -157,11 +167,17 @@ body.nav-hidden .header { transform: translateY(-110%); }
   height: 32px;
   cursor: pointer;
   background-color: rgba(0, 0, 0, 0.4);
+  border: 0;          /* 改为 <button> 后重置 UA 默认样式 */
+  padding: 0;
   border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0;
+}
+.footer-btn:focus-visible {
+  outline: 2px solid var(--bk-accent, #3366cc);
+  outline-offset: 2px;
 }
 .footer-btn i {
   font-size: 22px;
@@ -224,6 +240,8 @@ body.nav-hidden .header { transform: translateY(-110%); }
     margin: 2px 5px;
     font-size: 15px;
   }
+  /* 窄屏隐藏菜单 emoji，避免换行 */
+  .menu-emoji { display: none; }
   /* 右下三件套：移动端放大触摸目标 */
   .footer-btn {
     width: 40px;

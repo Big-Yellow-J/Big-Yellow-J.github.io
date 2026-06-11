@@ -66,17 +66,21 @@
       {%- unless is_life -%}
       <span class="meta-item">
         <i class="far fa-file-alt"></i>
-        <span>{{ words }} 字</span>
+        <span id="word-count">{{ words }} 字</span>
       </span>
       <span class="meta-item">
         <i class="far fa-clock"></i>
-        <span>{{ minutes }} 分钟</span>
+        <span id="read-minutes">{{ minutes }} 分钟</span>
       </span>
       {%- endunless -%}
       <span class="meta-item">
         <i class="far fa-eye"></i>
         <span><span id="vercount_value_page_pv">–</span> 次阅读</span>
       </span>
+      <a class="meta-item meta-comments" href="#tcomment" title="跳到评论区">
+        <i class="far fa-comment-dots"></i>
+        <span><span id="comment-count">–</span> 条评论</span>
+      </a>
     </div>
     {%- endif -%}
 
@@ -121,6 +125,8 @@
         <i class="fas fa-share-alt"></i> 分享到
       </div>
       <div class="post-share-buttons">
+        <button class="share-button share-native" hidden onclick="nativeShare()" aria-label="系统分享" title="系统分享"><i class="fas fa-share-nodes"></i></button>
+        <button class="share-button" onclick="copyPageLink()" aria-label="复制链接" title="复制链接"><i class="fas fa-link"></i></button>
         <button class="share-button" onclick="shareOnSocial('weibo')" aria-label="分享到微博" title="微博"><i class="fab fa-weibo"></i></button>
         <button class="share-button" onclick="shareOnSocial('qq')" aria-label="分享到 QQ" title="QQ"><i class="fab fa-qq"></i></button>
         <button class="share-button" onclick="shareOnWeChat()" aria-label="分享到微信" title="微信"><i class="fab fa-weixin"></i></button>

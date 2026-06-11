@@ -26,7 +26,7 @@ jekyll-minifier:
   compress_json: true
   preserve_php: false
 
-paginate: 30
+paginate: 15
 paginate_path: "/page:num/"
 
 last_modified_at:
@@ -103,17 +103,26 @@ baseurl: ''
 # 吐个槽地址，会在chat页面中重定向到该地址
 tucaoUrl: https://support.qq.com/product/86335
 
+# emoji 单独成字段：窄屏由 CSS 隐藏，避免菜单换行
 menu:
-  - title: 🎆首页
+  - title: 首页
+    emoji: 🎆
     url: /
-  - title: 🗂️归类
+  - title: 归类
+    emoji: 🗂️
     url: /pages/categories.html
-  - title: 🏷️标签
+  - title: 标签
+    emoji: 🏷️
     url: /pages/tags.html
-  - title: 🗓️归档
+  - title: 归档
+    emoji: 🗓️
     url: /pages/archives.html
-  - title: 🦄生活
+  - title: 生活
+    emoji: 🦄
     url: /pages/life.html
+  - title: 搜索
+    emoji: 🔍
+    url: /pages/search.html
 #  - title: 📃CV
 #    url: /pages/cv.html
 #  - title: 👋关于

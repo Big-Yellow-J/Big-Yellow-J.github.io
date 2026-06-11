@@ -1,44 +1,43 @@
 <footer class="footer">
   <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center;">
     <div style="display: flex; gap: 20px; justify-content: center;">
-      <!-- GitHub 链接，使用 GitHub 图标 -->
-      <a href="https://github.com/{{ site.author_info.github }}" target="_blank">
+      <a href="https://github.com/{{ site.author_info.github }}" target="_blank" title="GitHub" aria-label="GitHub">
         <i class="fa-brands fa-github-alt"></i>
       </a>
-      <!-- 知乎链接，使用知乎图标 -->
-      <a href="https://www.zhihu.com/people/{{ site.author_info.zhihu }}" target="_blank">
+      <a href="https://www.zhihu.com/people/{{ site.author_info.zhihu }}" target="_blank" title="知乎" aria-label="知乎">
         <i class="fab fa-zhihu"></i>
       </a>
-      <a href="https://www.google.com/maps/search/{{ site.author_info.location }}" target="_blank">
+      <a href="https://www.google.com/maps/search/{{ site.author_info.location }}" target="_blank" title="所在地" aria-label="所在地">
         <i class="fas fa-map-marker-alt"></i>
       </a>
-      <!-- email 链接，使用 email 图标 -->
-      <a href="mailto:{{ site.author_info.email }}">
+      <a href="mailto:{{ site.author_info.email }}" title="邮件联系" aria-label="邮件联系">
           <i class="fas fa-envelope"></i>
       </a>
-      <a href="https://stackoverflow.com/users/20983339/big-yellow-j" target="_blank">
+      <a href="https://stackoverflow.com/users/20983339/big-yellow-j" target="_blank" title="Stack Overflow" aria-label="Stack Overflow">
         <i class="fab fa-stack-overflow"></i>
       </a>
-      <a href="{{ site.baseurl }}/static/xml/sitemap.xml" target="_blank">
+      <a href="{{ site.baseurl }}/static/xml/sitemap.xml" target="_blank" title="站点地图" aria-label="站点地图">
         <i class="fas fa-sitemap"></i>
       </a>
-      <!-- RSS 订阅链接，使用 RSS 图标 -->
-      <a href="{{ site.baseurl }}/static/xml/rss.xml">
+      <a href="{{ site.baseurl }}/static/xml/rss.xml" title="RSS 订阅" aria-label="RSS 订阅">
         <i class="fas fa-rss"></i>
       </a>
-      <!-- Spotify 链接，使用 Spotify 图标 -->
-      <a href="https://open.spotify.com/playlist/12JgvMmkStBLagyPkls86R?si=a0e9400142cf4e10" target="_blank">
+      <a href="https://open.spotify.com/playlist/12JgvMmkStBLagyPkls86R?si=a0e9400142cf4e10" target="_blank" title="Spotify 歌单" aria-label="Spotify 歌单">
         <i class="fab fa-spotify"></i>
       </a>
     </div>
 
     <div>
-      <span>Theme By <a href="https://github.com/TMaize/tmaize-blog">TMaize</a></span>
+      <span>
+        <a href="{{ site.baseurl }}/pages/about.html">关于</a> ·
+        <a href="{{ site.baseurl }}/pages/links.html">友链</a> ·
+        Theme By <a href="https://github.com/TMaize/tmaize-blog">TMaize</a>
+      </span>
     </div>
   </div>
   <script src="https://unpkg.com/turndown@7.1.1/dist/turndown.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@truto/turndown-plugin-gfm@latest/dist/turndown-plugin-gfm.min.js"></script>
-  <div class="footer-btn theme-toggler hide"><i class="svg-icon icon-theme-light"></i></div>
-  <div class="footer-btn to-top"><i class="svg-icon icon-arrow-top"></i></div>
-  <div class="footer-btn copy-all"><i class="svg-icon copy-svgrepo-com"></i></div>
+  <button type="button" class="footer-btn theme-toggler hide" aria-label="切换暗色/亮色主题"><i class="svg-icon icon-theme-light"></i></button>
+  <button type="button" class="footer-btn to-top" aria-label="返回顶部"><i class="svg-icon icon-arrow-top"></i></button>
+  <button type="button" class="footer-btn copy-all" aria-label="复制全文为 Markdown"><i class="svg-icon copy-svgrepo-com"></i></button>
 </footer>

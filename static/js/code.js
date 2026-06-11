@@ -19,6 +19,8 @@ document.addEventListener("DOMContentLoaded", function() {
         // 构建 DOM
         const container = document.createElement('div');
         container.className = 'code-fold-container';
+        // 超过 25 行才默认折叠，短代码保持展开不打断阅读
+        container.dataset.autoFold = code.textContent.split('\n').length > 25 ? '1' : '0';
         
         const header = document.createElement('div');
         header.className = 'code-fold-header';
@@ -50,20 +52,31 @@ document.addEventListener("DOMContentLoaded", function() {
             header.classList.toggle('is-collapsed');
         });
 
-        // 复制功能
+        // 复制功能：成功变绿 ✓ / 失败变红 ✗，2s 后复原
         header.querySelector('.copy-btn').addEventListener('click', function() {
-            navigator.clipboard.writeText(code.textContent);
-            this.innerText = 'Done!';
-            setTimeout(() => this.innerText = 'Copy', 2000);
-            if (window.blog && blog.toast) blog.toast('代码已复制');
+            const btn = this;
+            navigator.clipboard.writeText(code.textContent).then(() => {
+                btn.innerText = '✓ Done';
+                btn.classList.add('is-copied');
+                if (window.blog && blog.toast) blog.toast('代码已复制');
+            }).catch(() => {
+                btn.innerText = '✗ Failed';
+                btn.classList.add('is-failed');
+                if (window.blog && blog.toast) blog.toast('复制失败，请手动选择复制');
+            }).finally(() => {
+                setTimeout(() => {
+                    btn.innerText = 'Copy';
+                    btn.classList.remove('is-copied', 'is-failed');
+                }, 2000);
+            });
         });
     });
 
     // 1. 先触发高亮（此时所有代码块都是展开可见的）
     Prism.highlightAll();
 
-    // 2. 高亮完成后，再将需要默认折叠的代码块折叠
-    document.querySelectorAll('.code-fold-content').forEach(c => {
+    // 2. 高亮完成后，只折叠超过行数阈值的代码块（data-auto-fold 在构建 DOM 时标记）
+    document.querySelectorAll('.code-fold-container[data-auto-fold="1"] .code-fold-content').forEach(c => {
         c.classList.add('is-collapsed');
         c.previousElementSibling.classList.add('is-collapsed');
     });

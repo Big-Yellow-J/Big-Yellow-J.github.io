@@ -44,4 +44,13 @@
     const a = e.target.closest('a[href]');
     if (a && shouldPrefetch(a)) prefetch(a.href);
   }, { passive: true });
+
+  // 文章页上下篇大概率被点击：空闲时段提前预取
+  function prefetchNav() {
+    document.querySelectorAll('.navigation-buttons a.nav-button').forEach(function (a) {
+      if (shouldPrefetch(a)) prefetch(a.href);
+    });
+  }
+  if ('requestIdleCallback' in window) requestIdleCallback(prefetchNav, { timeout: 4000 });
+  else setTimeout(prefetchNav, 3000);
 })();

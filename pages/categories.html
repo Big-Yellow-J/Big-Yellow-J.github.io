@@ -53,9 +53,10 @@ title: 文章分类
 <script>
 (function () {
   function openByHash() {
-    var hash = decodeURIComponent((location.hash || '').replace(/^#/, ''));
-    if (!hash) return;
-    var el = document.getElementById(hash);
+    var raw = (location.hash || '').replace(/^#/, '');
+    if (!raw) return;
+    // id 是 url_encode 过的：先按原样查（中文分类锚点），再按 decode 后查（兼容英文）
+    var el = document.getElementById(raw) || document.getElementById(decodeURIComponent(raw));
     if (el && el.tagName === 'DETAILS') {
       el.open = true;
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });

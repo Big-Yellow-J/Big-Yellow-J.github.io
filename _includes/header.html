@@ -13,7 +13,10 @@
         {% capture href %}{{ site.baseurl }}{{ menu.url }}{% endcapture %}
       {%- endunless -%}
 
-      <a href="{{href}}" {{target}} class="hover-underline">{{ menu.title }}</a>
+      {%- comment -%}当前页高亮：精确匹配菜单 URL{%- endcomment -%}
+      {%- assign active = '' -%}
+      {%- if page.url == menu.url -%}{%- assign active = ' active' -%}{%- endif -%}
+      <a href="{{href}}" {{target}} class="hover-underline{{ active }}"{% if active != '' %} aria-current="page"{% endif %}>{%- if menu.emoji -%}<span class="menu-emoji">{{ menu.emoji }}</span>{%- endif -%}{{ menu.title }}</a>
     {% endfor -%}
   </nav>
 </header>

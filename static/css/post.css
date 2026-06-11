@@ -2,8 +2,8 @@ body {
   font-family: "Helvetica Neue", Arial, "Noto Sans SC", "Noto Serif SC", "Microsoft YaHei", "WenQuanYi Micro Hei", SimSun, sans-serif;
   margin: 0 auto;
   padding: 0;
-  max-width: 1000px; /* 增大页面最大宽度 */
-  width: 90%; /* 页面宽度占据 90% */
+  max-width: 800px; /* 正文行宽控制在舒适阅读范围（约 45 字/行） */
+  width: 90%;
 }
 
 .has-jax {
@@ -252,7 +252,14 @@ body {
   margin: 24px 0;
   border-radius: 10px;
   border: 1px solid #e1e4e8;
-  background: #fff;
+  /* 滚动阴影提示：内容可横向滚动时两侧出现渐隐阴影，滚到尽头自动消失 */
+  background:
+    linear-gradient(to right, #fff 30%, rgba(255, 255, 255, 0)) left / 40px 100% no-repeat,
+    linear-gradient(to left, #fff 30%, rgba(255, 255, 255, 0)) right / 40px 100% no-repeat,
+    radial-gradient(farthest-side at 0 50%, rgba(27, 31, 35, 0.16), transparent) left / 14px 100% no-repeat,
+    radial-gradient(farthest-side at 100% 50%, rgba(27, 31, 35, 0.16), transparent) right / 14px 100% no-repeat
+    #fff;
+  background-attachment: local, local, scroll, scroll;
   box-shadow: 0 1px 2px rgba(27, 31, 35, 0.04);
   -webkit-overflow-scrolling: touch;
 }
@@ -418,6 +425,9 @@ pre.line-numbers {
     color: #fff;
     border-color: var(--accent);
 }
+/* 复制成功/失败的状态反馈（code.js 切换） */
+.copy-btn.is-copied { background: #2ea043; border-color: #2ea043; color: #fff; }
+.copy-btn.is-failed { background: #d73a49; border-color: #d73a49; color: #fff; }
 
 /* 分享 */
 .share-buttons {
@@ -610,6 +620,25 @@ body, p, div, span, a {
 }
 .post-description-llm.is-ready { opacity: 1; }
 .post-description-llm.is-done { border-left-color: #2ecc71; }
+/* 窄屏长摘要折叠为 3 行（blog.js 加 clamped 类与展开按钮） */
+@media (max-width: 560px) {
+  .post-description-llm.clamped .post-description-llm-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+.desc-toggle {
+  align-self: flex-end;
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  padding: 0 0 0 6px;
+  font-size: 12.5px;
+  color: var(--bk-accent, #3366cc);
+  cursor: pointer;
+}
 
 /* ===== 目录 TOC ===== */
 #toc {
@@ -841,6 +870,15 @@ body, p, div, span, a {
   white-space: nowrap;
 }
 .post-meta-bar .meta-item i { color: #6a737d; font-size: 12.5px; }
+/* 评论数是链接（跳评论区）：还原为普通 meta 外观 */
+.post-meta-bar a.meta-item {
+  color: inherit;
+  font-family: inherit;
+  font-weight: normal;
+  border-bottom: none;
+  margin: 0;
+}
+.post-meta-bar a.meta-item:hover { color: var(--bk-accent, #3366cc); }
 .post-meta-bar .meta-updated { color: #1f7a3f; font-weight: 600; }
 .post-meta-bar .meta-updated i { color: #1f7a3f; }
 .post-status-badge {
@@ -918,6 +956,8 @@ body, p, div, span, a {
   transition: transform .15s ease, background .15s, color .15s, border-color .15s;
 }
 .post-share-buttons .share-button i { font-size: 15px; color: inherit; margin: 0; }
+/* hidden 属性优先于类的 display（原生分享按钮默认隐藏，blog.js 检测支持后显示） */
+.post-share-buttons .share-button[hidden] { display: none !important; }
 .post-share-buttons .share-button:hover {
   transform: translateY(-2px);
   background: var(--bk-accent, #3366cc);
@@ -979,6 +1019,12 @@ body, p, div, span, a {
   margin-top: 32px;
   padding-top: 8px;
 }
+/* 评论 CDN 加载失败提示（comment-twikoo.js 注入） */
+.comment-load-error {
+  text-align: center;
+  color: #6e7681;
+  padding: 24px 0;
+}
 
 @media (max-width: 560px) {
   .page-post .post-title { font-size: 22px; }
@@ -1014,7 +1060,14 @@ body, p, div, span, a {
   display: block;
   margin: 1.4em auto;
   padding: 16px 12px;
-  background: #f6f8fa;
+  /* 滚动阴影提示：宽图可横向滚动时两侧渐隐 */
+  background:
+    linear-gradient(to right, #f6f8fa 30%, rgba(246, 248, 250, 0)) left / 40px 100% no-repeat,
+    linear-gradient(to left, #f6f8fa 30%, rgba(246, 248, 250, 0)) right / 40px 100% no-repeat,
+    radial-gradient(farthest-side at 0 50%, rgba(27, 31, 35, 0.16), transparent) left / 14px 100% no-repeat,
+    radial-gradient(farthest-side at 100% 50%, rgba(27, 31, 35, 0.16), transparent) right / 14px 100% no-repeat
+    #f6f8fa;
+  background-attachment: local, local, scroll, scroll;
   border: 1px solid #eaecef;
   border-radius: 8px;
   text-align: center;
@@ -1109,6 +1162,48 @@ body, p, div, span, a {
   .mermaid-modal-body { width: 96vw; height: 80vh; }
   .mermaid-modal-hint { font-size: 11px; bottom: 10px; }
   .mermaid-zoom-btn { opacity: 1; }  /* 移动端无 hover，常驻显示 */
+}
+
+/* PhotoSwipe 底部图注（gallery.js 注册的 custom-caption） */
+.pswp__custom-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  max-width: 80vw;
+  padding: 6px 14px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.5;
+  border-radius: 6px;
+  text-align: center;
+  pointer-events: none;
+}
+.pswp__custom-caption[hidden] { display: none; }
+
+/* ============ 打印样式：隐藏交互组件，展开代码 ============ */
+@media print {
+  #toc,
+  .toc-toggle-floating,
+  .toc-mask,
+  .footer-btn,
+  .read-progress,
+  .post-share,
+  .post-comments,
+  .navigation-buttons,
+  .related-posts,
+  .breadcrumbs,
+  .copy-btn,
+  .mermaid-zoom-btn,
+  .desc-toggle,
+  .header .menu,
+  .footer { display: none !important; }
+  body { max-width: 100%; width: auto; }
+  .code-fold-content.is-collapsed { grid-template-rows: 1fr !important; }
+  .page-post pre { max-height: none !important; overflow: visible !important; }
+  .page-post .table-container { overflow: visible; }
+  .page-post a { border-bottom: none; }
 }
 
 /* ============ Profile Hero + 写作热力图（GitHub 贡献图风） ============ */
