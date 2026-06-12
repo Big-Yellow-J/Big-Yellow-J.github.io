@@ -19,7 +19,7 @@ permalink: /static/xml/sitemap-pages.xml
   </url>
   {%- for p in site.pages -%}
     {%- if p.url contains '/pages/' and p.layout -%}
-      {%- if p.url contains 'search' -%}{%- continue -%}{%- endif -%}
+      {%- if p.url contains 'search' or p.sitemap == false -%}{%- continue -%}{%- endif -%}
   <url>
     <loc>{{ site.domainUrl }}{{ site.baseurl }}{{ p.url }}</loc>
     <lastmod>{{ p.last_modified_at | default: site_lastmod | date: "%Y-%m-%d" }}</lastmod>

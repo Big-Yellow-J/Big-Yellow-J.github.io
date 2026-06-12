@@ -1,0 +1,29 @@
+---
+layout: page
+title: 写作中
+show: false
+sitemap: false
+---
+
+<div class="page page-writing">
+  <header class="archives-header">
+    <h1 class="archives-title"><i class="fas fa-pen-nib"></i> 写作中</h1>
+    <p class="archives-meta">writing/ 目录下的草稿预览 · 内容随时可能变动 · 搜索引擎不收录</p>
+  </header>
+
+  {%- comment -%}writing/ 下带 front matter 的 md 会成为 site.pages；文件名以日期开头，按 path 倒序即按时间倒序{%- endcomment -%}
+  {%- assign drafts = site.pages | where_exp: "p", "p.path contains 'writing/'" | sort: "path" | reverse -%}
+  {%- if drafts.size > 0 -%}
+  <ul class="year-posts writing-list">
+    {%- for p in drafts -%}
+    {%- assign fname = p.path | split: '/' | last -%}
+    <li class="archives-item">
+      <span class="archives-date">{{ fname | slice: 0, 10 }}</span>
+      <a href="{{ site.baseurl }}{{ p.url }}" class="archives-link">{{ p.title | default: fname }}</a>
+    </li>
+    {%- endfor -%}
+  </ul>
+  {%- else -%}
+  <p class="archives-meta">当前没有草稿。</p>
+  {%- endif -%}
+</div>

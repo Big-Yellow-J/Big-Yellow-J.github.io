@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 {% include head.html -%}
-<body class="layout-post">
+{%- comment -%}草稿页加 data-pagefind-ignore：Pagefind 双保险不索引（meta noindex 之外）{%- endcomment -%}
+<body class="layout-post"{% if page.url contains '/writing/' %} data-pagefind-ignore{% endif %}>
 {% include header.html -%}
 {%- comment -%}is_life：用于关闭对生活记录无意义的区块（TOC / 字数分钟 / AI 摘要 / 字数）{%- endcomment -%}
 {%- assign is_life = false -%}
@@ -37,7 +38,7 @@
   <header class="post-header">
     <h1 class="post-title" id="{{ page.title }}">{{ page.title }}</h1>
 
-    {%- if page.url contains "TODO" -%}
+    {%- if page.url contains "TODO" or page.url contains "/writing/" -%}
       <span class="post-status-badge writing"><i class="fas fa-pen-nib"></i> writing…</span>
     {%- endif -%}
 

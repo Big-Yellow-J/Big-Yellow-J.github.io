@@ -80,7 +80,8 @@
   {%- assign kw_str = kw_top | join: ',' | escape -%}
   <meta name="keywords" content="{{ site.author }}{% if kw_str != '' %},{{ kw_str }}{% endif %}" />
   <meta name="description" content="{{ page_desc }}" />
-  {%- if page.sitemap == false %}
+  {%- comment -%}草稿区（/writing/）与 sitemap:false 的页面一律 noindex；Pagefind 也会跳过 noindex 页面{%- endcomment -%}
+  {%- if page.sitemap == false or page.url contains '/writing/' %}
   <meta name="robots" content="noindex,follow" />
   {%- else %}
   <meta name="robots" content="index,follow" />

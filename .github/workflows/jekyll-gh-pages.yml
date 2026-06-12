@@ -18,7 +18,6 @@ on:
       - '.junie/**'
       - '.claude/**'
       - 'scripts/**'
-      - 'writing/**'
   workflow_dispatch:
 
 permissions:

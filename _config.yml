@@ -92,7 +92,15 @@ exclude:
   - .claude
   - .obsidian
   - .junie
-  - writing
+  # writing 只编译 *.md 草稿（供 /pages/writing.html 索引预览），代码/数据/图片目录全部排除
+  - writing/__pycache__
+  - writing/image
+  - writing/learning_agent
+  - writing/DistributeTraining
+  - writing/DataDistributeResult
+  - writing/DataDistributeResult-1
+  - writing/*.py
+  - writing/*.ipynb
   - _framework
 
 # 域名配置

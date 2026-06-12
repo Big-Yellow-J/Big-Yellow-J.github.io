@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /writing/
+Disallow: /pages/writing.html
 
 Sitemap: https://www.big-yellow-j.top/static/xml/sitemap.xml

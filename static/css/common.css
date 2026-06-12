@@ -69,14 +69,33 @@ input:-webkit-autofill {
   -webkit-transition: background-color 2592000s ease-in-out 0s;
   transition: background-color 2592000s ease-in-out 0s;
 }
+/* 滚动条：轨道常驻 14px，拉杆用透明边框裁出 5px 视觉宽度；
+   悬停/拖动时收窄边框 → 拉杆自动放大，松开复原 */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 14px;
+  height: 14px;
   background-color: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  border-radius: 2px;
-  background-color: #999999;
+  border-radius: 7px;
+  background-color: rgba(120, 120, 120, 0.55);
+  border: 4.5px solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.15s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  border-width: 2.5px;
+  background-color: rgba(100, 100, 100, 0.75);
+}
+::-webkit-scrollbar-thumb:active {
+  border-width: 1.5px;
+  background-color: rgba(80, 80, 80, 0.9);
+}
+::-webkit-scrollbar-track { background: transparent; }
+/* Firefox 降级为细滚动条。注意必须用 @supports 限定：
+   Chrome 121+ 一旦设置标准 scrollbar-* 属性会禁用 ::-webkit-scrollbar 自定义样式 */
+@supports not selector(::-webkit-scrollbar) {
+  html { scrollbar-width: thin; scrollbar-color: rgba(120, 120, 120, 0.55) transparent; }
 }
 ::selection {
   background-color: #4a4a4a;
