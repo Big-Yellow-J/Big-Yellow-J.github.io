@@ -73,7 +73,71 @@ async def simple_com(request: SimpleComRequest):
 * `请求体`：可以简答理解为“函数参数”，别人调用你的服务用什么参数（对于参数越详细描述越好）
 
 **补充内容**，除去上面使用的几种方式之外，实际开发过程中还会遇到如下几种场景：
-**1、实时交互**，比如说我的模型都部署在服务器，但是我需要进行实时交互，此时就需要使用 `webscokt` 功能
+**1、实时交互**，比如说我的模型都部署在服务器，但是我如果做实时视频监控识别/实时语音转录，此时就需要使用 `websocket` 功能（**可以简单理解为双发不断“交换数据”协议**），使用其核心作用在在于 前端、后端、算法端进行交互，以ASR（实时语音转录为例）对于这3端功能简要概述如下：后端负责不停地搬 + 给控制信号，算法负责在连续流里找句子的起止并出字，前端则是负责不断进行渲染。对于 `websocket`和前面的 `post` 请求方式类似：发送请求-->模型处理-->返回请求。那么大致伪代码如下（**开发过程中需要注意前后算法确定彼此之间传递参数**）：
+> **音频处理过程主要流程**：VAD（进行音频切分）-->ASR（进行音频转译）-->Punc（进行文本标点处理）
+
+```python
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+router = APIRouter(prefix="/voice", tags=["voice-stream"])
+
+# 请求端处理
+@router.websocket("/stream/asr")
+async def stream_asr(ws: WebSocket):
+    await ws.accept()
+    start = await asyncio.wait_for(ws.receive(), 60) # 持续从 ws 中接收
+    if ...:
+        # 发送错误信号
+        await ws.send_json({"type": "error"})
+    session = SessionProcess(...)
+    # 发送准备信号
+    await ws.send_json({"type": "ready"})
+    while True:
+        msg = await asyncio.wait_for(ws.receive(), 60) # 接受信息
+        data = msg.get("bytes")
+        if data is not None:                      # 音频帧：边收边出 partial/final
+            await session.feed(data)
+            continue
+        ...
+        if t == "end":
+            await _send_frames(ws, await session.finish())
+            await ws.send_json({"type": "done"})
+            break
+# 算法端处理
+class SessionProcess:
+    def __init__(...):
+        self._pending = bytearray()
+        self.buf = bytearray() # 对于音频可能就需要去考虑进行缓存累加，比如说缓存 1s 音频再去进行ASR处理，对于图像可能使用队列更加方便。两种核心都是 消费-生产模型
+        ...
+    async def feed(self, pcm: bytes):
+        """接受数据-->缓存-->处理--->返回"""
+        # 对于音频可能
+        self.buf += pcm
+        self._pending += pcm
+        frames: List[dict] = []
+        while len(self._pending)...:
+            ...
+            frames += await asr_process(...) # 主要返回字段 {"text":xxx}
+        return frames
+```
+
+从上面代码可以发现对于 `websocket` 而言主要是如下几个功能：**1、接收（信息）过程**：直接通过`ws.accept()` 接收客户端消息，`ws.receive()`：接收消息，**2、发送（信息）过程**：发送和接受是相同的主要是发送2大类：**文本帧**以及 **字节帧**对于两者：
+```text
+# 文本帧
+{
+    "type": "websocket.receive",
+    "text": 'hello'
+}
+{
+    "type": "websocket.receive",
+    "text": '{"type":"start"}'
+}
+# 字节帧
+{
+    "type": "websocket.receive",
+    "bytes": b'\x01\x02\x03\x04'
+}
+```
+所以一般直接 `ws.receive` 而后后续直接 `msg.get("text")`或者 `msg.get("bytes")` 获取不同类型结果。
 ### Docker
 > 安装配置好docker之后运维国内监管可能需要去配置[docker镜像](https://github.com/dongyubin/DockerHub)
 

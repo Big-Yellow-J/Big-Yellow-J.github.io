@@ -580,6 +580,44 @@ body, p, div, span, a {
 .related-posts li a:hover { text-decoration: underline; }
 .related-posts li .date { color: #888; font-size: 12px; margin-right: 8px; }
 
+/* 多平台复制菜单（copy-export.js 注入，挂在右下 copy-all 按钮旁） */
+.copy-menu {
+  position: fixed;
+  right: 58px;
+  bottom: 104px;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid #eaecef;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+.copy-menu[hidden] { display: none; }
+.copy-menu .copy-menu-title {
+  font-size: 11px;
+  color: #6e7681;
+  padding: 2px 12px 4px;
+}
+.copy-menu button {
+  border: none;
+  background: none;
+  text-align: left;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: #24292e;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color .12s, color .12s;
+}
+.copy-menu button:hover {
+  background: var(--bk-accent-soft, rgba(51, 102, 204, 0.08));
+  color: var(--bk-accent, #3366cc);
+}
+
 /* 复制反馈 toast */
 .copy-toast {
   position: fixed;

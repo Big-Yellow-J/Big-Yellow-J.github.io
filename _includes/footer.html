@@ -36,8 +36,7 @@
       </span>
     </div>
   </div>
-  <script src="https://unpkg.com/turndown@7.1.1/dist/turndown.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@truto/turndown-plugin-gfm@latest/dist/turndown-plugin-gfm.min.js"></script>
+  {%- comment -%}turndown 已改为 copy-export.js 点击复制时按需加载，不再每页引入{%- endcomment -%}
   <button type="button" class="footer-btn theme-toggler hide" aria-label="切换暗色/亮色主题"><i class="svg-icon icon-theme-light"></i></button>
   <button type="button" class="footer-btn to-top" aria-label="返回顶部"><i class="svg-icon icon-arrow-top"></i></button>
   <button type="button" class="footer-btn copy-all" aria-label="复制全文为 Markdown"><i class="svg-icon copy-svgrepo-com"></i></button>

@@ -217,7 +217,9 @@ body.nav-hidden .header { transform: translateY(-110%); }
 .footer-btn.copy-all {
   right: 16px;
   bottom: 112px; /* 再往上一点 */
+  display: none; /* 复制全文只在文章页有意义 */
 }
+body.layout-post .footer-btn.copy-all { display: flex; }
 .svg-icon {
   display: inline-block;
   width: 1em;

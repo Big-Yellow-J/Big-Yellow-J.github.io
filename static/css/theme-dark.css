@@ -459,6 +459,14 @@ html.dark .post-meta-bar .meta-item span,
 html.dark .post-meta-bar .meta-item time { color: var(--bk-muted); }
 
 html.dark .copy-toast { background: #21262d; color: var(--bk-text); border: 1px solid #30363d; }
+html.dark .copy-menu {
+  background: #161b22;
+  border-color: #30363d;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+html.dark .copy-menu .copy-menu-title { color: var(--bk-muted); }
+html.dark .copy-menu button { color: var(--bk-text); }
+html.dark .copy-menu button:hover { background: rgba(88, 166, 255, 0.12); color: #58a6ff; }
 
 /* page.css 中遗漏的暗色覆盖 */
 html.dark .category-card { background: var(--bk-card-bg); border-color: var(--bk-card-border); color: var(--bk-text); }
