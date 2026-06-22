@@ -150,4 +150,5 @@ if __name__ == "__main__":
         selftest()
     else:
         # Flask 内置服务器：私密低流量场景够用；threaded 让传图时不阻塞其他请求
-        app.run(host="127.0.0.1", port=8000, threaded=True)
+        # 端口默认 8000，本地若被占可用 PORT=8001 临时换
+        app.run(host="127.0.0.1", port=int(os.environ.get("PORT", 8000)), threaded=True)
