@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>私密内容</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="deny">
+  <div class="deny-box">
+    <div class="lock">🔒</div>
+    <h2>私密生活相册</h2>
+    <p>你的身份 <b>{{ me or '未识别' }}</b> 暂未获授权。</p>
+    <p>想看的话，发邮件到 <a href="mailto:{{ owner }}">{{ owner }}</a> 申请，我会把你加进来。</p>
+  </div>
+</body>
+</html>

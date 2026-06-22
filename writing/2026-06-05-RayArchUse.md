@@ -155,6 +155,7 @@ class SessionProcess:
 | 进入容器 | `docker exec -it my-nginx bash`（交互模式：-i、终端模式：-t） |
 
 对于上述语法中启动容器 `docker run xxx`里面 `xxx`一般就是镜像名称，在构建镜像之后可以直接 `run`即可，一般而言[run的参数](https://www.runoob.com/docker/docker-run-command.html)。所以一般而言Docker启动命令如下：
+
 ```bash
 # 1、首先构建docker镜像，直接基于本目录去构建
 docker build -t xxx:xxx . # 其中 xxx:xxx 代表具体镜像名称 . 代表当前目录，也就是说基于当前文件夹 Dockerfile 去构建docker镜像
@@ -171,8 +172,9 @@ docker run -d --name example \
 # 3、容器使用
 docker logs example # 查看日志
 docker stop example # 停止容器
-docker rm -fexample # 停止容器
+docker rm -f example # 停止容器
 docker rmi xxx:xxx  # 删除镜像
+docker exec -it <容器名称或ID> /bin/bash # 进入容器
 ```
 ## Ray
 一句话介绍Ray：**主要是进行分布式计算 / 并行计算的开源框架**，核心目标是：让你用“写本地 Python 的方式”，轻松把程序**扩展到多台机器上运行**（切记*如果服务不涉及到多台府服务器协同/不是高并发不一定要用Ray*）。**不过**Ray只负责管理核心计算还是Pytorch进行。 Ray 架构简单介绍，参考官方v2架构说明[^2]简单介绍Ray架构设计，其中Ray 的架构可以拆解为五个核心组件：

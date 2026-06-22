@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>生活</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="top"><h1>🦄 生活</h1></header>
+
+<form class="composer" method="post" action="/post" enctype="multipart/form-data">
+  <textarea name="text" placeholder="此刻的想法…"></textarea>
+  <div id="preview" class="preview" hidden><img alt="预览"><span class="rm">✕</span></div>
+  <div class="bar">
+    <label class="file-btn">📷 图片
+      <input type="file" name="img" accept="image/*,.heic,.heif" hidden>
+    </label>
+    <button type="submit">发布</button>
+  </div>
+</form>
+
+{% for r in rows %}
+<article class="card">
+  <div class="head">
+    <div class="avatar" data-name="{{ r.nick }}">{{ r.nick[:1]|upper }}</div>
+    <div>
+      <div class="who">{{ r.nick }}</div>
+      <time class="time" data-ts="{{ r.ts }}"></time>
+    </div>
+  </div>
+  {% if r.text %}<div class="text">{{ r.text }}</div>{% endif %}
+  {% if r.img %}<img class="photo" src="/uploads/{{ r.img }}" loading="lazy" alt="">{% endif %}
+  <div class="comments">
+    {% for c in r.comments %}
+    <div class="cmt"><b>{{ c.nick }}</b> {{ c.text }}</div>
+    {% endfor %}
+    <form class="cmt-form" method="post" action="/comment">
+      <input type="hidden" name="pid" value="{{ r.id }}">
+      <input name="text" placeholder="写评论…" maxlength="500" required>
+      <button type="submit">发送</button>
+    </form>
+  </div>
+</article>
+{% else %}
+<div class="card empty">还没有内容，发第一条吧 ✨</div>
+{% endfor %}
+
+<p class="me">登录身份：{{ me }}</p>
+
+<div id="lightbox" class="lightbox" hidden><img alt=""></div>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

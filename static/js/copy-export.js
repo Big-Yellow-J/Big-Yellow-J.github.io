@@ -44,9 +44,11 @@
   }
 
   function meta() {
+    // 优先用 data-url（page.url | absolute_url，带域名的规范地址）；
+    // 兜底剥掉 hash/query，避免把 #锚点、?utm 之类带进原文链接
     return {
       title: article.dataset.title || (document.querySelector('h1') || {}).textContent || '无标题',
-      url: article.dataset.url || window.location.href,
+      url: article.dataset.url || (location.origin + location.pathname),
       date: article.dataset.date || '',
       author: article.dataset.author || '佚名'
     };

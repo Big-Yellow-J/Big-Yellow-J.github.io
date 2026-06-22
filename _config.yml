@@ -104,7 +104,10 @@ exclude:
   - _framework
 
 # 域名配置
+# url: 站点完整域名，absolute_url 过滤器依赖它生成带域名的绝对地址
+#      （canonical / og:url / JSON-LD / 复制导出的原文链接都靠它，缺失会退化成相对路径）
 # baseurl配置,如果网站部署在根目录下的其他目录中，请设置为 /目录名
+url: 'https://www.big-yellow-j.top'
 domainUrl: 'https://www.big-yellow-j.top'
 baseurl: ''
 
@@ -156,6 +159,9 @@ extMermaid: false
 # 生活栏目 (/pages/life.html) 时间线显示方式
 # 可选值：magazine（杂志网格，默认）/ curve（曲线错落）/ axis（中轴交替）
 life_view: magazine
+
+# 私密相册地址（树莓派 tailnet 内 .ts.net，仅受邀者可达）；留空则不显示私密入口
+life_private_url: "https://huangjie.tail036295.ts.net/"
 
 # 列表卡片缩略图代理（首屏图体积大才需要开；置空 = 用原图）
 # 注意：开启后 PhotoSwipe 仍打开原图（src/href 双源），但弹窗显示前会先读缩略图尺寸做容器
