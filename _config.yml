@@ -161,7 +161,7 @@ extMermaid: false
 life_view: magazine
 
 # 私密相册地址（树莓派 tailnet 内 .ts.net，仅受邀者可达）；留空则不显示私密入口
-life_private_url: "https://huangjie.tail036295.ts.net/"
+life_private_url: "https://life.big-yellow-j.top"
 
 # 列表卡片缩略图代理（首屏图体积大才需要开；置空 = 用原图）
 # 注意：开启后 PhotoSwipe 仍打开原图（src/href 双源），但弹窗显示前会先读缩略图尺寸做容器

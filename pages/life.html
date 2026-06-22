@@ -9,16 +9,16 @@ title: 生活
 {%- assign view_mode = site.life_view | default: "magazine" -%}
 
 <div class="page page-life">
-  {%- comment -%}公开/私密入口：私密链向树莓派 tailnet 地址（仅受邀者可达）{%- endcomment -%}
+  {%- comment -%}私密相册入口卡片：链向树莓派私密 feed（仅受邀者可达）{%- endcomment -%}
   {%- if site.life_private_url and site.life_private_url != '' -%}
-  <div class="life-access">
-    <span class="life-access-tab is-active">🦄 公开</span>
-    <a class="life-access-tab" href="{{ site.life_private_url }}" rel="nofollow">🔒 私密相册（需邀请）</a>
-    <p class="life-access-note">
-      私密内容仅邀请制：发邮件到 <a href="mailto:{{ site.author_info.email }}">{{ site.author_info.email }}</a> 申请，
-      受邀加入后用上方链接访问（未受邀点击打不开属正常）。
-    </p>
-  </div>
+  <a class="life-private-entry" href="{{ site.life_private_url }}" rel="nofollow">
+    <span class="life-private-icon">🔒</span>
+    <span class="life-private-body">
+      <strong>私密生活相册</strong>
+      <small>仅邀请制 · 受邀后可看图、留言。想看？发邮件到 {{ site.author_info.email }} 申请（未受邀点击打不开属正常）</small>
+    </span>
+    <span class="life-private-go">进入 →</span>
+  </a>
   {%- endif -%}
 
   {%- assign life_posts = site.posts | where: "categories", "life" -%}

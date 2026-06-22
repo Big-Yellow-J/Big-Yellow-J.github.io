@@ -376,11 +376,16 @@
   }
 }
 
-/* 公开/私密入口栏（pages/life.html 顶部） */
-.life-access { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 18px; }
-.life-access-tab {
-  padding: 5px 14px; border-radius: 16px; border: 1px solid var(--bk-card-border, #d0d7de);
-  font-size: 14px; text-decoration: none; color: var(--bk-text, #24292e);
+/* 私密相册入口卡片（pages/life.html 顶部） */
+.life-private-entry {
+  display: flex; align-items: center; gap: 14px; margin: 0 0 22px; padding: 14px 16px;
+  border-radius: 14px; text-decoration: none;
+  background: linear-gradient(135deg, rgba(255,107,107,.12), rgba(77,171,247,.12));
+  border: 1px solid var(--bk-card-border, #d0d7de); transition: .2s;
 }
-.life-access-tab.is-active { background: var(--bk-accent, #3366cc); color: #fff; border-color: transparent; }
-.life-access-note { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--bk-muted, #6e7681); }
+.life-private-entry:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.1); }
+.life-private-icon { font-size: 26px; flex-shrink: 0; }
+.life-private-body { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.life-private-body strong { font-size: 15px; color: var(--bk-text, #24292e); }
+.life-private-body small { font-size: 12px; color: var(--bk-muted, #6e7681); line-height: 1.5; }
+.life-private-go { flex-shrink: 0; font-size: 14px; font-weight: 600; color: var(--bk-accent, #3366cc); }

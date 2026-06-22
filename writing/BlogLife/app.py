@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # 朋友圈式私密 life feed —— 身份由前置代理(Tailscale Serve 或 Cloudflare Access)注入
-# 运行: python3 app.py        (waitress, 监听 127.0.0.1:8000)
-#       python3 app.py test   (自检)
+# 运行: python3 app.py            (Flask 内置服务器, 监听 127.0.0.1:8000)
+#       LIFE_DEV=1 python3 app.py (本地调试：免鉴权放行 + 打印识别到的身份)
+#       python3 app.py test       (自检)
 # 结构: app.py 后端 + templates/ 模板 + static/ 样式与交互
 import os, sqlite3, time, secrets, sys
 from flask import (Flask, request, redirect, g, send_from_directory,
@@ -19,8 +20,8 @@ except ImportError:
 BASE  = os.path.dirname(os.path.abspath(__file__))
 DB    = os.path.join(BASE, "moments.db")
 UP    = os.path.join(BASE, "uploads")
-OWNER = "2802311325@qq.com"                   # ← 你的邮箱，始终可发可看
-ALLOW = os.path.join(BASE, "allowed.txt")     # 每行一个被邀请邮箱；文件不存在 = 只有你
+OWNER = "2802311325@qq.com"                   # 仅用于未识别身份时的申请联系邮箱
+DEV   = os.environ.get("LIFE_DEV") == "1"     # 本地调试：无身份头也放行，并打印识别到的身份
 OK_EXT   = {"jpg", "jpeg", "png", "webp", "gif"}
 HEIC_EXT = {"heic", "heif"}
 if HEIF_OK:
@@ -48,17 +49,19 @@ def _close(e):
 def viewer():
     # 身份由前置代理注入：Cloudflare Access 或 Tailscale Serve。
     # app 只绑 127.0.0.1，外部到不了 → 这两个头不可伪造，可信。
-    return (request.headers.get("Cf-Access-Authenticated-User-Email")
-            or request.headers.get("Tailscale-User-Login", "")).lower()
+    me = (request.headers.get("Cf-Access-Authenticated-User-Email")
+          or request.headers.get("Tailscale-User-Login", "")).lower()
+    if DEV:                                     # 本地调试：打印识别到的身份，无头也放行
+        print("[life] viewer=%r  CF=%r  TS=%r" % (
+            me, request.headers.get("Cf-Access-Authenticated-User-Email"),
+            request.headers.get("Tailscale-User-Login")), flush=True)
+        me = me or "local@dev"
+    return me
 
 def allowed(email):
-    if not email: return False
-    if email == OWNER.lower(): return True
-    try:
-        with open(ALLOW, encoding="utf-8") as f:
-            return email in {l.strip().lower() for l in f if l.strip()}
-    except FileNotFoundError:
-        return False
+    # 白名单已由前置代理(Cloudflare Access 名单 / tailnet 成员)把关；
+    # 能带上已验证身份的人即放行，人人可看、可发图、可评论。
+    return bool(email)
 
 def ext_ok(name):
     return "." in name and name.rsplit(".", 1)[1].lower() in OK_EXT
@@ -131,8 +134,7 @@ def media(name):
 def selftest():
     assert ext_ok("a.jpg") and ext_ok("A.PNG") and not ext_ok("x.exe") and not ext_ok("noext")
     assert nick("bob@x.com") == "bob"
-    open(ALLOW, "a").close()
-    assert allowed(OWNER.lower()) and not allowed("nobody@x.com") and not allowed("")
+    assert allowed("anyone@x.com") and not allowed("")     # 有身份即放行，空身份拒
     if HEIF_OK:                              # 装了 heif 才测转码：内存造图 → 存盘应得 .webp
         import io
         from werkzeug.datastructures import FileStorage
@@ -147,5 +149,5 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "test":
         selftest()
     else:
-        from waitress import serve
-        serve(app, host="127.0.0.1", port=8000)
+        # Flask 内置服务器：私密低流量场景够用；threaded 让传图时不阻塞其他请求
+        app.run(host="127.0.0.1", port=8000, threaded=True)
