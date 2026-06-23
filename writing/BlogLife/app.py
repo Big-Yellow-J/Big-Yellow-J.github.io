@@ -6,7 +6,7 @@
 # 结构: app.py 后端 + templates/ 模板 + static/ 样式与交互
 import os, sqlite3, time, secrets, sys
 from flask import (Flask, request, redirect, g, send_from_directory,
-                   render_template, abort)
+                   render_template, abort, jsonify)
 
 # HEIC(iPhone 默认格式)支持：装了 pillow-heif 才开启，上传时转成 webp
 try:
@@ -31,6 +31,8 @@ MAX_MB = 25
 os.makedirs(UP, exist_ok=True)
 app = Flask(__name__)                          # 默认用同级 templates/ 与 static/
 app.config["MAX_CONTENT_LENGTH"] = MAX_MB * 1024 * 1024
+if DEV:
+    app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0   # 本地调试：static 不缓存，改完刷新即生效
 
 def db():
     if "db" not in g:
@@ -38,7 +40,14 @@ def db():
         g.db.execute("CREATE TABLE IF NOT EXISTS posts("
                      "id INTEGER PRIMARY KEY, author TEXT, text TEXT, img TEXT, ts INTEGER)")
         g.db.execute("CREATE TABLE IF NOT EXISTS comments("
-                     "id INTEGER PRIMARY KEY, post_id INTEGER, author TEXT, text TEXT, ts INTEGER)")
+                     "id INTEGER PRIMARY KEY, post_id INTEGER, author TEXT, text TEXT,"
+                     " reply_to TEXT, ts INTEGER)")
+        g.db.execute("CREATE TABLE IF NOT EXISTS likes("
+                     "post_id INTEGER, author TEXT, ts INTEGER, PRIMARY KEY(post_id,author))")
+        try:                                   # 老库迁移：comments 补 reply_to 列
+            g.db.execute("ALTER TABLE comments ADD COLUMN reply_to TEXT")
+        except sqlite3.OperationalError:
+            pass
     return g.db
 
 @app.teardown_appcontext
@@ -70,18 +79,23 @@ def nick(email):
     return (email or "?").split("@")[0]
 
 def save_upload(fs):
-    """存上传图片到 UP；HEIC 转 webp 并修正方向，其余原样存。返回文件名，非法返回 None。"""
+    """存单张上传图片到 UP。有 Pillow 时统一压缩转 webp(HEIC/大图都缩到最长边 2000px 省流量)，
+    gif 保留动图、解析失败回退原样存。返回文件名，非法返回 None。"""
     name = fs.filename or ""
     if not ext_ok(name): return None
     ext = name.rsplit(".", 1)[1].lower()
     stem = secrets.token_hex(8)
-    if ext in HEIC_EXT:
-        out = stem + ".webp"
-        im = ImageOps.exif_transpose(Image.open(fs.stream))   # iPhone 照片常带旋转 EXIF
-        im.convert("RGB").save(os.path.join(UP, out), "WEBP", quality=85)
-    else:
-        out = stem + "." + ext
-        fs.save(os.path.join(UP, out))
+    if HEIF_OK and ext != "gif":                  # gif 保留动图，其余统一压缩
+        try:
+            im = ImageOps.exif_transpose(Image.open(fs.stream))   # 修正手机旋转 EXIF
+            im.thumbnail((2000, 2000))                            # 最长边 2000，等比缩放
+            out = stem + ".webp"
+            im.convert("RGB").save(os.path.join(UP, out), "WEBP", quality=82, method=6)
+            return out
+        except Exception:
+            fs.stream.seek(0)                     # 坏图/解析失败 → 回退原样存，不 500
+    out = stem + "." + ext
+    fs.save(os.path.join(UP, out))
     return out
 
 @app.route("/")
@@ -89,13 +103,23 @@ def index():
     me = viewer()
     if not allowed(me):
         return render_template("deny.html", me=me, owner=OWNER), 403
-    cmap = {}
-    for pid, a, t, ts in db().execute(
-            "SELECT post_id,author,text,ts FROM comments ORDER BY id"):
-        cmap.setdefault(pid, []).append(dict(nick=nick(a), text=t, ts=ts))
-    rows = [dict(id=pid, nick=nick(a), text=t, img=i, ts=ts, comments=cmap.get(pid, []))
-            for pid, a, t, i, ts in
-            db().execute("SELECT id,author,text,img,ts FROM posts ORDER BY id DESC")]
+    d = db()
+    cmap = {}                                  # 每帖评论（含回复对象）
+    for pid, a, t, rt, ts in d.execute(
+            "SELECT post_id,author,text,reply_to,ts FROM comments ORDER BY id"):
+        cmap.setdefault(pid, []).append(dict(nick=nick(a), text=t, reply_to=rt, ts=ts))
+    lcount = {pid: n for pid, n in
+              d.execute("SELECT post_id,COUNT(*) FROM likes GROUP BY post_id")}
+    myliked = {pid for (pid,) in
+               d.execute("SELECT post_id FROM likes WHERE author=?", (me,))}
+    rows = []
+    for pid, a, t, i, ts in d.execute(
+            "SELECT id,author,text,img,ts FROM posts ORDER BY id DESC"):
+        imgs = [x for x in (i or "").split(",") if x]
+        rows.append(dict(id=pid, author=a, nick=nick(a), text=t, imgs=imgs, ts=ts,
+                         comments=cmap.get(pid, []),
+                         likes=lcount.get(pid, 0), liked=(pid in myliked),
+                         mine=(a == me or me == OWNER.lower())))
     return render_template("feed.html", me=me, rows=rows)
 
 @app.route("/post", methods=["POST"])
@@ -103,11 +127,13 @@ def post():
     me = viewer()
     if not allowed(me): abort(403)
     text = (request.form.get("text") or "").strip()
-    f = request.files.get("img")
-    img = ""
-    if f and f.filename:
-        img = save_upload(f)
-        if img is None: abort(400, "只支持图片")
+    names = []                                  # 支持多图
+    for f in request.files.getlist("img"):
+        if f and f.filename:
+            n = save_upload(f)
+            if n is None: abort(400, "只支持图片")
+            names.append(n)
+    img = ",".join(names)
     if text or img:
         db().execute("INSERT INTO posts(author,text,img,ts) VALUES(?,?,?,?)",
                      (me, text, img, int(time.time())))
@@ -118,12 +144,51 @@ def post():
 def comment():
     me = viewer()
     if not allowed(me): abort(403)
-    pid  = request.form.get("pid", type=int)
+    pid = request.form.get("pid", type=int)
     text = (request.form.get("text") or "").strip()
+    reply_to = (request.form.get("reply_to") or "").strip()    # 回复对象昵称，空=直接评论
     if pid and text:
-        db().execute("INSERT INTO comments(post_id,author,text,ts) VALUES(?,?,?,?)",
-                     (pid, me, text, int(time.time())))
+        db().execute("INSERT INTO comments(post_id,author,text,reply_to,ts) VALUES(?,?,?,?,?)",
+                     (pid, me, text, reply_to, int(time.time())))
         db().commit()
+    return redirect("/")
+
+@app.route("/like", methods=["POST"])
+def like():
+    me = viewer()
+    if not allowed(me): abort(403)
+    pid = request.form.get("pid", type=int)
+    if not pid: abort(400)
+    d = db()
+    if d.execute("SELECT 1 FROM likes WHERE post_id=? AND author=?", (pid, me)).fetchone():
+        d.execute("DELETE FROM likes WHERE post_id=? AND author=?", (pid, me))
+        liked = False
+    else:
+        d.execute("INSERT INTO likes(post_id,author,ts) VALUES(?,?,?)", (pid, me, int(time.time())))
+        liked = True
+    d.commit()
+    n = d.execute("SELECT COUNT(*) FROM likes WHERE post_id=?", (pid,)).fetchone()[0]
+    return jsonify(liked=liked, count=n)
+
+@app.route("/delete_post", methods=["POST"])
+def delete_post():
+    me = viewer()
+    if not allowed(me): abort(403)
+    pid = request.form.get("pid", type=int)
+    d = db()
+    row = d.execute("SELECT author,img FROM posts WHERE id=?", (pid,)).fetchone()
+    if not row: abort(404)
+    author, img = row
+    if me != author and me != OWNER.lower():    # 只能删自己的；OWNER 可删任意
+        abort(403)
+    for n in (img or "").split(","):            # 删图片文件
+        if n:
+            try: os.remove(os.path.join(UP, n))
+            except FileNotFoundError: pass
+    d.execute("DELETE FROM posts WHERE id=?", (pid,))
+    d.execute("DELETE FROM comments WHERE post_id=?", (pid,))
+    d.execute("DELETE FROM likes WHERE post_id=?", (pid,))
+    d.commit()
     return redirect("/")
 
 @app.route("/uploads/<name>")

@@ -4,40 +4,71 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>生活</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#129412;</text></svg>">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-<header class="top"><h1>🦄 生活</h1></header>
+<header class="top">
+  <h1>🦄 生活</h1>
+  <span class="me-badge" title="{{ me }}">{{ me }}</span>
+</header>
 
 <form class="composer" method="post" action="/post" enctype="multipart/form-data">
-  <textarea name="text" placeholder="此刻的想法…"></textarea>
-  <div id="preview" class="preview" hidden><img alt="预览"><span class="rm">✕</span></div>
+  <textarea name="text" placeholder="分享此刻的想法…"></textarea>
+  <div id="preview" class="preview"></div>
   <div class="bar">
-    <label class="file-btn">📷 图片
-      <input type="file" name="img" accept="image/*,.heic,.heif" hidden>
+    <label class="file-btn">🖼️ 添加图片
+      <input type="file" name="img" accept="image/*,.heic,.heif" multiple hidden>
     </label>
-    <button type="submit">发布</button>
+    <button type="submit" class="post-btn">发布</button>
   </div>
 </form>
 
+<div class="feed">
 {% for r in rows %}
-<article class="card">
+<article class="card" data-pid="{{ r.id }}">
   <div class="head">
     <div class="avatar" data-name="{{ r.nick }}">{{ r.nick[:1]|upper }}</div>
-    <div>
+    <div class="head-info">
       <div class="who">{{ r.nick }}</div>
       <time class="time" data-ts="{{ r.ts }}"></time>
     </div>
+    {% if r.mine %}
+    <form class="del-form" method="post" action="/delete_post">
+      <input type="hidden" name="pid" value="{{ r.id }}">
+      <button class="del-btn" title="删除这条动态">🗑️</button>
+    </form>
+    {% endif %}
   </div>
+
   {% if r.text %}<div class="text">{{ r.text }}</div>{% endif %}
-  {% if r.img %}<img class="photo" src="/uploads/{{ r.img }}" loading="lazy" alt="">{% endif %}
+
+  {% if r.imgs %}
+  <div class="photos {% if r.imgs|length == 1 %}single{% endif %}">
+    {% for im in r.imgs %}
+    <img class="photo" src="/uploads/{{ im }}" loading="lazy" alt="">
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="actions">
+    <button class="like-btn{% if r.liked %} liked{% endif %}" data-pid="{{ r.id }}">
+      <span class="heart">{% if r.liked %}♥{% else %}♡{% endif %}</span><span class="like-count">{{ r.likes }}</span>
+    </button>
+  </div>
+
   <div class="comments">
     {% for c in r.comments %}
-    <div class="cmt"><b>{{ c.nick }}</b> {{ c.text }}</div>
+    <div class="cmt">
+      <b>{{ c.nick }}</b>{% if c.reply_to %} <span class="reply-tag">回复 @{{ c.reply_to }}</span>{% endif %}
+      <span class="cmt-text">{{ c.text }}</span>
+      <button class="reply-btn" data-nick="{{ c.nick }}">回复</button>
+    </div>
     {% endfor %}
     <form class="cmt-form" method="post" action="/comment">
       <input type="hidden" name="pid" value="{{ r.id }}">
-      <input name="text" placeholder="写评论…" maxlength="500" required>
+      <input type="hidden" name="reply_to" value="">
+      <input class="cmt-input" name="text" placeholder="写评论…" maxlength="500" required>
       <button type="submit">发送</button>
     </form>
   </div>
@@ -45,10 +76,16 @@
 {% else %}
 <div class="card empty">还没有内容，发第一条吧 ✨</div>
 {% endfor %}
+</div>
 
-<p class="me">登录身份：{{ me }}</p>
+<p class="me-foot">登录身份：{{ me }}</p>
 
-<div id="lightbox" class="lightbox" hidden><img alt=""></div>
+<div id="lightbox" class="lightbox" hidden>
+  <button class="lb-prev" aria-label="上一张">‹</button>
+  <img class="lb-img" alt="">
+  <button class="lb-next" aria-label="下一张">›</button>
+  <div class="lb-count"></div>
+</div>
 <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
