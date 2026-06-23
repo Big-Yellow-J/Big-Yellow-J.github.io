@@ -17,7 +17,7 @@ description: Ray是支持以本地Python写法实现分布式/并行计算的开
   Core的Task、Actor、Object基础分布式原语，封装Ray Data分布式数据预处理、Ray Train多框架分布式训练、Ray Tune分布式超参数搜索能力，大幅降低分布式开发门槛。
 ---
 前面介绍了在[pytorch中不同的分布式训练实现方式](https://www.big-yellow-j.top/posts/2026/04/20/torch-basic-distribute-1.html)，这里简单介绍分布式框架（更加多的设计到了模型部署、服务器调度之间内容，非严格的pytorch内容）Ray以及Docker等内容。
-## 前置知识
+## 前置知识 
 所有内容只去介绍基本概念与使用，更加丰富的细节建议去看官方文档（或者直接AI）。docker文档[^3]、FastAPI[^4]
 ### 异步/多线程/多进程
 **首先程序任务主要为两类**：*1、CPU 密集*：一直在"**算**"，CPU 满载（图片处理、模型推理、加密、大量计算）；*2、IO 密集*：大量时间在"**等**"（网络请求/读写文件）。而对于异步/多线程/多进程可以简单理解为（以餐厅服务多人为例）：一个服务员等菜的时候去别的桌子（*异步*）、多个服务员当时公用一个厨师（*多线程*）、直接开多家餐厅（*多进程*）
@@ -144,7 +144,8 @@ class SessionProcess:
 一句话介绍Docker作用：**避免每次开发因为不同的开发环境问题而去抓狂**。在docker中核心就是3部分组成：1、镜像（image）；2、容器（container）；3、dockerfile。对于这三部分实际上你可以简单的把image理解为可执行程序，container就是运行起来的进程。那么写程序需要源代码，那么“写”image就需要dockerfile，dockerfile就是image的源代码，docker就是"编译器"。因此我们只需要在dockerfile中指定需要哪些程序、依赖什么样的配置，之后把dockerfile交给“编译器”docker进行“编译”，也就是docker build命令，生成的可执行程序就是image，之后就可以运行这个image了，这就是docker run命令，image运行起来后就是docker container。
 > **简单总结起来就是**：dockerfile定义如何构建、image是构建后的模板、container是模板运行后的实例。首先我们编写 Dockerfile，用来描述项目需要什么环境、依赖以及启动方式；然后根据 Dockerfile 构建出 Image（镜像）；最后通过 Image 启动 Container（容器）运行程序。Container 可以理解为一个相对独立、隔离的运行环境，因此能够避免“我电脑能跑，你电脑跑不了”的问题。
 
-如果要去**打包一个docker**需要执行的处理（直接AI分析去写所有的文件即可），**1、写Dockerfile**（去docker里面都需要执行哪些操作直接提前安排好运行），Dockerfile核心语法就是如下几个：`FROM`：使用的镜像比如说用到Python/Linux/cuda等版本信息、`WORKDIR`：设置工作目录、`COPY`：复制文件、`RUN`：执行命令（比如说`apt install`以及 `pip install`等命令）、`CMD`：相当于终端执行；**2、docker-compose.yml文件**；**3、`.dockerignore`**。除此之外一些**docker常用的基本命令**：
+如果要去**打包一个docker**需要执行的处理（直接AI分析去写所有的文件即可），**1、写Dockerfile**（去docker里面都需要执行哪些操作直接提前安排好运行），Dockerfile核心语法就是如下几个：`FROM`：使用的镜像比如说用到Python/Linux/cuda等版本信息、`WORKDIR`：设置工作目录、`COPY`：复制文件、`RUN`：执行命令（比如说`apt install`以及 `pip install`等命令）、`CMD`：相当于终端执行；**2、docker-compose.yml文件**；**3、`.dockerignore`**。
+除此之外一些**docker常用的基本命令**：
 
 | docker命令 | 语法 |
 |:---------:|:-----:|
@@ -165,6 +166,7 @@ docker run -d --name example \
   --env-file .env.example \
   -e PORT=59420 \
   -v /data_share/model:/data_share/model \
+  -v /本地文件夹:/docker文件夹
   -p 59420:8080 \
   xxx:xxx
 # example为具体容器名称 xxx:xxx 为镜像名称 -p 分别代表本地端口:docker端口，也就是说docker内部放行8080走本地59420去访问 -v 去挂载目录，一般就是项目代码/模型权重
@@ -176,6 +178,7 @@ docker rm -f example # 停止容器
 docker rmi xxx:xxx  # 删除镜像
 docker exec -it <容器名称或ID> /bin/bash # 进入容器
 ```
+**除去常用的docker语法**，在使用过程中一般而言需要容器的“热重启”（本地修改-->容器自动修改）因此在启动容器时候就需要将本地文件进行挂载（使用参数 "-v" 即可），对于 `Dockerfile` 中 `CMD` 一般使用过程中我的 `bash` 脚本会去使用部分参数比如在使用fastapi中去使用端口等，在启动容器时候只需要 `-e 脚本参数`
 ## Ray
 一句话介绍Ray：**主要是进行分布式计算 / 并行计算的开源框架**，核心目标是：让你用“写本地 Python 的方式”，轻松把程序**扩展到多台机器上运行**（切记*如果服务不涉及到多台府服务器协同/不是高并发不一定要用Ray*）。**不过**Ray只负责管理核心计算还是Pytorch进行。 Ray 架构简单介绍，参考官方v2架构说明[^2]简单介绍Ray架构设计，其中Ray 的架构可以拆解为五个核心组件：
 ![](https://files.seeusercontent.com/2026/06/07/7Zrp/20260607214147926.png)
@@ -226,21 +229,7 @@ Raylet 的设计理念是"让每个节点自治"——即使 Head Node 暂时不
 > 对于**普通训练过程**可能是：初始化参数-->进行参数计算得到效果-->贝叶斯优化器决定下一组参数-->循环
 
 ### Ray Core
-**Ray 架构**和 **Ray Core** 之间的关系，简单说：**架构是"幕后"（运行时怎么跑），Ray Core 是"台前"（你怎么写代码）**。在用 Ray Core 的 Task、Actor、Object 写程序，底层架构自动调度执行。对应关系如下：
-
-| 代码（Ray Core）         | 幕后发生了什么（Ray 架构）                                                             |
-| ------------------------ | -------------------------------------------------------------------------------------- |
-| `@ray.remote` 装饰函数 | 函数定义被注册到**GCS**，集群中所有节点都知道这个函数                            |
-| `func.remote(args)`    | **Scheduler** 从 GCS 拿到任务，找到空闲 **Worker Node**，分配过去执行      |
-| `@ray.remote class`    | GCS 创建一个**Actor** 记录，**Raylet** 在某节点上启动并管理这个 Actor 进程 |
-| `ray.put(data)`        | 数据写入当前节点的**Object Store**，返回引用存到 GCS                             |
-| `ray.get(ref)`         | 从 GCS 查到数据在哪个节点的 Object Store，惰性拉取                                     |
-| `train.report(...)`    | 指标通过 GCS 的 Pub/Sub 广播给 Head Node                                               |
-
-> 打个比方：Ray Core 是你手中的方向盘和油门，Ray 架构是引擎盖下的发动机、变速箱和传动轴。你不需要知道齿轮怎么转，但理解了能帮你写出更高效的代码。
-
-Ray Core 是 Ray 的**底层编程接口**，提供了最基础的分布式原语。上面提到的 Ray Data、Ray Train、Ray Tune 都是构建在 Ray Core 之上的。对于Ray core核心三个概念：
-
+Ray Core 是 Ray 的**底层编程接口**，提供了最基础的分布式原语。涉及到的Ray的其他运算如 Ray Data、Ray Train、Ray Tune 都是构建在 Ray Core 之上的。对于Ray core核心三个概念：
 **1、Task（远程函数）**
 把一个普通 Python 函数变成可以在集群任意节点上并行执行的"任务"：
 ```python
@@ -259,7 +248,7 @@ results = [train_rf.remote(n, d) for n, d in param_combinations]
 scores = ray.get(results)
 ```
 对应到架构：`@ray.remote` 装饰的函数被 GCS 记录，调用 `.remote()` 时 Scheduler 将任务分配到空闲 Worker，返回值通过 Object Store 传递。
-**2、Actor（有状态的工作者）**
+**2、Actor（远程类实例）**
 Task 是无状态的（每次调用独立），而 Actor 是**有状态的长期运行的 Worker**。比如需要一个持续更新的贝叶斯模型：
 ```python
 @ray.remote
@@ -288,9 +277,8 @@ data_ref = ray.put(large_dataset)   # 放入本地 Object Store，返回引用
 # 任何节点上的 Worker 都可以：
 data = ray.get(data_ref)            # 惰性拉取，零拷贝共享内存
 ```
-对应到架构：这就是前面 Object Store 部分讲到的——同节点共享内存零拷贝，跨节点惰性传输。
-> **一句话总结 Ray Core**：`@ray.remote` 把函数/类变成可分布式执行的 Task/Actor，`ObjectRef` 让数据在集群中透明流转。理解了这三者，就理解了 Ray 的编程基础。
-
+对应到架构：这就是前面 Object Store 部分讲到的——同节点共享内存零拷贝，跨节点惰性传输。**一句话总结 Ray Core**：`@ray.remote` 把函数/类变成可分布式执行的 Task/Actor，`ObjectRef` 让数据在集群中透明流转。理解了这三者，就理解了 Ray 的编程基础。除此之外对于Ray使用只用上述几个还不够：
+**1、Ray进行资源管理分配**，在使用 `ray.remote` 过程可以直接去装饰器里面去对资源进行配置如 `@ray.remote()`，具体[支持的参数配置](https://www.aidoczh.com/ray/ray-core/api/doc/ray.remote.html)
 ## Ray实战
 ### 模型部署
 考虑将优化好的模型进行服务器部署，那么就需要考虑如下几个问题（**仅为娱乐项目**）：**1、资源使用**，比如说对于每一个模型如何去划分他所需要的资源；**2、服务可靠性**，比如说我的节点挂掉了能不能自动恢复；**3、可观测结果**，比如说我需要监控模型的运行情况，比如说模型的运行时间，模型的运行结果等等；**4、部署**，考虑到k8s/docker部署就需要去完成对应优化；**5、服务安全**，比如 Ray Dashboard监控面板不可能让他暴露公网。**具体到实际应用**比如说服务器上部署如下几个模型：1、CLIP进行图像分类；2、Yolo进行目标识别（实时目标识别）；4、oneformer-large进行实体分割；5、并且启动milvus向量数据库（考虑数据比较少不会太复杂）；6、补充压力测试脚本。那么**项目整体结构**如下：
