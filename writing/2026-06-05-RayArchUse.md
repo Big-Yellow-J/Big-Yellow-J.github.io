@@ -179,6 +179,99 @@ docker rmi xxx:xxx  # 删除镜像
 docker exec -it <容器名称或ID> /bin/bash # 进入容器
 ```
 **除去常用的docker语法**，在使用过程中一般而言需要容器的“热重启”（本地修改-->容器自动修改）因此在启动容器时候就需要将本地文件进行挂载（使用参数 "-v" 即可），对于 `Dockerfile` 中 `CMD` 一般使用过程中我的 `bash` 脚本会去使用部分参数比如在使用fastapi中去使用端口等，在启动容器时候只需要 `-e 脚本参数`
+### 架构设计
+写项目最忌"上来就写代码"——模型、接口、数据库全堆一个文件里，跑是能跑，但模型一挂整服务死、改一行代码要重载 30s 模型、上线才发现 dashboard 暴露了公网。**正确顺序是先分层定职责，再往里填代码**（Ray、FastAPI 只是某一层的实现手段）。从算法工程师角度，一个模型服务的架构设计可以从下面 6 个维度出发——前 4 个解决“怎么跑起来、扩出去”，后 2 个解决“怎么稳住、怎么上线”：
+
+**1、模型部署**
+核心是让模型**常驻显存、不重复加载**：每次请求都重新 load 几百 MB～几 GB 权重，光加载就拖垮延迟。做法是用常驻进程（如 Ray Actor）把模型加载一次后留在显存，后续请求直接复用；同时要考虑**显存怎么分**（一张卡跑多个模型时按比例切）和**容错**（模型/进程挂了能不能自动重启）。
+
+**2、外接服务**
+模型本身往往不够，还要接外部存储做检索匹配，典型就是接 **milvus 等向量数据库**做向量相似检索（图搜图、语义检索）。这里要决定：嵌进主进程当单例（轻量、数据少），还是独立部署成单独服务（数据大、需独立扩）。
+
+**3、算力分离（GPU / CPU 解耦）**
+一个服务里其实混着两类负载：**重 GPU 计算**（模型推理）和**重 CPU 计算**（milvus 向量化检索、外部 API 调用、图像编解码等）。两者挤在一起会互相拖累——GPU 在算时 CPU 任务排队，反之亦然。**做法是拆成两端**（甚至两台机器）分别处理，各自按自己的瓶颈独立扩容。
+> 代价：分离后两端之间多了**网络往返 + 序列化开销**（传图、传向量都要序列化），数据量大时要权衡“分离收益 vs 通信成本”，能就近就别跨机。
+
+**4、高并发**
+分成两端后，真正的考验是**每一端扛不扛得住并发**。这件事有两面：
+- **进攻（提吞吐）**：① **批处理**——零碎小请求攒成一批喂 GPU，利用率和吞吐翻倍，性价比常比加机器还高；② **缓存去重**——重复请求直接走 LRU 缓存不重算；③ **多副本**——同一模型起多个实例分摊压力。
+- **防御（过载保护）**：① **限流**——超阈值请求直接拒绝，保住已接请求；② **熔断/降级**——下游（如 milvus 慢查询）卡住时快速失败，别让线程全堆死引发雪崩；③ **超时**——每步设上限，不无限等。
+> 很多人只想到“进攻”（加机器扛），却忘了“防御”：没有限流熔断，一次 milvus 慢查询堆积就能把整条链路拖垮。
+
+**5、可观测**
+服务跑起来后，出问题怎么定位是哪个模型、哪一步慢？必须**提前埋点**：日志分级（INFO/WARN/ERROR）、关键指标（QPS、延迟分布、显存占用）、**request_id 链路追踪**（一条请求穿过哪几层一目了然）、慢请求自动告警。没有可观测，线上等于盲飞。
+
+**6、部署与安全**
+最后是上线：用 **docker / k8s 打包**保证环境一致、可复现；监控面板（如 Ray Dashboard）**只绑内网 127.0.0.1** 不暴露公网，必要时加鉴权。娱乐项目可以简化，但“面板不暴露公网”是底线。
+
+因此参考上述描述加入有如下项目（假设是双端分离） **实时摄像头检测服务** ：1、CPU端负责摄像头内容读取-->发送到GPU端计算，那么可以直接将摄像头读取、数据库存储等服务都放到CPU端（**实际数据库会有另外其他服务**）；2、GPU端负责图像的目标检测、识别、大模型等服务，因此可以直接考虑如下的架构图（**对应下面Ray实战项目**）：
+```mermaid
+flowchart LR
+    CAM["摄像头<br/>RTSP / USB / 边缘客户端推帧"]
+
+    subgraph A["CPU 端 · 应用 / IO 服务器（无 GPU）"]
+        direction TB
+        subgraph API["FastAPI 进程 (uvicorn)"]
+            direction TB
+            MW["Middleware<br/>request_id · 限流32 · histogram · 慢请求"]
+            R1["/classify · /detect · /segment"]
+            R2["/v1/embed · /v1/search"]
+            R3["/v1/video/* 任务式 + /live 实时流"]
+            IL["image_loader<br/>下载 · 读盘 · 解码 · 缩放"]
+            CACHE[("LRU Cache<br/>(model, md5) → vector")]
+            DISP["Dispatch 层<br/>句柄缓存 · 自愈 · 熔断"]
+        end
+        subgraph DB["Milvus Lite（进程内单例）"]
+            COL1[("embeddings_clip")]
+            COL2[("embeddings_qwen_vl")]
+        end
+        FS["data/（milvus + 备份）<br/>tmp/ray_log"]
+    end
+
+    subgraph B["GPU 端 · Ray 推理节点"]
+        direction TB
+        subgraph GPU0["GPU 0（num_gpus 软配额）"]
+            AC1["CLIP Actor · 0.20"]
+            AC2["YOLO Actor · 0.20"]
+            AC3["OneFormer Actor · 0.50"]
+            AC4["Qwen-Embed Actor · 0.30"]
+        end
+        VW["VideoWorker<br/>@ray.remote 函数"]
+        LLM["大模型 Actor<br/>（可选 · VLM/描述）"]
+    end
+
+    CAM ==>|RTSP / WS JPEG 帧| MW
+    MW --> R1
+    MW --> R2
+    MW --> R3
+    R1 --> IL
+    IL --> DISP
+    R2 --> CACHE
+    CACHE -.miss.-> DISP
+    R2 --> COL1
+    R2 --> COL2
+    R3 -.submit.-> VW
+
+    DISP ==>|Ray RPC（跨机）| AC1
+    DISP ==>|Ray RPC（跨机）| AC2
+    DISP ==>|Ray RPC（跨机）| AC3
+    DISP ==>|Ray RPC（跨机）| AC4
+    DISP ==>|Ray RPC| LLM
+    VW -.infer_frame.-> AC2
+
+    AC1 -.向量.-> DISP
+    AC2 -.检测框.-> DISP
+    COL1 --> FS
+    COL2 --> FS
+
+    classDef cpu fill:#e3f2fd,stroke:#1976d2;
+    classDef gpu fill:#fff3e0,stroke:#f57c00;
+    classDef store fill:#e8f5e9,stroke:#388e3c;
+    class MW,R1,R2,R3,IL,CACHE,DISP cpu;
+    class AC1,AC2,AC3,AC4,VW,LLM gpu;
+    class COL1,COL2,FS store;
+```
+
 ## Ray
 一句话介绍Ray：**主要是进行分布式计算 / 并行计算的开源框架**，核心目标是：让你用“写本地 Python 的方式”，轻松把程序**扩展到多台机器上运行**（切记*如果服务不涉及到多台府服务器协同/不是高并发不一定要用Ray*）。**不过**Ray只负责管理核心计算还是Pytorch进行。 Ray 架构简单介绍，参考官方v2架构说明[^2]简单介绍Ray架构设计，其中Ray 的架构可以拆解为五个核心组件：
 ![](https://files.seeusercontent.com/2026/06/07/7Zrp/20260607214147926.png)
@@ -230,35 +323,51 @@ Raylet 的设计理念是"让每个节点自治"——即使 Head Node 暂时不
 
 ### Ray Core
 #### 简单使用
-Ray Core 是 Ray 的**底层编程接口**，提供了最基础的分布式原语。涉及到的Ray的其他运算如 Ray Data、Ray Train、Ray Tune 都是构建在 Ray Core 之上的。对于Ray core核心三个概念：
-**1、Task（远程函数）**
-把一个普通 Python 函数变成可以在集群任意节点上并行执行的"任务"：
+Ray Core 是 Ray 的**底层编程接口**，上层的 Ray Data、Ray Train、Ray Tune 都建在它之上。它只做一件事：**把"本地 Python"翻译成"集群上并行跑"**。要理解它，先记住一个核心动作 `.remote()`：凡是加了它的调用都**不阻塞**，立刻返回一个 `ObjectRef`（可以理解为"取餐号"——任务还没好，但你先拿到了凭证），真正要结果时再用 `ray.get()` 凭号取餐。围绕这个动作，Ray 给了三个原语，解决三个递进的问题：
+
+| 原语 | 一句话 | 解决什么问题 | 状态 |
+|:----:|:------|:------------|:----:|
+| **Task** | 远程**函数** | 把一次性计算丢到别的核/机器上并行跑 | 无状态 |
+| **Actor** | 远程**类实例** | 让"加载一次、反复调用"的东西常驻 | 有状态 |
+| **Object** | 远程**数据引用** | 让大数据在节点间零拷贝流转，不重复传 | —— |
+
+**1、Task：把函数变成可并行的任务**
+
+最常见的需求：我有个函数要跑很多遍（不同参数），每遍互不相关，想并行。`@ray.remote` 就把普通函数变成"远程任务"。
+
 ```python
 import ray
 
-@ray.remote            # 装饰器：将函数注册为 Ray Task
+@ray.remote                       # 装饰器：把函数注册为 Ray Task
 def train_rf(n_estimators, max_depth):
     from sklearn.ensemble import RandomForestClassifier
     model = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth)
     model.fit(X_train, y_train)
     return model.score(X_val, y_val)
 
-# 发起 4 个并行任务（非阻塞，立即返回 ObjectRef）
-results = [train_rf.remote(n, d) for n, d in param_combinations]
-# 阻塞等待所有结果
-scores = ray.get(results)
+# .remote() 发起任务：非阻塞，立刻返回 ObjectRef（取餐号）
+refs = [train_rf.remote(n, d) for n, d in param_combinations]
+
+# ray.get() 凭号取餐：阻塞，等所有结果回来
+scores = ray.get(refs)
 ```
-对应到架构：`@ray.remote` 装饰的函数被 GCS 记录，调用 `.remote()` 时 Scheduler 将任务分配到空闲 Worker，返回值通过 Object Store 传递。
-**2、Actor（远程类实例）**
-Task 是无状态的（每次调用独立），而 Actor 是**有状态的长期运行的 Worker**。比如下面代码：
+
+> **关键点**：`for` 循环里的 4 个 `.remote()` 几乎瞬间执行完，因为它们只是"把任务提交出去"。4 个训练是在 4 个 Worker 上**同时**跑的，不是排队跑的。
+
+对应到架构：`@ray.remote` 的函数定义被 GCS 记录 → 调用 `.remote()` 时 Scheduler 挑一个空闲 Worker 执行 → 返回值放进 Object Store，`ray.get()` 时取回。**何时用**：无状态的批量计算——批量调参、批量数据处理、Map 阶段。
+
+**2、Actor：把"加载一次"的东西常驻下来**
+
+Task 的问题：**它是无状态的，每次调用都从零开始**。如果每个任务都要先 `YOLO("yolov8n.pt")` 加载几百 MB 模型再推理，加载开销会把你拖死。Actor 解决这个问题——它是一个**有状态、长期活着的 Worker**：模型在 `__init__` 里加载**一次**，常驻显存，之后每次 `infer` 直接用。
+
 ```python
 import ray
 from ultralytics import YOLO
 
-@ray.remote(num_gpus=0.25)          # 声明为 Ray Actor，分配 1/4 张 GPU
+@ray.remote(num_gpus=0.25)          # 声明为 Actor，并分配 1/4 张 GPU
 class YOLOActor:
     def __init__(self, model_path="yolov8n.pt"):
-        self.model = YOLO(model_path)  # 模型加载后常驻 GPU，后续调用不再重复加载
+        self.model = YOLO(model_path)   # 只加载一次，常驻 GPU
 
     def infer(self, image_path: str, conf: float = 0.25):
         """对图片做目标检测，返回 bbox + 类别 + 置信度。"""
@@ -274,44 +383,52 @@ class YOLOActor:
                 })
         return dets
 
-# 创建 Actor 实例（部署到某个 Worker Node，占用对应 GPU 资源）
+# 创建 Actor 实例：部署到某个 Worker，占用 0.25 张 GPU，模型在此刻加载
 detector = YOLOActor.remote("yolov8n.pt")
 
-# 调用：.remote() 非阻塞，立即返回 ObjectRef；ray.get() 阻塞等待结果
+# 调用方法：.remote() 仍然非阻塞，ray.get() 取结果
 ref = detector.infer.remote("street.jpg", conf=0.5)
 results = ray.get(ref)
-# results = [
-#     {"bbox": [10.0, 20.0, 100.0, 200.0], "class": "person", "conf": 0.92},
-#     {"bbox": [50.0, 30.0, 150.0, 180.0], "class": "car",    "conf": 0.87},
-# ]
+```
 
-具体脚本进程
-  脚本进程                          Ray Worker 进程 (持有 GPU)
-     │                                        │
-     ├─ detector = YOLOActor.remote(...) ----→│ 创建 Actor，执行 __init__
-     │                                        │ YOLO("yolov8n.pt") 加载到 GPU
-     │                                        │ 模型常驻，等待调用
-     │                                        │
-     ├─ ref = detector.infer.remote("a.jpg")-→│ 执行 infer("a.jpg")
-     │                                        │ GPU 推理 → 结果写入 Object Store
-     │                                        │
-     ├─ ref = detector.infer.remote("b.jpg")-→│ 队列排队（如设 max_concurrency）
-     │                                        │
-     ├─ results_a = ray.get(ref_a) ←----------┤ 从 Object Store 拉结果
-     │
-     └─ results_b = ray.get(ref_b) ←----------┤
+Task vs Actor 的本质区别，看这张时序图（注意 `__init__` 只发生一次）：
+
+```text
+脚本进程                              Ray Worker 进程 (持有 GPU)
+   │                                          │
+   ├─ detector = YOLOActor.remote(...) ──────→│ 创建 Actor，执行 __init__
+   │                                          │   YOLO(...) 加载到 GPU（仅此一次）
+   │                                          │   模型常驻，等待调用
+   │                                          │
+   ├─ ref_a = detector.infer.remote("a.jpg")─→│ 直接推理（不再加载模型）
+   ├─ ref_b = detector.infer.remote("b.jpg")─→│ 排队（受 max_concurrency 限制）
+   │                                          │
+   ├─ ray.get(ref_a) ←───────────────────────┤ 从 Object Store 取结果
+   └─ ray.get(ref_b) ←───────────────────────┤
 ```
-对应到架构：Actor 被 GCS 管理生命周期，Raylet 负责在所在节点为其分配资源和调度其方法调用。
-**3、Object（分布式对象引用）**
-`ray.put()` 把数据放入 Object Store，返回一个 `ObjectRef`（类似指针）。`ray.get()` 从任何节点拉取数据：
+
+对应到架构：Actor 的生命周期由 GCS 管理，所在节点的 Raylet 为它分配资源、调度它的方法调用。**何时用**：需要"加载一次、反复用"的有状态场景——模型推理服务、维护计数器/缓存、有内部状态的流式处理。
+
+**3、Object：让数据在集群里零拷贝流转**
+
+前两个原语传的是"任务"，这个原语传的是"**数据**"。问题场景：你有个 10GB 的数据集，要被 4 个 Task 共用。如果每次 `.remote(dataset)` 都把它序列化、复制一份传过去，4 份 40GB，内存直接爆。`ray.put()` 把数据放进 Object Store **一次**，返回一个 `ObjectRef`（指针），之后所有任务传这个**引用**就行，同节点的 Worker 直接共享内存读，零拷贝。
+
 ```python
-data_ref = ray.put(large_dataset)   # 放入本地 Object Store，返回引用
-# 任何节点上的 Worker 都可以：
-data = ray.get(data_ref)            # 惰性拉取，零拷贝共享内存
+data_ref = ray.put(large_dataset)        # 放入 Object Store，返回引用（只存一份）
+
+# 把"引用"传给任务，而不是数据本身
+refs = [train_rf.remote(data_ref, params) for params in grid]
+results = ray.get(refs)                   # 同节点零拷贝；跨节点才惰性拉取
 ```
-对应到架构：这就是前面 Object Store 部分讲到的——同节点共享内存零拷贝，跨节点惰性传输。**一句话总结 Ray Core**：`@ray.remote` 把函数/类变成可分布式执行的 Task/Actor，`ObjectRef` 让数据在集群中透明流转。理解了这三者，就理解了 Ray 的编程基础。除此之外对于Ray使用只用上述几个还不够：
-**1、Ray进行资源管理分配**，在使用 `ray.remote` 过程可以直接去装饰器里面去对资源进行配置如 `@ray.remote(num_gpus=0.5, num_cpus=2)`，去指定我的模型对于显卡、CPU等占用比例，其中具体[支持的参数配置](https://www.aidoczh.com/ray/ray-core/api/doc/ray.remote.html)
-**2、异步调用**，在资源分配之后可以简单理解为“每个模型都只占用GPU中部分显存”，那么同一块显卡上多个服务（假设3个）被启动了我直接去访问
+
+> 其实你前面用 `ray.get(refs)` 取 Task / Actor 的结果时，背后就是 Object Store 在工作——**所有 `.remote()` 的返回值都自动存在 Object Store 里**。`ray.put` 只是让你手动把"输入数据"也放进去。
+
+对应到架构：这就是前面 Object Store 组件讲到的——同节点共享内存零拷贝，跨节点惰性传输（谁用到才拉）。**何时用**：多个任务共享同一份大数据（数据集、大权重、配置），避免重复传输。
+**一句话总结 Ray Core**：`@ray.remote` 把**函数**变 Task、把**类**变 Actor；`ray.put/get` 让**数据**通过 `ObjectRef` 在集群里透明流转。三者都靠 `.remote()` 异步发起、`ray.get()` 同步取回。理解了这三者，就理解了 Ray 的编程基础。除此之外，实际使用还绕不开两个配套能力：
+**1、资源分配**，在 `@ray.remote` 装饰器里直接声明资源占用，如 `@ray.remote(num_gpus=0.5, num_cpus=2)`。注意 `num_gpus=0.5` 是**软配额**——Ray 只负责"按比例调度"，不强制隔离显存，靠你自己保证同卡上多个 Actor 显存加起来不超。[支持的参数配置](https://www.aidoczh.com/ray/ray-core/api/doc/ray.remote.html)
+**2、并发控制**，Actor 默认**串行**执行方法（一次一个），用 `@ray.remote(max_concurrency=N)` 可让单个 Actor 同时处理 N 个请求——配合上面的软配额，同一张卡上多个服务就能真正并发吃满 GPU。
+#### 进阶使用
+
 ## Ray实战
 ### 模型部署
 考虑将优化好的模型进行服务器部署，那么就需要考虑如下几个问题（**仅为娱乐项目**）：**1、资源使用**，比如说对于每一个模型如何去划分他所需要的资源；**2、服务可靠性**，比如说我的节点挂掉了能不能自动恢复；**3、可观测结果**，比如说我需要监控模型的运行情况，比如说模型的运行时间，模型的运行结果等等；**4、部署**，考虑到k8s/docker部署就需要去完成对应优化；**5、服务安全**，比如 Ray Dashboard监控面板不可能让他暴露公网。**具体到实际应用**比如说服务器上部署如下几个模型：1、CLIP进行图像分类；2、Yolo进行目标识别（实时目标识别）；4、oneformer-large进行实体分割；5、并且启动milvus向量数据库（考虑数据比较少不会太复杂）；6、补充压力测试脚本。那么**项目整体结构**如下：
