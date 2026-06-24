@@ -229,6 +229,7 @@ Raylet 的设计理念是"让每个节点自治"——即使 Head Node 暂时不
 > 对于**普通训练过程**可能是：初始化参数-->进行参数计算得到效果-->贝叶斯优化器决定下一组参数-->循环
 
 ### Ray Core
+#### 简单使用
 Ray Core 是 Ray 的**底层编程接口**，提供了最基础的分布式原语。涉及到的Ray的其他运算如 Ray Data、Ray Train、Ray Tune 都是构建在 Ray Core 之上的。对于Ray core核心三个概念：
 **1、Task（远程函数）**
 把一个普通 Python 函数变成可以在集群任意节点上并行执行的"任务"：
@@ -249,25 +250,56 @@ scores = ray.get(results)
 ```
 对应到架构：`@ray.remote` 装饰的函数被 GCS 记录，调用 `.remote()` 时 Scheduler 将任务分配到空闲 Worker，返回值通过 Object Store 传递。
 **2、Actor（远程类实例）**
-Task 是无状态的（每次调用独立），而 Actor 是**有状态的长期运行的 Worker**。比如需要一个持续更新的贝叶斯模型：
+Task 是无状态的（每次调用独立），而 Actor 是**有状态的长期运行的 Worker**。比如下面代码：
 ```python
-@ray.remote
-class BayesianOptimizer:
-    def __init__(self, param_space):
-        self.history = []          # 状态：历史 (参数, 分数)
-        self.optimizer = ...       # 贝叶斯优化器实例
-  
-    def suggest(self, n=4):
-        """根据历史返回下一组候选参数"""
-        return self.optimizer.ask(n)
-  
-    def update(self, params, score):
-        """用新结果更新模型"""
-        self.history.append((params, score))
-        self.optimizer.tell(params, score)
+import ray
+from ultralytics import YOLO
 
-# 创建一个 Actor（运行在某个 Worker Node 上）
-optimizer = BayesianOptimizer.remote(param_space)
+@ray.remote(num_gpus=0.25)          # 声明为 Ray Actor，分配 1/4 张 GPU
+class YOLOActor:
+    def __init__(self, model_path="yolov8n.pt"):
+        self.model = YOLO(model_path)  # 模型加载后常驻 GPU，后续调用不再重复加载
+
+    def infer(self, image_path: str, conf: float = 0.25):
+        """对图片做目标检测，返回 bbox + 类别 + 置信度。"""
+        results = self.model(image_path, conf=conf, verbose=False)
+        dets = []
+        if results[0].boxes is not None:
+            for box in results[0].boxes:
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
+                dets.append({
+                    "bbox": [round(x1, 1), round(y1, 1), round(x2, 1), round(y2, 1)],
+                    "class": results[0].names[int(box.cls[0])],
+                    "conf": round(float(box.conf[0]), 4),
+                })
+        return dets
+
+# 创建 Actor 实例（部署到某个 Worker Node，占用对应 GPU 资源）
+detector = YOLOActor.remote("yolov8n.pt")
+
+# 调用：.remote() 非阻塞，立即返回 ObjectRef；ray.get() 阻塞等待结果
+ref = detector.infer.remote("street.jpg", conf=0.5)
+results = ray.get(ref)
+# results = [
+#     {"bbox": [10.0, 20.0, 100.0, 200.0], "class": "person", "conf": 0.92},
+#     {"bbox": [50.0, 30.0, 150.0, 180.0], "class": "car",    "conf": 0.87},
+# ]
+
+具体脚本进程
+  脚本进程                          Ray Worker 进程 (持有 GPU)
+     │                                        │
+     ├─ detector = YOLOActor.remote(...) ----→│ 创建 Actor，执行 __init__
+     │                                        │ YOLO("yolov8n.pt") 加载到 GPU
+     │                                        │ 模型常驻，等待调用
+     │                                        │
+     ├─ ref = detector.infer.remote("a.jpg")-→│ 执行 infer("a.jpg")
+     │                                        │ GPU 推理 → 结果写入 Object Store
+     │                                        │
+     ├─ ref = detector.infer.remote("b.jpg")-→│ 队列排队（如设 max_concurrency）
+     │                                        │
+     ├─ results_a = ray.get(ref_a) ←----------┤ 从 Object Store 拉结果
+     │
+     └─ results_b = ray.get(ref_b) ←----------┤
 ```
 对应到架构：Actor 被 GCS 管理生命周期，Raylet 负责在所在节点为其分配资源和调度其方法调用。
 **3、Object（分布式对象引用）**
@@ -278,7 +310,8 @@ data_ref = ray.put(large_dataset)   # 放入本地 Object Store，返回引用
 data = ray.get(data_ref)            # 惰性拉取，零拷贝共享内存
 ```
 对应到架构：这就是前面 Object Store 部分讲到的——同节点共享内存零拷贝，跨节点惰性传输。**一句话总结 Ray Core**：`@ray.remote` 把函数/类变成可分布式执行的 Task/Actor，`ObjectRef` 让数据在集群中透明流转。理解了这三者，就理解了 Ray 的编程基础。除此之外对于Ray使用只用上述几个还不够：
-**1、Ray进行资源管理分配**，在使用 `ray.remote` 过程可以直接去装饰器里面去对资源进行配置如 `@ray.remote()`，具体[支持的参数配置](https://www.aidoczh.com/ray/ray-core/api/doc/ray.remote.html)
+**1、Ray进行资源管理分配**，在使用 `ray.remote` 过程可以直接去装饰器里面去对资源进行配置如 `@ray.remote(num_gpus=0.5, num_cpus=2)`，去指定我的模型对于显卡、CPU等占用比例，其中具体[支持的参数配置](https://www.aidoczh.com/ray/ray-core/api/doc/ray.remote.html)
+**2、异步调用**，在资源分配之后可以简单理解为“每个模型都只占用GPU中部分显存”，那么同一块显卡上多个服务（假设3个）被启动了我直接去访问
 ## Ray实战
 ### 模型部署
 考虑将优化好的模型进行服务器部署，那么就需要考虑如下几个问题（**仅为娱乐项目**）：**1、资源使用**，比如说对于每一个模型如何去划分他所需要的资源；**2、服务可靠性**，比如说我的节点挂掉了能不能自动恢复；**3、可观测结果**，比如说我需要监控模型的运行情况，比如说模型的运行时间，模型的运行结果等等；**4、部署**，考虑到k8s/docker部署就需要去完成对应优化；**5、服务安全**，比如 Ray Dashboard监控面板不可能让他暴露公网。**具体到实际应用**比如说服务器上部署如下几个模型：1、CLIP进行图像分类；2、Yolo进行目标识别（实时目标识别）；4、oneformer-large进行实体分割；5、并且启动milvus向量数据库（考虑数据比较少不会太复杂）；6、补充压力测试脚本。那么**项目整体结构**如下：
