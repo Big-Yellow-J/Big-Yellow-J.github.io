@@ -101,7 +101,7 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   # ----- 4. 部署后推搜索引擎（仅 secrets 齐全时跑） -----
   notify:
