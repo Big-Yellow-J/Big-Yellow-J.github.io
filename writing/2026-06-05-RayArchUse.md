@@ -19,9 +19,14 @@ description: Ray是支持以本地Python写法实现分布式/并行计算的开
 前面介绍了在[pytorch中不同的分布式训练实现方式](https://www.big-yellow-j.top/posts/2026/04/20/torch-basic-distribute-1.html)，这里简单介绍分布式框架（更加多的设计到了模型部署、服务器调度之间内容，非严格的pytorch内容）Ray以及Docker等内容。
 ## 前置知识 
 所有内容只去介绍基本概念与使用，更加丰富的细节建议去看官方文档（或者直接AI）。docker文档[^3]、FastAPI[^4]
-### 异步/多线程/多进程
-**首先程序任务主要为两类**：*1、CPU 密集*：一直在"**算**"，CPU 满载（图片处理、模型推理、加密、大量计算）；*2、IO 密集*：大量时间在"**等**"（网络请求/读写文件）。而对于异步/多线程/多进程可以简单理解为（以餐厅服务多人为例）：一个服务员等菜的时候去别的桌子（*异步*）、多个服务员当时公用一个厨师（*多线程*）、直接开多家餐厅（*多进程*）
-> 进程好理解，在python有 GIL（全局解释器锁），同一时刻只有一个线程能执行 Python 代码，因此对于多线程和异步（两个都是处理IO密集的）使用“差异不大”，如果并发大（比如1w请求）可以考虑异步（不可能开1w个进程）、如果库是同步的就多线程（入request）
+### 并发控制
+对于高并发问题最简单理解方式：100个请求同时发送过来你如何进行处理这100个请求。可以串行解决（做完A做B）也可以并行处理（处理A的同时去处理B）
+> 高并发是一个复杂工程设计问题：比如说你的请求优先级高那么如何进行“插队”处理、你的视频内容很长直接下载放到内存中会导致内存问题、其他请求超时如何处理（比如处理1个请求10s超时设置时间是30s那么如果请求很多就会出现超时问题）等等
+
+下面主要去介绍常用的处理 **高并发处理方式**如通过异步/多线程/多进程进行处理、通过Redis队列进行控制、基于Ray原生的处理方式进行控制等等。
+#### 异步/多线程/多进程
+**首先程序任务主要为两类**：*1、CPU 密集*：一直在"**算**"，CPU 满载（图片处理、模型推理、加密、大量计算）；*2、IO 密集*：大量时间在"**等**"（网络请求/读写文件）。而对于异步/多线程/多进程可以简单理解为（以餐厅服务多人为例）：一个服务员等菜的时候去别的桌子（*异步*）、多个服务员同时共用一个厨师（*多线程*）、直接开多家餐厅（*多进程*）
+> 进程好理解，在python有 GIL（全局解释器锁），同一时刻只有一个线程能执行 Python 代码，因此对于多线程和异步（两个都是处理IO密集的）使用“差异不大”，如果并发大（比如1w请求）可以考虑异步（不可能开1w个进程）、如果库是同步的就多线程（如request）
 
 **异步核心语法**[^5]，一般而言异步核心（一般而言涉及到高IO的可以用异步）就是如下几组语法：
 ```python
@@ -30,9 +35,9 @@ import asyncio
 async def main():
     # 等待可以去执行其他任务
     await asyncio.sleep(3)
-    # 创建 task，提交给事件循环并且立即执行
+    # 创建 task，提交给事件循环调度执行（await 让出后才真正跑）
     task = asyncio.create_task(fetch())
-# 创建 event loop 将mian放进去就行循环调度
+# 创建 event loop 将main放进去进行循环调度
 asyncio.run(main())
 ```
 写异步操作过程中需要去注意：1、先去分析任务类型（如果是IO密集的），比如说使用fastapi中构建请求，就可以直接大胆的用异步比如说：
@@ -46,6 +51,147 @@ async def health():
 * `asyncio.run`：启动整个异步程序，并创建事件循环（Event Loop）去执行指定协程
 * `asyncio.create_task`：去创建多个task任务，比如说一般会有health任务去检查所有服务，那么可以直接通过此方法直接去创建多个task然后异步执行
 * `asyncio.gather`：并发执行多个协程，并等待所有协程全部完成后统一返回结果
+
+#### Ray原始并发控制
+Ray 在 actor/task 层面提供了原生的并发与容错控制，核心参数都写在 `@ray.remote` 装饰器（或调用时的 `.options()`）里：
+```python
+@ray.remote(
+    num_gpus=0.25,          # GPU 配额:分数=多个 actor 分时共用一张卡(逻辑调度配额,非物理隔离)
+    max_concurrency=4,      # actor 内并发上限:一个 actor 同时最多处理 4 个调用(线程池)
+    max_restarts=3,         # actor 进程崩溃后最多自动重建 3 次
+    max_task_retries=2,     # 单次调用失败后最多自动重试 2 次
+)
+class Model:
+    def infer(self, x): ...
+```
+
+**并发控制原理**：Ray 对 Actor 的并发控制分为两层——`调度层` 和 `执行层`。调度层由 Raylet + GCS 负责：当多个调用同时发往同一个 Actor 时，Raylet 先把它们放进该 Actor 的`内部任务队列`；执行层由 Actor 进程内的`线程池`（大小 = `max_concurrency`）消费这个队列——每个线程从队列取一个调用执行，执行完再取下一个，直到队列为空。
+
+```mermaid
+sequenceDiagram
+    participant C1 as 调用方 A
+    participant C2 as 调用方 B
+    participant C3 as 调用方 C
+    participant RL as Raylet (本地调度)
+    participant TQ as Actor 内部任务队列
+    participant TP as Actor 线程池<br/>(max_concurrency=2)
+    participant GPU as GPU
+
+    C1->>RL: actor.infer.remote(img1)
+    C2->>RL: actor.infer.remote(img2)
+    C3->>RL: actor.infer.remote(img3)
+
+    RL->>TQ: 三个调用依次入队
+
+    Note over TP: 线程-1 取任务1<br/>线程-2 取任务2<br/>任务3 排队等待
+
+    TP-->>GPU: 线程-1 执行推理
+    TP-->>GPU: 线程-2 执行推理
+
+    Note over GPU: GPU kernel 实际串行<br/>但预处理/后处理可重叠
+
+    TP->>C1: 返回结果1
+    Note over TP: 线程-1 空闲 → 取任务3
+    TP->>C2: 返回结果2
+    TP-->>GPU: 线程-1 执行推理 (任务3)
+    TP->>C3: 返回结果3
+```
+
+> 关键理解：`max_concurrency` 只是决定了**同时有几个线程在"伺候"这个 Actor**，但 GPU 计算本身是串行的——多个线程的 GPU kernel 在 CUDA stream 上排队执行。所以 `max_concurrency` 的实际收益来自**让 IO/预处理与 GPU 计算重叠**（线程 A 等在 GPU 上时，线程 B 可以做图像解码），而不是让 GPU "同时算两件事"。
+
+几个要点：
+* `max_concurrency`：控制 `单个 actor 内部` 的并发。注意 Python GIL + GPU kernel 本身是串行的，设 `>1` 主要让预处理/IO 与计算重叠，真正的 GPU 计算还是排队；对 `非线程安全` 的模型（比如 vLLM 引擎）必须设成 `1` 强制串行，否则并发进同一模型会崩。
+* `num_gpus`：填分数（`<1`）时多个 actor 会被打包到同一张卡`分时复用`，它是 Ray 的`调度配额`不是显存物理隔离，所以同卡上几个 actor 的显存要自己算好别超（比如 `0.2+0.5+0.3=1.0` 刚好一张卡）。
+* `max_restarts` + `max_task_retries`：`容错`，actor 崩了 Ray 自动拉起、调用失败自动重试。
+* 超时取消：`ray.get(ref, timeout=...)` 超时后可 `ray.cancel(ref)`，但 `同步方法一旦开跑就无法中断`，cancel 只能撤掉还没起跑的排队任务（所以超时了 GPU 其实还在跑，要靠限流从源头控制）。
+
+> Ray 原生并发是"actor 内"的并发，实际工程里常在它之上再加一层 `API 入口的信号量/限流做背压`：给每个模型建一个大小 = 它 `max_concurrency` 的信号量，满额直接拒绝（快速失败返回 `503`），而不是让请求堆在 Ray 队列里干等到超时——这样慢模型的积压不会白白空耗 GPU，超时也不会误触发`熔断`。
+
+#### Redis队列控制
+用 Redis 做队列本质是`削峰填谷`：请求先进队列缓冲，后端 worker 按自己的处理能力慢慢消费，避免瞬时高并发直接压垮推理服务。典型三个角色：
+* `生产者`（API 层）：收到请求把任务塞进 Redis 队列（`LPUSH`），立刻返回一个任务 id（异步任务模式，不阻塞等结果）。
+* `消费者`（worker）：循环从队列阻塞取任务（`BRPOP`）处理，结果写回 Redis（`SET result:<id>`）。
+* `客户端`：拿 id 轮询结果，或用 WebSocket 等服务端推送。
+
+**并发控制原理**：Redis 队列实现的是`消费端拉取`模式——不是服务端主动推送，而是多个 worker 自己去抢任务，天然形成`竞争消费`。核心依赖 Redis List 的以下特性：
+
+| 命令 | 行为 | 并发中的作用 |
+|:----:|:-----|:-----------|
+| `LPUSH` | 从左侧入队（生产者写） | O(1)，瞬时写入不阻塞，抗住突发流量 |
+| `BRPOP` | 从右侧**阻塞**弹出（消费者取） | 队列空时阻塞等待，不空转 CPU；多个消费者同时 `BRPOP` 同一队列时，Redis **单线程**保证同一任务只会被一个消费者取走，不会有"抢到同一个任务"的问题 |
+| `LLEN` | 查看队列长度 | 监控积压：队列持续增长说明消费跟不上，需要加 worker 或优化推理 |
+
+```mermaid
+sequenceDiagram
+    participant P as 生产者 (FastAPI)
+    participant R as Redis List<br/>"infer_queue"
+    participant W1 as Worker 1
+    participant W2 as Worker 2
+    participant M as GPU (模型推理)
+    participant S as Redis KV<br/>result:(id)
+
+    Note over P,S: ═══ 正常消费（消费 > 生产） ═══
+
+    P->>R: LPUSH task_1
+    W1->>R: BRPOP (阻塞等待)
+    R->>W1: 弹出 task_1
+    W1->>M: model.infer(task_1)
+    M->>W1: 推理结果
+    W1->>S: SET result:1
+
+    Note over P,S: ═══ 多个 Worker 竞争消费 ═══
+
+    P->>R: LPUSH task_2
+    P->>R: LPUSH task_3
+
+    par 竞争弹出
+        W1->>R: BRPOP → 拿到 task_2
+        W2->>R: BRPOP → 拿到 task_3
+    end
+
+    Note over W1,W2: Redis 单线程保证<br/>task_2 和 task_3 不会<br/>被同一个 Worker 取走
+
+    par 并行推理
+        W1->>M: infer(task_2)
+        W2->>M: infer(task_3)
+    end
+
+    W1->>S: SET result:2
+    W2->>S: SET result:3
+
+    Note over P,S: ═══ 削峰场景（生产 > 消费） ═══
+
+    P->>R: 瞬时 LPUSH 1000 个任务
+    Note over R: 队列堆积 1000 条<br/>生产者已返回 task_id<br/>不阻塞、不丢请求
+
+    loop 逐条消费
+        W1->>R: BRPOP → 取一条 → 推理 → 写结果
+        W2->>R: BRPOP → 取一条 → 推理 → 写结果
+    end
+
+    Note over R: 队列逐渐消化，最终归零
+```
+
+> 关键理解：Redis 队列的并发能力来自 **"单队列 + 多消费者竞争"**——队列本身只是一条 List，没有复杂的锁或分片，但多个 Worker 同时 `BRPOP` 时，Redis 的单线程模型天然保证每条任务只被一个 Worker 取走，不需要额外的分布式锁。横向扩展只需要加 Worker 进程数即可，Worker 之间完全无状态、无协调开销。
+
+```python
+import redis
+r = redis.Redis()
+
+# 生产者:入队,立即返回 task_id
+r.lpush("infer_queue", task_json)
+
+# 消费者:阻塞取任务 --> 推理 --> 结果回写(存1小时)
+_, task = r.brpop("infer_queue")
+result = model.infer(task)
+r.set(f"result:{task_id}", result, ex=3600)
+```
+它的价值：
+* `削峰`：1w 请求瞬时进来，队列缓冲，worker 不会被打爆；
+* `限流/优先级`：用多个队列（高优先级队列先消费）就能实现前面说的“插队”；
+* `解耦+横向扩展`：worker 可以多开几个进程/机器一起消费同一个队列。
+
+> 生产上一般不自己撸队列，直接用 Celery / RQ（底层就是拿 Redis 当 broker）。这套模式最适合`耗时任务异步化`——比如前面提到的“长视频处理”，把同步 HTTP 变成“提交任务-->轮询/回调拿结果”，请求端秒回不占连接。
 
 ### FastAPI
 可以简单理解为将你的程序“打包成服务”，别人可以直接通过端口去访问你的代码，一个最简单例子：
@@ -430,7 +576,7 @@ results = ray.get(refs)                   # 同节点零拷贝；跨节点才惰
 #### 进阶使用
 
 ## Ray实战
-### 模型部署
+### 模型部署工程化问题
 考虑将优化好的模型进行服务器部署，那么就需要考虑如下几个问题（**仅为娱乐项目**）：**1、资源使用**，比如说对于每一个模型如何去划分他所需要的资源；**2、服务可靠性**，比如说我的节点挂掉了能不能自动恢复；**3、可观测结果**，比如说我需要监控模型的运行情况，比如说模型的运行时间，模型的运行结果等等；**4、部署**，考虑到k8s/docker部署就需要去完成对应优化；**5、服务安全**，比如 Ray Dashboard监控面板不可能让他暴露公网。**具体到实际应用**比如说服务器上部署如下几个模型：1、CLIP进行图像分类；2、Yolo进行目标识别（实时目标识别）；4、oneformer-large进行实体分割；5、并且启动milvus向量数据库（考虑数据比较少不会太复杂）；6、补充压力测试脚本。那么**项目整体结构**如下：
 
 ```mermaid
@@ -603,3 +749,4 @@ ray stop
 [^3]: [https://docs.docker.com/get-started/get-docker/](https://docs.docker.com/get-started/get-docker/)
 [^4]: [https://fastapi.tiangolo.com/zh/python-types/](https://fastapi.tiangolo.com/zh/python-types/)
 [^5]: [https://docs.python.org/zh-cn/3/howto/a-conceptual-overview-of-asyncio.html#a-conceptual-overview-of-asyncio](https://docs.python.org/zh-cn/3/howto/a-conceptual-overview-of-asyncio.html#a-conceptual-overview-of-asyncio)
+[^6]: [https://redis.io/](https://redis.io/)
