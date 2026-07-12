@@ -193,6 +193,157 @@ r.set(f"result:{task_id}", result, ex=3600)
 
 > 生产上一般不自己撸队列，直接用 Celery / RQ（底层就是拿 Redis 当 broker）。这套模式最适合`耗时任务异步化`——比如前面提到的“长视频处理”，把同步 HTTP 变成“提交任务-->轮询/回调拿结果”，请求端秒回不占连接。
 
+#### 增加节点副本数量
+
+在使用 [Ray进行并发控制](#ray原始并发控制)中单 actor 进程内推理串行（一个模型实例同时只跑一个请求），如果去提高并发数量可以直接 “扩充节点副本”（比如将开始的同一个功能的一个节点直接拓展到n个节点，通过这种方式同时也**会带来显存的额外占用**）其本质和多进程是相似的比如说下面代码：
+```python
+import ray
+from itertools import cycle
+
+@ray.remote
+class ModelA:
+    def __init__(self): pass
+    def output(self): return "A"
+
+@ray.remote
+class ModelB:
+    def __init__(self): pass
+    def output(self): return "B"
+
+# 1) 配置里加副本数：(类, 副本数)
+config = {
+    "ModelA": (ModelA, 2),   # 起 2 副本
+    "ModelB": (ModelB, 1),   # 单副本
+}
+
+ray.shutdown()
+ray.init()
+
+# 2) 命名展开 + 创建：N 副本注册为 name#0..name#N-1；1 副本沿用原名
+def replica_names(name, n):
+    return [name] if n <= 1 else [f"{name}#{i}" for i in range(n)]
+
+actors = {}                      # {注册名: handle}
+replicas = {}                    # {逻辑名: [注册名...]}
+for name, (cls, n) in config.items():
+    names = replica_names(name, n)
+    replicas[name] = names
+    for ray_name in names:
+        actors[ray_name] = cls.options(name=ray_name).remote()
+
+# 3) 轮询分流：每个逻辑名一个游标，round-robin 选副本
+cursors = {name: cycle(names) for name, names in replicas.items()}
+
+def pick(name):
+    return actors[next(cursors[name])]
+
+# ---- 使用 ----
+print(actors)                    # {'ModelA#0':.., 'ModelA#1':.., 'ModelB':..}
+
+for _ in range(4):               # 连续 4 次调用 ModelA，轮流落到 #0/#1
+    ref = pick("ModelA").output.remote()
+    print(ray.get(ref))
+```
+#### 批处理
+**不去拓展额外的进程数量**，可以通过批处理的方式提高并发，主要分为两种：1、**动态批处理**；2、**连续批处理**对于两种批处理方式解释如下：
+* **1、动态批处理**
+
+对于同时输入的请求，可以尝试将这些请求进行合并组合到一起交给模型处理，比如说又yolo节点，同时输入3张图像（ABC）需要处理，如果是普通处理过程可能是：A->B->C，通过动态批处理则是直接将ABC三组图像组合交给模型处理（ **简单理解为模型训练过程中batch_size** ），唯一需要注意的是需要设定批处理上线防止OOM出现，比如说以Yolo节点补充动态批处理为例：
+```python
+import asyncio
+import ray
+from ultralytics import YOLO
+
+
+@ray.remote(num_gpus=0.25)
+class YOLOActor:
+    def __init__(self, model_path="yolov8n.pt", max_batch_size=8, max_wait_ms=10):
+        self.model = YOLO(model_path)
+        self.max_batch_size = max_batch_size
+        self.max_wait = max_wait_ms / 1000.0
+        self._queue = None
+        self._worker = None
+
+    def _ensure_worker(self):
+        if self._queue is None:
+            self._queue = asyncio.Queue()
+            self._worker = asyncio.create_task(self._batch_loop())
+            
+    async def _batch_loop(self):
+        while True:
+            first = await self._queue.get()                    # 阻塞等第一个请求
+            batch = [first]
+            start = asyncio.get_running_loop().time()
+            while len(batch) < self.max_batch_size:
+                remaining = self.max_wait - (asyncio.get_running_loop().time() - start)
+                if remaining <= 0:
+                    break
+                try:
+                    batch.append(await asyncio.wait_for(self._queue.get(), remaining))
+                except asyncio.TimeoutError:
+                    break                                      # 窗口到,不再等
+            await self._run_batch(batch)
+
+    async def _run_batch(self, batch):
+        paths = [b[0] for b in batch]
+        confs = [b[1] for b in batch]
+        futs = [b[2] for b in batch]
+        batch_conf = min(confs)
+        try:
+            loop = asyncio.get_running_loop()
+            # 前向是同步阻塞(但 torch 计算段释放 GIL),丢到线程池避免卡住攒批循环
+            results = await loop.run_in_executor(
+                None, lambda: self.model(paths, conf=batch_conf, verbose=False)
+            )
+            for res, conf, fut in zip(results, confs, futs):
+                fut.set_result(self._postprocess(res, conf))   # 按各请求自己的 conf 过滤
+        except Exception as e:
+            for fut in futs:
+                if not fut.done():
+                    fut.set_exception(e)                       # 整批失败,逐个报错
+
+    @staticmethod
+    def _postprocess(res, conf):
+        dets = []
+        if res.boxes is not None:
+            for box in res.boxes:
+                c = float(box.conf[0])
+                if c < conf:                                   # 批用了最小 conf,这里按自身阈值筛
+                    continue
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
+                dets.append({
+                    "bbox": [round(x1, 1), round(y1, 1), round(x2, 1), round(y2, 1)],
+                    "class": res.names[int(box.cls[0])],
+                    "conf": round(c, 4),
+                })
+        return dets
+    
+    async def infer(self, image_path: str, conf: float = 0.25):
+        self._ensure_worker()
+        fut = asyncio.get_running_loop().create_future()
+        await self._queue.put((image_path, conf, fut))
+        return await fut
+ray.init()
+actors = {"yolo": YOLOActor.options(name="yolo").remote()}
+refs = [actors["yolo"].infer.remote(f"street{i}.jpg", conf=0.5) for i in range(16)]
+for r in ray.get(refs):
+    print(r)
+```
+对于上述批处理过程也比较简单：**在每个节点内部创建队列在限制时间内的所有请求同时往队列中补充，在队满之后直接交给模型处理即可**
+
+* **2、连续批处理**
+
+主要是用在大模型文本生成过程中，比如说一般大模型模型处理过程[^7]：
+![](https://hfai-static.high-flyer.cn/static/28d7172c5c27e843bc31bb91aacac16c/e548f/02.png)
+同时输入4个请求只有在最长的请求处理完毕之后这个批次才算解释，那么就会造成较大浪费，比如请求3在 $T_5$ 就已经处理完毕但是必须等到 $T_8$才能完成输出。那么 **连续批处理**过程就是优化这点
+![](https://hfai-static.high-flyer.cn/static/10738c93c0d5b194e103c4bd291b65b8/e548f/03.png)
+在 $S_3$ 在 $T_5$ 处理完毕之后下一秒直接将新的输入 $S_5$ 接着加入进来进行推理（保证时间利用最大化）。用下面列子解释过程，比如说bs=4其中ABC请求已经在生成处理，而请求E为新加入的请求其token长度为512，那么为了优化计算直接将4个请求就行拼接，那么此时输入形状为： `[3+512,4096]`，将输入拆分为不同的头（假设num_heads=32）那么：`[515, 32, 128]`，因为ABC这3个请求有KV-cache但是新的E是没有的那么：对于ABC这3组请求其KV为 `[L+1, 32, 128]`（其中L为历史长度）而E则是 `[512, 32, 128]`
+> **值得注意的是**：KV维度和Q一致都是 `[1,32,128]` 但是因为attention计算需要“之前内容”，因此就会把缓存的KVcache直接拿出来就行拼接也就是得到了 `[L+1, 32, 128]`
+
+#### 并发分析
+除去上面介绍的几种方法，在并发控制中对于N卡还可以使用MPS[^8]或者MIG[^9]机制就行处理（需要注意不是所有的卡都支持），对于这两种机制都是都是让一张 GPU 被多个任务共享的机制。在模型部署推理过程中需要区分当前过程中的上限在哪里一般需要分析的有：
+![](https://files.seeusercontent.com/2026/07/12/zI0t/20260712194241854.png)
+
 ### FastAPI
 可以简单理解为将你的程序“打包成服务”，别人可以直接通过端口去访问你的代码，一个最简单例子：
 ```python
@@ -325,98 +476,177 @@ docker rmi xxx:xxx  # 删除镜像
 docker exec -it <容器名称或ID> /bin/bash # 进入容器
 ```
 **除去常用的docker语法**，在使用过程中一般而言需要容器的“热重启”（本地修改-->容器自动修改）因此在启动容器时候就需要将本地文件进行挂载（使用参数 "-v" 即可），对于 `Dockerfile` 中 `CMD` 一般使用过程中我的 `bash` 脚本会去使用部分参数比如在使用fastapi中去使用端口等，在启动容器时候只需要 `-e 脚本参数`
-### 架构设计
-写项目最忌"上来就写代码"——模型、接口、数据库全堆一个文件里，跑是能跑，但模型一挂整服务死、改一行代码要重载 30s 模型、上线才发现 dashboard 暴露了公网。**正确顺序是先分层定职责，再往里填代码**（Ray、FastAPI 只是某一层的实现手段）。从算法工程师角度，一个模型服务的架构设计可以从下面 6 个维度出发——前 4 个解决“怎么跑起来、扩出去”，后 2 个解决“怎么稳住、怎么上线”：
 
-**1、模型部署**
-核心是让模型**常驻显存、不重复加载**：每次请求都重新 load 几百 MB～几 GB 权重，光加载就拖垮延迟。做法是用常驻进程（如 Ray Actor）把模型加载一次后留在显存，后续请求直接复用；同时要考虑**显存怎么分**（一张卡跑多个模型时按比例切）和**容错**（模型/进程挂了能不能自动重启）。
+[//]: # (### 架构设计)
 
-**2、外接服务**
-模型本身往往不够，还要接外部存储做检索匹配，典型就是接 **milvus 等向量数据库**做向量相似检索（图搜图、语义检索）。这里要决定：嵌进主进程当单例（轻量、数据少），还是独立部署成单独服务（数据大、需独立扩）。
+[//]: # (写项目最忌"上来就写代码"——模型、接口、数据库全堆一个文件里，跑是能跑，但模型一挂整服务死、改一行代码要重载 30s 模型、上线才发现 dashboard 暴露了公网。**正确顺序是先分层定职责，再往里填代码**（Ray、FastAPI 只是某一层的实现手段）。从算法工程师角度，一个模型服务的架构设计可以从下面 6 个维度出发——前 4 个解决“怎么跑起来、扩出去”，后 2 个解决“怎么稳住、怎么上线”：)
 
-**3、算力分离（GPU / CPU 解耦）**
-一个服务里其实混着两类负载：**重 GPU 计算**（模型推理）和**重 CPU 计算**（milvus 向量化检索、外部 API 调用、图像编解码等）。两者挤在一起会互相拖累——GPU 在算时 CPU 任务排队，反之亦然。**做法是拆成两端**（甚至两台机器）分别处理，各自按自己的瓶颈独立扩容。
-> 代价：分离后两端之间多了**网络往返 + 序列化开销**（传图、传向量都要序列化），数据量大时要权衡“分离收益 vs 通信成本”，能就近就别跨机。
+[//]: # ()
+[//]: # (**1、模型部署**)
 
-**4、高并发**
-分成两端后，真正的考验是**每一端扛不扛得住并发**。这件事有两面：
-- **进攻（提吞吐）**：① **批处理**——零碎小请求攒成一批喂 GPU，利用率和吞吐翻倍，性价比常比加机器还高；② **缓存去重**——重复请求直接走 LRU 缓存不重算；③ **多副本**——同一模型起多个实例分摊压力。
-- **防御（过载保护）**：① **限流**——超阈值请求直接拒绝，保住已接请求；② **熔断/降级**——下游（如 milvus 慢查询）卡住时快速失败，别让线程全堆死引发雪崩；③ **超时**——每步设上限，不无限等。
-> 很多人只想到“进攻”（加机器扛），却忘了“防御”：没有限流熔断，一次 milvus 慢查询堆积就能把整条链路拖垮。
+[//]: # (核心是让模型**常驻显存、不重复加载**：每次请求都重新 load 几百 MB～几 GB 权重，光加载就拖垮延迟。做法是用常驻进程（如 Ray Actor）把模型加载一次后留在显存，后续请求直接复用；同时要考虑**显存怎么分**（一张卡跑多个模型时按比例切）和**容错**（模型/进程挂了能不能自动重启）。)
 
-**5、可观测**
-服务跑起来后，出问题怎么定位是哪个模型、哪一步慢？必须**提前埋点**：日志分级（INFO/WARN/ERROR）、关键指标（QPS、延迟分布、显存占用）、**request_id 链路追踪**（一条请求穿过哪几层一目了然）、慢请求自动告警。没有可观测，线上等于盲飞。
+[//]: # ()
+[//]: # (**2、外接服务**)
 
-**6、部署与安全**
-最后是上线：用 **docker / k8s 打包**保证环境一致、可复现；监控面板（如 Ray Dashboard）**只绑内网 127.0.0.1** 不暴露公网，必要时加鉴权。娱乐项目可以简化，但“面板不暴露公网”是底线。
+[//]: # (模型本身往往不够，还要接外部存储做检索匹配，典型就是接 **milvus 等向量数据库**做向量相似检索（图搜图、语义检索）。这里要决定：嵌进主进程当单例（轻量、数据少），还是独立部署成单独服务（数据大、需独立扩）。)
 
-因此参考上述描述加入有如下项目（假设是双端分离） **实时摄像头检测服务** ：1、CPU端负责摄像头内容读取-->发送到GPU端计算，那么可以直接将摄像头读取、数据库存储等服务都放到CPU端（**实际数据库会有另外其他服务**）；2、GPU端负责图像的目标检测、识别、大模型等服务，因此可以直接考虑如下的架构图（**对应下面Ray实战项目**）：
-```mermaid
-flowchart LR
-    CAM["摄像头<br/>RTSP / USB / 边缘客户端推帧"]
+[//]: # ()
+[//]: # (**3、算力分离（GPU / CPU 解耦）**)
 
-    subgraph A["CPU 端 · 应用 / IO 服务器（无 GPU）"]
-        direction TB
-        subgraph API["FastAPI 进程 (uvicorn)"]
-            direction TB
-            MW["Middleware<br/>request_id · 限流32 · histogram · 慢请求"]
-            R1["/classify · /detect · /segment"]
-            R2["/v1/embed · /v1/search"]
-            R3["/v1/video/* 任务式 + /live 实时流"]
-            IL["image_loader<br/>下载 · 读盘 · 解码 · 缩放"]
-            CACHE[("LRU Cache<br/>(model, md5) → vector")]
-            DISP["Dispatch 层<br/>句柄缓存 · 自愈 · 熔断"]
-        end
-        subgraph DB["Milvus Lite（进程内单例）"]
-            COL1[("embeddings_clip")]
-            COL2[("embeddings_qwen_vl")]
-        end
-        FS["data/（milvus + 备份）<br/>tmp/ray_log"]
-    end
+[//]: # (一个服务里其实混着两类负载：**重 GPU 计算**（模型推理）和**重 CPU 计算**（milvus 向量化检索、外部 API 调用、图像编解码等）。两者挤在一起会互相拖累——GPU 在算时 CPU 任务排队，反之亦然。**做法是拆成两端**（甚至两台机器）分别处理，各自按自己的瓶颈独立扩容。)
 
-    subgraph B["GPU 端 · Ray 推理节点"]
-        direction TB
-        subgraph GPU0["GPU 0（num_gpus 软配额）"]
-            AC1["CLIP Actor · 0.20"]
-            AC2["YOLO Actor · 0.20"]
-            AC3["OneFormer Actor · 0.50"]
-            AC4["Qwen-Embed Actor · 0.30"]
-        end
-        VW["VideoWorker<br/>@ray.remote 函数"]
-        LLM["大模型 Actor<br/>（可选 · VLM/描述）"]
-    end
+[//]: # (> 代价：分离后两端之间多了**网络往返 + 序列化开销**（传图、传向量都要序列化），数据量大时要权衡“分离收益 vs 通信成本”，能就近就别跨机。)
 
-    CAM ==>|RTSP / WS JPEG 帧| MW
-    MW --> R1
-    MW --> R2
-    MW --> R3
-    R1 --> IL
-    IL --> DISP
-    R2 --> CACHE
-    CACHE -.miss.-> DISP
-    R2 --> COL1
-    R2 --> COL2
-    R3 -.submit.-> VW
+[//]: # ()
+[//]: # (**4、高并发**)
 
-    DISP ==>|Ray RPC（跨机）| AC1
-    DISP ==>|Ray RPC（跨机）| AC2
-    DISP ==>|Ray RPC（跨机）| AC3
-    DISP ==>|Ray RPC（跨机）| AC4
-    DISP ==>|Ray RPC| LLM
-    VW -.infer_frame.-> AC2
+[//]: # (分成两端后，真正的考验是**每一端扛不扛得住并发**。这件事有两面：)
 
-    AC1 -.向量.-> DISP
-    AC2 -.检测框.-> DISP
-    COL1 --> FS
-    COL2 --> FS
+[//]: # (- **进攻（提吞吐）**：① **批处理**——零碎小请求攒成一批喂 GPU，利用率和吞吐翻倍，性价比常比加机器还高；② **缓存去重**——重复请求直接走 LRU 缓存不重算；③ **多副本**——同一模型起多个实例分摊压力。)
 
-    classDef cpu fill:#e3f2fd,stroke:#1976d2;
-    classDef gpu fill:#fff3e0,stroke:#f57c00;
-    classDef store fill:#e8f5e9,stroke:#388e3c;
-    class MW,R1,R2,R3,IL,CACHE,DISP cpu;
-    class AC1,AC2,AC3,AC4,VW,LLM gpu;
-    class COL1,COL2,FS store;
-```
+[//]: # (- **防御（过载保护）**：① **限流**——超阈值请求直接拒绝，保住已接请求；② **熔断/降级**——下游（如 milvus 慢查询）卡住时快速失败，别让线程全堆死引发雪崩；③ **超时**——每步设上限，不无限等。)
+
+[//]: # (> 很多人只想到“进攻”（加机器扛），却忘了“防御”：没有限流熔断，一次 milvus 慢查询堆积就能把整条链路拖垮。)
+
+[//]: # ()
+[//]: # (**5、可观测**)
+
+[//]: # (服务跑起来后，出问题怎么定位是哪个模型、哪一步慢？必须**提前埋点**：日志分级（INFO/WARN/ERROR）、关键指标（QPS、延迟分布、显存占用）、**request_id 链路追踪**（一条请求穿过哪几层一目了然）、慢请求自动告警。没有可观测，线上等于盲飞。)
+
+[//]: # ()
+[//]: # (**6、部署与安全**)
+
+[//]: # (最后是上线：用 **docker / k8s 打包**保证环境一致、可复现；监控面板（如 Ray Dashboard）**只绑内网 127.0.0.1** 不暴露公网，必要时加鉴权。娱乐项目可以简化，但“面板不暴露公网”是底线。)
+
+[//]: # ()
+[//]: # (因此参考上述描述加入有如下项目（假设是双端分离） **实时摄像头检测服务** ：1、CPU端负责摄像头内容读取-->发送到GPU端计算，那么可以直接将摄像头读取、数据库存储等服务都放到CPU端（**实际数据库会有另外其他服务**）；2、GPU端负责图像的目标检测、识别、大模型等服务，因此可以直接考虑如下的架构图（**对应下面Ray实战项目**）：)
+
+[//]: # (```mermaid)
+
+[//]: # (flowchart LR)
+
+[//]: # (    CAM["摄像头<br/>RTSP / USB / 边缘客户端推帧"])
+
+[//]: # ()
+[//]: # (    subgraph A["CPU 端 · 应用 / IO 服务器（无 GPU）"])
+
+[//]: # (        direction TB)
+
+[//]: # (        subgraph API["FastAPI 进程 &#40;uvicorn&#41;"])
+
+[//]: # (            direction TB)
+
+[//]: # (            MW["Middleware<br/>request_id · 限流32 · histogram · 慢请求"])
+
+[//]: # (            R1["/classify · /detect · /segment"])
+
+[//]: # (            R2["/v1/embed · /v1/search"])
+
+[//]: # (            R3["/v1/video/* 任务式 + /live 实时流"])
+
+[//]: # (            IL["image_loader<br/>下载 · 读盘 · 解码 · 缩放"])
+
+[//]: # (            CACHE[&#40;"LRU Cache<br/>&#40;model, md5&#41; → vector"&#41;])
+
+[//]: # (            DISP["Dispatch 层<br/>句柄缓存 · 自愈 · 熔断"])
+
+[//]: # (        end)
+
+[//]: # (        subgraph DB["Milvus Lite（进程内单例）"])
+
+[//]: # (            COL1[&#40;"embeddings_clip"&#41;])
+
+[//]: # (            COL2[&#40;"embeddings_qwen_vl"&#41;])
+
+[//]: # (        end)
+
+[//]: # (        FS["data/（milvus + 备份）<br/>tmp/ray_log"])
+
+[//]: # (    end)
+
+[//]: # ()
+[//]: # (    subgraph B["GPU 端 · Ray 推理节点"])
+
+[//]: # (        direction TB)
+
+[//]: # (        subgraph GPU0["GPU 0（num_gpus 软配额）"])
+
+[//]: # (            AC1["CLIP Actor · 0.20"])
+
+[//]: # (            AC2["YOLO Actor · 0.20"])
+
+[//]: # (            AC3["OneFormer Actor · 0.50"])
+
+[//]: # (            AC4["Qwen-Embed Actor · 0.30"])
+
+[//]: # (        end)
+
+[//]: # (        VW["VideoWorker<br/>@ray.remote 函数"])
+
+[//]: # (        LLM["大模型 Actor<br/>（可选 · VLM/描述）"])
+
+[//]: # (    end)
+
+[//]: # ()
+[//]: # (    CAM ==>|RTSP / WS JPEG 帧| MW)
+
+[//]: # (    MW --> R1)
+
+[//]: # (    MW --> R2)
+
+[//]: # (    MW --> R3)
+
+[//]: # (    R1 --> IL)
+
+[//]: # (    IL --> DISP)
+
+[//]: # (    R2 --> CACHE)
+
+[//]: # (    CACHE -.miss.-> DISP)
+
+[//]: # (    R2 --> COL1)
+
+[//]: # (    R2 --> COL2)
+
+[//]: # (    R3 -.submit.-> VW)
+
+[//]: # ()
+[//]: # (    DISP ==>|Ray RPC（跨机）| AC1)
+
+[//]: # (    DISP ==>|Ray RPC（跨机）| AC2)
+
+[//]: # (    DISP ==>|Ray RPC（跨机）| AC3)
+
+[//]: # (    DISP ==>|Ray RPC（跨机）| AC4)
+
+[//]: # (    DISP ==>|Ray RPC| LLM)
+
+[//]: # (    VW -.infer_frame.-> AC2)
+
+[//]: # ()
+[//]: # (    AC1 -.向量.-> DISP)
+
+[//]: # (    AC2 -.检测框.-> DISP)
+
+[//]: # (    COL1 --> FS)
+
+[//]: # (    COL2 --> FS)
+
+[//]: # ()
+[//]: # (    classDef cpu fill:#e3f2fd,stroke:#1976d2;)
+
+[//]: # (    classDef gpu fill:#fff3e0,stroke:#f57c00;)
+
+[//]: # (    classDef store fill:#e8f5e9,stroke:#388e3c;)
+
+[//]: # (    class MW,R1,R2,R3,IL,CACHE,DISP cpu;)
+
+[//]: # (    class AC1,AC2,AC3,AC4,VW,LLM gpu;)
+
+[//]: # (    class COL1,COL2,FS store;)
+
+[//]: # (```)
 
 ## Ray
 一句话介绍Ray：**主要是进行分布式计算 / 并行计算的开源框架**，核心目标是：让你用“写本地 Python 的方式”，轻松把程序**扩展到多台机器上运行**（切记*如果服务不涉及到多台府服务器协同/不是高并发不一定要用Ray*）。**不过**Ray只负责管理核心计算还是Pytorch进行。 Ray 架构简单介绍，参考官方v2架构说明[^2]简单介绍Ray架构设计，其中Ray 的架构可以拆解为五个核心组件：
@@ -528,14 +758,25 @@ class YOLOActor:
                     "conf": round(float(box.conf[0]), 4),
                 })
         return dets
-
+# 方式一
 # 创建 Actor 实例：部署到某个 Worker，占用 0.25 张 GPU，模型在此刻加载
 detector = YOLOActor.remote("yolov8n.pt")
-
 # 调用方法：.remote() 仍然非阻塞，ray.get() 取结果
 ref = detector.infer.remote("street.jpg", conf=0.5)
 results = ray.get(ref)
+
+# 方式二
+ray.init()
+
+model_class = {"yolo": YOLOActor}
+actors = {}
+for name, cls in model_class.items():
+    # 将所有的节点加入到cluster中
+    actors[name] = cls.options(name=name).remote()
+model_a_ref = actors["yolo"].infer.remote("street.jpg", conf=0.5) # 传递参数给节点
+print(model_a_ref, ray.get(model_a_ref)) # 获取节点结果
 ```
+> 对于通过ray修饰的类在获取结果上先通过
 
 Task vs Actor 的本质区别，看这张时序图（注意 `__init__` 只发生一次）：
 
@@ -576,6 +817,7 @@ results = ray.get(refs)                   # 同节点零拷贝；跨节点才惰
 #### 进阶使用
 
 ## Ray实战
+> 代码待补充
 ### 模型部署工程化问题
 考虑将优化好的模型进行服务器部署，那么就需要考虑如下几个问题（**仅为娱乐项目**）：**1、资源使用**，比如说对于每一个模型如何去划分他所需要的资源；**2、服务可靠性**，比如说我的节点挂掉了能不能自动恢复；**3、可观测结果**，比如说我需要监控模型的运行情况，比如说模型的运行时间，模型的运行结果等等；**4、部署**，考虑到k8s/docker部署就需要去完成对应优化；**5、服务安全**，比如 Ray Dashboard监控面板不可能让他暴露公网。**具体到实际应用**比如说服务器上部署如下几个模型：1、CLIP进行图像分类；2、Yolo进行目标识别（实时目标识别）；4、oneformer-large进行实体分割。那么**项目整体结构**如下：
 
@@ -663,7 +905,7 @@ flowchart LR
     class DB,FS,COL1,COL2,W,D,T store
 ```
 
-#### 解决问题1：模型节点话
+#### 解决问题1：构建模型节点
 **首先确定我们每一个节点服务**，因为所有的服务都是一样的都去加载模型然后进行模型推理，因此可以直接创建一个 `BaseModelActor`而后让其他模型去继承即可，对于这个**基类设计**：1、模型加载/推理/warm-up（让模型直接“常驻”显存避免每次都去加载）等（不会去基类里面具体写如何加载模型因为每个模型加载/推理方式不同）；2、记录模型状态（或者说“健康检测”），比如说去记录模型显卡、推理时间等。**具体节点设计**（以CLIP为例），只需要对我们的节点[补充一个Ray修饰器](#ray-core)即可：
 ```python
 @ray.remote(
@@ -682,12 +924,7 @@ class CLIPActor(BaseModelActor):
     def infer():
         ...
 ```
-在设计actor过程中语法就和平时模型推理相同（定义模型加载、模型推理），在完成所有节点设计之后就只需要将**所有节点进行Ray部署即可**，
-
-**而后确定服务**，这块主要是FastAPI
-**而后确定启动参数**
-#### 解决问题2：高并发控制
-最上面已经介绍到使用Ray/Redis可以去处理高并发
+在设计actor过程中语法就和平时模型推理相同（定义模型加载、模型推理）唯一差异在于用一个装饰器去对节点就行处理，在完成所有节点设计之后就只需要将**所有节点进行Ray部署即可**（[ray初始化过程](#简单使用)）。
 #### 服务启动与监控
 启动一般而言有如下几种，直接一键启动、热启动（只去修改代码不去改模型，避免每次都要重启服务）、docker方式启动
 
@@ -745,6 +982,7 @@ ray stop
 ![](https://files.seeusercontent.com/2026/06/08/s7zQ/9ee07da4-c261-4d4c-97ff-de76bc17.png)
 **2、而后直接去postman中发送请求即可**（里面的脚本都是JavaScript）
 ![](https://files.seeusercontent.com/2026/06/08/Sav9/20260608235256111.png)
+### 模型训练
 
 ## 参考
 [^1]: [https://docs.rayai.org.cn/en/latest/index.html](https://docs.rayai.org.cn/en/latest/index.html)
@@ -753,3 +991,6 @@ ray stop
 [^4]: [https://fastapi.tiangolo.com/zh/python-types/](https://fastapi.tiangolo.com/zh/python-types/)
 [^5]: [https://docs.python.org/zh-cn/3/howto/a-conceptual-overview-of-asyncio.html#a-conceptual-overview-of-asyncio](https://docs.python.org/zh-cn/3/howto/a-conceptual-overview-of-asyncio.html#a-conceptual-overview-of-asyncio)
 [^6]: [https://redis.io/](https://redis.io/)
+[^7]: [https://www.anyscale.com/blog/continuous-batching-llm-inference](https://www.anyscale.com/blog/continuous-batching-llm-inference)
+[^8]: [https://docs.nvidia.com/deploy/mps/latest/quick-start.html](https://docs.nvidia.com/deploy/mps/latest/quick-start.html)
+[^9]: [https://docs.nvidia.com/datacenter/tesla/mig-user-guide/latest/index.html](https://docs.nvidia.com/datacenter/tesla/mig-user-guide/latest/index.html)
