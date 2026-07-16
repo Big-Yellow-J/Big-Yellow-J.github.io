@@ -858,5 +858,33 @@
       "new_description",
       "模型微调多卡训练依赖分布式策略。数据并行中DDP采用独立运行机制，每个进程拥有独立优化器，通过all-reduce同步梯度，避免DP的主GPU瓶颈与模型冗余拷贝。张量并行按行或列拆分权重矩阵，列并行需all-reduce聚合完整输入梯度，行并行则通过all-gather汇总分片梯度。流水线并行将模型按顺序分配到不同设备，面临气泡问题。GPipe引入micro-batch与梯度累积，结合梯度检查点降低显存，按1F1B策略交替前反向；PipeDream通过Weight stashing确保同一micro-batch前后向使用相同权重版本，Vertical Sync虽保证全局一致但通常弃用以避免浪费。专家并行作为补充。为优化显存，DeepSpeed ZeRO系列对优化器状态、梯度、模型参数依次分片，将单卡占用量从O(N)降至O(1/N)；FSDP作为PyTorch原生ZeRO-3实现，在前反向时临时All-Gather完整参数并即时释放，实现均匀分片。"
     ]
+  ],
+  "./_posts/2026-06-05-RayArchUse-2.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "基于Ray框架部署CLIP、Yolo、OneFormer等模型，通过设计BaseModelActor基类统一管理模型加载与推理，使其常驻显存避免重复加载，同时记录显存、推理时间等健康指标。服务启动支持一键启动迷你集群与热重载开发，热重载分离Ray集群与API进程，仅重启uvicorn而保留actor进程，避免模型权重重新加载。FastAPI提供可视化接口，Postman即可调用分类、目标识别、实体分割等服务。Ray Dashboard可观测运行状态，日志独立输出至worker目录。"
+    ],
+    [
+      "content_md5",
+      "1d9b58de5fb85061963d2b6c8b00a5b1"
+    ]
+  ],
+  "./writing/2026-07-13-VectorSearch1.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "提升RAG向量检索准确率（ACC）至0.99以上的优化策略，需在模型层和工程层协同发力。模型层可选用更精细的embedding模型或微调，工程层依赖距离度量与索引策略的平衡。距离度量中余弦相似度适用于语义检索，L2和IP适合归一化场景，汉明与杰卡德仅限二值向量。索引策略方面，FLAT保证100%召回但慢，HNSW兼顾速度与召回率是主流，IVF_PQ压缩内存适合亿级数据，DISKANN支持十亿级检索。Milvus中增删改查依托insert、search、upsert、delete接口，search为最核心功能。工程实践分单条与批次检索优化，批次可通过并行或预过滤提升吞吐，但提升ACC常以牺牲部分召回为代价，需在实际场景中权衡参数如nlist、nprobe或HNSW的层级深度。"
+    ],
+    [
+      "content_md5",
+      "a9d6300a58140f68c77e790ec9189978"
+    ]
   ]
 }

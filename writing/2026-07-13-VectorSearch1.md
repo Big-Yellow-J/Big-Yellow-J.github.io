@@ -9,8 +9,9 @@ special_tag: 更新中
 show_footer_image: true
 tags:
 - 向量检索
-description: 
+description: 提升RAG向量检索准确率（ACC）至0.99以上的优化策略，需在模型层和工程层协同发力。模型层可选用更精细的embedding模型或微调，工程层依赖距离度量与索引策略的平衡。距离度量中余弦相似度适用于语义检索，L2和IP适合归一化场景，汉明与杰卡德仅限二值向量。索引策略方面，FLAT保证100%召回但慢，HNSW兼顾速度与召回率是主流，IVF_PQ压缩内存适合亿级数据，DISKANN支持十亿级检索。Milvus中增删改查依托insert、search、upsert、delete接口，search为最核心功能。工程实践分单条与批次检索优化，批次可通过并行或预过滤提升吞吐，但提升ACC常以牺牲部分召回为代价，需在实际场景中权衡参数如nlist、nprobe或HNSW的层级深度。
 ---
+
 在RAG或者在做向量检索中很多情况需要检索的指标高，比如在某些极端情况中可能需要ACC≥0.99（比如说语音识别邻域可能就需要对于说话人其准确率达到如此高的指标），下面简单总结具体实践过程中用到的优化策略去逼近ACC上限。
 > **必须提一嘴**：去提升ACC上限同时极大概率会去损失部分值（理论上很难做到既要又要情况发送）
 
@@ -143,9 +144,21 @@ client.delete(
 )
 ```
 
+## 向量检索优化方案
+姑且将数据库检索优化分为两类：1、单条数据检索，简单理解为输入单条数据A就必须立马从数据库中得到检索结果；2、批次数据检索，简单理解为输入一批数据需要得到这批数据中的检索结果。
+
 ## 向量检索工程化实践
-姑且将数据库检索优化分为两类：1、单条数据检索，简单理解为输入单条数据A就必须立马从数据库中得到检索结果；2、批次数据检索，简单理解为输入一批数据需要得到这批数据中的检索结果
-### 批次数据检索优化
+### 数据模型说明
+为了探究不同检索优化方案的效果下面过程中使用的数据集以及模型等简要说明如下，实验过程中使用数据如为：[edinburghcstr/ami](https://huggingface.co/datasets/edinburghcstr/ami)，测试使用的模型为：campplus、eres2netv2、redimnet_b6（前两个为funasr发布的音频编码模型[^2]，后一个为效果较好的音频编码模型[^3]）。因为测试数据中不同数据部分（train、test、evaluate）交集太少提前将3部分数据全部进行合并，而后随机用5组随机数去从数据集中进行筛选出5%的测试数据，简要统计数据情况如下，对于3部分数据分布情况：
+
+![](https://files.seeusercontent.com/2026/07/16/X2dx/20260716232025267.png)
+
+数据编码具体情况为：
+![](https://files.seeusercontent.com/2026/07/16/9dfG/20260716232308202.png)
+
+里面config主要是有两个字段：ihm以及sdm分别表示个人头戴麦克（噪声较小）以及单个原场麦（噪声较大）一个人音频会同时录制两份，因此需要模**拟实际会议等情况**因此不同随机数数据抽取依据是：1、模拟随机数为：2026、2027、2028、2029、2030尽可能保证抽取音频不重叠；2、用SDM数据作为模拟输入输入
 
 ## 参考
 [^1]: [https://milvus.io/docs/zh/metric.md?tab=floating](https://milvus.io/docs/zh/metric.md?tab=floating)
+[^2]: [https://huggingface.co/funasr/campplus](https://huggingface.co/funasr/campplus)
+[^3]: [https://arxiv.org/html/2604.20229v2](https://arxiv.org/html/2604.20229v2)
