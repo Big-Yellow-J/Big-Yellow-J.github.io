@@ -156,8 +156,11 @@ client.delete(
 数据编码具体情况为：
 ![](https://files.seeusercontent.com/2026/07/16/9dfG/20260716232308202.png)
 
-里面config主要是有两个字段：ihm以及sdm分别表示个人头戴麦克（噪声较小）以及单个原场麦（噪声较大）一个人音频会同时录制两份，因此需要模**拟实际会议等情况**因此不同随机数数据抽取依据是：1、模拟随机数为：2026、2027、2028、2029、2030尽可能保证抽取音频不重叠；2、用SDM数据作为模拟输入输入
+里面config主要是有两个字段：ihm以及sdm分别表示个人头戴麦克（噪声较小）以及单个原场麦（噪声较大）一个人音频会同时录制两份，因此需要模**拟实际会议等情况**因此不同随机数数据抽取依据是：1、模拟随机数为：2026、2027、2028、2029、2030尽可能保证抽取音频不重叠；2、用SDM数据作为模拟输入输入。
+### 实验结果分析
+#### 不同优化测试实验结果分析
 
+#### 
 ## 参考
 [^1]: [https://milvus.io/docs/zh/metric.md?tab=floating](https://milvus.io/docs/zh/metric.md?tab=floating)
 [^2]: [https://huggingface.co/funasr/campplus](https://huggingface.co/funasr/campplus)
