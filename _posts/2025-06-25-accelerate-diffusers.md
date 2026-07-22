@@ -175,7 +175,7 @@ def evaluate(..., noise_scheduler, ):
 
 训练过程
 **1、加噪处理**：通过选择使用DDPM/DDIM而后将生成的"确定的噪声"添加到图片上 `noise_scheduler.add_noise(image, noise, timesteps)`
-![image.png](https://s2.loli.net/2025/06/27/yLPrx7tkdOh3AiD.webp)
+<img src="https://s2.loli.net/2025/06/27/yLPrx7tkdOh3AiD.webp" alt="image.png" width="880" height="511" loading="lazy" decoding="async" />
 
 **2、模型预测**：通过模型去预测所添加的噪声并且计算loss
 生成过程
@@ -508,7 +508,7 @@ print("after Lora Model:", unet.down_blocks[0])
 ```
 
 上面两个过程模型变化为：
-![image.png](https://s2.loli.net/2025/07/02/7KOzpIxEN3bdZQ9.webp)
+<img src="https://s2.loli.net/2025/07/02/7KOzpIxEN3bdZQ9.webp" alt="image.png" width="2000" height="501" loading="lazy" decoding="async" />
 
 仔细分析一下`LoraConfig`里面的具体原理，因为很多模型（基于attention）基本就是q、k、v三个，因此通过`target_modules`指定哪些模块的参数是需要通过lora进行调整的模块。`init_lora_weights`代表lora初始化参数分布策略，参数`r`以及 `lora_alpha`代表的含义是：
 $$
@@ -516,7 +516,7 @@ y=Wx+ \text{Dropout}(\text{B}_{out \times r} \text{A}_{r \times in}x)  \times \f
 $$
 
 **经典问题**：1、lora里面参数里面之所以初始化为0是因为对于我们的llm/DF模型一般都是“优秀”的，而对于“陌生”的数据通过零初始化确保一切干净，从 0 开始稳步适配（在训练初期引入噪声，可能导致不稳定，尤其在微调少步数、低学习率时，收敛更慢）2、多个lora模型同时作用于一个SD模型，并配置他们的各自权重，并且不同lora参数对模型生成的影响[^4]:
-![image.png](https://s2.loli.net/2025/07/02/oi1umR5jek4LIWp.webp)
+<img src="https://s2.loli.net/2025/07/02/oi1umR5jek4LIWp.webp" alt="image.png" width="536" height="576" loading="lazy" decoding="async" />
 
 ### 4、Adapters使用
 lora也是Adapters（可以简单理解为对训练好的模型再去添加一个插件，通过这个插件让SD去生成其他的样式的图片）一种，具体见：[深入浅出了解生成模型-6：常用基础模型与 Adapters等解析](https://www.big-yellow-j.top/posts/2025/07/06/DFBaseModel.html)

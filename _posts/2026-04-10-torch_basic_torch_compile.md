@@ -19,7 +19,7 @@ description: PyTorch计算图是有向无环图，节点代表操作，边代表
 ### 简单例子
 > PyTorch 在 forward 时构建一张由 Node 组成的反向执行图，每个 Node 记录局部梯度计算规则和必要上下文，在 backward 时由 Engine 按拓扑顺序逐节点执行并完成梯度传播与累加。
 
-![](https://s2.loli.net/2025/08/14/gIftdlM7KTw2Yak.webp)
+<img src="https://s2.loli.net/2025/08/14/gIftdlM7KTw2Yak.webp" alt="image" width="889" height="754" loading="lazy" decoding="async" />
 
 参考上图中给出的例子[^1]，PyTorch 的计算图在底层负责记录张量之间的运算与依赖关系。要点：**节点（Node）** 为张量或运算；**边（Edge）**表示数据流，指明某张量由哪个运算生成或某运算的输入来自哪个张量；叶子节点为用户创建且需梯度的张量（`requires_grad=True`）。PyTorch 是动态图框架：每次 forward 即时构建计算图，执行后默认释放（除非 `retain_graph=True`）。调用 `.backward()` 时，框架沿计算图从输出向输入反向传播，逐节点累加梯度并回传到叶子张量（例如 $z=w=y_1\times y_2= \log(a) \times \sin(x_2)=\log(x_1\times x_2)\times \sin(x_2)$ 的梯度由对应运算节点按链式法则逐步计算）：
 
