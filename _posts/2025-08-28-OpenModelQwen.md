@@ -17,7 +17,7 @@ description: 通义千问多模态系列QwenVL迭代脉络清晰，初代采用V
 ## Qwen多模态系列模型
 ### QwenVL
 在QwenVL[^4]中在论文里面作者提到的其模型的整个训练过程如下：
-![](https://s2.loli.net/2025/09/21/HEhlRPFJBMKpjoZ.webp)
+<img src="https://s2.loli.net/2025/09/21/HEhlRPFJBMKpjoZ.webp" alt="image" width="814" height="308" loading="lazy" decoding="async" />
 > 仅从提供的不同阶段还是很容易发现QwenVL还是是采用和BLIP相似的使用 learned-query来对齐模态信息
 > 语言模型使用（7.7B）：Qwen-7B
 > 视觉编码器（1.9B）：Vit-bigG
@@ -29,10 +29,10 @@ description: 通义千问多模态系列QwenVL迭代脉络清晰，初代采用V
 此外，考虑到位置信息对于精细图像理解的重要性，Qwen-VL将二维绝对位置编码（三角位置编码）整合到Cross-Attention的 $q,k$中，以减少压缩过程中可能丢失的位置细节。随后将长度为256的压缩图像特征序列输入到大型语言模型中。
 ### QwenVL-2
 对于QwenVL-2[^3]其模型的基本结构如下：
-![](https://s2.loli.net/2025/09/21/5c1jovnLVOaS62H.webp)
+<img src="https://s2.loli.net/2025/09/21/5c1jovnLVOaS62H.webp" alt="image" width="776" height="498" loading="lazy" decoding="async" />
 
 **1、使用动态分辨率**（也就是说输入图像不需要再去改变图像尺寸到一个固定值），于此同时为了减少 **visual-token**数量，将**2x2的的相邻的token进行拼接**到一个token而后通过MLP层进行处理。
-![](https://s2.loli.net/2025/09/21/w3agENHmLVcoSdt.webp)
+<img src="https://s2.loli.net/2025/09/21/w3agENHmLVcoSdt.webp" alt="image" width="1235" height="277" loading="lazy" decoding="async" />
 
 **动态分辨率**处理如上，通过指定`[mix_pixels, max_pixels]`范围然后将图像保持原始的纵横比去缩减图像到上面的范围中（[处理过程](https://github.com/QwenLM/Qwen2.5-VL/blob/c15045f8829fee29d4b3996e068775fe6a5855db/qwen-vl-utils/src/qwen_vl_utils/vision_process.py#L59)，首先计算原始图像的像素数量，而后判断和上面指标的范围，如果超出范围就去计算需要修改的比例，在将整个比例去处理到分辨率上）
 在通过使用动态分辨率处理图像之后会在单一**图片增加时间维度**也就是将：CHW-->TCHW（这点是为了和视频处理过程进行对齐），在源码中T选择数值为2也就是将图片“复制一次”，而后对帧序列进行Patchification操作
@@ -63,9 +63,9 @@ def _preprocess():
 **总结处理过程**：动态分辨率处理-->复制时间维度-->将序列切割为patch。这样一来就会直接将图像处理为：`[grid_t * grid_h * grid_w, channel * temporal_patch_size(2) * patch_size(14) * patch_size(14)]`（其中`grid_h=resized_height // self.patch_size(14)`）除此之外而后去计算 3d-RoPE最后通过一层线性层处理就得到最后的视觉token。
 ### QwenVL-2.5
 在QwenVL2.5中[^6]模型具体的代码处理过程参考Blog[^5]具体模型结构：
-![](https://s2.loli.net/2025/09/21/R8yLfVqpznvkgZw.webp)
+<img src="https://s2.loli.net/2025/09/21/R8yLfVqpznvkgZw.webp" alt="image" width="1159" height="762" loading="lazy" decoding="async" />
 在图像处理过程上和QwenVL2差异不大都是直接：动态分辨率处理-->复制时间维度-->将序列切割为patch，对比两个模型差异：
-![](https://s2.loli.net/2025/09/22/NvKgQqhC36WAkjU.webp)
+<img src="https://s2.loli.net/2025/09/22/NvKgQqhC36WAkjU.webp" alt="image" width="2992" height="1632" loading="lazy" decoding="async" />
 1、采用 RMSNorm 替换了所有 LayerNorm；2、ViT中每一个VisionBlock中的MLP换成了SwiGLU 结构。只从模型结构上差异不到，在QwenVL2.5中主要进行改动：1、在视觉编码过程中使用window-attention（对应上述结构中的`Qwen2_5_VLVisionAttention`）对于具体的划分window方法（[代码](https://github.com/huggingface/transformers/blob/41925e42135257361b7f02aa20e3bbdab3f7b923/src/transformers/models/qwen2_5_vl/modeling_qwen2_5_vl.py#L465)）：根据输入的图像大小 (gird_t, grid_h, grid_w)去得到窗口索引 (window_index) 和 累积序列长度 (cu_window_seqlens)。具体例子如下：
 ```python
 # 数据数据特征

@@ -31,7 +31,7 @@ X_T=\sqrt{\bar{\alpha_T}}x_0+ \sqrt{1- \bar{\alpha_T}}\epsilon
 $$
 
 通过对图片（$x_0$）不断添加高斯噪声最后得到 $x_T$而后通过反向去噪又得到新的图片。不过DDPM和DDIM之间存在一个很明显的差异就是：DDPM将加（去）噪视作一个马尔科夫链过程（简单理解为每一步 $t$都要依靠上一步 $t-1$），但是在DDIM过程中就会使用“跳步”来进行
-![](https://s2.loli.net/2025/06/21/pwIndituAKX4kjh.webp)
+<img src="https://s2.loli.net/2025/06/21/pwIndituAKX4kjh.webp" alt="image" width="950" height="178" loading="lazy" decoding="async" />
 
 **DDPM生成过程**：
 
@@ -141,7 +141,7 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
         # important
 ```
 1、初始化参数（**DDPM和DDIM中没什么差异**）。首先是根据 `beta_schedule`来生成在 `num_train_timesteps`下参数 $\beta$的值（比如说 `linear`那么在1000步下就会生成（直接通过`torch.linspace`）从 `(1-beta_start)-(1-beta_end)` 的1000个数字）而后就是定义好加噪比较重要的几个参数：$\alpha$ 以及迭代次数 $t$，对于`self.alphas_cumprod`则是直接计算**累乘得到的结果**。上面过程对应：
-![](https://s2.loli.net/2025/07/22/aVTbcnwKBNj4plg.webp)
+<img src="https://s2.loli.net/2025/07/22/aVTbcnwKBNj4plg.webp" alt="image" width="653" height="97" loading="lazy" decoding="async" />
 2、加噪过程（**DDPM和DDIM中没什么差异**）。这个整个过程也比较简单就是直接通过计算：$X_T=\sqrt{\bar{\alpha_T}}x_0+ \sqrt{1- \bar{\alpha_T}}\epsilon$
 3、生成过程。输入三个参数分别表示：**1、model_output**：模型预测得到的噪声数值；**2、timestep**：时间步；**3、sample**：就是我们加载后的$x_t$（最开始就是一个纯噪声随着迭代逐渐“清晰”）。生成图像过程中无疑就是直接通过$t$去推导 $t-1$的图像结果，因此**在DDPM生成过程中** 首先是分别计算 $\alpha_{t}$以及 $\alpha_{t-1}$，不过生成过程有三种。
 * `epsilon`：预测噪声 $\epsilon$（将上面加噪公司逆推得到$x_0$）
@@ -161,7 +161,7 @@ current_sample_coeff = current_alpha_t ** (0.5) *beta_prod_t_prev / beta_prod_t
 pred_prev_sample = pred_original_sample_coeff *pred_original_sample + current_sample_coeff * sample
 ```
 最后在模型里面会返回两部分内容：1、pred_prev_sample；2、pred_original_sample。对于这两个值分别表示的是：模型认为最终的干净图像（完全无噪声）（pred_original_sample）。采样一步后，预计在第 499 步应该长的样子（pred_prev_sample）。**对比在DDIM中的差异**，第一个就是**时间步处理差异**，在DDPM中直接用$t-1$来获取上一步就行，但是在DDIM中需要计算`timestep - self.config.num_train_timesteps // self.num_inference_steps`这是因为DDIM会使用“跳步”；2、在计算 $x_0$上两者之间不存差异，只是计算上一步在公式上存在差异（DDIM计算公式）：
-![image.png](https://s2.loli.net/2025/08/06/7VyP3ENhK5rWscO.webp)
+<img src="https://s2.loli.net/2025/08/06/7VyP3ENhK5rWscO.webp" alt="image.png" width="1055" height="152" loading="lazy" decoding="async" />
 
 ```python
 variance = self._get_variance(timestep, prev_timestep)
@@ -175,7 +175,7 @@ prev_sample = alpha_prod_t_prev ** (0.5) * pred_original_sample + pred_sample_di
 > 只是简单对比不同调度器在生成效果上的速度差异（SDXL模型）
 
 [不同调度器生成对比](https://1drv.ms/f/c/667854cf645e8766/ElCNxPu93Q5Cp1Tqq8YbVUsBV-pVyGG6HG3FJ2AXAxDYDg?e=0H9btC)，从上面简单比较发现一般来说需要20-30步（建立在不适用LCM模型基础上）才能生成一个效果较好的图像，从测试过程发现基本（20-30步）一张图片消耗时间为0.2s左右（A100-80G以及使用`float16`）。从上面的测试结果上来看`UniPCMultistepScheduler`和 `DPMSolverMultistepScheduler`测试的效果最好（仅仅只从迭代步数上分析），借用ChatGPT对不同生成器的分析如下：
-![image.png](https://s2.loli.net/2025/07/22/LbkEu5hO7y8PURj.webp)
+<img src="https://s2.loli.net/2025/07/22/LbkEu5hO7y8PURj.webp" alt="image.png" width="942" height="316" loading="lazy" decoding="async" />
 
 不过如果去仔细看生成图像的细节内容的话（单独对比了Unip、DPM、DDIM从10-50步使用的模型是SDXL并且使用`float16`）得到测试[结果](https://1drv.ms/f/c/667854cf645e8766/ElCNxPu93Q5Cp1Tqq8YbVUsBV-pVyGG6HG3FJ2AXAxDYDg?e=0H9btC)
 > 此过程使用的prompt（直接GPT生成）：

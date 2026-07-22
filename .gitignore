@@ -83,3 +83,6 @@ writing/DistributeTraining/learning_distribute_training/__pycache__/
 !/writing/DataDistributeResult/
 !/writing/BlogLife/uploads/
 !/writing/BlogLife/moments.db
+/code/Python/AudioSignalProcessing/vad_output
+/code/Python/AudioSignalProcessing/FireRedVAD
+/code/Python/AudioSignalProcessing/pretrained_models

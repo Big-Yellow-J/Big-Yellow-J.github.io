@@ -886,5 +886,19 @@
       "content_md5",
       "a9d6300a58140f68c77e790ec9189978"
     ]
+  ],
+  "./_posts/2026-07-18-AudioSignalProcessing-1.md": [
+    [
+      "old_description",
+      null
+    ],
+    [
+      "new_description",
+      "VAD核心任务是在连续音频中精准区分语音与非语音段。理解其工作原理需掌握采样率（16kHz黄金平衡）、位深（16bit标配）、分帧（帧长20-40ms、帧移10ms）、特征（257维STFT功率谱或80维Fbank）以及对数分贝压缩动态范围。所有VAD均依赖滞后机制（最小语音/静音时长、首尾填充、双阈值）平滑抖动，并通过端点检测（回溯/提前）优化边界。主流模型包括：WebRTC VAD（6子带GMM似然比，极轻量）、Silero VAD（CNN+双向GRU，2MB，6000+语种预训练）、FSMN-VAD（前馈序列记忆网络，0.4M参数，并行推理高效）、pyannote SAD（SincNet端到端学习滤波器+LSTM+自注意力，学术SOTA）、FireRedVAD（80维Fbank+CMVN+滑动窗口平滑，超越Silero v6）以及纯算法能量VAD（RMS阈值）和auditok（能量状态机）。关键后处理参数如speech_threshold、min_speech/silence_duration_ms、speech_pad_ms决定激进程度，SNR阈值与双阈值进一步过滤噪声。"
+    ],
+    [
+      "content_md5",
+      "e20a0ff42e359b5e5fa011f7e0651162"
+    ]
   ]
 }

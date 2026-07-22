@@ -42,10 +42,10 @@ class AdamW(Optimizer):
 
 ## 学习率优化器
 上面已经介绍了 `torch.optim.lr_scheduler`这里直接进一步解释其各类方法以及代码实战。其中在 `torch.optim.lr_scheduler` 中大部分调整学习率的方法都是根据epoch训练次数。直接总结如下所示：
-![](https://s2.loli.net/2025/06/21/ZR5JkIStjF7TsO1.webp)
+<img src="https://s2.loli.net/2025/06/21/ZR5JkIStjF7TsO1.webp" alt="image" width="1283" height="1291" loading="lazy" decoding="async" />
 
 对于不同的优化器实际测试代码见文件：[learning_rate.ipynb](https://github.com/Big-Yellow-J/Big-Yellow-J.github.io/blob/master/code/Python/learning_rate/learning_rate.ipynb)。于此同时不同学习率优化得到的学习率变化曲线为：
-![](https://s2.loli.net/2025/06/21/OTmDUKPCgush2Rw.webp)
+<img src="https://s2.loli.net/2025/06/21/OTmDUKPCgush2Rw.webp" alt="image" width="1500" height="1000" loading="lazy" decoding="async" />
 
 值得注意的是，在使用`lr_scheduler`过程中，一般使用套路为：
 

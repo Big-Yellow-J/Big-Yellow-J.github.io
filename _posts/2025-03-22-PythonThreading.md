@@ -115,7 +115,7 @@ if __name__ == "__main__":
 
 这样一来得到的结果为：
 
-![](https://s2.loli.net/2025/06/21/TQYPULj4feDlRoq.webp)
+<img src="https://s2.loli.net/2025/06/21/TQYPULj4feDlRoq.webp" alt="image" width="560" height="203" loading="lazy" decoding="async" />
 
 但是上面代码中并没有对进程加锁（`lock = threading.Lock()`），但是结果还是可以正常（`write`是一个 **原子操作** ）写入（有时候会出现遗漏掉内容），但是写入顺序是不对的。
 
@@ -134,7 +134,7 @@ def write_to_file(num):
             f.write("\n")
 ```
 
-![](https://s2.loli.net/2025/06/21/jTesJLGzhri7bmY.webp)
+<img src="https://s2.loli.net/2025/06/21/jTesJLGzhri7bmY.webp" alt="image" width="404" height="213" loading="lazy" decoding="async" />
 
 这样一来就可以正常写入结果
 

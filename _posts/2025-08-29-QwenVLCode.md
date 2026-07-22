@@ -503,7 +503,7 @@ for step, batch in enumerate(train_loader):
 # 当然这个 images 也可以替换为文本问题 "question"
 ```
 比如说数据集：[HuggingFaceH4/rlaif-v_formatted](https://huggingface.co/datasets/HuggingFaceH4/rlaif-v_formatted/viewer/default/train?row=0&views%5B%5D=train)他的数据结构如下：
-![image.png](https://s2.loli.net/2025/09/05/O8E94bqdysHGxV6.webp)
+<img src="https://s2.loli.net/2025/09/05/O8E94bqdysHGxV6.webp" alt="image.png" width="1496" height="370" loading="lazy" decoding="async" />
 直接看trl中如何实现[QwenVL-DPO](https://github.com/huggingface/trl/blob/main/examples/scripts/dpo_vlm.py)过程代码：
 ```python
 from trl import (
@@ -631,13 +631,13 @@ _losses, _chosen_rewards, _rejected_rewards = self.dpo_loss(
 
 对于DPO的loss处理过程就比较简单，在trl中提供3种计算方式：
 **1、Alpha散度计算**
-![image.png](https://s2.loli.net/2025/09/05/sonSkV1aNPZdD9H.webp)
+<img src="https://s2.loli.net/2025/09/05/sonSkV1aNPZdD9H.webp" alt="image.png" width="687" height="488" loading="lazy" decoding="async" />
 
 **2、KL散度计算**
-![image.png](https://s2.loli.net/2025/09/05/UOpNRbKQcxa18dL.webp)
+<img src="https://s2.loli.net/2025/09/05/UOpNRbKQcxa18dL.webp" alt="image.png" width="595" height="485" loading="lazy" decoding="async" />
 
 **3、JS散度计算**
-![image.png](https://s2.loli.net/2025/09/05/OhCBN8q7y4lzGtx.webp)
+<img src="https://s2.loli.net/2025/09/05/OhCBN8q7y4lzGtx.webp" alt="image.png" width="956" height="507" loading="lazy" decoding="async" />
 
 在计算得到不同方式得到的结果：logits然后再去根据不同 `loss_type`去做处理（比如说：`loss_type == "sigmoid"` 处理过程为：`losses = (-F.logsigmoid(self.beta * logits) * (1 - self.label_smoothing)- F.logsigmoid(-self.beta * logits) * self.label_smoothing)`）
 #### RL-DPO处理过程总结
@@ -653,7 +653,7 @@ rejected_logratios = rejected_logps.to(device) - (not self.reference_free) * ref
 * **数据处理过程**
 
 以官方代码为例（训练一个具有思考过程的多模态模型），在数据处理层面使用类似如下数据集
-![image.png](https://s2.loli.net/2025/09/05/3xYD4jFp5VsyPeI.webp)
+<img src="https://s2.loli.net/2025/09/05/3xYD4jFp5VsyPeI.webp" alt="image.png" width="1380" height="347" loading="lazy" decoding="async" />
 以为需要设计一个“输出”思考过程的模型因此设计设计具有“思考”过程的prompt，最后输入模型数据格式为：
 ```python
 # 原始文本
@@ -688,7 +688,7 @@ output = {
 > **第二步、生成回答**。在`trl`中使用了3种生成方式：1、直接用模型生成；2、使用vllm方式生成；3、使用use_transformers_paged方式。对于生成（直接通过模型）过程而言就比较简单直接将`prompt_inputs["input_ids"]` 和 `prompt_inputs["attention_mask"]` 丢到模型里面得到`prompt_completion_ids`再去将 prompt内容和回答截取出来得到 `prompt_ids` 和 `completion_ids`
 > **第三步、计算奖励值**。这个过程就比较简单，直接将模型的回答进行解码再去通过奖励函数计算回答的奖励值，而后归一化成优势函数（`advantages`），按 group（一次生成多个样本）算均值，计算每个样本的 相对优势（比如说两个回答打分为 [0.8, 0.5]那么减去 group 内均值，假设为[+0.15, -0.15]）
 > **最后、返回输出**。
-> ![image.png](https://s2.loli.net/2025/09/05/f2loj6LEVUwr7Kg.webp)
+> <img src="https://s2.loli.net/2025/09/05/f2loj6LEVUwr7Kg.webp" alt="image.png" width="572" height="353" loading="lazy" decoding="async" />
 > 在最后返回的输出中 `old_per_token_logps` 和 `ref_per_token_logps`处理直接通过函数`_get_per_token_logps_and_entropies`（就相当于把 第二步得到的 `prompt_completion_ids`在交给模型里面去计算每个token的概率）
 
 * **奖励函数设计**
@@ -716,7 +716,7 @@ def compute_loss(self, model, inputs, return_outputs, num_items_in_batch):
 > 其处理过程比较简单，直接将所有的数据都处理成模型输入（GRPO不想DPO那样需要将3元组进行拆开拼接）如：input_ids、pixel_values等然后直接`logits = model(**model_inputs).logits`在得到模型的输出之后后续就是对输出做一些截断处理（如只需要模型回答部分的输出`logits[:, -logits_to_keep:, :]`）而后去计算 `logits / self.temperature`（通过温度系数来确定输出内容多样化）最后再去通过：`logps = selective_log_softmax(logits, completion_ids)`（selective_log_softmax只去计算completion_ids部分的log_softmax值）就可以得到最后的值。
 
 #### RL-GRPO处理过程总结
-![1.png](https://s2.loli.net/2025/09/21/x45DlMb6QVPuh7r.webp)
+<img src="https://s2.loli.net/2025/09/21/x45DlMb6QVPuh7r.webp" alt="1.png" width="4268" height="1936" loading="lazy" decoding="async" />
 对于上面loss计算公式中主要就是如下几个值需要关注：1、advantage值；2、KL散度值。
 因此简单总结一些GRPO代码处理过程[^1]，**首先**，对于数据处理，这块内容比较简单直接 **模板化**、**编码内容即可**，因为GRPO是“一个问题抛出多组回答然后评估回答”，因此在数据处理过程中通过模型生成回答 `prompt_completion_ids=model.generate(...)`而后需要做的就是将生成内容进行拆分得到`prompt_ids`和 `completion_ids`（得到这一部分值之后就只需要在去还原成text文本然后再去通过reward函数去计算reward值以及计算最后需要的 `advantage`值），除此之外还会去通过model和model_ref分别计算回答中每个token的logits值：`old_per_token_logps` 和 `ref_per_token_logps`
 > 这个过程直接通过函数 [_get_per_token_logps_and_entropies](https://github.com/huggingface/trl/blob/67991605c0e6aaf1ef3c2bf64e11da914948c4a4/trl/trainer/grpo_trainer.py#L786)处理，他的处理思路简单直接将 model需要的内容再丢到model里面得到每个token的logits然后再去计算softmax值
@@ -744,7 +744,7 @@ output = {
 **而后**，对于loss计算过程首先将上面output中的 问题+回答进行组合再丢到`_get_per_token_logps_and_entropies`中得到每个token概率以及熵的值：`per_token_logps`，`entropies`，而后就是：1、**选择出高熵值的token**（`entropy_mask`）；2、**计算KL散度**（`torch.exp(ref_per_token_logps - per_token_logps) - (ref_per_token_logps - per_token_logps) - 1`）；3、**重要性采样权重**：比较当前 log 概率和旧策略（`per_token_logps - old_per_token_logps`），得到 importance weight，做 clipping 限制。构造两个候选 loss（不裁剪和裁剪），取最小值，形成 `per_token_loss`再去乘上 entropy_mask和加上 KL 惩罚项就可以得到最后的loss值。
 #### RL-PPO处理代码
 借用huggingface中对于PPO过程描述图：
-![image.png](https://s2.loli.net/2025/09/05/AvLeinFOo5lPV6z.webp)
+<img src="https://s2.loli.net/2025/09/05/AvLeinFOo5lPV6z.webp" alt="image.png" width="8000" height="4500" loading="lazy" decoding="async" />
 对于[代码](https://github.com/huggingface/trl/blob/1d06757e57723e85048ab7b061b12aac8895ca89/trl/trainer/ppo_trainer.py#L100)使用，相比较GRPO和DPO要简单很多（不过在使用模型上，DPO和PPO都需要加载model和ref_model而GRPO只需要加载一个model），按照上面的处理过程：
 **首先**计算rollout输出，直接通过加载的模型然后模型对于“问题”去得到“回答”`query_responses`（**完整的模型生成内容**：prompt+模型的回答），`logitss`，接下来（[代码](https://github.com/huggingface/trl/blob/9955ee7eaa7e361ef46f7ac26b5ddc79199811f8/trl/trainer/ppo_trainer.py#L473C21-L490C34)）去计算model和ref_model中每个token的log概率值（这个过程和GRPO处理是一样的，将问题+回答拼接起来而后丢到模型中计算每个token的log概率值）最后分别得到模型的输出结果：`logprob` `response`（截取model回答内容） 和 `ref_logprob`。后面部分（[代码](https://github.com/huggingface/trl/blob/9955ee7eaa7e361ef46f7ac26b5ddc79199811f8/trl/trainer/ppo_trainer.py#L492C21-L509C22)）就是直接根据 `response`（model的回答） 以及 `query`（就是我们的问题）去计算reward的值`scores`。
 接下来处理过程：1、处理 EOS 缺失惩罚：将socres中如果生成内容不含结束标记就从`scores`中减去数值；2、计算kl以及最后的rewards值，对kl直接首先通过mask去掩盖部分logprobs（ref_logprobs）然后直接通过 `kl = -(ref_logprobs - logprobs) if args.kl_estimator == "k1" else ((ref_logprobs - logprobs).exp() - 1) - logr`得到kl值；3、计算advantage值（[代码](https://github.com/huggingface/trl/blob/9955ee7eaa7e361ef46f7ac26b5ddc79199811f8/trl/trainer/ppo_trainer.py#L561)）
@@ -774,9 +774,9 @@ output = {
 
 **1、DPO中计算KL**：在model_ref以及model分别输入“3元组”数据之后会去计算不同token的概率值，也就是model和ref都会生成 reject和choose的概率值，然后去计算：$\mathrm{loss}=-\frac{1}{N}\sum_{i=1}^{N}\log\sigma\left(\beta\cdot((\log\pi_{\theta}(y_{w}|x)-\log\pi_{\theta}(y_{l}|x))-(\log\pi_{\mathrm{ref}}(y_{w}|x)-\log\pi_{\mathrm{ref}}(y_{l}|x)))\right)$ 的sigmoid 损失优化相对偏好
 **2、GRPO中计算KL**：通过model_ref对于问题Q以及模型生成的多组回答进而可以得到每组回答的token概率：`ref_per_token_logps` 而后我又通过model去生成多组回答以及token概率：`per_token_logps`接下来就是直接他们之间KL散度：
-![](https://s2.loli.net/2025/09/21/UwmkqNA42lgvzWy.webp)
+<img src="https://s2.loli.net/2025/09/21/UwmkqNA42lgvzWy.webp" alt="image" width="645" height="81" loading="lazy" decoding="async" />
 **3、PPO中计算KL**：通过model得到回答中的每一个token的概率`logprobs`，同样的再去通过model_rf也去计算每一个token的概率`ref_logprobs`然后去计算KL
-![](https://s2.loli.net/2025/09/21/EsyjUOIolMTDJHm.webp)
+<img src="https://s2.loli.net/2025/09/21/EsyjUOIolMTDJHm.webp" alt="image" width="534" height="67" loading="lazy" decoding="async" />
 DPO：通过“偏好差值”间接引入 KL 约束，偏重于 对比学习。
 GRPO：显式计算 生成候选组的 token 级 KL，作为正则项，保证模型不偏离参考策略。
 PPO：基于当前策略与参考策略（或旧策略）的 KL，常作为 正则或 early stopping 信号

@@ -615,7 +615,10 @@ def process_file(file_path_list,
         md_content = open_file(md_path)
         if md_content is None:
             return None
-        # md_content = format_image(md_content, image_store_dir, image_threads, gen_avif=gen_avif)
+        md_content = format_image(md_content, image_store_dir, image_threads, gen_avif=gen_avif)
+        # 图片替换后立即写回文件
+        with open(md_path, 'w', encoding='utf-8') as f:
+            f.write(md_content)
         _, yaml_dict = format_markdown(md_content)
         # life 文章：自动收集正文图为 gallery，非 sm.ms 域名重传
         new_md, changed = collect_life_gallery(md_content, yaml_dict, image_store_dir)

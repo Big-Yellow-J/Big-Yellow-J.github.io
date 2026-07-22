@@ -96,12 +96,12 @@ hf download stabilityai/sdxl-vae sdxl_vae.safetensors --local-dir ~/autodl-tmp/S
 > 项目地址：[https://github.com/hanamizuki-ai/stable-diffusion-webui-localization-zh_Hans](https://github.com/hanamizuki-ai/stable-diffusion-webui-localization-zh_Hans)
 
 操作步骤：**第一步：安装插件**
-![](https://s2.loli.net/2025/12/13/mEPsjkRGoqH4UK2.webp)
+<img src="https://s2.loli.net/2025/12/13/mEPsjkRGoqH4UK2.webp" alt="image" width="1904" height="580" loading="lazy" decoding="async" />
 当下面出现：`AssertionError: Extension directory already exists: /root/autodl-tmp/SDWebUIFile/data/extensions/stable-diffusion-webui-localization-zh_Hans`时候就代表安装完毕，然后就可以直接去进行下面步骤
-![](https://s2.loli.net/2026/01/14/L46qsUEPurB8xwf.webp)
+<img src="https://s2.loli.net/2026/01/14/L46qsUEPurB8xwf.webp" alt="image" width="1881" height="821" loading="lazy" decoding="async" />
 **第二步：启用插件**
 然后就可以正常安装了，然后就需要去`seeting`-->`User interface`，然后在这个界面选择中文即可（**一定要先点击Apply**）
-![](https://s2.loli.net/2025/12/13/rdDkIGc7jfvhp3U.webp)
+<img src="https://s2.loli.net/2025/12/13/rdDkIGc7jfvhp3U.webp" alt="image" width="1880" height="469" loading="lazy" decoding="async" />
 最后`Reload UI`即可，这样界面就变成中文了。
 **ControlNet 插件安装**
 基本安装步骤和上面的一样，只是不需要进行第二步：启用插件了。安装`ControNet`插件之后就只需要去安装对应的模型权重即可使用插件。如果按照上面步骤修改了地址那么：
@@ -110,7 +110,7 @@ hf download stabilityai/sdxl-vae sdxl_vae.safetensors --local-dir ~/autodl-tmp/S
 Codeformer  ControlNet  GFPGAN  Lora  Stable-diffusion  hypernetworks
 ```
 然后对于`ControlNet`权重就可以直接下载然后放到`ControlNet`中即可，比如说下载
-![](https://s2.loli.net/2025/12/13/ZlzmYJv192Pi57o.webp)
+<img src="https://s2.loli.net/2025/12/13/ZlzmYJv192Pi57o.webp" alt="image" width="1890" height="749" loading="lazy" decoding="async" />
 就只需要：
 ```bash
 hf download lllyasviel/sd_control_collection diffusers_xl_canny_full.safetensors --local-dir /root/autodl-tmp/SDWebUIFile/models/ControlNet
@@ -119,9 +119,9 @@ hf download lllyasviel/sd_control_collection diffusers_xl_depth_full.safetensors
 具体使用可以见：[https://zhuanlan.zhihu.com/p/692537570](https://zhuanlan.zhihu.com/p/692537570)
 ### SD WebUI API调用
 执行完毕上面操作之后既可以直接调用API进行处理了（`bash webui.sh -f --api`启用API访问）然后可以直接使用 `requests`方式进行访问，具体例子比如说：用上面下面的`control_v11e_sd15_ip2p.pth`和 `control_v11f1p_sd15_depth.pth`进行测试实验，具体代码：[code](https://github.com/shangxiaaabb/ProjectCode/tree/main/code/Python/SDWebUI-Comfui/webui_comfui.ipynb)，值得注意的是：
-![](https://s2.loli.net/2025/12/13/FjRUOs6DXqeKwJL.webp)
+<img src="https://s2.loli.net/2025/12/13/FjRUOs6DXqeKwJL.webp" alt="image" width="930" height="899" loading="lazy" decoding="async" />
 最终得到效果如下
-![](https://s2.loli.net/2025/12/13/iYSXdl91w657u2q.webp)
+<img src="https://s2.loli.net/2025/12/13/iYSXdl91w657u2q.webp" alt="image" width="1840" height="583" loading="lazy" decoding="async" />
 ## ComfyUI 基础使用
 教程：[https://www.bilibili.com/video/BV14w41167eZ/?vd_source=881c4826193cfb648b5cdd0bad9f19f0](https://www.bilibili.com/video/BV14w41167eZ/?vd_source=881c4826193cfb648b5cdd0bad9f19f0)对于ComfyUI只需要了解如下几个点：1、如何API调用；2、如何自定义节点；3、工作流搭建（这个直接多看几个别人的就会了）
 > 对于ComfyUI不需要看太多视频，简单总结使用就是：在ComfyUI中所有的运行过程都是在 **工作流** 上进行运行，而工作流中每一个“方框”就是我们的 **节点**（可以意见为一个函数有与输入和输出），不同节点之间输入接输出。

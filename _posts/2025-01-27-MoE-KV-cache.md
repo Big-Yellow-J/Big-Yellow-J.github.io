@@ -22,7 +22,7 @@ tags:
 1、**稀疏的MoE层**：这些层代替了传统 Transformer 模型中的前馈网络 (FFN) 层。MoE 层包含若干“专家”(例如 8 个)，每个专家本身是一个独立的神经网络。在实际应用中，这些专家通常是前馈网络 (FFN)，但它们也可以是更复杂的网络结构，甚至可以是 MoE 层本身，从而形成层级式的 MoE 结构。
 2、**门控网络/路由（Gate Layer/route Layer）**：这个部分用于决定哪些令牌 (token) 被发送到哪个专家。例如，在下图中，“More”这个令牌可能被发送到第二个专家，而“Parameters”这个令牌被发送到第一个专家。有时，一个令牌甚至可以被发送到多个专家。令牌的路由方式是 MoE 使用中的一个关键点，因为路由器由学习的参数组成，并且与网络的其他部分一同进行预训练。
 
-![1](https://s2.loli.net/2025/06/21/Y5Dw4tTaFg7IZqr.webp)
+<img src="https://s2.loli.net/2025/06/21/Y5Dw4tTaFg7IZqr.webp" alt="1" width="1095" height="562" loading="lazy" decoding="async" />
 
 换言之也就是说：将原始的Transformer框架中的`FFN Layer`（全连接层）替换成一个由`Gate Layer`和若干的`FFN Layer`组成的结构，通过`Gate`来确定一个输入将会被那些`FFN`进行处理，而后对被`FFN`处理后的内容进行加权处理。
 
@@ -30,7 +30,7 @@ tags:
 
 ### 1、**稠密MoE**和 **稀疏MoE**
 
-![1](https://s2.loli.net/2025/06/21/qYp4yPnNECkvoTb.webp)
+<img src="https://s2.loli.net/2025/06/21/qYp4yPnNECkvoTb.webp" alt="1" width="1259" height="617" loading="lazy" decoding="async" />
 
 检验而言：如上图所示，对于**稠密的MoE**（`Dense MoE`）而言（假设4个FFN）在通过Gate处理之后输入`X`要通过每一个FFN进行处理，而对于**稀疏的MoE**（`Sparse MoE`）而言，通过Gate处理只去选择部分FFN进行处理
 
@@ -253,7 +253,7 @@ $$
 
 2、`Load Loss`：重要性损失旨在保证所有专家平均而言具有相似的路由权重。但是不难想到这些看上去有着总体趋于平衡的权重的路由配置，仍然有一小部分专家获得了所有分配，如下图：
 
-![1](https://s2.loli.net/2025/06/21/UXFCamKJd8xBQRG.webp)
+<img src="https://s2.loli.net/2025/06/21/UXFCamKJd8xBQRG.webp" alt="1" width="1004" height="267" loading="lazy" decoding="async" />
 
 首先，对于专家选择阈值：$threshold_k(x):= max_k(Wx+ \phi)$，其中$\phi$代表前向传播过程中的采样噪声，$max_k$代表选择第$k$个最大的值，对于专家的负载：指的是在整个批次中的使用情况：$load_i(X)=\sum_{x\in X}p_i(x)$对于这个概率的计算：
 
@@ -273,23 +273,23 @@ $$
 
 借鉴[这部分描述](https://newsletter.maartengrootendorst.com/p/a-visual-guide-to-mixture-of-experts)对于`load balancing loss`描述
 
-![2](https://s2.loli.net/2025/06/21/eI1i6OZ2sTN4dnm.webp)
+<img src="https://s2.loli.net/2025/06/21/eI1i6OZ2sTN4dnm.webp" alt="2" width="919" height="232" loading="lazy" decoding="async" />
 
 对于每个文本都会选择一个专家模型进行输入，因此都会通过路由器去计算他们的“得分”，去将这部分得分加起来，然后最小化$L_{load}(X)=(\frac{std(load(X))}{mean(load(X))})^2$这部分损失
 
-![1](https://s2.loli.net/2025/06/21/kzJC6xtVejBWopa.webp)
+<img src="https://s2.loli.net/2025/06/21/kzJC6xtVejBWopa.webp" alt="1" width="535" height="360" loading="lazy" decoding="async" />
 
 `DeepSeek v3`处理负载不均衡问题：在常规的路由器处理得到：
 
-![](https://s2.loli.net/2025/06/21/XopAk5NgwasfDYS.webp)
+<img src="https://s2.loli.net/2025/06/21/XopAk5NgwasfDYS.webp" alt="image" width="471" height="74" loading="lazy" decoding="async" />
 
 在`DeepSeek`中通过不同一个“动态调节”参数：$b_i$来保证不同专家之间的负载平衡
 
-![](https://s2.loli.net/2025/06/21/6ZME9YhOTfUbSG1.webp)
+<img src="https://s2.loli.net/2025/06/21/6ZME9YhOTfUbSG1.webp" alt="image" width="578" height="91" loading="lazy" decoding="async" />
 
 具体实现方法（参考论文：https://arxiv.org/pdf/2408.15664中的描述）：
 
-![](https://s2.loli.net/2025/06/21/P6ZteKAWaOEYCFf.webp)
+<img src="https://s2.loli.net/2025/06/21/P6ZteKAWaOEYCFf.webp" alt="image" width="1172" height="414" loading="lazy" decoding="async" />
 
 ---
 
@@ -302,7 +302,7 @@ Transformer模型推理过程为：
 ![image.png](https://jalammar.github.io/images/t/transformer_decoding_2.gif)
 
 目前主流的LLM框架主要都是使用的`decoder-only`（也就是说只用`Transformer`中的`decoder`结构）
-![image.png](https://s2.loli.net/2025/06/21/VJ42MkDwaSbmRCt.webp)
+<img src="https://s2.loli.net/2025/06/21/VJ42MkDwaSbmRCt.webp" alt="image.png" width="316" height="581" loading="lazy" decoding="async" />
 
 > 对于LLM任务（通常采用**自回归过程**）可以简单认为是一种“完形填空”的过程，在输入前面i-1个词然后推测第i个词
 
@@ -329,7 +329,7 @@ $
 $QK^T=(bs, 3, embed_dim)(bs, embed_dim, 2)=(bs, 3, 2)$，接下来计算$QK^TV=(bs, 3, 2)(bs,2,embed_dim)=(bs, 3, embed_dim)$
 那么在这个过程中就会有一个有意思问题：**Q会有重复的（dim=3，前面两个都是前面已经计算过的）**（观察上面`Attention`计算可以发现:每次计算$Attention_i$只与$Q_i$相关）。因此就有`KV-cache`理论：既然每次都是Q在变化，但是K和V都是用的之前的，那我之前每次就只用新的Q去和旧的KV计算即可（将KV存储起来），`KV-cache`一种典型的用内存换速度的方法。
 
-![](https://s2.loli.net/2025/02/02/b4p9oAyNEWlZ7mr.gif)
+<img src="https://s2.loli.net/2025/02/02/b4p9oAyNEWlZ7mr.gif" alt="image" width="2000" height="1125" loading="lazy" decoding="async" />
 
 对于KV-cache更加直接的了解：**对于模型的新的输出只与最后一个token有关，那么计算过程中没必要将之前的值再拿出来再计算一遍**。而q是由输入数据动态计算出来的，而k，v是历史状态因此只会去缓存KV。
 

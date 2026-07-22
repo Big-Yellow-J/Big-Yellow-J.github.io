@@ -53,26 +53,26 @@ export HF_ENDPOINT=https://hf-mirror.com
 npm run build_and_start
 ```
 上面运行代码运行之后出现：
-![](https://s2.loli.net/2026/02/03/SYvOuAUjJtMZV4x.webp)
+<img src="https://s2.loli.net/2026/02/03/SYvOuAUjJtMZV4x.webp" alt="image" width="827" height="185" loading="lazy" decoding="async" />
 可以直接访问上面地址进入 ai-toolkit
 #### 界面简单介绍
 首先取配置自己hf token
-![](https://s2.loli.net/2026/01/28/es4i58XBa3K7Oxr.webp)
+<img src="https://s2.loli.net/2026/01/28/es4i58XBa3K7Oxr.webp" alt="image" width="2555" height="460" loading="lazy" decoding="async" />
 配置完毕之后可以直接上传数据集/直接在本地数据集，不过数据集需要在路径：`xxx/ai-toolkit/datasets`（对应上面图像中的路径） 中除此之外还需要注意数据集的格式问题，以文生图任务为例，我的数据集必须满足：1、图像必须是：.jpg, .jpeg,  .png；2、文本：txt。除此之外图片文本之间必须匹配：1.png 1.txt.....
-![](https://s2.loli.net/2026/02/03/marREeQHCq3bnyi.webp)
+<img src="https://s2.loli.net/2026/02/03/marREeQHCq3bnyi.webp" alt="image" width="1190" height="358" loading="lazy" decoding="async" />
 可以直接将上面文件夹上传到`xxx/ai-toolkit/datasets`中
-![](https://s2.loli.net/2026/01/28/rxjsKY8hdpgV1BE.webp)
-![](https://s2.loli.net/2026/01/28/VLBpKZX3JSti2IG.webp)
+<img src="https://s2.loli.net/2026/01/28/rxjsKY8hdpgV1BE.webp" alt="image" width="2559" height="375" loading="lazy" decoding="async" />
+<img src="https://s2.loli.net/2026/01/28/VLBpKZX3JSti2IG.webp" alt="image" width="2560" height="1311" loading="lazy" decoding="async" />
 对于**训练界面参数**介绍：
-![](https://s2.loli.net/2026/02/03/os42J5FXbDHVA1a.webp)
-![](https://s2.loli.net/2026/02/03/weFAziYN1xkv3mp.webp)
+<img src="https://s2.loli.net/2026/02/03/os42J5FXbDHVA1a.webp" alt="image" width="2551" height="1280" loading="lazy" decoding="async" />
+<img src="https://s2.loli.net/2026/02/03/weFAziYN1xkv3mp.webp" alt="image" width="2560" height="1306" loading="lazy" decoding="async" />
 1、模型路径尽量不要去修改就用默认的，如果要去修改可以参考：reddit上的方法
 2、如果报错是和模型下载相关（如CAS报错、hf_transfer报错），可以直接重启任务就行（去Training Quene找到任务然后重新启动即可）
 **模型训练**处理
-![](https://s2.loli.net/2026/02/03/PnH8iG7k4tmhNBu.webp)
+<img src="https://s2.loli.net/2026/02/03/PnH8iG7k4tmhNBu.webp" alt="image" width="2560" height="384" loading="lazy" decoding="async" />
 ### Ai-toolkit模型微调
 对于文生图/图生图微调训练很简单只需要将上面的数据进行修改即可，而后点击开始训练即可
-![](https://s2.loli.net/2026/01/28/ydSs2CKgG8tD5T7.webp)
+<img src="https://s2.loli.net/2026/01/28/ydSs2CKgG8tD5T7.webp" alt="image" width="1546" height="594" loading="lazy" decoding="async" />
 值得注意的是，如果模型还需要去继续训练，比如说我在第一批数据得到一个lora但是又有另外一批数据需要继续去训练，在前端是不支持的，需要重新去建立一个训练任务（可以直接复制第一批数据的yaml文件）而后将其中的数据以及命名都改掉，修改yaml中的`name: Flux-Klein-AID-Inpatient-2000-9B`，而后将上一批数据中训练得到的最好的lora复制到新的文件夹中，而后启动训练即可（`python run.py output/tmp/config.yaml`）这个过程会在终端出现
 ```bash
 #### IMPORTANT RESUMING FROM /root/autodl-tmp/xxx/ai-toolkit/output/xxx/xxx.safetensors ####

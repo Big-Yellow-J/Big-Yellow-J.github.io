@@ -58,7 +58,7 @@ $v(s)-v(s\i)$成员i在联盟中的贡献，即成员i的边际贡献；$w(|s|)$
 
 借助《可解释的机器学习》中例子，假设准备购买一间公寓，其中你所感兴趣的是：1、有无公园；2、公寓面积；3、公寓所位于的楼层；4、是否能养猫。而后对公寓价格预测。
 
-![iamge](https://s2.loli.net/2025/06/21/N4qyaGSvrYToW7s.webp)
+<img src="https://s2.loli.net/2025/06/21/N4qyaGSvrYToW7s.webp" alt="iamge" width="669" height="312" loading="lazy" decoding="async" />
 
 > 比如说1：⼀套 50 平⽅⽶的公寓，附近有公园以及禁⽌猫⼊内，预计价格为 300,000 欧元那么1、公寓面积；2、公寓楼层；3、养猫？4、公园？这4个特征对**预测价格**300000欧元的**贡献**是怎么样的呢？
 > 比如说[^2]：一个程序C=500行代码需要编写，今天产品经理找了三个程序猿来完成，按照完成量发奖金：
@@ -121,7 +121,7 @@ $$
 > > feature importances for linear models in the presence of multicollinearity.
 > 此模型要求计算模型所有的特征，认为每一个特征在模型中都起到了作用。计算公式如下：
 > 
-> ![image](https://s2.loli.net/2025/06/21/5a1l897UIxmpjvn.webp)
+> <img src="https://s2.loli.net/2025/06/21/5a1l897UIxmpjvn.webp" alt="image" width="587" height="95" loading="lazy" decoding="async" />
 > 
 > > 就是上面列子中提及到的计算方法
 > * Shapley sampling values
@@ -143,7 +143,7 @@ $$
 
 > 比如说上面卖房子例子，有四个特征所以$M=4$那么假设初始化为$z'_{1}=(0,1,1,0)$那么也就是存在第二和第三个特征的联盟，那么对于第一个和第四个则通过$h$函数进行转换
 >
-> ![image](https://s2.loli.net/2025/06/21/oVlky7SUPthjQpf.webp)
+> <img src="https://s2.loli.net/2025/06/21/oVlky7SUPthjQpf.webp" alt="image" width="953" height="434" loading="lazy" decoding="async" />
 
 **3. 对每一个z'计算对应的权重***
 
