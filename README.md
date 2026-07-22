@@ -3,19 +3,35 @@
 基于 [Jekyll 3.9.5](https://jekyllrb.com/) 的个人技术博客，主题派生自 [TMaize/tmaize-blog](https://github.com/TMaize/tmaize-blog)。在线访问：<https://www.big-yellow-j.top>。
 
 仓库内容 = Markdown 文章 + Jekyll 模板/布局 + 一套 Python 工具链（图片优化、AI 摘要、URL 推送、front matter 校验）。
-
 ---
 
 ## 目录
 
-- [写作格式](#写作格式)
-- [本地预览](#本地预览)
-- [部署方式 A：GitHub Actions + GitHub Pages（推荐）](#部署方式-a-github-actions--github-pages推荐)
-- [部署方式 B：阿里云 ECS / 轻量服务器](#部署方式-b-阿里云-ecs--轻量服务器)
-- [部署方式 C：树莓派自托管](#部署方式-c-树莓派自托管)
-- [可选 Secrets / 环境变量](#可选-secrets--环境变量)
-- [常用脚本](#常用脚本)
-- [安装新 Jekyll 插件](#安装新-jekyll-插件)
+- [Big-Yellow-J Blog](#big-yellow-j-blog)
+  - [仓库内容 = Markdown 文章 + Jekyll 模板/布局 + 一套 Python 工具链（图片优化、AI 摘要、URL 推送、front matter 校验）。](#仓库内容--markdown-文章--jekyll-模板布局--一套-python-工具链图片优化ai-摘要url-推送front-matter-校验)
+  - [目录](#目录)
+  - [写作格式](#写作格式)
+  - [本地预览](#本地预览)
+    - [Linux / WSL / macOS](#linux--wsl--macos)
+    - [Windows](#windows)
+  - [部署方式 A：GitHub Actions + GitHub Pages（推荐）](#部署方式-agithub-actions--github-pages推荐)
+    - [一次性配置](#一次性配置)
+  - [部署方式 B：阿里云 ECS / 轻量服务器](#部署方式-b阿里云-ecs--轻量服务器)
+    - [系统要求](#系统要求)
+    - [一次性安装](#一次性安装)
+    - [Nginx 站点](#nginx-站点)
+    - [自动拉新 + 重建](#自动拉新--重建)
+    - [阿里云特别提醒](#阿里云特别提醒)
+  - [部署方式 C：树莓派自托管](#部署方式-c树莓派自托管)
+    - [硬件 / 系统](#硬件--系统)
+    - [步骤](#步骤)
+    - [公网访问（选一个）](#公网访问选一个)
+    - [自动拉新](#自动拉新)
+    - [树莓派注意点](#树莓派注意点)
+  - [可选 Secrets / 环境变量](#可选-secrets--环境变量)
+  - [常用脚本](#常用脚本)
+  - [安装新 Jekyll 插件](#安装新-jekyll-插件)
+  - [License \& 来源](#license--来源)
 
 ---
 
